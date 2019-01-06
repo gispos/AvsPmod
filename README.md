@@ -3,7 +3,7 @@ Version 2.6.0.1 GPo
 
 - With pinterf (pfmod) modifications
 - Avisynth header version 6
-- For moore see changelog
+- For more see changelog
 
 Releases GPo:
 <https://github.com/gispos/AvsPmod/releases>
