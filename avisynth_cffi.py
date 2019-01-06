@@ -22,8 +22,7 @@
 #     cffi and its dependencies (tested on v0.8.1)
 #         pycparser
 #         Visual Studio 2008
-#     avisynth_c.h (interface 5, or at least 3 + colorspaces from 5,
-#                   tested with the header used by x264)
+#     avisynth_c.h (interface 6, AVS+, now part of the project)
 # Optional:
 #     global_vars.py (for specifying a custom shared library location)
 #
@@ -64,19 +63,19 @@ if os.name == 'nt':
             ffi.cdef('bool SetDllDirectoryW(wchar_t *);')
             kernel32 = ffi.dlopen('kernel32')
             if hasattr(kernel32, 'SetDllDirectoryW'):
-                print 'Using a custom AviSynth directory:', directory
+                print('Using a custom AviSynth directory:', directory)
                 kernel32.SetDllDirectoryW(directory)
             else:
                 print ('No SetDllDirectoryW on this version of Windows, '
                        'using AviSynth from PATH')
         else:
-            print 'Using AviSynth from PATH'
+            print('Using AviSynth from PATH')
 else: # TODO
     if __debug__:
         if directory:
-            print 'Using a custom AvxSynth directory:', directory
+            print('Using a custom AvxSynth directory:', directory)
         else:
-            print 'Using AvxSynth from LD_LIBRARY_PATH'
+            print('Using AvxSynth from LD_LIBRARY_PATH')
 
 
 encoding = sys.getfilesystemencoding()
@@ -120,55 +119,149 @@ enum {AVS_PLANAR_Y = ..., // 1<<0,
 };
 
   // Colorspace properties.
-enum {AVS_CS_BGR = ..., // 1<<28,
-      AVS_CS_YUV = ..., // 1<<29,
-      AVS_CS_INTERLEAVED = ..., // 1<<30,
-      AVS_CS_PLANAR = ..., // 1<<31,
-    
-      AVS_CS_SHIFT_SUB_WIDTH   = ..., // 0
-      AVS_CS_SHIFT_SUB_HEIGHT  = ..., // 1 << 3,
-      AVS_CS_SHIFT_SAMPLE_BITS = ..., // 1 << 4,
+enum {
+    AVS_CS_YUVA = ..., // 1 << 27,
+    AVS_CS_BGR = ..., // 1 << 28,
+    AVS_CS_YUV = ..., // 1 << 29,
+    AVS_CS_INTERLEAVED = ..., // = 1 << 30,
+    AVS_CS_PLANAR = ..., // = 1 << 31,
 
-      AVS_CS_SUB_WIDTH_MASK    = ..., // 7 << AVS_CS_SHIFT_SUB_WIDTH,
-      AVS_CS_SUB_WIDTH_1       = ..., // 3 << AVS_CS_SHIFT_SUB_WIDTH, // YV24
-      AVS_CS_SUB_WIDTH_2       = ..., // 0 << AVS_CS_SHIFT_SUB_WIDTH, // YV12, I420, YV16
-      AVS_CS_SUB_WIDTH_4       = ..., // 1 << AVS_CS_SHIFT_SUB_WIDTH, // YUV9, YV411
+    AVS_CS_SHIFT_SUB_WIDTH = ..., // = 0,
+    AVS_CS_SHIFT_SUB_HEIGHT = ..., // = 8,
+    AVS_CS_SHIFT_SAMPLE_BITS = ..., // = 16,
 
-      AVS_CS_VPLANEFIRST       = ..., // 1 << 3, // YV12, YV16, YV24, YV411, YUV9
-      AVS_CS_UPLANEFIRST       = ..., //1 << 4, // I420
+    AVS_CS_SUB_WIDTH_MASK = ..., // 7 << AVS_CS_SHIFT_SUB_WIDTH,
+    AVS_CS_SUB_WIDTH_1 = ..., // 3 << AVS_CS_SHIFT_SUB_WIDTH, // YV24
+    AVS_CS_SUB_WIDTH_2 = ..., // 0 << AVS_CS_SHIFT_SUB_WIDTH, // YV12, I420, YV16
+    AVS_CS_SUB_WIDTH_4 = ..., // 1 << AVS_CS_SHIFT_SUB_WIDTH, // YUV9, YV411
 
-      AVS_CS_SUB_HEIGHT_MASK   = ..., // 7 << AVS_CS_SHIFT_SUB_HEIGHT,
-      AVS_CS_SUB_HEIGHT_1      = ..., // 3 << AVS_CS_SHIFT_SUB_HEIGHT, // YV16, YV24, YV411
-      AVS_CS_SUB_HEIGHT_2      = ..., // 0 << AVS_CS_SHIFT_SUB_HEIGHT, // YV12, I420
-      AVS_CS_SUB_HEIGHT_4      = ..., // 1 << AVS_CS_SHIFT_SUB_HEIGHT, // YUV9
+    AVS_CS_VPLANEFIRST = ..., // 1 << 3, // YV12, YV16, YV24, YV411, YUV9
+    AVS_CS_UPLANEFIRST = ..., // 1 << 4, // I420
 
-      AVS_CS_SAMPLE_BITS_MASK  = ..., // 7 << AVS_CS_SHIFT_SAMPLE_BITS,
-      AVS_CS_SAMPLE_BITS_8     = ..., // 0 << AVS_CS_SHIFT_SAMPLE_BITS,
-      AVS_CS_SAMPLE_BITS_16    = ..., // 1 << AVS_CS_SHIFT_SAMPLE_BITS,
-      AVS_CS_SAMPLE_BITS_32    = ..., // 2 << AVS_CS_SHIFT_SAMPLE_BITS,
+    AVS_CS_SUB_HEIGHT_MASK = ..., // 7 << AVS_CS_SHIFT_SUB_HEIGHT,
+    AVS_CS_SUB_HEIGHT_1 = ..., // 3 << AVS_CS_SHIFT_SUB_HEIGHT, // YV16, YV24, YV411
+    AVS_CS_SUB_HEIGHT_2 = ..., // 0 << AVS_CS_SHIFT_SUB_HEIGHT, // YV12, I420
+    AVS_CS_SUB_HEIGHT_4 = ..., // 1 << AVS_CS_SHIFT_SUB_HEIGHT, // YUV9
 
-      AVS_CS_PLANAR_MASK       = ..., // AVS_CS_PLANAR | AVS_CS_INTERLEAVED | AVS_CS_YUV | AVS_CS_BGR | AVS_CS_SAMPLE_BITS_MASK | AVS_CS_SUB_HEIGHT_MASK | AVS_CS_SUB_WIDTH_MASK,
-      AVS_CS_PLANAR_FILTER     = ... // ~( AVS_CS_VPLANEFIRST | AVS_CS_UPLANEFIRST )
-};
+    AVS_CS_SAMPLE_BITS_MASK = ..., // 7 << AVS_CS_SHIFT_SAMPLE_BITS,
+    AVS_CS_SAMPLE_BITS_8 = ..., // 0 << AVS_CS_SHIFT_SAMPLE_BITS,
+    AVS_CS_SAMPLE_BITS_10 = ..., // 5 << AVS_CS_SHIFT_SAMPLE_BITS,
+    AVS_CS_SAMPLE_BITS_12 = ..., // 6 << AVS_CS_SHIFT_SAMPLE_BITS,
+    AVS_CS_SAMPLE_BITS_14 = ..., // 7 << AVS_CS_SHIFT_SAMPLE_BITS,
+    AVS_CS_SAMPLE_BITS_16 = ..., // 1 << AVS_CS_SHIFT_SAMPLE_BITS,
+    AVS_CS_SAMPLE_BITS_32 = ..., // 2 << AVS_CS_SHIFT_SAMPLE_BITS,
+
+    AVS_CS_PLANAR_MASK = ..., // AVS_CS_PLANAR | AVS_CS_INTERLEAVED | AVS_CS_YUV | AVS_CS_BGR | AVS_CS_YUVA | AVS_CS_SAMPLE_BITS_MASK | AVS_CS_SUB_HEIGHT_MASK | AVS_CS_SUB_WIDTH_MASK,
+    AVS_CS_PLANAR_FILTER = ..., // ~(AVS_CS_VPLANEFIRST | AVS_CS_UPLANEFIRST),
+
+    AVS_CS_RGB_TYPE  = ..., // 1 << 0,
+    AVS_CS_RGBA_TYPE = ..., // 1 << 1,
+
+    AVS_CS_GENERIC_YUV420  = ..., // AVS_CS_PLANAR | AVS_CS_YUV | AVS_CS_VPLANEFIRST | AVS_CS_SUB_HEIGHT_2 | AVS_CS_SUB_WIDTH_2,  // 4:2:0 planar
+    AVS_CS_GENERIC_YUV422  = ..., // AVS_CS_PLANAR | AVS_CS_YUV | AVS_CS_VPLANEFIRST | AVS_CS_SUB_HEIGHT_1 | AVS_CS_SUB_WIDTH_2,  // 4:2:2 planar
+    AVS_CS_GENERIC_YUV444  = ..., // AVS_CS_PLANAR | AVS_CS_YUV | AVS_CS_VPLANEFIRST | AVS_CS_SUB_HEIGHT_1 | AVS_CS_SUB_WIDTH_1,  // 4:4:4 planar
+    AVS_CS_GENERIC_Y       = ..., // AVS_CS_PLANAR | AVS_CS_INTERLEAVED | AVS_CS_YUV,                                             // Y only (4:0:0)
+    AVS_CS_GENERIC_RGBP    = ..., // AVS_CS_PLANAR | AVS_CS_BGR | AVS_CS_RGB_TYPE,                                                // planar RGB
+    AVS_CS_GENERIC_RGBAP   = ..., // AVS_CS_PLANAR | AVS_CS_BGR | AVS_CS_RGBA_TYPE,                                               // planar RGBA
+    AVS_CS_GENERIC_YUVA420 = ..., // AVS_CS_PLANAR | AVS_CS_YUVA | AVS_CS_VPLANEFIRST | AVS_CS_SUB_HEIGHT_2 | AVS_CS_SUB_WIDTH_2, // 4:2:0:A planar
+    AVS_CS_GENERIC_YUVA422 = ..., // AVS_CS_PLANAR | AVS_CS_YUVA | AVS_CS_VPLANEFIRST | AVS_CS_SUB_HEIGHT_1 | AVS_CS_SUB_WIDTH_2, // 4:2:2:A planar
+    AVS_CS_GENERIC_YUVA444 = ..., // AVS_CS_PLANAR | AVS_CS_YUVA | AVS_CS_VPLANEFIRST | AVS_CS_SUB_HEIGHT_1 | AVS_CS_SUB_WIDTH_1  // 4:4:4:A planar
+}; 
 
   // Specific colorformats
 enum {
   AVS_CS_UNKNOWN = 0,
-  AVS_CS_BGR24 = ..., // 1<<0 | AVS_CS_BGR | AVS_CS_INTERLEAVED,
-  AVS_CS_BGR32 = ..., // 1<<1 | AVS_CS_BGR | AVS_CS_INTERLEAVED,
+  AVS_CS_BGR24 = ..., // AVS_CS_RGB_TYPE  | AVS_CS_BGR | AVS_CS_INTERLEAVED,
+  AVS_CS_BGR32 = ..., // AVS_CS_RGBA_TYPE | AVS_CS_BGR | AVS_CS_INTERLEAVED,
   AVS_CS_YUY2 = ..., // 1<<2 | AVS_CS_YUV | AVS_CS_INTERLEAVED,
   //  AVS_CS_YV12  = 1<<3  Reserved
   //  AVS_CS_I420  = 1<<4  Reserved
   AVS_CS_RAW32 = ..., // 1<<5 | AVS_CS_INTERLEAVED,
 
-  AVS_CS_YV24  = ..., // AVS_CS_PLANAR | AVS_CS_YUV | AVS_CS_SAMPLE_BITS_8 | AVS_CS_VPLANEFIRST | AVS_CS_SUB_HEIGHT_1 | AVS_CS_SUB_WIDTH_1,  // YVU 4:4:4 planar
-  AVS_CS_YV16  = ..., // AVS_CS_PLANAR | AVS_CS_YUV | AVS_CS_SAMPLE_BITS_8 | AVS_CS_VPLANEFIRST | AVS_CS_SUB_HEIGHT_1 | AVS_CS_SUB_WIDTH_2,  // YVU 4:2:2 planar
-  AVS_CS_YV12  = ..., // AVS_CS_PLANAR | AVS_CS_YUV | AVS_CS_SAMPLE_BITS_8 | AVS_CS_VPLANEFIRST | AVS_CS_SUB_HEIGHT_2 | AVS_CS_SUB_WIDTH_2,  // YVU 4:2:0 planar
+  AVS_CS_YV24  = ..., // AVS_CS_GENERIC_YUV444 | AVS_CS_SAMPLE_BITS_8,  // YVU 4:4:4 planar
+  AVS_CS_YV16  = ..., // AVS_CS_GENERIC_YUV422 | AVS_CS_SAMPLE_BITS_8,  // YVU 4:2:2 planar
+  AVS_CS_YV12  = ..., // AVS_CS_GENERIC_YUV420 | AVS_CS_SAMPLE_BITS_8,  // YVU 4:2:0 planar
   AVS_CS_I420  = ..., // AVS_CS_PLANAR | AVS_CS_YUV | AVS_CS_SAMPLE_BITS_8 | AVS_CS_UPLANEFIRST | AVS_CS_SUB_HEIGHT_2 | AVS_CS_SUB_WIDTH_2,  // YUV 4:2:0 planar
   AVS_CS_IYUV  = ..., // AVS_CS_I420,
   AVS_CS_YV411 = ..., // AVS_CS_PLANAR | AVS_CS_YUV | AVS_CS_SAMPLE_BITS_8 | AVS_CS_VPLANEFIRST | AVS_CS_SUB_HEIGHT_1 | AVS_CS_SUB_WIDTH_4,  // YVU 4:1:1 planar
   AVS_CS_YUV9  = ..., // AVS_CS_PLANAR | AVS_CS_YUV | AVS_CS_SAMPLE_BITS_8 | AVS_CS_VPLANEFIRST | AVS_CS_SUB_HEIGHT_4 | AVS_CS_SUB_WIDTH_4,  // YVU 4:1:0 planar
-  AVS_CS_Y8    = ..., // AVS_CS_PLANAR | AVS_CS_INTERLEAVED | AVS_CS_YUV | AVS_CS_SAMPLE_BITS_8                                              // Y   4:0:0 planar
+  AVS_CS_Y8    = ..., // AVS_CS_GENERIC_Y | AVS_CS_SAMPLE_BITS_8,       // Y   4:0:0 planar
+
+  //-------------------------
+  // AVS16: new planar constants go live! Experimental PF 160613
+  // 10-12-14-16 bit + planar RGB + BRG48/64 160725
+  AVS_CS_YUV444P10 = ..., // AVS_CS_GENERIC_YUV444 | AVS_CS_SAMPLE_BITS_10, // YUV 4:4:4 10bit samples
+  AVS_CS_YUV422P10 = ..., // AVS_CS_GENERIC_YUV422 | AVS_CS_SAMPLE_BITS_10, // YUV 4:2:2 10bit samples
+  AVS_CS_YUV420P10 = ..., // AVS_CS_GENERIC_YUV420 | AVS_CS_SAMPLE_BITS_10, // YUV 4:2:0 10bit samples
+  AVS_CS_Y10       = ..., // AVS_CS_GENERIC_Y | AVS_CS_SAMPLE_BITS_10,      // Y   4:0:0 10bit samples
+
+  AVS_CS_YUV444P12 = ..., // AVS_CS_GENERIC_YUV444 | AVS_CS_SAMPLE_BITS_12, // YUV 4:4:4 12bit samples
+  AVS_CS_YUV422P12 = ..., // AVS_CS_GENERIC_YUV422 | AVS_CS_SAMPLE_BITS_12, // YUV 4:2:2 12bit samples
+  AVS_CS_YUV420P12 = ..., // AVS_CS_GENERIC_YUV420 | AVS_CS_SAMPLE_BITS_12, // YUV 4:2:0 12bit samples
+  AVS_CS_Y12       = ..., // AVS_CS_GENERIC_Y | AVS_CS_SAMPLE_BITS_12,      // Y   4:0:0 12bit samples
+
+  AVS_CS_YUV444P14 = ..., // AVS_CS_GENERIC_YUV444 | AVS_CS_SAMPLE_BITS_14, // YUV 4:4:4 14bit samples
+  AVS_CS_YUV422P14 = ..., // AVS_CS_GENERIC_YUV422 | AVS_CS_SAMPLE_BITS_14, // YUV 4:2:2 14bit samples
+  AVS_CS_YUV420P14 = ..., // AVS_CS_GENERIC_YUV420 | AVS_CS_SAMPLE_BITS_14, // YUV 4:2:0 14bit samples
+  AVS_CS_Y14       = ..., // AVS_CS_GENERIC_Y | AVS_CS_SAMPLE_BITS_14,      // Y   4:0:0 14bit samples
+
+  AVS_CS_YUV444P16 = ..., // AVS_CS_GENERIC_YUV444 | AVS_CS_SAMPLE_BITS_16, // YUV 4:4:4 16bit samples
+  AVS_CS_YUV422P16 = ..., // AVS_CS_GENERIC_YUV422 | AVS_CS_SAMPLE_BITS_16, // YUV 4:2:2 16bit samples
+  AVS_CS_YUV420P16 = ..., // AVS_CS_GENERIC_YUV420 | AVS_CS_SAMPLE_BITS_16, // YUV 4:2:0 16bit samples
+  AVS_CS_Y16       = ..., // AVS_CS_GENERIC_Y | AVS_CS_SAMPLE_BITS_16,      // Y   4:0:0 16bit samples
+
+  // 32 bit samples (float)
+  AVS_CS_YUV444PS = ..., // AVS_CS_GENERIC_YUV444 | AVS_CS_SAMPLE_BITS_32,  // YUV 4:4:4 32bit samples
+  AVS_CS_YUV422PS = ..., // AVS_CS_GENERIC_YUV422 | AVS_CS_SAMPLE_BITS_32,  // YUV 4:2:2 32bit samples
+  AVS_CS_YUV420PS = ..., // AVS_CS_GENERIC_YUV420 | AVS_CS_SAMPLE_BITS_32,  // YUV 4:2:0 32bit samples
+  AVS_CS_Y32      = ..., // AVS_CS_GENERIC_Y | AVS_CS_SAMPLE_BITS_32,       // Y   4:0:0 32bit samples
+
+  // RGB packed
+  AVS_CS_BGR48 = ..., // AVS_CS_RGB_TYPE | AVS_CS_BGR | AVS_CS_INTERLEAVED | AVS_CS_SAMPLE_BITS_16,    // BGR 3x16 bit
+  AVS_CS_BGR64 = ..., // AVS_CS_RGBA_TYPE | AVS_CS_BGR | AVS_CS_INTERLEAVED | AVS_CS_SAMPLE_BITS_16,    // BGR 4x16 bit
+  // no packed 32 bit (float) support for these legacy types
+
+  // RGB planar
+  AVS_CS_RGBP   = ..., // AVS_CS_GENERIC_RGBP | AVS_CS_SAMPLE_BITS_8,  // Planar RGB 8 bit samples
+  AVS_CS_RGBP10 = ..., // AVS_CS_GENERIC_RGBP | AVS_CS_SAMPLE_BITS_10, // Planar RGB 10bit samples
+  AVS_CS_RGBP12 = ..., // AVS_CS_GENERIC_RGBP | AVS_CS_SAMPLE_BITS_12, // Planar RGB 12bit samples
+  AVS_CS_RGBP14 = ..., // AVS_CS_GENERIC_RGBP | AVS_CS_SAMPLE_BITS_14, // Planar RGB 14bit samples
+  AVS_CS_RGBP16 = ..., // AVS_CS_GENERIC_RGBP | AVS_CS_SAMPLE_BITS_16, // Planar RGB 16bit samples
+  AVS_CS_RGBPS  = ..., // AVS_CS_GENERIC_RGBP | AVS_CS_SAMPLE_BITS_32, // Planar RGB 32bit samples
+
+  // RGBA planar
+  AVS_CS_RGBAP   = ..., // AVS_CS_GENERIC_RGBAP | AVS_CS_SAMPLE_BITS_8,  // Planar RGBA 8 bit samples
+  AVS_CS_RGBAP10 = ..., // AVS_CS_GENERIC_RGBAP | AVS_CS_SAMPLE_BITS_10, // Planar RGBA 10bit samples
+  AVS_CS_RGBAP12 = ..., // AVS_CS_GENERIC_RGBAP | AVS_CS_SAMPLE_BITS_12, // Planar RGBA 12bit samples
+  AVS_CS_RGBAP14 = ..., // AVS_CS_GENERIC_RGBAP | AVS_CS_SAMPLE_BITS_14, // Planar RGBA 14bit samples
+  AVS_CS_RGBAP16 = ..., // AVS_CS_GENERIC_RGBAP | AVS_CS_SAMPLE_BITS_16, // Planar RGBA 16bit samples
+  AVS_CS_RGBAPS  = ..., // AVS_CS_GENERIC_RGBAP | AVS_CS_SAMPLE_BITS_32, // Planar RGBA 32bit samples
+
+  // Planar YUVA
+  AVS_CS_YUVA444    = ..., // AVS_CS_GENERIC_YUVA444 | AVS_CS_SAMPLE_BITS_8,  // YUVA 4:4:4 8bit samples
+  AVS_CS_YUVA422    = ..., // AVS_CS_GENERIC_YUVA422 | AVS_CS_SAMPLE_BITS_8,  // YUVA 4:2:2 8bit samples
+  AVS_CS_YUVA420    = ..., // AVS_CS_GENERIC_YUVA420 | AVS_CS_SAMPLE_BITS_8,  // YUVA 4:2:0 8bit samples
+
+  AVS_CS_YUVA444P10 = ..., // AVS_CS_GENERIC_YUVA444 | AVS_CS_SAMPLE_BITS_10, // YUVA 4:4:4 10bit samples
+  AVS_CS_YUVA422P10 = ..., // AVS_CS_GENERIC_YUVA422 | AVS_CS_SAMPLE_BITS_10, // YUVA 4:2:2 10bit samples
+  AVS_CS_YUVA420P10 = ..., // AVS_CS_GENERIC_YUVA420 | AVS_CS_SAMPLE_BITS_10, // YUVA 4:2:0 10bit samples
+
+  AVS_CS_YUVA444P12 = ..., // AVS_CS_GENERIC_YUVA444 | AVS_CS_SAMPLE_BITS_12, // YUVA 4:4:4 12bit samples
+  AVS_CS_YUVA422P12 = ..., // AVS_CS_GENERIC_YUVA422 | AVS_CS_SAMPLE_BITS_12, // YUVA 4:2:2 12bit samples
+  AVS_CS_YUVA420P12 = ..., // AVS_CS_GENERIC_YUVA420 | AVS_CS_SAMPLE_BITS_12, // YUVA 4:2:0 12bit samples
+
+  AVS_CS_YUVA444P14 = ..., // AVS_CS_GENERIC_YUVA444 | AVS_CS_SAMPLE_BITS_14, // YUVA 4:4:4 14bit samples
+  AVS_CS_YUVA422P14 = ..., // AVS_CS_GENERIC_YUVA422 | AVS_CS_SAMPLE_BITS_14, // YUVA 4:2:2 14bit samples
+  AVS_CS_YUVA420P14 = ..., // AVS_CS_GENERIC_YUVA420 | AVS_CS_SAMPLE_BITS_14, // YUVA 4:2:0 14bit samples
+
+  AVS_CS_YUVA444P16 = ..., // AVS_CS_GENERIC_YUVA444 | AVS_CS_SAMPLE_BITS_16, // YUVA 4:4:4 16bit samples
+  AVS_CS_YUVA422P16 = ..., // AVS_CS_GENERIC_YUVA422 | AVS_CS_SAMPLE_BITS_16, // YUVA 4:2:2 16bit samples
+  AVS_CS_YUVA420P16 = ..., // AVS_CS_GENERIC_YUVA420 | AVS_CS_SAMPLE_BITS_16, // YUVA 4:2:0 16bit samples
+
+  AVS_CS_YUVA444PS  = ..., // AVS_CS_GENERIC_YUVA444 | AVS_CS_SAMPLE_BITS_32,  // YUVA 4:4:4 32bit samples
+  AVS_CS_YUVA422PS  = ..., // AVS_CS_GENERIC_YUVA422 | AVS_CS_SAMPLE_BITS_32,  // YUVA 4:2:2 32bit samples
+  AVS_CS_YUVA420PS  = ...  // AVS_CS_GENERIC_YUVA420 | AVS_CS_SAMPLE_BITS_32,  // YUVA 4:2:0 32bit samples
+
 };
 
 enum {
@@ -196,13 +289,57 @@ enum {  //SUBTYPES
   AVS_FILTER_OUTPUT_TYPE_DIFFERENT=4};
 
 enum {
-  AVS_CACHE_NOTHING=0,
-  AVS_CACHE_RANGE=1,
-  AVS_CACHE_ALL=2,
-  AVS_CACHE_AUDIO=3,
-  AVS_CACHE_AUDIO_NONE=4,
-  AVS_CACHE_AUDIO_AUTO=5
+  // New 2.6 explicitly defined cache hints.
+  AVS_CACHE_NOTHING=10, // Do not cache video.
+  AVS_CACHE_WINDOW=11, // Hard protect upto X frames within a range of X from the current frame N.
+  AVS_CACHE_GENERIC=12, // LRU cache upto X frames.
+  AVS_CACHE_FORCE_GENERIC=13, // LRU cache upto X frames, override any previous CACHE_WINDOW.
+
+  AVS_CACHE_GET_POLICY=30, // Get the current policy.
+  AVS_CACHE_GET_WINDOW=31, // Get the current window h_span.
+  AVS_CACHE_GET_RANGE=32, // Get the current generic frame range.
+
+  AVS_CACHE_AUDIO=50, // Explicitly do cache audio, X byte cache.
+  AVS_CACHE_AUDIO_NOTHING=51, // Explicitly do not cache audio.
+  AVS_CACHE_AUDIO_NONE=52, // Audio cache off (auto mode), X byte intial cache.
+  AVS_CACHE_AUDIO_AUTO=53, // Audio cache on (auto mode), X byte intial cache.
+
+  AVS_CACHE_GET_AUDIO_POLICY=70, // Get the current audio policy.
+  AVS_CACHE_GET_AUDIO_SIZE=71, // Get the current audio cache size.
+
+  AVS_CACHE_PREFETCH_FRAME=100, // Queue request to prefetch frame N.
+  AVS_CACHE_PREFETCH_GO=101, // Action video prefetches.
+
+  AVS_CACHE_PREFETCH_AUDIO_BEGIN=120, // Begin queue request transaction to prefetch audio (take critical section).
+  AVS_CACHE_PREFETCH_AUDIO_STARTLO=121, // Set low 32 bits of start.
+  AVS_CACHE_PREFETCH_AUDIO_STARTHI=122, // Set high 32 bits of start.
+  AVS_CACHE_PREFETCH_AUDIO_COUNT=123, // Set low 32 bits of length.
+  AVS_CACHE_PREFETCH_AUDIO_COMMIT=124, // Enqueue request transaction to prefetch audio (release critical section).
+  AVS_CACHE_PREFETCH_AUDIO_GO=125, // Action audio prefetches.
+
+  AVS_CACHE_GETCHILD_CACHE_MODE=200, // Cache ask Child for desired video cache mode.
+  AVS_CACHE_GETCHILD_CACHE_SIZE=201, // Cache ask Child for desired video cache size.
+  AVS_CACHE_GETCHILD_AUDIO_MODE=202, // Cache ask Child for desired audio cache mode.
+  AVS_CACHE_GETCHILD_AUDIO_SIZE=203, // Cache ask Child for desired audio cache size.
+
+  AVS_CACHE_GETCHILD_COST=220, // Cache ask Child for estimated processing cost.
+  AVS_CACHE_COST_ZERO=221, // Child response of zero cost (ptr arithmetic only).   AVS_CACHE_COST_UNIT=222, // Child response of unit cost (less than or equal 1 full frame blit).
+  AVS_CACHE_COST_LOW=223, // Child response of light cost. (Fast)
+  AVS_CACHE_COST_MED=224, // Child response of medium cost. (Real time)
+  AVS_CACHE_COST_HI=225, // Child response of heavy cost. (Slow)
+
+  AVS_CACHE_GETCHILD_THREAD_MODE=240, // Cache ask Child for thread safetyness.
+  AVS_CACHE_THREAD_UNSAFE=241, // Only 1 thread allowed for all instances. 2.5 filters default!
+  AVS_CACHE_THREAD_CLASS=242, // Only 1 thread allowed for each instance. 2.6 filters default!
+  AVS_CACHE_THREAD_SAFE=243, //  Allow all threads in any instance.
+  AVS_CACHE_THREAD_OWN=244, // Safe but limit to 1 thread, internally threaded.
+
+  AVS_CACHE_GETCHILD_ACCESS_COST=260, // Cache ask Child for preferred access pattern.
+  AVS_CACHE_ACCESS_RAND=261, // Filter is access order agnostic.
+  AVS_CACHE_ACCESS_SEQ0=262, // Filter prefers sequential access (low cost)
+  AVS_CACHE_ACCESS_SEQ1=263  // Filter needs sequential access (high cost)
   };
+
 
 #define AVS_FRAME_ALIGN ...
 
@@ -232,30 +369,30 @@ typedef struct AVS_VideoInfo {
   int image_type;
 } AVS_VideoInfo;
 
-// useful functions of the above
+// useful functions of the above - functions with AVSC_INLINE
 int avs_has_video(const AVS_VideoInfo * p);
 int avs_has_audio(const AVS_VideoInfo * p);
 int avs_is_rgb(const AVS_VideoInfo * p);
-int avs_is_rgb24(const AVS_VideoInfo * p); // Clear out additional properties
+int avs_is_rgb24(const AVS_VideoInfo * p);
 int avs_is_rgb32(const AVS_VideoInfo * p);
 int avs_is_yuv(const AVS_VideoInfo * p);
 int avs_is_yuy2(const AVS_VideoInfo * p);
-int avs_is_yv24(const AVS_VideoInfo * p);
-int avs_is_yv16(const AVS_VideoInfo * p);
-int avs_is_yv12(const AVS_VideoInfo * p);
-int avs_is_yv411(const AVS_VideoInfo * p);
-int avs_is_y8(const AVS_VideoInfo * p);
+// became a real interface function int avs_is_yv24(const AVS_VideoInfo * p);
+// became a real interface function int avs_is_yv16(const AVS_VideoInfo * p);
+// became a real interface function int avs_is_yv12(const AVS_VideoInfo * p);
+// became a real interface function int avs_is_yv411(const AVS_VideoInfo * p);
+// became a real interface function int avs_is_y8(const AVS_VideoInfo * p);
 int avs_is_property(const AVS_VideoInfo * p, int property);
 int avs_is_planar(const AVS_VideoInfo * p);
-int avs_is_color_space(const AVS_VideoInfo * p, int c_space);
+// became a real interface function int avs_is_color_space(const AVS_VideoInfo * p, int c_space);
 int avs_is_field_based(const AVS_VideoInfo * p);
 int avs_is_parity_known(const AVS_VideoInfo * p);
 int avs_is_bff(const AVS_VideoInfo * p);
 int avs_is_tff(const AVS_VideoInfo * p);
-int avs_bits_per_pixel(const AVS_VideoInfo * p);
-int avs_bytes_from_pixels(const AVS_VideoInfo * p, int pixels); // Will work on planar images, but will return only luma planes
-int avs_row_size(const AVS_VideoInfo * p);  // Also only returns first plane on planar images
-int avs_bmp_size(const AVS_VideoInfo * vi);
+// became a real interface function int avs_bits_per_pixel(const AVS_VideoInfo * p);
+// became a real interface function int avs_bytes_from_pixels(const AVS_VideoInfo * p, int pixels); // Will work on planar images, but will return only luma planes
+// became a real interface function int avs_row_size(const AVS_VideoInfo * p);  // Also only returns first plane on planar images Fixed in V6: plane parameter
+// became a real interface function int avs_bmp_size(const AVS_VideoInfo * vi);
 int avs_samples_per_second(const AVS_VideoInfo * p);
 int avs_bytes_per_channel_sample(const AVS_VideoInfo * p);
 int avs_bytes_per_audio_sample(const AVS_VideoInfo * p);
@@ -269,7 +406,9 @@ void avs_set_property(AVS_VideoInfo * p, int property); // useful mutator
 void avs_clear_property(AVS_VideoInfo * p, int property);
 void avs_set_field_based(AVS_VideoInfo * p, int isfieldbased);
 void avs_set_fps(AVS_VideoInfo * p, unsigned numerator, unsigned denominator);
-int avs_is_same_colorspace(AVS_VideoInfo * x, AVS_VideoInfo * y);
+// special: this inline function calls an API function
+// Nevertheless it's not much use here, don't implement is
+// int avs_is_same_colorspace(const AVS_VideoInfo * x, const AVS_VideoInfo * y);
 
 
 /////////////////////////////////////////////////////////////////////
@@ -302,29 +441,57 @@ typedef struct AVS_VideoFrameBuffer {
 typedef struct AVS_VideoFrame {
   volatile long refcount;
   AVS_VideoFrameBuffer * vfb;
-  int offset, pitch, row_size, height, offsetU, offsetV, pitchUV;  // U&V offsets are from top of picture.
-  int row_sizeUV, heightUV; // XXX: only on interface 5
+  int offset;
+  int pitch, row_size, height;
+  int offsetU, offsetV;
+  int pitchUV;  // U&V offsets are from top of picture.
+  int row_sizeUV, heightUV; // for Planar RGB offsetU, offsetV is for the 2nd and 3rd Plane.
+                            // for Planar RGB pitchUV and row_sizeUV = 0, because when no VideoInfo (MakeWriteable)
+                            // the decision on existance of UV is checked by zero pitch
+  // AVS+ extension, avisynth.h: class does not break plugins if appended here
+  int offsetA;
+  int pitchA, row_sizeA; // 4th alpha plane support, pitch and row_size is 0 is none
 } AVS_VideoFrame;
 
 
 // Access functions for AVS_VideoFrame
-int avs_get_pitch(const AVS_VideoFrame * p);
-int avs_get_pitch_p(const AVS_VideoFrame * p, int plane);
-int avs_get_row_size(const AVS_VideoFrame * p);
-int avs_get_row_size_p(const AVS_VideoFrame * p, int plane);
-int avs_get_height(const AVS_VideoFrame * p);
-int avs_get_height_p(const AVS_VideoFrame * p, int plane);
-const BYTE* avs_get_read_ptr(const AVS_VideoFrame * p);
-const BYTE* avs_get_read_ptr_p(const AVS_VideoFrame * p, int plane);
-int avs_is_writable(const AVS_VideoFrame * p);
-BYTE* avs_get_write_ptr(const AVS_VideoFrame * p);
-BYTE* avs_get_write_ptr_p(const AVS_VideoFrame * p, int plane);
+
+// Special: this AVSC_INLINE is calling a real interface function
+// int avs_get_pitch(const AVS_VideoFrame * p);
+
+// became a real interface function
+// int avs_get_pitch_p(const AVS_VideoFrame * p, int plane);
+
+// Special: this AVSC_INLINE is calling a real interface function
+// int avs_get_row_size(const AVS_VideoFrame * p);
+
+// became a real interface function 
+// int avs_get_row_size_p(const AVS_VideoFrame * p, int plane);
+
+// Special: this AVSC_INLINE is calling a real interface function
+// int avs_get_height(const AVS_VideoFrame * p);
+
+// became a real interface function
+// int avs_get_height_p(const AVS_VideoFrame * p, int plane);
+
+// Special: this AVSC_INLINE is calling a real interface function
+// const BYTE* avs_get_read_ptr(const AVS_VideoFrame * p);
+
+// became a real interface function const BYTE* avs_get_read_ptr_p(const AVS_VideoFrame * p, int plane);
+// int avs_is_writable(const AVS_VideoFrame * p);
+
+// Special: this AVSC_INLINE is calling a real interface function
+// BYTE* avs_get_write_ptr(const AVS_VideoFrame * p);
+
+// became a real interface function
+// BYTE* avs_get_write_ptr_p(const AVS_VideoFrame * p, int plane);
 
 
 typedef void (*avs_release_video_frame_func)(AVS_VideoFrame *);
 // makes a shallow copy of a video frame
 typedef AVS_VideoFrame * (*avs_copy_video_frame_func)(AVS_VideoFrame *);
 
+// ------------- currently done until this
 
 /////////////////////////////////////////////////////////////////////
 //
@@ -435,6 +602,50 @@ typedef const char * (*avs_clip_get_error_func)(AVS_Clip *); // return 0 if no e
 
 typedef const AVS_VideoInfo * (*avs_get_video_info_func)(AVS_Clip *);
 
+// new V6 Interface
+typedef int (*avs_is_yv24_func)(const AVS_VideoInfo * p);
+typedef int (*avs_is_yv16_func)(const AVS_VideoInfo * p);
+typedef int (*avs_is_yv12_func)(const AVS_VideoInfo * p);
+typedef int (*avs_is_yv411_func)(const AVS_VideoInfo * p);
+typedef int (*avs_is_y8_func)(const AVS_VideoInfo * p);
+typedef int (*avs_is_color_space_func)(const AVS_VideoInfo * p, int c_space);
+typedef int (*avs_get_plane_width_subsampling_func)(const AVS_VideoInfo * p, int plane);
+typedef int (*avs_get_plane_height_subsampling_func)(const AVS_VideoInfo * p, int plane);
+typedef int (*avs_bits_per_pixel_func)(const AVS_VideoInfo * p);
+typedef int (*avs_bytes_from_pixels_func)(const AVS_VideoInfo * p, int pixels); // Will work on planar images, but will return only luma planes
+typedef int (*avs_row_size_func)(const AVS_VideoInfo * p, int plane);  // Also only returns first plane on planar images. Fixed in V6: plane parameter
+typedef int (*avs_bmp_size_func)(const AVS_VideoInfo * vi);
+// Access functions for AVS_VideoFrame
+typedef int (*avs_get_pitch_p_func)(const AVS_VideoFrame * p, int plane);
+typedef int (*avs_get_row_size_p_func)(const AVS_VideoFrame * p, int plane);
+typedef int (*avs_get_height_p_func)(const AVS_VideoFrame * p, int plane);
+typedef const BYTE * (*avs_get_read_ptr_p_func)(const AVS_VideoFrame * p, int plane);
+typedef int (*avs_is_writable_func)(const AVS_VideoFrame * p);
+typedef BYTE * (*avs_get_write_ptr_p_func)(const AVS_VideoFrame * p, int plane);
+// Avisynth+ extensions
+typedef int (*avs_is_rgb48_func)(const AVS_VideoInfo * p);
+typedef int (*avs_is_rgb64_func)(const AVS_VideoInfo * p);
+// AVSC_API(int, avs_is_yuv444p16)(const AVS_VideoInfo * p); // obsolate, use avs_is_yuv444
+// AVSC_API(int, avs_is_yuv422p16)(const AVS_VideoInfo * p); // obsolate, use avs_is_yuv422
+// AVSC_API(int, avs_is_yuv420p16)(const AVS_VideoInfo * p); // obsolate, use avs_is_yuv420
+// AVSC_API(int, avs_is_y16)(const AVS_VideoInfo * p); // obsolate, use avs_is_y
+// AVSC_API(int, avs_is_yuv444ps)(const AVS_VideoInfo * p); // obsolate, use avs_is_yuv444
+// AVSC_API(int, avs_is_yuv422ps)(const AVS_VideoInfo * p); // obsolate, use avs_is_yuv422
+// AVSC_API(int, avs_is_yuv420ps)(const AVS_VideoInfo * p); // obsolate, use avs_is_yuv420
+// AVSC_API(int, avs_is_y32)(const AVS_VideoInfo * p); // obsolate, use avs_is_y
+typedef int (*avs_is_444_func)(const AVS_VideoInfo * p);
+typedef int (*avs_is_422_func)(const AVS_VideoInfo * p);
+typedef int (*avs_is_420_func)(const AVS_VideoInfo * p);
+typedef int (*avs_is_y_func)(const AVS_VideoInfo * p);
+typedef int (*avs_is_yuva_func)(const AVS_VideoInfo * p);
+typedef int (*avs_is_planar_rgb_func)(const AVS_VideoInfo * p);
+typedef int (*avs_is_planar_rgba_func)(const AVS_VideoInfo * p);
+typedef int (*avs_num_components_func)(const AVS_VideoInfo * p);
+typedef int (*avs_component_size_func)(const AVS_VideoInfo * p);
+typedef int (*avs_bits_per_component_func)(const AVS_VideoInfo * p);
+// end of Avisynth+ specific
+
+
 typedef int (*avs_get_version_func)(AVS_Clip *);
  
 typedef AVS_VideoFrame * (*avs_get_frame_func)(AVS_Clip *, int n);
@@ -472,8 +683,7 @@ typedef AVS_Clip * (*avs_new_c_filter_func)(AVS_ScriptEnvironment * e,
 // AVS_ScriptEnvironment
 //
 
-// For GetCPUFlags.  These are backwards-compatible with those in VirtualDub.
-enum {                    
+enum {
                                 /* slowest CPU to support extension */
   AVS_CPU_FORCE        = 0x01,   // N/A
   AVS_CPU_FPU          = 0x02,   // 386/486DX
@@ -483,13 +693,32 @@ enum {
   AVS_CPU_SSE2         = 0x20,   // PIV, Hammer
   AVS_CPU_3DNOW        = 0x40,   // K6-2
   AVS_CPU_3DNOW_EXT    = 0x80,   // Athlon
-  AVS_CPU_X86_64       = 0xA0,   // Hammer (note: equiv. to 3DNow + SSE2, 
+  AVS_CPU_X86_64       = 0xA0,   // Hammer (note: equiv. to 3DNow + SSE2,
                                  // which only Hammer will have anyway)
   AVS_CPUF_SSE3       = 0x100,   //  PIV+, K8 Venice
   AVS_CPUF_SSSE3      = 0x200,   //  Core 2
   AVS_CPUF_SSE4       = 0x400,   //  Penryn, Wolfdale, Yorkfield
   AVS_CPUF_SSE4_1     = 0x400,
-  AVS_CPUF_SSE4_2     = 0x800,   //  Nehalem
+  AVS_CPUF_AVX        = 0x800,   //  Sandy Bridge, Bulldozer
+  AVS_CPUF_SSE4_2    = 0x1000,   //  Nehalem
+  // AVS+
+  AVS_CPUF_AVX2      = 0x2000,   //  Haswell
+  AVS_CPUF_FMA3      = 0x4000,
+  AVS_CPUF_F16C      = 0x8000,
+  AVS_CPUF_MOVBE     = 0x10000,   // Big Endian Move
+  AVS_CPUF_POPCNT    = 0x20000,
+  AVS_CPUF_AES       = 0x40000,
+  AVS_CPUF_FMA4      = 0x80000,
+
+  AVS_CPUF_AVX512F    = 0x100000,  // AVX-512 Foundation.
+  AVS_CPUF_AVX512DQ   = 0x200000,  // AVX-512 DQ (Double/Quad granular) Instructions
+  AVS_CPUF_AVX512PF   = 0x400000,  // AVX-512 Prefetch
+  AVS_CPUF_AVX512ER   = 0x800000,  // AVX-512 Exponential and Reciprocal
+  AVS_CPUF_AVX512CD   = 0x1000000, // AVX-512 Conflict Detection
+  AVS_CPUF_AVX512BW   = 0x2000000, // AVX-512 BW (Byte/Word granular) Instructions
+  AVS_CPUF_AVX512VL   = 0x4000000, // AVX-512 VL (128/256 Vector Length) Extensions
+  AVS_CPUF_AVX512IFMA = 0x8000000, // AVX-512 IFMA integer 52 bit
+  AVS_CPUF_AVX512VBMI = 0x10000000 // AVX-512 VBMI
 };
 
 typedef const char * (*avs_get_error_func)(AVS_ScriptEnvironment *); // return 0 if no error
@@ -529,7 +758,6 @@ int avs_set_global_var_w(AVS_ScriptEnvironment *, const char* name, const AVS_Va
 
 typedef AVS_VideoFrame * (*avs_new_video_frame_a_func)(AVS_ScriptEnvironment *, 
                                           const AVS_VideoInfo * vi, int align);
-// align should be at least 16
 
 typedef int (*avs_make_writable_func)(AVS_ScriptEnvironment *, AVS_VideoFrame * * pvf);
 
@@ -566,11 +794,13 @@ void FreeLibrary(HMODULE);
 
 typedef struct AVS_Library{ ...; } AVS_Library;
 
+// this section appears twice, see also in verify_str
 avs_add_function_func avs_add_function;
 avs_at_exit_func avs_at_exit;
 avs_bit_blt_func avs_bit_blt;
 avs_check_version_func avs_check_version;
 avs_clip_get_error_func avs_clip_get_error;
+// avs_copy_value_func avs_copy_value; // No! Has wrapper function
 avs_copy_clip_func avs_copy_clip;
 avs_copy_video_frame_func avs_copy_video_frame;
 avs_create_script_environment_func avs_create_script_environment;
@@ -578,24 +808,76 @@ avs_delete_script_environment_func avs_delete_script_environment;
 avs_function_exists_func avs_function_exists;
 avs_get_audio_func avs_get_audio;
 avs_get_cpu_flags_func avs_get_cpu_flags;
-avs_get_error_func avs_get_error;
 avs_get_frame_func avs_get_frame;
 avs_get_parity_func avs_get_parity;
+// avs_get_var_func avs_get_var; // // No! Has wrapper function
 avs_get_version_func avs_get_version;
 avs_get_video_info_func avs_get_video_info;
+// avs_invoke_func avs_invoke; // No! Has wrapper function
 avs_make_writable_func avs_make_writable;
 avs_new_c_filter_func avs_new_c_filter;
 avs_new_video_frame_a_func avs_new_video_frame_a;
 avs_release_clip_func avs_release_clip;
+// avs_release_value_func avs_release_value; // No! Has wrapper function
 avs_release_video_frame_func avs_release_video_frame;
 avs_save_string_func avs_save_string;
 avs_set_cache_hints_func avs_set_cache_hints;
+// avs_set_global_var_func avs_set_global_var; // No! Has wrapper function
 avs_set_memory_max_func avs_set_memory_max;
+avs_set_to_clip_func avs_set_to_clip; // NEW! todo check its usage
+// avs_set_var_func avs_set_var; // No! Has wrapper function
 avs_set_working_dir_func avs_set_working_dir;
 avs_sprintf_func avs_sprintf;
 avs_subframe_func avs_subframe;
 avs_subframe_planar_func avs_subframe_planar;
+// avs_take_clip_func avs_take_clip; // No! Has wrapper function
 avs_vsprintf_func avs_vsprintf;
+
+avs_get_error_func avs_get_error;
+// new V6
+avs_is_yv24_func avs_is_yv24;
+avs_is_yv16_func avs_is_yv16;
+avs_is_yv12_func avs_is_yv12;
+avs_is_yv411_func avs_is_yv411;
+avs_is_y8_func avs_is_y8;
+avs_is_color_space_func avs_is_color_space;
+
+avs_get_plane_width_subsampling_func avs_get_plane_width_subsampling;
+avs_get_plane_height_subsampling_func avs_get_plane_height_subsampling;
+avs_bits_per_pixel_func avs_bits_per_pixel;
+avs_bytes_from_pixels_func avs_bytes_from_pixels;
+avs_row_size_func avs_row_size;
+avs_bmp_size_func avs_bmp_size;
+avs_get_pitch_p_func avs_get_pitch_p;
+avs_get_row_size_p_func avs_get_row_size_p;
+avs_get_height_p_func avs_get_height_p;
+avs_get_read_ptr_p_func avs_get_read_ptr_p;
+avs_is_writable_func avs_is_writable;
+avs_get_write_ptr_p_func avs_get_write_ptr_p;
+
+// Avisynth+ specific
+avs_is_rgb48_func avs_is_rgb48;
+avs_is_rgb64_func avs_is_rgb64;
+//some obsolate function
+//AVSC_DECLARE_FUNC(avs_is_yuv444p16);
+//AVSC_DECLARE_FUNC(avs_is_yuv422p16);
+//AVSC_DECLARE_FUNC(avs_is_yuv420p16);
+//AVSC_DECLARE_FUNC(avs_is_y16);
+//AVSC_DECLARE_FUNC(avs_is_yuv444ps);
+//AVSC_DECLARE_FUNC(avs_is_yuv422ps);
+//AVSC_DECLARE_FUNC(avs_is_yuv420ps);
+//AVSC_DECLARE_FUNC(avs_is_y32);
+avs_is_444_func avs_is_444;
+avs_is_422_func avs_is_422;
+avs_is_420_func avs_is_420;
+avs_is_y_func avs_is_y;
+avs_is_yuva_func avs_is_yuva;
+avs_is_planar_rgb_func avs_is_planar_rgb;
+avs_is_planar_rgba_func avs_is_planar_rgba;
+avs_num_components_func avs_num_components;
+avs_component_size_func avs_component_size;
+avs_bits_per_component_func avs_bits_per_component;
+// end of Avisynth+ specific
 
 ;AVS_Library * avs_load_library();
 AVS_Library * avs_load_library_w();
@@ -622,6 +904,7 @@ avs_at_exit_func avs_at_exit;
 avs_bit_blt_func avs_bit_blt;
 avs_check_version_func avs_check_version;
 avs_clip_get_error_func avs_clip_get_error;
+// avs_copy_value_func avs_copy_value; // No! Has wrapper function
 avs_copy_clip_func avs_copy_clip;
 avs_copy_video_frame_func avs_copy_video_frame;
 avs_create_script_environment_func avs_create_script_environment;
@@ -629,24 +912,76 @@ avs_delete_script_environment_func avs_delete_script_environment;
 avs_function_exists_func avs_function_exists;
 avs_get_audio_func avs_get_audio;
 avs_get_cpu_flags_func avs_get_cpu_flags;
-avs_get_error_func avs_get_error;
 avs_get_frame_func avs_get_frame;
 avs_get_parity_func avs_get_parity;
+// avs_get_var_func avs_get_var; // // No! Has wrapper function
 avs_get_version_func avs_get_version;
 avs_get_video_info_func avs_get_video_info;
+// avs_invoke_func avs_invoke; // No! Has wrapper function
 avs_make_writable_func avs_make_writable;
 avs_new_c_filter_func avs_new_c_filter;
 avs_new_video_frame_a_func avs_new_video_frame_a;
 avs_release_clip_func avs_release_clip;
+// avs_release_value_func avs_release_value; // No! Has wrapper function
 avs_release_video_frame_func avs_release_video_frame;
 avs_save_string_func avs_save_string;
 avs_set_cache_hints_func avs_set_cache_hints;
+// avs_set_global_var_func avs_set_global_var; // No! Has wrapper function
 avs_set_memory_max_func avs_set_memory_max;
+avs_set_to_clip_func avs_set_to_clip; // NEW! todo check its usage
+// avs_set_var_func avs_set_var; // No! Has wrapper function
 avs_set_working_dir_func avs_set_working_dir;
 avs_sprintf_func avs_sprintf;
 avs_subframe_func avs_subframe;
 avs_subframe_planar_func avs_subframe_planar;
+// avs_take_clip_func avs_take_clip; // No! Has wrapper function
 avs_vsprintf_func avs_vsprintf;
+
+avs_get_error_func avs_get_error;
+// new V6
+avs_is_yv24_func avs_is_yv24;
+avs_is_yv16_func avs_is_yv16;
+avs_is_yv12_func avs_is_yv12;
+avs_is_yv411_func avs_is_yv411;
+avs_is_y8_func avs_is_y8;
+avs_is_color_space_func avs_is_color_space;
+
+avs_get_plane_width_subsampling_func avs_get_plane_width_subsampling;
+avs_get_plane_height_subsampling_func avs_get_plane_height_subsampling;
+avs_bits_per_pixel_func avs_bits_per_pixel;
+avs_bytes_from_pixels_func avs_bytes_from_pixels;
+avs_row_size_func avs_row_size;
+avs_bmp_size_func avs_bmp_size;
+avs_get_pitch_p_func avs_get_pitch_p;
+avs_get_row_size_p_func avs_get_row_size_p;
+avs_get_height_p_func avs_get_height_p;
+avs_get_read_ptr_p_func avs_get_read_ptr_p;
+avs_is_writable_func avs_is_writable;
+avs_get_write_ptr_p_func avs_get_write_ptr_p;
+
+// Avisynth+ specific
+avs_is_rgb48_func avs_is_rgb48;
+avs_is_rgb64_func avs_is_rgb64;
+//some obsolate function
+//AVSC_DECLARE_FUNC(avs_is_yuv444p16);
+//AVSC_DECLARE_FUNC(avs_is_yuv422p16);
+//AVSC_DECLARE_FUNC(avs_is_yuv420p16);
+//AVSC_DECLARE_FUNC(avs_is_y16);
+//AVSC_DECLARE_FUNC(avs_is_yuv444ps);
+//AVSC_DECLARE_FUNC(avs_is_yuv422ps);
+//AVSC_DECLARE_FUNC(avs_is_yuv420ps);
+//AVSC_DECLARE_FUNC(avs_is_y32);
+avs_is_444_func avs_is_444;
+avs_is_422_func avs_is_422;
+avs_is_420_func avs_is_420;
+avs_is_y_func avs_is_y;
+avs_is_yuva_func avs_is_yuva;
+avs_is_planar_rgb_func avs_is_planar_rgb;
+avs_is_planar_rgba_func avs_is_planar_rgba;
+avs_num_components_func avs_num_components;
+avs_component_size_func avs_component_size;
+avs_bits_per_component_func avs_bits_per_component;
+// end of Avisynth+ specific
 
 AVS_Library * avs_load_library_w(){
     library = avs_load_library();
@@ -655,6 +990,7 @@ AVS_Library * avs_load_library_w(){
     avs_bit_blt=library->avs_bit_blt;
     avs_check_version=library->avs_check_version;
     avs_clip_get_error=library->avs_clip_get_error;
+    // avs_copy_value=library->avs_copy_value; // No! Has wrapper function
     avs_copy_clip=library->avs_copy_clip;
     avs_copy_video_frame=library->avs_copy_video_frame;
     avs_create_script_environment=library->avs_create_script_environment;
@@ -662,24 +998,75 @@ AVS_Library * avs_load_library_w(){
     avs_delete_script_environment=library->avs_delete_script_environment;
     avs_get_audio=library->avs_get_audio;
     avs_get_cpu_flags=library->avs_get_cpu_flags;
-    avs_get_error=library->avs_get_error;
     avs_get_frame=library->avs_get_frame;
     avs_get_parity=library->avs_get_parity;
+    // avs_get_var=library->avs_get_var; // // No! Has wrapper function
     avs_get_version=library->avs_get_version;
     avs_get_video_info=library->avs_get_video_info;
+    // avs_invoke=library->avs_invoke; // No! Has wrapper function
     avs_make_writable=library->avs_make_writable;
     avs_new_c_filter=library->avs_new_c_filter;
     avs_new_video_frame_a=library->avs_new_video_frame_a;
     avs_release_clip=library->avs_release_clip;
+    // avs_release_value=library->avs_release_value; // No! Has wrapper function
     avs_release_video_frame=library->avs_release_video_frame;
     avs_save_string=library->avs_save_string;
     avs_set_cache_hints=library->avs_set_cache_hints;
+    // avs_set_global_var=library->avs_set_global_var; // No! Has wrapper function
     avs_set_memory_max=library->avs_set_memory_max;
+    avs_set_to_clip=library->avs_set_to_clip; // NEW! todo check its usage
+    // avs_set_var=library->avs_set_var; // No! Has wrapper function
     avs_set_working_dir=library->avs_set_working_dir;
     avs_sprintf=library->avs_sprintf;
     avs_subframe=library->avs_subframe;
     avs_subframe_planar=library->avs_subframe_planar;
+    // avs_take_clip=library->avs_take_clip; // No! Has wrapper function
     avs_vsprintf=library->avs_vsprintf;
+    avs_get_error=library->avs_get_error;
+    // new V6
+    avs_is_yv24=library->avs_is_yv24;
+    avs_is_yv16=library->avs_is_yv16;
+    avs_is_yv12=library->avs_is_yv12;
+    avs_is_yv411=library->avs_is_yv411;
+    avs_is_y8=library->avs_is_y8;
+    avs_is_color_space=library->avs_is_color_space;
+
+    avs_get_plane_width_subsampling=library->avs_get_plane_width_subsampling;
+    avs_get_plane_height_subsampling=library->avs_get_plane_height_subsampling;
+    avs_bits_per_pixel=library->avs_bits_per_pixel;
+    avs_bytes_from_pixels=library->avs_bytes_from_pixels;
+    avs_row_size=library->avs_row_size;
+    avs_bmp_size=library->avs_bmp_size;
+    avs_get_pitch_p=library->avs_get_pitch_p;
+    avs_get_row_size_p=library->avs_get_row_size_p;
+    avs_get_height_p=library->avs_get_height_p;
+    avs_get_read_ptr_p=library->avs_get_read_ptr_p;
+    avs_is_writable=library->avs_is_writable;
+    avs_get_write_ptr_p=library->avs_get_write_ptr_p;
+
+    // Avisynth+ specific
+    avs_is_rgb48=library->avs_is_rgb48;
+    avs_is_rgb64=library->avs_is_rgb64;
+    //some obsolate function
+    //AVSC_DECLARE_FUNC(avs_is_yuv444p16);
+    //AVSC_DECLARE_FUNC(avs_is_yuv422p16);
+    //AVSC_DECLARE_FUNC(avs_is_yuv420p16);
+    //AVSC_DECLARE_FUNC(avs_is_y16);
+    //AVSC_DECLARE_FUNC(avs_is_yuv444ps);
+    //AVSC_DECLARE_FUNC(avs_is_yuv422ps);
+    //AVSC_DECLARE_FUNC(avs_is_yuv420ps);
+    //AVSC_DECLARE_FUNC(avs_is_y32);
+    avs_is_444=library->avs_is_444;
+    avs_is_422=library->avs_is_422;
+    avs_is_420=library->avs_is_420;
+    avs_is_y=library->avs_is_y;
+    avs_is_yuva=library->avs_is_yuva;
+    avs_is_planar_rgb=library->avs_is_planar_rgb;
+    avs_is_planar_rgba=library->avs_is_planar_rgba;
+    avs_num_components=library->avs_num_components;
+    avs_component_size=library->avs_component_size;
+    avs_bits_per_component=library->avs_bits_per_component;
+    // end of Avisynth+ specific
     return library;
 }
 
@@ -819,19 +1206,19 @@ class AVS_VideoInfo(object):
     def is_yuy2(self):
         return bool(avs.avs_is_yuy2(self.cdata))
     
-    def is_yv24(self):
+    def is_yv24(self): #V6
         return bool(avs.avs_is_yv24(self.cdata))
     
-    def is_yv16(self):
+    def is_yv16(self): #V6
         return bool(avs.avs_is_yv16(self.cdata))
     
-    def is_yv12(self):
+    def is_yv12(self): #V6
         return bool(avs.avs_is_yv12(self.cdata))
     
-    def is_yv411(self):
+    def is_yv411(self): #V6
         return bool(avs.avs_is_yv411(self.cdata))
     
-    def is_y8(self):
+    def is_y8(self): #V6
         return bool(avs.avs_is_y8(self.cdata))
     
     def is_property(self, property):
@@ -840,7 +1227,7 @@ class AVS_VideoInfo(object):
     def is_planar(self):
         return bool(avs.avs_is_planar(self.cdata))
     
-    def is_color_space(self, color_space):
+    def is_color_space(self, color_space): #V6
         return bool(avs.avs_is_color_space(self.cdata, color_space))
     
     def is_field_based(self):
@@ -856,58 +1243,30 @@ class AVS_VideoInfo(object):
         return bool(avs.avs_is_tff(self.cdata))
     
     def is_v_plane_first(self): # interface.cpp
-        return not self.is_y8() and self.is_planar() and (self.pixel_type & \
+        return not self.is_y() and self.is_planar() and (self.pixel_type & \
             (avs.AVS_CS_VPLANEFIRST | avs.AVS_CS_UPLANEFIRST)) \
             == avs.AVS_CS_VPLANEFIRST # Shouldn't use this
     
     def get_plane_width_subsampling(self, plane): # interface.cpp
-        """Subsampling in bitshifts"""
-        if plane == avs.AVS_PLANAR_Y:  # No subsampling
-            return 0
-        if self.is_y8():
-            raise AvisynthError('Filter error: get_plane_width_subsampling not '
-                                'available on Y8 pixel type.')
-        if (plane == avs.AVS_PLANAR_U or plane == avs.AVS_PLANAR_V):
-            if self.is_yuy2():
-                return 1
-            elif self.is_planar():
-                return ((self.pixel_type >> avs.AVS_CS_SHIFT_SUB_WIDTH) + 1) & 3
-            else:
-                raise AvisynthError('Filter error: get_plane_width_subsampling '
-                                    'called with unsupported pixel type.')
-        raise AvisynthError('Filter error: get_plane_width_subsampling called '
-                            'with unsupported plane.')
+        return avs.avs_get_plane_width_subsampling(self.cdata, plane);
+        # IF V6: became and interface fn
     
     def get_plane_height_subsampling(self, plane): # interface.cpp
-        """Subsampling in bitshifts"""
-        if plane == avs.AVS_PLANAR_Y:  # No subsampling
-            return 0
-        if self.is_y8():
-            raise AvisynthError('Filter error: get_plane_height_subsampling not '
-                                'available on Y8 pixel type.')
-        if (plane == avs.AVS_PLANAR_U or plane == avs.AVS_PLANAR_V):
-            if self.is_yuy2():
-                return 0
-            elif self.is_planar():
-                return ((self.pixel_type >> avs.AVS_CS_SHIFT_SUB_HEIGHT) + 1) & 3
-            else:
-                raise AvisynthError('Filter error: get_plane_height_subsampling '
-                                    'called with unsupported pixel type.')
-        raise AvisynthError('Filter error: get_plane_height_subsampling called '
-                            'with unsupported plane.')    
+        return avs.avs_get_plane_height_subsampling(self.cdata, plane);
+        # IF V6: became and interface fn
     
-    def bits_per_pixel(self):
+    def bits_per_pixel(self): #V6
         return avs.avs_bits_per_pixel(self.cdata)
     
-    def bytes_from_pixels(self, pixels):
+    def bytes_from_pixels(self, pixels): #V6
         # Will work on planar images, but will return only luma planes
         return avs.avs_bytes_from_pixels(self.cdata, pixels)
     
-    def row_size(self):
+    def row_size(self): #V6
         # Also only returns first plane on planar images
         return avs.avs_row_size(self.cdata)
     
-    def bmp_size(self):
+    def bmp_size(self): #V6
         return avs.avs_bmp_size(self.cdata)
     
     def samples_per_second(self):
@@ -952,10 +1311,38 @@ class AVS_VideoInfo(object):
     
     def set_fps(self, numerator, denominator):
         avs.avs_set_fps(self.cdata, numerator, denominator)
-    
-    def is_same_colorspace(self, vi):
-        return bool(avs.avs_is_same_colorspace(self.cdata, vi))
 
+    def is_same_colorspace(self, vi):
+        return (self.pixel_type == vi.pixeltype) or (self.is_yv12() and vi.is_yv12())
+        # return bool(avs.avs_is_same_colorspace(self.cdata, vi)) not a real interface function
+
+    # Avisynth+ extensions
+    def is_rgb48(self):
+        return bool(avs.avs_is_rgb48(self.cdata))
+    def is_rgb64(self):
+        return bool(avs.avs_is_rgb64(self.cdata))
+    def is_444(self):
+        return bool(avs.avs_is_444(self.cdata))
+    def is_422(self):
+        return bool(avs.avs_is_422(self.cdata))
+    def is_420(self):
+        return bool(avs.avs_is_420(self.cdata))
+    def is_y(self):
+        return bool(avs.avs_is_y(self.cdata))
+    def is_yuva(self):
+        return bool(avs.avs_is_yuva(self.cdata))
+    def is_planar_rgb(self):
+        return bool(avs.avs_is_planar_rgb(self.cdata))
+    def is_planar_rgba(self):
+        return bool(avs.avs_is_planar_rgba(self.cdata))
+    def num_components(self):
+        return avs.avs_num_components(self.cdata)
+    def component_size(self):
+        return avs.avs_component_size(self.cdata)
+    def bits_per_component(self):
+        return avs.avs_bits_per_component(self.cdata)
+
+#todo avs+: avs_is_y, is_444, etc.
 
 class AVS_VideoFrame(object):
     
@@ -988,10 +1375,14 @@ class AVS_VideoFrame(object):
     def get_frame_buffer(self): # interface.cpp
         return self.cdata.vfb
     
+    # not nice. Accessing the internal fields directly despite the big warning:
+    # // DO NOT USE THIS STRUCTURE DIRECTLY
+    # todo remove this hardcoded part when get_read_ptr and get_write_ptr will be real interface function
     def get_offset(self, plane=avs.AVS_PLANAR_Y): # interface.cpp
-        if plane == avs.AVS_PLANAR_U: return self.cdata.offsetU
-        elif plane == avs.AVS_PLANAR_V: return self.cdata.offsetV
-        return self.cdata.offset
+        if plane == avs.AVS_PLANAR_U or plane == avs.AVS_PLANAR_B: return self.cdata.offsetU
+        elif plane == avs.AVS_PLANAR_V or plane == avs.AVS_PLANAR_R: return self.cdata.offsetV
+        elif plane == avs.AVS_PLANAR_A: return self.cdata.contents.offsetA
+        return self.cdata.offset # AVS_PLANAR_Y or AVS_PLANAR_G
     
     def get_read_ptr(self, plane=avs.AVS_PLANAR_Y):
         return avs.avs_get_read_ptr_p(self.cdata, plane)
@@ -1305,7 +1696,7 @@ class AVS_Clip(object):
 
 class AVS_ScriptEnvironment(object):
     
-    def __init__(self, version=3):
+    def __init__(self, version=6):
         self.cdata = avs.avs_create_script_environment(version)
     
     def __del__(self):
@@ -1424,54 +1815,54 @@ if not abi:
 def test():
 
     env = AVS_ScriptEnvironment(3)
-    print 'environment created:', env
+    print('environment created:', env)
     err = env.get_error()
     if err is not None:
-        print 'error:', err
+        print('error:', err)
         return
-    print 'checking for interface 3:', env.check_version(3)
-    print 'checking for interface 33:', env.check_version(33)
+    print('checking for interface 3:', env.check_version(3))
+    print('checking for interface 33:', env.check_version(33))
     
     if abi:     # libffi doesn't support passing structs or unions
         return  # with bit-fields by value
     
-    print 'interface:', avs.AVISYNTH_INTERFACE_VERSION
-    print env.invoke('VersionString')
+    print('interface:', avs.AVISYNTH_INTERFACE_VERSION)
+    print(env.invoke('VersionString'))
     
-    print '\nsome internal functions...'
+    print('\nsome internal functions...')
     for function_name in env.get_var('$InternalFunctions$').split()[:10]:
         try:
             params = env.get_var('$Plugin!' + function_name + '!Param$')
-        except AvisynthError, err:
+        except AvisynthError as err:
             if str(err) != 'NotFound': raise
         else:
-            print ' ', function_name, params
+            print(' ', function_name, params)
     var_name, value = 'test var', 'some text'
-    print '\nsetting a string variable with value {0}'.format(repr(value))
+    print('\nsetting a string variable with value {0}'.format(repr(value)))
     env.set_var(var_name, value)
-    print 'value retrieved:', repr(env.get_var(var_name)) # check save_string
-    print '\ninvoking...'
+    print('value retrieved:', repr(env.get_var(var_name))) # check save_string
+    print('\ninvoking...')
     try:
 #        ret = env.invoke('Version')
         ret = env.invoke('BlankClip', [100, 200, 300])
 #        ret = env.invoke('Eval', 
 #                         ['assert(false, "assert message")', 'script title'])
-    except AvisynthError, err:
-        print 'error:', env.get_error()
+    except AvisynthError as err:
+        print('error:', env.get_error())
     else:
         if isinstance(ret, AVS_Clip):
             clip = ret
             AVS_Value(AVS_Value(clip, env), env).get_value() # test passing clip
-            print clip.get_video_info()
+            print(clip.get_video_info())
             frame = clip.get_frame(5)
             err = clip.get_error()
             if err:
-                print 'error:', err
+                print('error:', err)
             else:
-                print frame
+                print(frame)
                 frame.get_read_ptr()[0:20]
         else:
-            print 'value:', ret
+            print('value:', ret)
 
 if __name__ == '__main__':
     test()

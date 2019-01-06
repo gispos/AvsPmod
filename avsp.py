@@ -1,7 +1,9 @@
 # AvsP - an AviSynth editor
 #
-# (GPo mod m.17 WndProc) based on the last release
-#                        (2.5.1 + fix for only one prefetcher)
+# GPo mod based on the last release from vdcrim (2.5.1)
+# Modifications by pinterf (pfmod)
+#
+# ###############
 #
 # Copyright 2007 Peter Jang <http://www.avisynth.org/qwerpoi>
 #           2010-2015 the AvsPmod authors <https://github.com/avspmod/avspmod>
@@ -47,7 +49,10 @@ import os
 import sys
 import platform
 import traceback
-import cPickle
+try:
+    import cPickle # Python 2
+except ImportError:
+    import pickle as cPickle # Python 3
 import shutil
 import string
 import array
@@ -59,10 +64,21 @@ import bisect
 import random, math, copy
 import subprocess, shlex
 import socket
-import thread
+
+# thread module was deprecated in python 3.
+try:
+    import thread
+except:
+    pass
 import threading
 import time
-import StringIO
+try:
+    from StringIO import StringIO
+except ImportError:
+    from io import StringIO # not 100% the same, ComvertError can occur
+    # Python 3: The StringIO and cStringIO modules are gone.
+    # Instead, import the io module and use io.StringIO or io.BytesIO for text and data respectively.
+
 import textwrap
 import ctypes
 if os.name == 'nt':
@@ -79,10 +95,20 @@ if os.name == 'nt':
 import tempfile
 import zlib
 import glob
-import urllib2
+# The urllib2 module has been split across several modules in Python 3 named urllib.request and urllib.error. The 2to3 tool will automatically adapt imports when converting your sources to Python 3.
+try:
+    import urllib2
+except ImportError:
+    import urllib.request
+
 import cgi
 from hashlib import md5
-import __builtin__
+try:
+    import __builtin__ as builtins
+except ImportError:
+    #The __builtin__ module was renamed to builtins in Python3.
+    import builtins
+
 import collections
 
 if hasattr(sys,'frozen'):
@@ -98,7 +124,10 @@ def _(s):
         if s2:
             return s2.replace(r'\n','\n')
     return s
-__builtin__._ = _
+
+builtins._ = _ # Python3
+# Python2 only: __builtin__._ = _
+
 encoding = sys.getfilesystemencoding()
 
 import wx
@@ -110,6 +139,7 @@ import wxp
 from icons import AvsP_icon, next_icon, play_icon, pause_icon, external_icon, \
                   skip_icon, spin_icon, ok_icon, smile_icon, question_icon, \
                   rectangle_icon, dragdrop_cursor
+
 
 
 # Filter database for each tab
@@ -201,7 +231,7 @@ class AvsStyledTextCtrl(stc.StyledTextCtrl):
 
             self.STC_AVS_DATATYPE: ('datatype', ''),
         }
-        #self.bookmarkList = []   # GPo, backup bookmarks for each script
+        #self.bookmarksList = []   # GPo
         self.avsfilterdict = AvsFilterDict(self.app.avsfilterdict)
         self.avsazdict = collections.defaultdict(list)
         self.styling_refresh_needed = False
@@ -1257,7 +1287,7 @@ class AvsStyledTextCtrl(stc.StyledTextCtrl):
                     info = u''
                 argInfo.append((item, argtype.lower(), name, boolMulti, boolOptional, info))
             except ValueError:
-                if item.lower() in ('clip', 'int', 'float', 'bool', 'string', 'func'):          # GPo Avisynth Neo
+                if item.lower() in ('clip', 'int', 'float', 'bool', 'string', 'func'):          # GPo 'func' Avisynth Neo
                     argInfo.append((item, item.lower(), u'', boolMulti, boolOptional, u''))
                 else:
                     # Assume it's a clip
@@ -2548,14 +2578,14 @@ class STCPrintout(wx.Printout):
         rect[1] += self.header_height
         rect[3] -= self.header_height
         if self.debuglevel > 0:
-            print  "prepare rect: ", rect
+            print("prepare rect: ", rect)
         while self.start_points[-1] < stc_len:
             self.start_points.append(self.stc.FormatRange(False,
                                     self.start_points[-1], stc_len,
                                     dc, dc, rect, rect))
             if self.debuglevel > 0:
                 if self.start_points[-1] == stc_len:
-                    print "prepare printing - reached end of document: %d" % stc_len
+                    print("prepare printing - reached end of document: %d" % stc_len)
                 else:
                     print ("prepare printing - page %d first line: %d" % (
                            len(self.start_points), self.start_points[-1]))
@@ -2610,11 +2640,11 @@ class STCPrintout(wx.Printout):
                                     dc, dc, rect, rect)
         self.stc.SetEdgeMode(edge_mode)
         if self.debuglevel > 0:
-            print  "print rect: ", rect
+            print("print rect: ", rect)
             if next == stc_len:
-                print "printing - reached end of document: %d" % stc_len
+                print("printing - reached end of document: %d" % stc_len)
             else:
-                print "printing - page %d first line: %d" % (page + 1, next)
+                print("printing - page %d first line: %d" % (page + 1, next))
 
     def _drawPageHeader(self, dc, page):
         """Draw the page header into the DC for printing
@@ -2888,7 +2918,11 @@ class AsyncCall:
     def Wait(self, timeout=None, failval=None):
         self.complete.wait(timeout)
         if self.exception:
-            raise self.exception[0], self.exception[1], self.exception[2]
+            # Python2:
+            # raise self.exception[0], self.exception[1], self.exception[2]
+            # port to Python3: https://portingguide.readthedocs.io/en/latest/exceptions.html
+            import six
+            six.reraise(self.exception[0], self.exception[1], self.exception[2])
         if self.result is self.noresult:
             return failval
         return self.result
@@ -3515,7 +3549,7 @@ class AvsFunctionDialog(wx.Dialog):
                         info.append((filename, filtername, filterargs, ftype))
                 else:
                     info = None
-            except (urllib2.URLError, urllib2.HTTPError), err:
+            except (urllib2.URLError, urllib2.HTTPError) as err:
                 wx.MessageBox(u'\n\n'.join((os.path.basename(filename), unicode(err))),
                               _('Error'), style=wx.OK|wx.ICON_ERROR)
                 continue
@@ -4342,6 +4376,11 @@ class SliderPlus(wx.Panel):
             self.wH += 4
         self.selections = None
         self.selmode = 0
+        # GPo
+        self.hilightBookmarks = False
+        self.isBookmark = False
+        self.bookmarksHilightColor = wx.Brush(wx.RED)
+        ###
         self._DefineBrushes()
         # Event binding
         self.Bind(wx.EVT_PAINT, self._OnPaint)
@@ -4349,7 +4388,7 @@ class SliderPlus(wx.Panel):
         self.Bind(wx.EVT_LEFT_DOWN, self._OnLeftDown)
         self.Bind(wx.EVT_MOTION, self._OnMouseMotion)
         self.Bind(wx.EVT_LEFT_UP, self._OnLeftUp)
-        self.Bind(wx.EVT_MOUSEWHEEL, self._OnMouseWheel)
+        #~self.Bind(wx.EVT_MOUSEWHEEL, self._OnMouseWheel)  # GPo, in this version not used
         self.Bind(wx.EVT_KEY_DOWN, self._OnKeyDown)
         def OnSetFocus(event):
             if not self.HasCapture():
@@ -4360,8 +4399,8 @@ class SliderPlus(wx.Panel):
         self.Bind(wx.EVT_SET_FOCUS, OnSetFocus)
 
     def _DefineBrushes(self):
-        #~ colorBackground = self.parent.GetBackgroundColour()
-        colorBackground = self.GetBackgroundColour()
+        #~colorBackground = self.GetBackgroundColour()
+        self.colorBackground = self.GetBackgroundColour() # GPo
         colorHighlight = wx.SystemSettings.GetColour(wx.SYS_COLOUR_3DLIGHT)
         colorHighlight2 = wx.SystemSettings.GetColour(wx.SYS_COLOUR_3DHILIGHT)
         colorShadow = wx.SystemSettings.GetColour(wx.SYS_COLOUR_3DSHADOW)
@@ -4371,8 +4410,14 @@ class SliderPlus(wx.Panel):
         r,g,b = colorHandle.Red(), colorHandle.Green(), colorHandle.Blue()
         colorHandle2 = wx.SystemSettings.GetColour(wx.SYS_COLOUR_BTNHIGHLIGHT)
         colorGrayText = wx.SystemSettings.GetColour(wx.SYS_COLOUR_GRAYTEXT)
-        self.penWindowBackground = wx.Pen(colorBackground)
-        self.brushWindowBackground = wx.Brush(colorBackground)
+        #~self.penWindowBackground = wx.Pen(colorBackground)
+        # GPo
+        self.penWindowBackground = wx.Pen(self.colorBackground)
+        if self.hilightBookmarks and self.isBookmark:
+            self.brushWindowBackground = self.bookmarksHilightColor
+        else:
+            self.brushWindowBackground = wx.Brush(self.colorBackground)
+        ###
         self.penBackground = wx.Pen(colorWindow)
         self.brushBackground = wx.Brush(colorWindow)
         self.penShadow = wx.Pen(colorShadow)
@@ -4441,6 +4486,9 @@ class SliderPlus(wx.Panel):
                 self._SendScrollEndEvent()
         event.Skip()
 
+    """
+    # GPo, in this version not used, if you enable it,
+    # you must enable #~self.Bind(wx.EVT_MOUSEWHEEL, self._OnMouseWheel)
     def _OnMouseWheel(self, event):
         #~ if event.LeftIsDown():
         if not self.HasCapture():
@@ -4457,6 +4505,7 @@ class SliderPlus(wx.Panel):
                 self.SetValue(self.value + delta)
                 if self.value != oldvalue:
                     self._SendScrollEvent()
+    """
 
     def _OnKeyDown(self, event):
         if self.HasCapture():
@@ -4676,8 +4725,34 @@ class SliderPlus(wx.Panel):
     def GetMax(self):
         return self.maxValue
 
+    def SetBookmarkHilighting(self, enabled=False):  # GPo
+        self.hilightBookmarks = enabled
+        if enabled:
+            if self.value in self.bookmarks:
+                self.isBookmark = True
+                self.brushWindowBackground = self.bookmarksHilightColor
+            else:
+                self.isBookmark = False
+                self.brushWindowBackground = wx.Brush(self.colorBackground)
+        else:
+            self.isBookmark = False
+            self.brushWindowBackground = wx.Brush(self.colorBackground)
+
     def SetValue(self, value):
         self.value = max(min(value, self.maxValue), self.minValue)
+        # GPo, hilight also selection marks, easier do find the start and end points
+        if self.hilightBookmarks:
+            if self.value in self.bookmarks:
+                self.isBookmark = True
+                self.brushWindowBackground = self.bookmarksHilightColor
+            else:
+                self.isBookmark = False
+                self.brushWindowBackground = wx.Brush(self.colorBackground)
+        """
+        # else: not here, speed up.
+        # reset in OnButtonTextContextMenu > OnContextMenuHiLight with SetBookmarkHilighting
+        """
+        ###
         if self.IsDoubleBuffered():
             dc = wx.ClientDC(self)
         else:
@@ -4715,7 +4790,7 @@ class SliderPlus(wx.Panel):
         except:
             pass
         self.bookmarks[value] = bmtype
-
+        self.SetBookmarkHilighting(self.hilightBookmarks)  # GPo
         if refresh:
             if self.bookmarks:
                 self.selections = self._createSelections()
@@ -4732,6 +4807,7 @@ class SliderPlus(wx.Panel):
     def RemoveBookmark(self, value, bmtype=0, refresh=True):
         try:
             del self.bookmarks[value]
+            self.SetBookmarkHilighting(self.hilightBookmarks)  # GPo
             if refresh:
                 if self.bookmarks:
                     self.selections = self._createSelections()
@@ -4751,6 +4827,7 @@ class SliderPlus(wx.Panel):
         if self.bookmarks:
             self.bookmarks.clear()
             self.selections = None
+            self.SetBookmarkHilighting(self.hilightBookmarks)  # GPo
             if self.IsDoubleBuffered():
                 dc = wx.ClientDC(self)
             else:
@@ -4947,12 +5024,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             WM_CUSTOM_FRAME_NR = 32771
             WM_CUSTOM_SCROLL_STEP = 32772
             WM_CUSTOM_SCROLL = 32773
-            WM_COPYDATA = 0x4A
-            #~WM_CUSTOM_NEXT_BOOKMARK = 32774
-            #~WM_CUSTOM_PREVIOUS_BOOKMARK = 32775
+            WM_COPYDATA = 0x4A    # do not change
             # For PostMessages to customHandler
             self.AVSP_VID_SIZE = 32800
-            #~self.AVSP_VID_WND_SIZE = 32801
             # Add receivable messages to msg list
             WndProcHookMixin.add_msg_handler(self, WM_CUSTOM_INFORM_HANDLER, self.custom_inform_handler)
             WndProcHookMixin.add_msg_handler(self, WM_CUSTOM_FRAME_NR, self.custom_frame_nr)
@@ -4961,7 +5035,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             WndProcHookMixin.add_msg_handler(self, WM_COPYDATA, self.custom_copy_data)
             # enable custom WndProc
             WndProcHookMixin.hook_wnd_proc(self)
-        # end WndProc
+
         # Define program directories
         if hasattr(sys,'frozen'):
             self.programdir = os.path.dirname(sys.executable)
@@ -5194,7 +5268,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.zoomwindow = False
         self.zoomwindowfit = False
         self.zoomwindowfill = False
-        self.extended_move = False  # GPo 2018
+        self.extended_move = False   # GPo
+        self.bellAtBookmark = False  # GPo
         self.lastcrop = ""
         self.oldWidth = 0
         self.oldHeight = 0
@@ -5383,7 +5458,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.mouse_wheel_rotation = 0
         self.GetStatusBar().SetDoubleBuffered(True)  # GPo
 
-
         # Display the program
         if self.separatevideowindow:
             self.videoStatusBar.SetDoubleBuffered(True) # GPo
@@ -5434,7 +5508,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         else:
                             wx.MessageBox(_('%s translation file updated.  No new messages to translate.')
                                             % i18n.display_name(self.options['lang']), _('Translation updated'))
-                except NameError, err:
+                except NameError as err:
                     pass
             else:
                 wx.MessageBox(_("%s language couldn't be loaded") % i18n.display_name(self.options['lang']),
@@ -5935,9 +6009,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'alwaysloadstartupsession': False,
             'closeneversaved': False,
             'promptexitsave': True,
-            'promptexitsaveonlyexisting': False, # GPo
-            'bookmarksfromscript': False,        # GPo
-            'tabsbookmarksfromscript': False,    # GPo
+            'promptexitsaveonlyexisting': False,  # GPo
+            'bookmarksfromscript': False,         # GPo
+            'tabsbookmarksfromscript': False,     # GPo
+            'bookmarkshilightcolor': wx.Colour(240, 140, 140), # GPo
             'savemarkedavs': True,
             'eol': 'auto',
             'loadstartupbookmarks': True,
@@ -6083,9 +6158,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 else:
                     import avisynth
                 break
-            except OSError, err:
+            except OSError as err:
                 if __debug__:
-                    print err
+                    print (err)
                 exception = True
                 if self.options['usealtdir']:
                     if not path_used:
@@ -6622,7 +6697,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                 value = str(eval(value))
                             except:
                                 if not quiet:
-                                    print _('Error'), 'ParseAvisynthScript() try eval(%s)' % value
+                                    print (_('Error'), 'ParseAvisynthScript() try eval(%s)' % value)
                             else:
                                 text += ['=', value]
                                 varnameDict[varname] = value
@@ -7319,6 +7394,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     (
                     (_('Bookmarks to script'), '', self.OnMenuBookmarksToScript),
                     (_('Bookmarks from script'), '', self.OnMenuBookmarksFromScript),
+                    #(''),
+                    #(_('bell at bookmarks'), '', self.OnMenuVideoBookmarksBell),
+                    #(_('hilight at bookmarks'), '', self.OnMenuVideoBookmarksHilight),
+                    #(_('set hilight color...'), '', self.OnMenuVideoSetBookmarkHiligthColor),
                     (''),
                     (_('Add/Remove bookmark'), 'Ctrl+B', self.OnMenuVideoBookmark, _('Mark the current frame on the frame slider')),
                     (_('Clear all bookmarks'), '', self.OnMenuVideoGotoClearAll, _('Clear all bookmarks')),
@@ -7492,8 +7571,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 (''),
                 (_('Associate .avs files with AvsP'), '', self.OnMenuOptionsAssociate, _('Configure this computer to open .avs files with AvsP when double-clicked. Run again to disassociate')),
                 (''),
-                (_('AviSynth function definition...'), '', self.OnMenuOptionsFilters, _('Add or override AviSynth functions in the database')),
                 (_('Fonts and colors...'), '', self.OnMenuOptionsFontsAndColors, _('Edit the various AviSynth script fonts and colors')),
+                (_('Make fonts and colors backup'), '', self.OnMenuOptionsFontsAndColorsWriteBackup, _('Make script fonts and colors backup')),
+                (_('Load fonts and colors backup'), '', self.OnMenuOptionsFontsAndColorsReadBackup, _('Restores script fonts and colors from backup')),
+                (''),
+                (_('AviSynth function definition...'), '', self.OnMenuOptionsFilters, _('Add or override AviSynth functions in the database')),
                 (_('Extension templates...'), '', self.OnMenuOptionsTemplates, _('Edit the extension-based templates for inserting sources')),
                 (_('Snippets...'), '', self.OnMenuOptionsSnippets, _('Edit insertable text snippets')),
                 (''),
@@ -7745,7 +7827,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             (_('Reload'), '', self.OnMenuFileReloadScript),
             (_('Open directory'), '', self.OnMenuFileOpenScriptDirectory),
             (''),
-            #(_('Bookmarks'),  # GPo, future? variant?  ;)
+            #(_('Bookmarks'),  # GPo, variant
                #(
                #(_('Bookmarks to script'), '', self.OnMenuBookmarksToScript),
                #(_('Bookmarks from script'), '', self.OnMenuBookmarksFromScript),
@@ -7753,7 +7835,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             #),
             (_('Bookmarks to script'), '', self.OnMenuBookmarksToScript),     # GPo, 2018
             (_('Bookmarks from script'), '', self.OnMenuBookmarksFromScript), # GPo, 2018
-            #(_('Restore bookmarks'), '', self.OnMenuRestoreBookmarks),        # GPo, index must be next to 'Bookmarks from script'
             (''),
             (_('Select all'), '', self.OnMenuEditSelectAll),
             (''),
@@ -7954,6 +8035,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.videoSlider.Bind(wx.EVT_LEFT_UP, self.OnSliderLeftUp)
             sizer.Add(self.videoSlider, 1, wx.EXPAND)
             videoControlWidgets.append(self.videoSlider)
+            self.videoSlider.bookmarksHilightColor = wx.Brush(self.options['bookmarkshilightcolor'])  # GPo
         else:
             self.videoSlider2 = SliderPlus(panel, self, wx.ID_ANY, 0, 0, 240-1, big=self.options['largeui'], bookmarkDict=self.bookmarkDict)
             self.videoSlider2.Bind(wx.EVT_SCROLL_THUMBTRACK, self.OnSliderChanged)
@@ -7963,7 +8045,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.videoSlider2.Bind(wx.EVT_LEFT_UP, self.OnSliderLeftUp)
             sizer.Add(self.videoSlider2, 1, wx.EXPAND)
             videoControlWidgets.append(self.videoSlider2)
-
+            self.videoSlider2.bookmarksHilightColor = wx.Brush(self.options['bookmarkshilightcolor'])  # GPo
         if primary:
             self.videoControlWidgets = videoControlWidgets
         else:
@@ -9458,19 +9540,33 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             return
         menuItem.Check()
 
-    def OnMenuVideoSetCustomBackgroundColor(self, event):
-        self.colour_data.SetColour(self.options['customvideobackground'])
+    def x_SetCustomColor(self, options_str=''): # GPo
+        if options_str == '':
+            return
+        self.colour_data.SetColour(self.options[options_str])
         dialog = wx.ColourDialog(self, self.colour_data)
         if dialog.ShowModal() == wx.ID_OK:
             data = dialog.GetColourData()
-            self.options['customvideobackground'] = data.GetColour()
-            self.OnMenuVideoBackgroundColor(label=_('Custom'))
-            for i in range(self.colour_data.NUM_CUSTOM):
-                self.colour_data.SetCustomColour(i, data.GetCustomColour(i))
-            self.options['colourdata'] = self.colour_data.ToString()
+            self.options[options_str] = data.GetColour()
+            if options_str == 'customvideobackground':
+                self.OnMenuVideoBackgroundColor(label=_('Custom'))
+                for i in range(self.colour_data.NUM_CUSTOM):
+                    self.colour_data.SetCustomColour(i, data.GetCustomColour(i))
+                self.options['colourdata'] = self.colour_data.ToString()
             with open(self.optionsfilename, mode='wb') as f:
                 cPickle.dump(self.options, f, protocol=0)
+            if options_str == 'bookmarkshilightcolor':
+                slider = self.videoSlider
+                slider.bookmarksHilightColor = wx.Brush(data.GetColour())
+                slider.SetBookmarkHilighting(slider.hilightBookmarks)
+                slider.Refresh()
         dialog.Destroy()
+
+    def OnMenuVideoSetCustomBackgroundColor(self, event):
+        self.x_SetCustomColor('customvideobackground')  # GPo
+
+    def OnMenuVideoSetBookmarkHiligthColor(self, event):
+        self.x_SetCustomColor('bookmarkshilightcolor')  # GPo
 
     def OnMenuVideoReuseEnvironment(self, event):
         self.reuse_environment = not self.reuse_environment
@@ -9729,7 +9825,24 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     def OnMenuOptionsFilters(self, event):
         self.ShowFunctionDefinitionDialog()
 
-    def OnMenuOptionsFontsAndColors(self, event):
+    def OnMenuOptionsFontsAndColorsWriteBackup(self, event):
+        """
+        # Save color and textstyle in extra file, you can move it to another AvsPmod folder
+        # and change in the other AvsPmod only the color and textstyle options.
+        # No other option is changed (snippets, extension list etc.)
+        """
+        fileName = os.path.join(self.programdir, 'backup_style.dat')
+        exOptions = {}
+        exOptions['version'] = self.version
+        exOptions['textstyles'] = self.options['textstyles']
+        exOptions['colourdata'] = self.options['colourdata']
+        with open(fileName, mode='wb') as f:
+            cPickle.dump(exOptions, f, protocol=0)
+
+    def OnMenuOptionsFontsAndColorsReadBackup(self, event):
+        self.OnMenuOptionsFontsAndColors(None, True)
+
+    def OnMenuOptionsFontsAndColors(self, event, readExOptions=False):
         dlgInfo = (
             (_('Basic (1)'),
                 (
@@ -9777,8 +9890,39 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 ),
             )
         )
+
+        exOptions = {}
+        if readExOptions:
+            optFile = os.path.join(self.programdir, 'backup_style.dat')
+            if os.path.isfile(optFile):
+                try:
+                    with open(optFile, mode='rb') as f:
+                        exOptions = cPickle.load(f)
+                    if exOptions and exOptions.get('version').startswith('1.'):
+                        raise
+                    if not 'textstyles' in exOptions or not 'colourdata' in exOptions:
+                        raise
+                    self.colour_data.FromString(exOptions['colourdata'])
+                except:
+                    self.loaderror.append(os.path.basename(optFile))
+                    shutil.copy2(optFile, os.path.splitext(optFile)[0] + '.BAD')
+                    exOptions = {}
+                    wx.MessageBox(_('Cannot load Backup file:\n' + optFile),
+                                    _('Error'), style=wx.OK|wx.ICON_ERROR)
+                    return
+            else:
+                wx.MessageBox(_('Backup file not found:\n' + optFile +
+                                '\n\nYou must first make a backup'),
+                                _('Information'), style=wx.OK|wx.ICON_INFORMATION)
+                return
+
         extra = None # adds a single CheckBox, (label, options_dict_key, tooltip)
-        dlg = AvsStyleDialog(self, dlgInfo, self.options['textstyles'], self.defaulttextstylesDict, self.colour_data, extra)
+        if exOptions:
+            wx.MessageBox(_('Settings have been read from backup file\n'),
+                             _('Information'), style=wx.OK|wx.ICON_INFORMATION)
+            dlg = AvsStyleDialog(self, dlgInfo, exOptions['textstyles'], self.defaulttextstylesDict, self.colour_data, extra)
+        else:
+            dlg = AvsStyleDialog(self, dlgInfo, self.options['textstyles'], self.defaulttextstylesDict, self.colour_data, extra)
         ID = dlg.ShowModal()
         if ID == wx.ID_OK:
             self.options['textstyles'] = dlg.GetDict()
@@ -9791,6 +9935,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 script.SetUserOptions()
             self.SetMinimumScriptPaneSize()
             self.scrapWindow.Style()
+            #if readExOptions:
+                #self.OnMenuOptionsFontsAndColorsWriteBackup(None)
+        else:
+            if exOptions:
+                self.colour_data.FromString(self.options['colourdata'])
         dlg.Destroy()
 
     def OnMenuOptionsTemplates(self, event):
@@ -10288,7 +10437,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             nr = item.GetItemLabelText()
             textCtrl.Replace(0, -1, nr)
             textCtrl.SetFocus()
-            if nr.isdigit():         # GPo 2018
+            if nr.isdigit():         # GPo
                 if self.playing_video:
                     self.PlayPauseVideo()
                     self.playing_video = ''
@@ -10296,11 +10445,38 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 if self.playing_video == '':
                     wx.CallAfter(self.PlayPauseVideo)
 
+        def OnContextMenuHilight(event):  # GPo
+            self.videoSlider.SetBookmarkHilighting(not self.videoSlider.hilightBookmarks)
+            if self.videoSlider.hilightBookmarks and self.bellAtBookmark:
+                self.bellAtBookmark = False
+            self.videoSlider.Refresh()
+
+        def OnContextMenuBell(event):  # GPo
+            self.bellAtBookmark = not self.bellAtBookmark
+            if self.bellAtBookmark and self.videoSlider.hilightBookmarks:
+                self.videoSlider.SetBookmarkHilighting(False)
+                self.videoSlider.Refresh()
+
         for text in self.recentframes:
             id = wx.NewId()
             self.Bind(wx.EVT_MENU, OnContextMenuItem, id=id)
             menu.Append(id, text)
+        # GPo
+        if menu.GetMenuItemCount() > 0:
+            menu.AppendSeparator()
+        id = wx.NewId()
+        self.Bind(wx.EVT_MENU, OnContextMenuBell, id=id)
+        menu.Append(id, _('bell at bookmarks'), kind=wx.ITEM_CHECK)
+        menu.Check(id, self.bellAtBookmark)
+        id = wx.NewId()
+        self.Bind(wx.EVT_MENU, OnContextMenuHilight, id=id)
+        menu.Append(id, _('highlight bookmarks'), kind=wx.ITEM_CHECK)
+        menu.Check(id, self.videoSlider.hilightBookmarks)
+        id = wx.NewId()
+        self.Bind(wx.EVT_MENU, self.OnMenuVideoSetBookmarkHiligthColor, id=id)
+        menu.Append(id, _('set highlight color...'))
         menu.AppendSeparator()
+        #
         id = wx.NewId()
         self.Bind(wx.EVT_MENU, OnContextMenuCopyTime, id=id)
         menu.Append(id, _('copy as time'))
@@ -10369,7 +10545,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         mousepos = event.GetPosition()
         if slider.HitTestHandle(mousepos):
             frame = slider.GetValue()
-            self.AddFrameBookmark(frame, toggle=True)
+            self.AddFrameBookmark(frame)
+            # GPo wrong color, AddFrameBookmark sets the color
+            """
             colors = [wx.RED, wx.BLACK]
             colors.remove(self.frameTextCtrl.GetForegroundColour())
             self.frameTextCtrl.SetForegroundColour(colors[0])
@@ -10378,6 +10556,14 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.frameTextCtrl2.SetForegroundColour(colors[0])
                 self.frameTextCtrl2.Refresh()
             if colors[0] == wx.BLACK and frame in self.bookmarkDict and (event.ControlDown() or event.AltDown() or event.ShiftDown()):
+                del self.bookmarkDict[frame]
+            """
+            # GPo
+            self.frameTextCtrl.Refresh()
+            color = self.frameTextCtrl.GetForegroundColour()
+            if self.separatevideowindow:
+                self.frameTextCtrl2.Refresh()
+            if color == wx.BLACK and frame in self.bookmarkDict and (event.ControlDown() or event.AltDown() or event.ShiftDown()):
                 del self.bookmarkDict[frame]
         event.Skip()
 
@@ -10894,13 +11080,15 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                       int(self.currentScript.GetWrapMode() == stc.STC_WRAP_NONE)
             self.SetMinimumScriptPaneSize(mintextlines)
         else:
-            if self.currentScript.GetSize().width > 2:
-                self.mainSplitter.SetMinimumPaneSize(0)
-            else:
-                self.mainSplitter.SetMinimumPaneSize(400)
-        # set the splitter
+            mintextlines = 0 if self.currentScript.GetSize().width > 2 else 400
+            self.mainSplitter.SetMinimumPaneSize(mintextlines)
+
+        if self.zoomwindow:
+            sash_pos = 6
+        else:
+            sash_pos = self.GetMainSplitterNegativePosition(pos=None, forcefit=True)
         self.Freeze()
-        self.mainSplitter.SetSashPosition(6)
+        self.mainSplitter.SetSashPosition(sash_pos)
         self.currentScript.lastSplitVideoPos = self.mainSplitter.GetSashPosition() - \
             self.mainSplitter.GetClientSize()[self.mainSplitter.GetSplitMode() == wx.SPLIT_HORIZONTAL]
         self.Thaw()
@@ -10919,7 +11107,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 old_zoomfactor = 1
             else:
                 old_zoomfactor = self.zoomfactor
-                if self.zoomfactor <> 1: self.zoomfactor = 1
+                if self.zoomfactor != 1: self.zoomfactor = 1
                 else: self.zoomfactor = 2
 
             if self.videoWindow.HasCapture():
@@ -11514,7 +11702,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if is_short:
             lowername = is_short
             name = script.avsfilterdict[lowername][2]
-        #~ calltip = self.currentScript.FilterNameArgs[name.lower()]
         calltip = script.avsfilterdict[lowername][0]
         dlg = AvsFilterAutoSliderInfo(self, self, name, calltip)
         ID = dlg.ShowModal()
@@ -11571,7 +11758,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         try:
             win.PopupMenu(win.contextMenu, pos)
         except AttributeError:
-        #except (AttributeError, wx._core.PyAssertionError):
             pass
             #~ print>>sys.stderr, _('Error: no contextMenu variable defined for window')
 
@@ -11860,7 +12046,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if self.options['multilinetab']:
             rows = self.scriptNotebook.GetRowCount()
         iMax = 0
-        re_newfile = re.compile(ur'\*?\s*{0}\s*\((\d+)\)\s*(?:\.avsi?)?$'.format(self.NewFileName), re.I)
+        # Python 3 has no ur'...' raw unicode string syntax. Use r'...' instead:
+        # To create 2.7/3.x-Python compatible code, use conditional code that'll decode the byte string
+        # produced by r'...' to a unicode object only on Python 2. Use module six to help with that:
+        from six import u
+        re_newfile = re.compile(u(r'\*?\s*{0}\s*\((\d+)\)\s*(?:\.avsi?)?$').format(self.NewFileName), re.I)
+        # old Python2-only method: re_newfile = re.compile(ur'\*?\s*{0}\s*\((\d+)\)\s*(?:\.avsi?)?$'.format(self.NewFileName), re.I)
         for i in range(index):
             title = self.scriptNotebook.GetPageText(i)
             match = re_newfile.match(title)
@@ -13564,12 +13755,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.ShowVideoFrame()
 
     def DeleteAllFrameBookmarks(self, bmtype=None, start=0, end=None, refreshVideo=True):
-        """   # GPo
-        bmlist = self.MacroGetBookmarkFrameList(title=True)
-        if bmlist:
-            self.currentScript.bookmarkList[:] = []
-            self.currentScript.bookmarkList = bmlist[:]
-        """
         if bmtype is None:
             self.DeleteFrameBookmark(None, refreshVideo=refreshVideo)
         else:
@@ -14513,6 +14698,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.videoSlider.SetRange(0, script.AVI.Framecount-1, refresh=False)
                 if self.separatevideowindow:
                     self.videoSlider2.SetRange(0, script.AVI.Framecount-1, refresh=False)
+
             # Get the desired AVI frame to display
             if framenum is None:
                 framenum = script.lastFramenum
@@ -14552,8 +14738,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             bms = self.GetBookmarkFrameList()
             if framenum in bms and bms[framenum] == 0:
                 color = wx.RED
+                if self.bellAtBookmark and framenum != script.lastFramenum:  # GPo
+                    wx.Bell()
             else:
                 color = wx.BLACK
+
             self.frameTextCtrl.SetForegroundColour(color)
             self.frameTextCtrl.Replace(0, -1, str(framenum))
             if self.separatevideowindow:
@@ -14571,9 +14760,25 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 ID = wx.MessageBox(u'\n\n'.join((_('Error requesting frame {number}').format(number=framenum),
                               error)), _('Error'), style=wx.OK|wx.CANCEL|wx.ICON_ERROR)
                 if ID == wx.CANCEL:
-                    for index in xrange(self.scriptNotebook.GetPageCount()):  # GPo ID, wx.CANCEL, AVI = None
-                        script = self.scriptNotebook.GetPage(index)
-                        script.AVI = None
+                    saved = False
+                    try:
+                        saved = self.SaveSession(os.path.join(self.programdir, '_LastErrorSession.ses'), previewvisible=False)
+                        self.SaveScript(os.path.join(self.programdir, '_LastErrorScript.avs'))
+                    except:
+                        pass
+
+                    if not saved:
+                         wx.MessageBox(_('Error: can not save the Session'), _('Error'), style=wx.OK|wx.ICON_ERROR)
+                    else:
+                        msg = 'Session is saved as _LastErrorSession.ses'
+                        ID = wx.MessageBox(u'\n\n'.join(msg, _('Trying do freeing the scripts memory?')),
+                                       _('Question'), style=wx.OK|wx.CANCEL|wx.ICON_QUESTION)
+                        if ID == wx.OK:
+                            # not helpful ?, avspmod freeze
+                            for index in xrange(self.scriptNotebook.GetPageCount()):
+                                script = self.scriptNotebook.GetPage(index)
+                                script.AVI = None
+                            #~self.ExitProgram()
 
                 return False
 
@@ -15168,7 +15373,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             try:
                 with open(previewname, 'wb') as f:
                     f.write(txt)
-            except IOError, err: # errno 13 -> permission denied
+            except IOErroras as err: # errno 13 -> permission denied
                 if err.errno != 13 or altdir_tried:
                     raise
                 dirname = self.programdir
@@ -15204,8 +15409,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             w = None
         return (w, h)
 
-    # GPo trying to cancel the process
-    def ShowErrorMessage(self, script, frame_nr):
+    # GPo trying to cancel the process and freeing the memory
+    def ErrorMessage_GetFrame(self, script, frame_nr):
         if script.AVI == None:
             return
         if not frame_nr.isdigit():
@@ -15213,10 +15418,25 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         ID = wx.MessageBox(u'\n\n'.join((_('Error requesting frame {number}').format(number=frame_nr),
                            script.AVI.clip.get_error())), _('Error'), style=wx.OK|wx.CANCEL|wx.ICON_ERROR)
         if ID == wx.CANCEL:
-            self.HidePreviewWindow()
-            for index in xrange(self.scriptNotebook.GetPageCount()):
-                script = self.scriptNotebook.GetPage(index)
-                script.AVI = None
+            saved = False
+            try:
+                saved = self.SaveSession(os.path.join(self.programdir, '_LastErrorSession.ses'), previewvisible=False)
+                self.SaveScript(os.path.join(self.programdir, '_LastErrorScript.avs'))
+            except:
+                pass
+
+            if not saved:
+                 wx.MessageBox(_('Error: can not save the Session'), _('Error'), style=wx.OK|wx.ICON_ERROR)
+            else:
+                msg = 'Session is saved as _LastErrorSession.ses'
+                ID = wx.MessageBox(u'\n\n'.join(msg, _('Trying do freeing the scripts memory?')),
+                               _('Question'), style=wx.OK|wx.CANCEL|wx.ICON_QUESTION)
+                if ID == wx.OK:
+                    # helpful ?, or avspmod freeze
+                    for index in xrange(self.scriptNotebook.GetPageCount()):
+                        script = self.scriptNotebook.GetPage(index)
+                        script.AVI = None
+                    #~self.ExitProgram()
 
     def PaintAVIFrame(self, inputdc, script, frame, shift=True, isPaintEvent=False):
         if script.AVI is None:
@@ -15245,7 +15465,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 bmp = wx.EmptyBitmap(w,h)
                 dc.SelectObject(bmp)
                 if not script.AVI.DrawFrame(frame, dc):
-                    self.ShowErrorMessage(script, frame)  # GPo
+                    self.ErrorMessage_GetFrame(script, frame)  # GPo
                     return
                 self.PaintCropRectangles(dc, script)
                 self.PaintTrimSelectionMark(dc, script, frame)
@@ -15261,7 +15481,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 except:
                     self.videoWindow.PrepareDC(dc)
                 if not script.AVI.DrawFrame(frame, dc):
-                    self.ShowErrorMessage(script, frame)  # GPo
+                    self.ErrorMessage_GetFrame(script, frame)  # GPo
                     return
         else:
             dc = wx.MemoryDC()
@@ -15273,7 +15493,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 bmp = wx.EmptyBitmap(w,h)
                 dc.SelectObject(bmp)
                 if not script.AVI.DrawFrame(frame, dc):
-                    self.ShowErrorMessage(script, frame)  # GPo
+                    self.ErrorMessage_GetFrame(script, frame)  # GPo
                     return
                 if self.flip:
                     img = bmp.ConvertToImage()
@@ -15404,7 +15624,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         frame = self.currentframenum
                         increment = 1
                     if debug_stats:
-                        print debug_stats_str
+                        print (debug_stats_str)
                     if not AsyncCall(self.ShowVideoFrame, frame + increment,
                                      check_playing=True, focus=False).Wait():
                         return
@@ -15443,11 +15663,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     self.play_initial_frame = self.currentframenum
                     self.play_initial_time = time.time()
                     if debug_stats:
-                        print 'speed_factor: {0}, required_interval: {1} '\
+                        print ('speed_factor: {0}, required_interval: {1} '\
                               'interval: {2} interval_factor: {3}'.format(
-                              self.play_speed_factor, interval0, interval, factor)
+                              self.play_speed_factor, interval0, interval, factor))
                         self.increment = 0
                         self.previous_time = self.play_initial_time
+
                     self.play_timer_id = self.timeSetEvent(interval,
                         self.play_timer_resolution, self.callback_c, factor, periodic)
 
@@ -15480,7 +15701,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         frame = self.currentframenum
                         increment = 1
                     if debug_stats:
-                        print debug_stats_str
+                        print (debug_stats_str)
                     if not AsyncCall(self.ShowVideoFrame, frame + increment,
                                      check_playing=True, focus=False).Wait():
                         return
@@ -15496,9 +15717,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.play_initial_frame = self.currentframenum
                 self.play_initial_time = time.time()
                 if debug_stats:
-                    print 'speed_factor: {0}, required_interval: {1} '\
+                    print ('speed_factor: {0}, required_interval: {1} '\
                           'interval: {2} interval_factor: {3}'.format(
-                          self.play_speed_factor, interval0, interval * 1000, factor)
+                          self.play_speed_factor, interval0, interval * 1000, factor))
                     self.increment = 0
                     self.previous_time = self.play_initial_time
                 signal.setitimer(signal.ITIMER_REAL, interval, interval)
@@ -15535,7 +15756,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                             frame = self.parent.currentframenum
                             increment = 1
                         if debug_stats:
-                            print debug_stats_str
+                            print (debug_stats_str)
                         if not self.parent.ShowVideoFrame(frame + increment,
                                                           check_playing=True, focus=False):
                             return
@@ -15549,9 +15770,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 interval = int(round(interval * factor))
                 self.play_timer = RunVideoTimer(self, factor)
                 if debug_stats:
-                    print 'speed_factor: {0}, required_interval: {1} '\
+                    print ('speed_factor: {0}, required_interval: {1} '\
                           'interval: {2} interval_factor: {3}'.format(
-                          self.play_speed_factor, interval0, interval, factor)
+                          self.play_speed_factor, interval0, interval, factor))
                 self.play_timer.Start(interval)
 
     def RunExternalPlayer(self, path=None, script=None, args=None, prompt=True):
@@ -18215,7 +18436,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if wait:
                 return cmd, cmd.wait()
             return cmd
-        except Exception, err:
+        except Exception as err:
             try:
                 if cmd.poll() is None:
                     cmd.terminate()
@@ -18620,7 +18841,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 # Check for syntax errors (thows SyntaxError exception with line number)
                 try:
                     compile('\n'.join(macroLines+['pass']), macrofilename, 'exec')
-                except SyntaxError, e:
+                except SyntaxError as e:
                     if not str(e).startswith("'return' outside function"):
                         raise
                 # Wrap the macro in a function (allows top-level variables to be treated "globally" within the function)
@@ -18646,12 +18867,14 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.macroVars['avsp'].Last = self.macroVars['last']
                 def MacroHelp(function):
                     '''help(function)\nPrint the function's description of use'''
-                    print self.FormatDocstring(function)
+                    print (self.FormatDocstring(function))
                 self.macroVars['help'] = MacroHelp
                 self.macroVars['_'] = _
                 # Execute the macro
                 def MacroFunction():
                     try:
+                        #GPo, @PF not working on py2.7, Error(arg 1 must be string or..)
+                        #~exec (macrotxt in self.macroVars, {})
                         exec macrotxt in self.macroVars, {}
                     except:
                         ShowException()

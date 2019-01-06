@@ -1,5 +1,7 @@
 # AvsP - an AviSynth editor
-# GPo mod m14 up
+#
+# GPo mod based on the last release from vdcrim (2.5.1)
+# Modifications by pinterf (pfmod)
 #
 # Copyright 2007 Peter Jang <http://www.avisynth.org/qwerpoi>
 #           2010-2017 the AvsPmod authors <https://github.com/avspmod/avspmod>
@@ -50,257 +52,78 @@ try: _
 except NameError:
     def _(s): return s
 
-"""
-########## Alternative get colorspace ##########
-################################################
-# GPo, avs plus (interface 6) pixel_type x32 compatible, x64 bit shift is not the same.
-class avs_plus():
-    CS_YUVA = 1<<27
-    CS_BGR = 1<<28
-    CS_YUV = 1<<29
-    CS_INTERLEAVED = 1<<30
-    CS_PLANAR = 1<<31
-
-    CS_Shift_Sub_Width   =  0
-    CS_Shift_Sub_Height  =  8
-    CS_Shift_Sample_Bits = 16
-
-    CS_Sub_Width_Mask    = 7 << CS_Shift_Sub_Width
-    CS_Sub_Width_1       = 3 << CS_Shift_Sub_Width # YV24
-    CS_Sub_Width_2       = 0 << CS_Shift_Sub_Width # YV12 I420 YV16
-    CS_Sub_Width_4       = 1 << CS_Shift_Sub_Width # YUV9 YV411
-
-    CS_VPlaneFirst       = 1 << 3 # YV12 YV16 YV24 YV411 YUV9
-    CS_UPlaneFirst       = 1 << 4 # I420
-
-    CS_Sub_Height_Mask   = 7 << CS_Shift_Sub_Height
-    CS_Sub_Height_1      = 3 << CS_Shift_Sub_Height # YV16 YV24 YV411
-    CS_Sub_Height_2      = 0 << CS_Shift_Sub_Height # YV12 I420
-    CS_Sub_Height_4      = 1 << CS_Shift_Sub_Height # YUV9
-
-    CS_Sample_Bits_Mask  = 7 << CS_Shift_Sample_Bits
-    CS_Sample_Bits_8     = 0 << CS_Shift_Sample_Bits
-    CS_Sample_Bits_10    = 5 << CS_Shift_Sample_Bits
-    CS_Sample_Bits_12    = 6 << CS_Shift_Sample_Bits
-    CS_Sample_Bits_14    = 7 << CS_Shift_Sample_Bits
-    CS_Sample_Bits_16    = 1 << CS_Shift_Sample_Bits
-    CS_Sample_Bits_32    = 2 << CS_Shift_Sample_Bits
-
-    CS_PLANAR_MASK       = CS_PLANAR | CS_INTERLEAVED | CS_YUV | CS_BGR | CS_YUVA | \
-                           CS_Sample_Bits_Mask | CS_Sub_Height_Mask | CS_Sub_Width_Mask
-    CS_PLANAR_FILTER     = ~( CS_VPlaneFirst | CS_UPlaneFirst )
-
-    CS_RGB_TYPE  = 1 << 0
-    CS_RGBA_TYPE = 1 << 1
-
-    # Specific colorformats
-    CS_UNKNOWN = 0
-
-    CS_BGR24 = CS_RGB_TYPE  | CS_BGR | CS_INTERLEAVED
-    CS_BGR32 = CS_RGBA_TYPE | CS_BGR | CS_INTERLEAVED
-    CS_YUY2  = 1<<2 | CS_YUV | CS_INTERLEAVED
-    #  CS_YV12  = 1<<3  Reserved
-    #  CS_I420  = 1<<4  Reserved
-    CS_RAW32 = 1<<5 | CS_INTERLEAVED
-
-    #  YV12 must be 0xA000008 2.5 Baked API will see all new planar as YV12
-    #  I420 must be 0xA000010
-
-    CS_GENERIC_YUV420  = CS_PLANAR | CS_YUV | CS_VPlaneFirst | CS_Sub_Height_2 | CS_Sub_Width_2  # 4:2:0 planar
-    CS_GENERIC_YUV422  = CS_PLANAR | CS_YUV | CS_VPlaneFirst | CS_Sub_Height_1 | CS_Sub_Width_2  # 4:2:2 planar
-    CS_GENERIC_YUV444  = CS_PLANAR | CS_YUV | CS_VPlaneFirst | CS_Sub_Height_1 | CS_Sub_Width_1  # 4:4:4 planar
-    CS_GENERIC_Y       = CS_PLANAR | CS_INTERLEAVED | CS_YUV                                     # Y only (4:0:0)
-    CS_GENERIC_RGBP    = CS_PLANAR | CS_BGR | CS_RGB_TYPE                                        # planar RGB. Though name is RGB but plane order GBR
-    CS_GENERIC_RGBAP   = CS_PLANAR | CS_BGR | CS_RGBA_TYPE                                       # planar RGBA
-    CS_GENERIC_YUVA420 = CS_PLANAR | CS_YUVA | CS_VPlaneFirst | CS_Sub_Height_2 | CS_Sub_Width_2 # 4:2:0:A planar
-    CS_GENERIC_YUVA422 = CS_PLANAR | CS_YUVA | CS_VPlaneFirst | CS_Sub_Height_1 | CS_Sub_Width_2 # 4:2:2:A planar
-    CS_GENERIC_YUVA444 = CS_PLANAR | CS_YUVA | CS_VPlaneFirst | CS_Sub_Height_1 | CS_Sub_Width_1 # 4:4:4:A planar
-
-    CS_YV24  = CS_GENERIC_YUV444 | CS_Sample_Bits_8  # YVU 4:4:4 planar
-    CS_YV16  = CS_GENERIC_YUV422 | CS_Sample_Bits_8  # YVU 4:2:2 planar
-    CS_YV12  = CS_GENERIC_YUV420 | CS_Sample_Bits_8  # YVU 4:2:0 planar
-    CS_I420  = CS_PLANAR | CS_YUV | CS_Sample_Bits_8 | CS_UPlaneFirst | CS_Sub_Height_2 | CS_Sub_Width_2  # YUV 4:2:0 planar
-    CS_IYUV  = CS_I420
-    CS_YUV9  = CS_PLANAR | CS_YUV | CS_Sample_Bits_8 | CS_VPlaneFirst | CS_Sub_Height_4 | CS_Sub_Width_4  # YUV 4:1:0 planar
-    CS_YV411 = CS_PLANAR | CS_YUV | CS_Sample_Bits_8 | CS_VPlaneFirst | CS_Sub_Height_1 | CS_Sub_Width_4  # YUV 4:1:1 planar
-
-    CS_Y8    = CS_GENERIC_Y | CS_Sample_Bits_8                                                            # Y   4:0:0 planar
-
-    #-------------------------
-    # AVS16: new planar constants go live! Experimental PF 160613
-    # 10-12-14 bit + planar RGB + BRG48/64 160725
-
-    CS_YUV444P10 = CS_GENERIC_YUV444 | CS_Sample_Bits_10 # YUV 4:4:4 10bit samples
-    CS_YUV422P10 = CS_GENERIC_YUV422 | CS_Sample_Bits_10 # YUV 4:2:2 10bit samples
-    CS_YUV420P10 = CS_GENERIC_YUV420 | CS_Sample_Bits_10 # YUV 4:2:0 10bit samples
-    CS_Y10 = CS_GENERIC_Y | CS_Sample_Bits_10            # Y   4:0:0 10bit samples
-
-    CS_YUV444P12 = CS_GENERIC_YUV444 | CS_Sample_Bits_12 # YUV 4:4:4 12bit samples
-    CS_YUV422P12 = CS_GENERIC_YUV422 | CS_Sample_Bits_12 # YUV 4:2:2 12bit samples
-    CS_YUV420P12 = CS_GENERIC_YUV420 | CS_Sample_Bits_12 # YUV 4:2:0 12bit samples
-    CS_Y12 = CS_GENERIC_Y | CS_Sample_Bits_12            # Y   4:0:0 12bit samples
-
-    CS_YUV444P14 = CS_GENERIC_YUV444 | CS_Sample_Bits_14 # YUV 4:4:4 14bit samples
-    CS_YUV422P14 = CS_GENERIC_YUV422 | CS_Sample_Bits_14 # YUV 4:2:2 14bit samples
-    CS_YUV420P14 = CS_GENERIC_YUV420 | CS_Sample_Bits_14 # YUV 4:2:0 14bit samples
-    CS_Y14 = CS_GENERIC_Y | CS_Sample_Bits_14            # Y   4:0:0 14bit samples
-
-    CS_YUV444P16 = CS_GENERIC_YUV444 | CS_Sample_Bits_16 # YUV 4:4:4 16bit samples
-    CS_YUV422P16 = CS_GENERIC_YUV422 | CS_Sample_Bits_16 # YUV 4:2:2 16bit samples
-    CS_YUV420P16 = CS_GENERIC_YUV420 | CS_Sample_Bits_16 # YUV 4:2:0 16bit samples
-    CS_Y16 = CS_GENERIC_Y | CS_Sample_Bits_16            # Y   4:0:0 16bit samples
-
-    # 32 bit samples (float)
-    CS_YUV444PS = CS_GENERIC_YUV444 | CS_Sample_Bits_32  # YUV 4:4:4 32bit samples
-    CS_YUV422PS = CS_GENERIC_YUV422 | CS_Sample_Bits_32  # YUV 4:2:2 32bit samples
-    CS_YUV420PS = CS_GENERIC_YUV420 | CS_Sample_Bits_32  # YUV 4:2:0 32bit samples
-    CS_Y32 = CS_GENERIC_Y | CS_Sample_Bits_32            # Y   4:0:0 32bit samples
-
-    # RGB packed
-    CS_BGR48 = CS_RGB_TYPE  | CS_BGR | CS_INTERLEAVED | CS_Sample_Bits_16 # BGR 3x16 bit
-    CS_BGR64 = CS_RGBA_TYPE | CS_BGR | CS_INTERLEAVED | CS_Sample_Bits_16 # BGR 4x16 bit
-    # no packed 32 bit (float) support for these legacy types
-
-    # RGB planar
-    CS_RGBP   = CS_GENERIC_RGBP | CS_Sample_Bits_8  # Planar RGB 8 bit samples
-    CS_RGBP10 = CS_GENERIC_RGBP | CS_Sample_Bits_10 # Planar RGB 10bit samples
-    CS_RGBP12 = CS_GENERIC_RGBP | CS_Sample_Bits_12 # Planar RGB 12bit samples
-    CS_RGBP14 = CS_GENERIC_RGBP | CS_Sample_Bits_14 # Planar RGB 14bit samples
-    CS_RGBP16 = CS_GENERIC_RGBP | CS_Sample_Bits_16 # Planar RGB 16bit samples
-    CS_RGBPS  = CS_GENERIC_RGBP | CS_Sample_Bits_32 # Planar RGB 32bit samples
-
-    # RGBA planar
-    CS_RGBAP   = CS_GENERIC_RGBAP | CS_Sample_Bits_8  # Planar RGBA 8 bit samples
-    CS_RGBAP10 = CS_GENERIC_RGBAP | CS_Sample_Bits_10 # Planar RGBA 10bit samples
-    CS_RGBAP12 = CS_GENERIC_RGBAP | CS_Sample_Bits_12 # Planar RGBA 12bit samples
-    CS_RGBAP14 = CS_GENERIC_RGBAP | CS_Sample_Bits_14 # Planar RGBA 14bit samples
-    CS_RGBAP16 = CS_GENERIC_RGBAP | CS_Sample_Bits_16 # Planar RGBA 16bit samples
-    CS_RGBAPS  = CS_GENERIC_RGBAP | CS_Sample_Bits_32 # Planar RGBA 32bit samples
-
-    # Planar YUVA
-    CS_YUVA444    = CS_GENERIC_YUVA444 | CS_Sample_Bits_8  # YUVA 4:4:4 8bit samples
-    CS_YUVA422    = CS_GENERIC_YUVA422 | CS_Sample_Bits_8  # YUVA 4:2:2 8bit samples
-    CS_YUVA420    = CS_GENERIC_YUVA420 | CS_Sample_Bits_8  # YUVA 4:2:0 8bit samples
-
-    CS_YUVA444P10 = CS_GENERIC_YUVA444 | CS_Sample_Bits_10 # YUVA 4:4:4 10bit samples
-    CS_YUVA422P10 = CS_GENERIC_YUVA422 | CS_Sample_Bits_10 # YUVA 4:2:2 10bit samples
-    CS_YUVA420P10 = CS_GENERIC_YUVA420 | CS_Sample_Bits_10 # YUVA 4:2:0 10bit samples
-
-    CS_YUVA444P12 = CS_GENERIC_YUVA444 | CS_Sample_Bits_12 # YUVA 4:4:4 12bit samples
-    CS_YUVA422P12 = CS_GENERIC_YUVA422 | CS_Sample_Bits_12 # YUVA 4:2:2 12bit samples
-    CS_YUVA420P12 = CS_GENERIC_YUVA420 | CS_Sample_Bits_12 # YUVA 4:2:0 12bit samples
-
-    CS_YUVA444P14 = CS_GENERIC_YUVA444 | CS_Sample_Bits_14 # YUVA 4:4:4 14bit samples
-    CS_YUVA422P14 = CS_GENERIC_YUVA422 | CS_Sample_Bits_14 # YUVA 4:2:2 14bit samples
-    CS_YUVA420P14 = CS_GENERIC_YUVA420 | CS_Sample_Bits_14 # YUVA 4:2:0 14bit samples
-
-    CS_YUVA444P16 = CS_GENERIC_YUVA444 | CS_Sample_Bits_16 # YUVA 4:4:4 16bit samples
-    CS_YUVA422P16 = CS_GENERIC_YUVA422 | CS_Sample_Bits_16 # YUVA 4:2:2 16bit samples
-    CS_YUVA420P16 = CS_GENERIC_YUVA420 | CS_Sample_Bits_16 # YUVA 4:2:0 16bit samples
-
-    CS_YUVA444PS  = CS_GENERIC_YUVA444 | CS_Sample_Bits_32  # YUVA 4:4:4 32bit samples
-    CS_YUVA422PS  = CS_GENERIC_YUVA422 | CS_Sample_Bits_32  # YUVA 4:2:2 32bit samples
-    CS_YUVA420PS  = CS_GENERIC_YUVA420 | CS_Sample_Bits_32  # YUVA 4:2:0 32bit samples
 
 def avs_plus_get_colorspace_name(pixel_type):
-    if x86_64:
-        # can't compile x64 AvsPmod, workaround
-        avs_ColorspaceDict = {
-            -1610284277 : "YUV444P10",
-            -1610218741 : "YUV444P12",
-            -1610153205 : "YUV444P14",
-            -1610546421 : "YUV444P16",
-            -1610480885 : "YUV444PS",
-            -1610284280 : "YUV422P10",
-            -1610218744 : "YUV422P12",
-            -1610153208 : "YUV422P14",
-            -1610546424 : "YUV422P16",
-            -1610480888 : "YUV422PS",
-            -1610285048 : "YUV420P10",
-            -1610219512 : "YUV420P12",
-            -1610153976 : "YUV420P14",
-            -1610547192 : "YUV420P16",
-            -1610481656 : "YUV420PS",
-            -536543232 : "Y10",
-            -536477696 : "Y12",
-            -536412160 : "Y14",
-            -536805376 : "Y16",
-            -536739840 : "Y32",
-            1342177281 : "RGB24",
-            1342177282 : "RGB32",
-            1342242817 : "RGB48",
-            1342242818 : "RGB64"
-        }
-    else:
-    	avs_ColorspaceDict = {
-    		avs_plus.CS_BGR24: "RGB24",
-    		avs_plus.CS_BGR32: "RGB32",
-    		avs_plus.CS_YUY2 : "YUY2",
-    		avs_plus.CS_YV24 : "YV24",
-    		avs_plus.CS_YV16 : "YV16",
-    		avs_plus.CS_YV12 : "YV12",
-    		avs_plus.CS_I420 : "YV12",
-    		avs_plus.CS_YUV9 : "YUV9",
-    		avs_plus.CS_YV411: "YV411",
-    		avs_plus.CS_Y8   : "Y8",
-    		avs_plus.CS_YUV420P10: "YUV420P10",
-    		avs_plus.CS_YUV422P10: "YUV422P10",
-    		avs_plus.CS_YUV444P10: "YUV444P10",
-    		avs_plus.CS_Y10      : "Y10",
-    		avs_plus.CS_YUV420P12: "YUV420P12",
-    		avs_plus.CS_YUV422P12: "YUV422P12",
-    		avs_plus.CS_YUV444P12: "YUV444P12",
-    		avs_plus.CS_Y12      : "Y12",
-    		avs_plus.CS_YUV420P14: "YUV420P14",
-    		avs_plus.CS_YUV422P14: "YUV422P14",
-    		avs_plus.CS_YUV444P14: "YUV444P14",
-    		avs_plus.CS_Y14      : "Y14",
-    		avs_plus.CS_YUV420P16: "YUV420P16",
-    		avs_plus.CS_YUV422P16: "YUV422P16",
-    		avs_plus.CS_YUV444P16: "YUV444P16",
-    		avs_plus.CS_Y16      : "Y16",
-    		avs_plus.CS_YUV420PS : "YUV420PS",
-    		avs_plus.CS_YUV422PS : "YUV422PS",
-    		avs_plus.CS_YUV444PS : "YUV444PS",
-    		avs_plus.CS_Y32      : "Y32",
-    		avs_plus.CS_BGR48    : "RGB48",
-    		avs_plus.CS_BGR64    : "RGB64",
-    		avs_plus.CS_RGBP     : "RGBP",
-    		avs_plus.CS_RGBP10   : "RGBP10",
-    		avs_plus.CS_RGBP12   : "RGBP12",
-    		avs_plus.CS_RGBP14   : "RGBP14",
-    		avs_plus.CS_RGBP16   : "RGBP16",
-    		avs_plus.CS_RGBPS    : "RGBPS",
-    		avs_plus.CS_YUVA420  : "YUVA420",
-    		avs_plus.CS_YUVA422  : "YUVA422",
-    		avs_plus.CS_YUVA444  : "YUVA444",
-    		avs_plus.CS_YUVA420P10: "YUVA420P10",
-    		avs_plus.CS_YUVA422P10: "YUVA422P10",
-    		avs_plus.CS_YUVA444P10: "YUVA444P10",
-    		avs_plus.CS_YUVA420P12: "YUVA420P12",
-    		avs_plus.CS_YUVA422P12: "YUVA422P12",
-    		avs_plus.CS_YUVA444P12: "YUVA444P12",
-    		avs_plus.CS_YUVA420P14: "YUVA420P14",
-    		avs_plus.CS_YUVA422P14: "YUVA422P14",
-    		avs_plus.CS_YUVA444P14: "YUVA444P14",
-    		avs_plus.CS_YUVA420P16: "YUVA420P16",
-    		avs_plus.CS_YUVA422P16: "YUVA422P16",
-    		avs_plus.CS_YUVA444P16: "YUVA444P16",
-    		avs_plus.CS_YUVA420PS : "YUVA420PS",
-    		avs_plus.CS_YUVA422PS : "YUVA422PS",
-    		avs_plus.CS_YUVA444PS : "YUVA444PS",
-    		avs_plus.CS_RGBAP     : "RGBAP",
-    		avs_plus.CS_RGBAP10   : "RGBAP10",
-    		avs_plus.CS_RGBAP12   : "RGBAP12",
-    		avs_plus.CS_RGBAP14   : "RGBAP14",
-    		avs_plus.CS_RGBAP16   : "RGBAP16",
-    		avs_plus.CS_RGBAPS    : "RGBAPS"
-    	}
+
+    avs_ColorspaceDict = {
+    	avs_plus.CS_BGR24: "RGB24",
+    	avs_plus.CS_BGR32: "RGB32",
+    	avs_plus.CS_YUY2 : "YUY2",
+    	avs_plus.CS_YV24 : "YV24",
+    	avs_plus.CS_YV16 : "YV16",
+    	avs_plus.CS_YV12 : "YV12",
+    	avs_plus.CS_I420 : "YV12",
+    	avs_plus.CS_YUV9 : "YUV9",
+    	avs_plus.CS_YV411: "YV411",
+    	avs_plus.CS_Y8   : "Y8",
+    	avs_plus.CS_YUV420P10: "YUV420P10",
+    	avs_plus.CS_YUV422P10: "YUV422P10",
+    	avs_plus.CS_YUV444P10: "YUV444P10",
+    	avs_plus.CS_Y10      : "Y10",
+    	avs_plus.CS_YUV420P12: "YUV420P12",
+    	avs_plus.CS_YUV422P12: "YUV422P12",
+    	avs_plus.CS_YUV444P12: "YUV444P12",
+    	avs_plus.CS_Y12      : "Y12",
+    	avs_plus.CS_YUV420P14: "YUV420P14",
+    	avs_plus.CS_YUV422P14: "YUV422P14",
+    	avs_plus.CS_YUV444P14: "YUV444P14",
+    	avs_plus.CS_Y14      : "Y14",
+    	avs_plus.CS_YUV420P16: "YUV420P16",
+    	avs_plus.CS_YUV422P16: "YUV422P16",
+    	avs_plus.CS_YUV444P16: "YUV444P16",
+    	avs_plus.CS_Y16      : "Y16",
+    	avs_plus.CS_YUV420PS : "YUV420PS",
+    	avs_plus.CS_YUV422PS : "YUV422PS",
+    	avs_plus.CS_YUV444PS : "YUV444PS",
+    	avs_plus.CS_Y32      : "Y32",
+    	avs_plus.CS_BGR48    : "RGB48",
+    	avs_plus.CS_BGR64    : "RGB64",
+    	avs_plus.CS_RGBP     : "RGBP",
+    	avs_plus.CS_RGBP10   : "RGBP10",
+    	avs_plus.CS_RGBP12   : "RGBP12",
+    	avs_plus.CS_RGBP14   : "RGBP14",
+    	avs_plus.CS_RGBP16   : "RGBP16",
+    	avs_plus.CS_RGBPS    : "RGBPS",
+    	avs_plus.CS_YUVA420  : "YUVA420",
+    	avs_plus.CS_YUVA422  : "YUVA422",
+    	avs_plus.CS_YUVA444  : "YUVA444",
+    	avs_plus.CS_YUVA420P10: "YUVA420P10",
+    	avs_plus.CS_YUVA422P10: "YUVA422P10",
+    	avs_plus.CS_YUVA444P10: "YUVA444P10",
+    	avs_plus.CS_YUVA420P12: "YUVA420P12",
+    	avs_plus.CS_YUVA422P12: "YUVA422P12",
+    	avs_plus.CS_YUVA444P12: "YUVA444P12",
+    	avs_plus.CS_YUVA420P14: "YUVA420P14",
+    	avs_plus.CS_YUVA422P14: "YUVA422P14",
+    	avs_plus.CS_YUVA444P14: "YUVA444P14",
+    	avs_plus.CS_YUVA420P16: "YUVA420P16",
+    	avs_plus.CS_YUVA422P16: "YUVA422P16",
+    	avs_plus.CS_YUVA444P16: "YUVA444P16",
+    	avs_plus.CS_YUVA420PS : "YUVA420PS",
+    	avs_plus.CS_YUVA422PS : "YUVA422PS",
+    	avs_plus.CS_YUVA444PS : "YUVA444PS",
+    	avs_plus.CS_RGBAP     : "RGBAP",
+    	avs_plus.CS_RGBAP10   : "RGBAP10",
+    	avs_plus.CS_RGBAP12   : "RGBAP12",
+    	avs_plus.CS_RGBAP14   : "RGBAP14",
+    	avs_plus.CS_RGBAP16   : "RGBAP16",
+    	avs_plus.CS_RGBAPS    : "RGBAPS"
+    }
 
     if pixel_type in avs_ColorspaceDict:
         return avs_ColorspaceDict[pixel_type]
     return ''
-"""
+
 
 class AvsClipBase:
 
@@ -334,6 +157,8 @@ class AvsClipBase:
         self.IsRGB = None
         self.IsRGB24 = None
         self.IsRGB32 = None
+        #self.IsRGB48 = None  # not yet needed
+        #self.IsRGB64 = None
         self.IsYUV = None
         self.IsYUY2 = None
         self.IsYV24 = None
@@ -351,6 +176,9 @@ class AvsClipBase:
         self.HasVideo = None
         self.Colorspace = None
         self.ffms_info_cache = {}
+        #self.num_components = None   # not yet needed
+        #self.component_size = None
+        #self.bits_per_component = None
 
         # Create the Avisynth script clip
         if env is not None:
@@ -376,7 +204,7 @@ class AvsClipBase:
                 if self.env.function_exists('AutoloadPlugins'): # AviSynth+
                     try:
                         self.env.invoke('AutoloadPlugins')
-                    except avisynth.AvisynthError, err:
+                    except avisynth.AvisynthError as err:
                         self.Framecount = oldFramecount
                         if not self.CreateErrorClip(err):
                             return
@@ -396,7 +224,7 @@ class AvsClipBase:
                 self.clip = self.env.invoke('Eval', [script, filename])
                 if not isinstance(self.clip, avisynth.AVS_Clip):
                     raise avisynth.AvisynthError("Not a clip")
-            except avisynth.AvisynthError, err:
+            except avisynth.AvisynthError as err:
                 self.Framecount = oldFramecount
                 if not self.CreateErrorClip(err):
                     return
@@ -413,7 +241,7 @@ class AvsClipBase:
             if self.env.function_exists('AutoloadPlugins'): # AviSynth+
                 try:
                     self.env.invoke('AutoloadPlugins')
-                except avisynth.AvisynthError, err:
+                except avisynth.AvisynthError as err:
                     self.Framecount = oldFramecount
                     if not self.CreateErrorClip(err):
                         return
@@ -428,7 +256,7 @@ class AvsClipBase:
                 self.clip = self.env.invoke('Eval', errText)
                 if not isinstance(self.clip, avisynth.AVS_Clip):
                     raise avisynth.AvisynthError("Not a clip")
-            except avisynth.AvisynthError, err:
+            except avisynth.AvisynthError as err:
                 return
             try:
                 if not isinstance(self.env.get_var('last'), avisynth.AVS_Clip):
@@ -466,8 +294,10 @@ class AvsClipBase:
         self.IsAudioFloat = self.vi.sample_type == avisynth.avs.AVS_SAMPLE_FLOAT
         self.IsAudioInt = not self.IsAudioFloat
         self.IsRGB = self.vi.is_rgb()
-        #self.IsRGB24 = self.vi.is_rgb24()  # GPo, needed for Alternative
-        #self.IsRGB32 = self.vi.is_rgb32()  # GPo, needed for Alternative
+        self.IsRGB24 = self.vi.is_rgb24()
+        self.IsRGB32 = self.vi.is_rgb32()
+        #self.IsRGB48 = self.vi.is_rgb48()  # not yet needed
+        #self.IsRGB64 = self.vi.is_rgb64()
         self.IsYUV = self.vi.is_yuv()
         self.IsYUY2 = self.vi.is_yuy2()
         self.IsYV24 = self.vi.is_yv24()
@@ -476,45 +306,39 @@ class AvsClipBase:
         self.IsYV411 = self.vi.is_yv411()
         self.IsY8 = self.vi.is_y8()
 
+        # Possible even for classic avs:
+        '''
+        self.IsRGB48 = self.vi.isRGB48
+        self.IsRGB64 = self.vi.isRGB64
+        self.Is444 = self.vi.is_444() # use this one instead of IsYV24
+        self.Is422 = self.vi.is_422() # use this one instead of IsYV16
+        self.Is420 = self.vi.is_420() # use this one instead of IsYV12
+        self.IsY = self.vi.is_y() # use this one instead of IsY8
+        self.num_components = self.vi.num_components() # 1-4
+        self.component_size = self.vi.component_size() # 1, 2, 4 (in bytes)
+        self.bits_per_component = self.vi.bits_per_component() # 8,10,12,14,16,32
+        '''
+
         # GPo, avs plus get colorspace
         cName = ''
         if self.env.function_exists('PixelType') and self.clip:
+            #self.num_components = self.vi.num_components() # 1-4
+            #self.component_size = self.vi.component_size() # 1, 2, 4 (in bytes)
+            #self.bits_per_component = self.vi.bits_per_component() # 8,10,12,14,16,32
             cName = self.env.invoke("PixelType", self.clip)
+            #cName = avs_plus_get_colorspace_name(self.vi.pixel_type)
         if cName:
-            # RGB workaround 32,64 bit and 24,48 bit
-            self.IsRGB24 = cName == 'RGB24'
-            self.IsRGB32 = cName == 'RGB32'
+            # RGB workaround 32,64 bit and 24,48 bit (old Header v3)
+            #~self.IsRGB24 = cName == 'RGB24'
+            #~self.IsRGB32 = cName == 'RGB32'
             self.avsplus_colorspace = True
             self.Colorspace = (cName*self.avsplus_colorspace)
         else:
-            self.IsRGB24 = self.vi.is_rgb24()
-            self.IsRGB32 = self.vi.is_rgb32()
+            #~self.IsRGB24 = self.vi.is_rgb24()
+            #~self.IsRGB32 = self.vi.is_rgb32()
             self.Colorspace = ('RGB24'*self.IsRGB24 + 'RGB32'*self.IsRGB32 + 'YUY2'*self.IsYUY2 + 'YV12'*self.IsYV12 +
                                'YV24'*self.IsYV24 + 'YV16'*self.IsYV16 + 'YV411'*self.IsYV411 + 'Y8'*self.IsY8
                                )
-
-        """
-        # Alternative get colorspace, not full x64 compatible
-        # check if found
-        if int(self.IsYUY2 + self.IsYV24 + self.IsYV16 +
-               self.IsYV12 + self.IsYV411 + self.IsY8) <= 0:
-            # if not get it from avs_plus
-            cName = avs_plus_get_colorspace_name(self.vi.pixel_type)
-            self.avsplus_colorspace = bool(cName)
-            # RGB24,32 workaround
-            cName = cName.strip('RGB32').strip('RGB24')
-            if self.IsRGB32 and cName == 'RGB64':
-                self.IsRGB32 = False
-            elif self.IsRGB24 and cName == 'RGB48':
-               self.IsRGB24 = False
-        else:
-            cName= 'plus'
-        # for test only print '%i' % long(self.vi.pixel_type)
-        self.Colorspace = ('RGB24'*self.IsRGB24 + 'RGB32'*self.IsRGB32 + 'YUY2'*self.IsYUY2 + 'YV12'*self.IsYV12 +
-                           'YV24'*self.IsYV24 + 'YV16'*self.IsYV16 + 'YV411'*self.IsYV411 + 'Y8'*self.IsY8 +
-                           cName*self.avsplus_colorspace
-                           )
-        """
 
         self.IsPlanar = self.vi.is_planar()
 #        self.IsInterleaved = self.vi.is_interleaved()
@@ -530,7 +354,7 @@ class AvsClipBase:
             self.clip = self.BGR2RGB(self.clip)
         self.initialized = True
         if __debug__:
-            print u"AviSynth clip created successfully: '{0}'".format(self.name)
+            print(u"AviSynth clip created successfully: '{0}'".format(self.name))
 
     def __del__(self):
         if self.initialized:
@@ -540,7 +364,7 @@ class AvsClipBase:
             self.env.set_var("avsp_raw_clip", None)
             self.clip = None
             if __debug__:
-                print u"Deleting allocated video memory for '{0}'".format(self.name)
+                print(u"Deleting allocated video memory for '{0}'".format(self.name))
 
     def CreateErrorClip(self, err='', display_clip_error=False):
         fontFace, fontSize, fontColor = global_vars.options['errormessagefont'][:3]   # GPo fontColor
@@ -579,7 +403,7 @@ class AvsClipBase:
                 self.DisplayHeight = vi.height + 10  # GPo + 10
             else:
                 self.clip = clip
-        except avisynth.AvisynthError, err:
+        except avisynth.AvisynthError as err:
             return False
         return True
 
@@ -623,7 +447,7 @@ class AvsClipBase:
                     vi = self.display_clip.get_video_info()
                     self.DisplayWidth = vi.width
                     self.DisplayHeight = vi.height
-            except avisynth.AvisynthError, err:
+            except avisynth.AvisynthError as err:
                 return self.CreateErrorClip(display_clip_error=True)
         if isinstance(matrix, basestring):
             self.matrix = matrix
@@ -634,14 +458,14 @@ class AvsClipBase:
                     matrix[0] = '709'
                 else:
                     matrix[0] = '601'
-            matrix[1] = 'Rec' if (matrix[1] == 'tv' or matrix[0] == '2020') else 'PC.'  # GPo, Rec2020
+            matrix[1] = 'Rec' if (matrix[1] == 'tv' or matrix[0] == '2020') else 'PC.'  # GPo, Rec2020 disabled in MenuItems
             self.matrix = matrix[1] + matrix[0]
         if interlaced is not None:
             self.interlaced = interlaced
         if swapuv and self.IsYUV and not self.IsY8:
             try:
                 self.display_clip = self.env.invoke('SwapUV', self.display_clip)
-            except avisynth.AvisynthError, err:
+            except avisynth.AvisynthError as err:
                 return self.CreateErrorClip(display_clip_error=True)
         vi = self.display_clip.get_video_info()
         self.DisplayWidth = vi.width
@@ -931,7 +755,7 @@ if os.name == 'nt':
     NULL = 0
     OF_READ = UINT(0)
     BI_RGB = 0
-    GENERIC_WRITE = 0x40000000L
+    GENERIC_WRITE = 0x40000000
     CREATE_ALWAYS = 2
     FILE_ATTRIBUTE_NORMAL  = 0x00000080
 
@@ -1019,7 +843,7 @@ if os.name == 'nt':
                 args = [self.display_clip, self.matrix, self.interlaced]
                 try:
                     self.display_clip = self.env.invoke("ConvertToRGB32", args)
-                except avisynth.AvisynthError, err:
+                except avisynth.AvisynthError as err:
                     return False
             return True
 
@@ -1078,7 +902,7 @@ else:
                 merge_args = [b, clip, r, "RGB24"]
                 self.display_clip = self.env.invoke("MergeRGB", merge_args)
                 return True
-            except avisynth.AvisynthError, err:
+            except avisynth.AvisynthError as err:
                 return False
 
         def DrawFrame(self, frame, dc=None, offset=(0,0), size=None):
@@ -1109,46 +933,46 @@ else:
 if __name__ == '__main__':
     AVI = AvsClip('Version().ConvertToYV12()', 'example.avs')
     if AVI.initialized:
-        print 'Width =', AVI.Width
-        print 'Height =', AVI.Height
-        print 'Framecount =', AVI.Framecount
-        print 'Framerate =', AVI.Framerate
-        print 'FramerateNumerator =', AVI.FramerateNumerator
-        print 'FramerateDenominator =', AVI.FramerateDenominator
-        print 'Audiorate =', AVI.Audiorate
-        print 'Audiolength =', AVI.Audiolength
-        #~ print 'AudiolengthF =', AVI.AudiolengthF
-        print 'Audiochannels =', AVI.Audiochannels
-        print 'Audiobits =', AVI.Audiobits
-        print 'IsAudioFloat =', AVI.IsAudioFloat
-        print 'IsAudioInt =', AVI.IsAudioInt
-        print 'Colorspace =', AVI.Colorspace
-        print 'IsRGB =', AVI.IsRGB
-        print 'IsRGB24 =', AVI.IsRGB24
-        print 'IsRGB32 =', AVI.IsRGB32
-        print 'IsYUV =', AVI.IsYUV
-        print 'IsYUY2 =', AVI.IsYUY2
-        print 'IsYV24 =', AVI.IsYV24
-        print 'IsYV16 =', AVI.IsYV16
-        print 'IsYV12 =', AVI.IsYV12
-        print 'IsYV411 =', AVI.IsYV411
-        print 'IsY8 =', AVI.IsY8
-        print 'IsPlanar =', AVI.IsPlanar
-        print 'IsInterleaved =', AVI.IsInterleaved
-        print 'IsFieldBased =', AVI.IsFieldBased
-        print 'IsFrameBased =', AVI.IsFrameBased
-        print 'GetParity =', AVI.GetParity
-        print 'HasAudio =', AVI.HasAudio
-        print 'HasVideo =', AVI.HasVideo
+        print('Width =', AVI.Width)
+        print('Height =', AVI.Height)
+        print('Framecount =', AVI.Framecount)
+        print('Framerate =', AVI.Framerate)
+        print('FramerateNumerator =', AVI.FramerateNumerator)
+        print('FramerateDenominator =', AVI.FramerateDenominator)
+        print('Audiorate =', AVI.Audiorate)
+        print('Audiolength =', AVI.Audiolength)
+        #~ print('AudiolengthF =', AVI.AudiolengthF)
+        print('Audiochannels =', AVI.Audiochannels)
+        print('Audiobits =', AVI.Audiobits)
+        print('IsAudioFloat =', AVI.IsAudioFloat)
+        print('IsAudioInt =', AVI.IsAudioInt)
+        print('Colorspace =', AVI.Colorspace)
+        print('IsRGB =', AVI.IsRGB)
+        print('IsRGB24 =', AVI.IsRGB24)
+        print('IsRGB32 =', AVI.IsRGB32)
+        print('IsYUV =', AVI.IsYUV)
+        print('IsYUY2 =', AVI.IsYUY2)
+        print('IsYV24 =', AVI.IsYV24)
+        print('IsYV16 =', AVI.IsYV16)
+        print('IsYV12 =', AVI.IsYV12)
+        print('IsYV411 =', AVI.IsYV411)
+        print('IsY8 =', AVI.IsY8)
+        print('IsPlanar =', AVI.IsPlanar)
+        print('IsInterleaved =', AVI.IsInterleaved)
+        print('IsFieldBased =', AVI.IsFieldBased)
+        print('IsFrameBased =', AVI.IsFrameBased)
+        print('GetParity =', AVI.GetParity)
+        print('HasAudio =', AVI.HasAudio)
+        print('HasVideo =', AVI.HasVideo)
     else:
-        print AVI.error_message
+        print(AVI.error_message)
     AVI = None
 
     AVI = AvsClip('Blackness()', 'test.avs')
     if AVI.initialized:
-        print AVI.Width
+        print(AVI.Width)
     else:
-        print AVI.error_message
+        print(AVI.error_message)
     AVI = None
 
     script = """Version().ConvertToYV12()
@@ -1158,16 +982,16 @@ if __name__ == '__main__':
     env = avisynth.AVS_ScriptEnvironment(3)
     try:
         clip = env.invoke('Eval', script)
-    except avisynth.AvisynthError, err:
-        print err
+    except avisynth.AvisynthError as err:
+        print(err)
     else:
         if isinstance(clip, avisynth.AVS_Clip):
             AVI = AvsClip(clip, env=env)
             AVI._GetFrame(100)
             AVI = None
         else:
-            print clip.get_value()
+            print(clip.get_value())
     env = None
 
-    print "Exit program."
+    print("Exit program.")
 

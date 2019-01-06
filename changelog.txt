@@ -3,14 +3,37 @@ CHANGELOG
 
 GPo mod:
 Large Address Aware Flag is set (32bit version).
-Version is based on 2.5.1 bug-fix Version for "only one prefetcher allowed" see Doom9 Forum.
+forked from vdcrim: https://github.com/AvsPmod/AvsPmod
+
+Modifications by pinterf (pfmod) 
+
+pinterf source: https://github.com/pinterf/AvsPmod  (work in process)
+GPo source: https://github.com/gispos/AvsPmod
+GPo releases: https://github.com/gispos/AvsPmod/releases
+
+--------------------------
+Version 2.6.0.1 [2019-01-04] GPo
+--------------------------
+- Added to Trim Editor the option 'Single clips' with custom prefix, this insert c0=Trim(?,?)..cn=Trim(?,?) commands.
+- Added to frame text field Context Menu 'bell at bookmarks' and 'highlight bookmarks', 
+--- make a sound or highlight the slider if the current frame in the bookmarks. Also added 'set highlight color...'.
+- Added to Option menu 'Make fonts and colors backup' and 'Load fonts and colors backup', you can copy the 'backup_style.dat' file 
+--- created in the AvsP directory into a different AvsP directory and when loading only the text style and color will be changed.
+- Change 'Video > Save view pos on tab change' default now checked false.
+- Fixed: frame text field set wrong color or does not update the color if bookmark added or deleted with right mouse button on the slider.
+- Trying to cancel the script if the message 'Error requesting frame' in a non-ending loop. You must press 'Cancel' on the message box.
+--- try first 'OK', only press 'Cancel' if the message in an non-ending loop, but if the system out of memory, nothing helps!
+--- at this error, if you press 'Cancel', the session and script is saved as '_LastErrorSession.ses, _LastErrorScript.avs' in the AvsP program folder. Hopefully.;)
+--- !!! On my test, however, (paranoid mode is not for me)
+------ 'OK' was not always the best choice, when you trying to freeing the memory manuele Freezes AvsP and you have no chance to save the script.
+- Trying to fix some rare bugs and other changes.
 
 --------------------------
 Version 2.5.1.17 [2018-12-25] GPo
 --------------------------
-- Added to Trim Editor the option 'Single clips' with custom prefix, this insert c0=Trim(?,?)..cn=Trim(?,?) commands.
-- Trying to cancel the script if the message 'Error requesting frame' in a non-ending loop. You must press 'Cancel' on the message box.
-- Trying to fix some rare bugs
+only source published
+https://github.com/gispos/AvsPmod
+
 --------------------------
 Version 2.5.1.16 [2018-12-08] GPo
 --------------------------

@@ -21,8 +21,9 @@
 # setup - AvsP py2exe setup script
 # 
 # Dependencies:
-#     Python (tested on v2.6 and v2.7)
-#     wxPython (tested on v2.8 Unicode and v2.9)
+#     Python (v2.7) (v3.7 support experimental, not finished)
+#     wxPython (tested on v2.8 Unicode and v2.9, v3.0.2 as the latest "classic)
+#               or 4.0.2: experimental not finished
 #     py2exe (tested on v0.6.9)
 # Additional dependencies for x86-64:
 #     cffi (tested on v0.9.2)
@@ -41,12 +42,49 @@ try:
     from setuptools import setup
 except ImportError:
     from distutils.core import setup
-import py2exe
-import wxversion
-wxversion.select('2.8')
-import wx
+
+try:
+    import py2exe # unfortunately not after 3.4
+except ImportError:
+    raise ImportError 
+
+# use Nuitka or PyInstaller https://stackoverflow.com/questions/49831163/compile-python-3-6-script-to-standalone-exe-with-nuitka-on-windows-10
+
+use_classic_wx = True # fix True at the moment: use pre v4.0.0 wxPython
+
+if use_classic_wx:
+  import wxversion
+  wxversion.select('2.8')
+  # wxversion.select('3.0.2') #PF 20181221 #GPo not working, mouse wheel problems and other bugs
+  import wx
+else:
+  # for wxPython v4.x (Phoenix): import specific version: 4.0.3, 
+  # raise error if does not exists
+  import pkg_resources
+  pkg_resources.require("wxPython==4.0.3")
+  import wx
+
+# for wxPython v4.x (Phoenix): import current
+# import wx
 
 import global_vars
+
+def isVersion(rv):
+    currentVersion = sys.version_info
+    if currentVersion[0] == rv[0] and currentVersion[1] == rv[1]:
+        pass
+    else:
+        return False
+    return True
+
+# Calling the 'checkInstallation' function checks if Python is >= 2.7 and < 3
+requiredVersion27 = (2,7)
+requiredVersion37 = (3,7)
+is27 = isVersion(requiredVersion27)
+is37 = isVersion(requiredVersion37)
+if not is27 and not is37:
+  sys.stderr.write( "[%s] - Error: Python interpreter must be 2.7 or 3.7\n" % (sys.argv[0]) )
+  sys.exit(-1)
 
 
 x86_64 = sys.maxsize > 2**32
@@ -107,8 +145,18 @@ manifest = """
 </assembly>
 """.format(prog=global_vars.name, arch=arch)
 
+# When gdiplus.dll is not found, find it in WinSxS folder.
+# Files in the WinSxS folders are created and populated when you install various C++ Runtime 
+# Redistributables and contain runtime files and DLLs that some third party programs you installed 
+# may need, so you could have more, less or no WinSxS folders.
+# WinSxS is the technology that lets you have multiple copies of different versions of files 
+# with the same name on your system at the same time.
+# E.g. c:\Windows\WinSxS\wow64_microsoft.windows.gdiplus.systemcopy_31bf3856ad364e35_10.0.17134.1_none_d6afcd2e9398abe3\GdiPlus.dll
 lib_extra = []
-if not x86_64:
+# classic wx has its own gdiplus.dll
+# e.g. in c:\Python27\lib\site-packages\wx-3.0-msw\wx\gdiplus.dll 
+if use_classic_wx:
+  if not x86_64:
     lib_extra.append(os.path.join(os.path.dirname(wx.__file__), 'gdiplus.dll'))
 
 data_files = [
@@ -120,30 +168,48 @@ data_files = [
             ]
         ),
         ('lib', lib_extra),
-        ('src', [
-            'run.py',
-            'avsp.py',
-            'wxp.py',
-            'avisynth.py',
-            'avisynth_cffi.py',
-            'pyavs.py',
-            'pyavs_avifile.py',
-            'build.py',
-            'setup.py',
-            'i18n.py',
-            'AvsP.ico',
-            'icons.py',
-            'global_vars.py',
-            'build_instructions_windows.txt',
-        ]),
+        ('src', 
+                [
+                'run.py',
+                'avsp.py',
+                'wxp.py',
+                'avisynth.py',
+                'avisynth_cffi.py',
+                'pyavs.py',
+                'pyavs_avifile.py',
+                'build.py',
+                'setup.py',
+                'i18n.py',
+                'AvsP.ico',
+                'icons.py',
+                'global_vars.py',
+                'build_instructions_windows.txt',
+                'avisynth_c.h', # or perhaps include it only for x64?
+                ]
+         ),
+         ('src\\avs', [ # or perhaps include them only for x64?
+                      'avs\\types.h',
+                      'avs\\config.h',
+                      'avs\\capi.h'
+                      ]
+         )
     ]
+
+# todo:
+# Python 3.7 uses VS2015 (2017) redistributables
+# msvcr140.dll, msvcp140.dll
 
 # Include the Microsoft Visual C runtime DLLs for Python 2.6+
 # v9.0.21022.8, available in the Microsoft Visual C++ 2008 Redistributable Package
 # 32-bit: <https://www.microsoft.com/en-us/download/details.aspx?id=29>
 # 64-bit: <https://www.microsoft.com/en-us/download/details.aspx?id=15336>
-crt_dst_dir = 'Microsoft.VC90.CRT'
-crt_files = ('msvcm90.dll', 'msvcp90.dll', 'msvcr90.dll')
+if is27:
+  crt_dst_dir = 'Microsoft.VC90.CRT'
+  crt_files = ('msvcm90.dll', 'msvcp90.dll', 'msvcr90.dll')
+elif is37:
+  crt_dst_dir = 'Microsoft.VC140.CRT'
+  crt_files = ('msvcp140.dll', 'msvcr140.dll')
+
 crt_dirs = (os.path.expandvars(os.path.join('%windir%', 'winsxs', crt_version)), 
             sys.prefix, os.path.join(sys.prefix, 'DLLs'))
 crt_paths = []
@@ -238,32 +304,46 @@ setup(
     ],
 )
 
-# Write the manifest file for the CRT DLLs
-manifest = '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<!-- Copyright (c) Microsoft Corporation.  All rights reserved. -->
-<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
-    <noInheritable/>
-    <assemblyIdentity
-        type="win32"
-        name="Microsoft.VC90.CRT"
-        version="9.0.21022.8"
-        processorArchitecture="{arch}"
-        publicKeyToken="1fc8b3b9a1e18e3b"
-    />
-    <file name="msvcr90.dll" /> <file name="msvcp90.dll" /> <file name="msvcm90.dll" />
-</assembly>'''.format(arch=arch)
-for i, arg in enumerate(sys.argv):
-    if arg.lower() == '-d':
-        dist_dir = sys.argv[i+1].strip('"')
-        break
-    else:
-        dir = arg.lower().partition('--dist-dir=')[2]
-        if dir:
-            dist_dir = dir.strip('"')
+if is27:
+    # Write the manifest file for the CRT DLLs
+    manifest = '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+    <!-- Copyright (c) Microsoft Corporation.  All rights reserved. -->
+    <assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+        <noInheritable/>
+        <assemblyIdentity
+            type="win32"
+            name="Microsoft.VC90.CRT"
+            version="9.0.21022.8"
+            processorArchitecture="{arch}"
+            publicKeyToken="1fc8b3b9a1e18e3b"
+        />
+        <file name="msvcr90.dll" /> <file name="msvcp90.dll" /> <file name="msvcm90.dll" />
+    </assembly>'''.format(arch=arch)
+    for i, arg in enumerate(sys.argv):
+        if arg.lower() == '-d':
+            dist_dir = sys.argv[i+1].strip('"')
             break
-else:
-    dist_dir = 'dist'
-#f = open(os.path.join(dist_dir, crt_dst_dir, crt_dst_dir + '.manifest'), 'w') # it doesn't seem to work
-f = open(os.path.join(dist_dir, '', crt_dst_dir + '.manifest'), 'w')
-f.write(manifest)
-f.close()
+        else:
+            dir = arg.lower().partition('--dist-dir=')[2]
+            if dir:
+                dist_dir = dir.strip('"')
+                break
+    else:
+        dist_dir = 'dist'
+    #f = open(os.path.join(dist_dir, crt_dst_dir, crt_dst_dir + '.manifest'), 'w') # it doesn't seem to work
+    f = open(os.path.join(dist_dir, '', crt_dst_dir + '.manifest'), 'w')
+    f.write(manifest)
+    f.close()
+elif is37:
+    # Comment for Python 3.7 
+    # App-local deployment of the Universal CRT is supported. 
+    # To obtain the binaries for app-local deployment, install the Windows Software Development Kit
+    #  (SDK) for Windows 10. The binaries will be installed to 
+    #  C:\Program Files (x86)\Windows Kits\10\Redist\ucrt. 
+    #  You will need to copy all of the DLLs with your app 
+    #  (note that the set of DLLs are necessary is different on different versions of Windows, 
+    #  so you must include all of the DLLs in order for your program to run on 
+    #  all supported versions of Windows)
+    # c:\Program Files (x86)\Windows Kits\10\Redist\ucrt\DLLs\
+    pass
+

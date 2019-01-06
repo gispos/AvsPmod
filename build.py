@@ -1,5 +1,5 @@
 # AvsP - an AviSynth editor
-# 
+#
 # Copyright 2007 Peter Jang <http://avisynth.nl/users/qwerpoi>
 #           2010-2013 the AvsPmod authors <https://github.com/avspmod/avspmod>
 #
@@ -7,12 +7,12 @@
 #  it under the terms of the GNU General Public License as published by
 #  the Free Software Foundation; either version 2 of the License, or
 #  (at your option) any later version.
-# 
+#
 #  This program is distributed in the hope that it will be useful,
 #  but WITHOUT ANY WARRANTY; without even the implied warranty of
 #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #  GNU General Public License for more details.
-# 
+#
 #  You should have received a copy of the GNU General Public License
 #  along with this program; if not, write to the Free Software
 #  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA, or visit
@@ -35,8 +35,8 @@
 #    UPX (only for x86-32)
 #    7-zip
 #
-# Note: 
-# py2exe v0.6.10a1 (to be exact p2exe r687+) always includes w9xpopen.exe 
+# Note:
+# py2exe v0.6.10a1 (to be exact p2exe r687+) always includes w9xpopen.exe
 # (even if excluded with 'dll_excludes')
 
 import os
@@ -53,6 +53,10 @@ import avsp
 import i18n
 import global_vars
 
+# GPo, need do change the path for LargeAdressAware, editbin path hard coded
+find_editbin = False  #when True search for editbin (original code)
+editbinPath = r'C:\Users\GPo\AppData\Local\Programs\Common\Microsoft\Visual C++ for Python\9.0\VC\bin'
+
 def isinpath(path):
     '''Check if a file is in PATH or in the working directory'''
     basename = os.path.basename(path)
@@ -68,32 +72,34 @@ def main():
     # Define names and paths
     pythonexe = sys.executable
     x86_64 = sys.maxsize > 2**32
-    zipname = '{0}_v{1}_({2}_{3}).zip'.format(global_vars.name, 
+    zipname = '{0}_v{1}_({2}_{3}).zip'.format(global_vars.name,
         global_vars.version, platform.system(), 'x86-64' if x86_64 else 'x86-32')
     upx = os.path.join(os.environ['PROGRAMFILES'], 'upx', 'upx.exe')
     exe7z = os.path.join(os.environ['PROGRAMFILES'], '7-Zip', '7z.exe')
-    
+
     tempdir = tempfile.mkdtemp()
     atexit.register(shutil.rmtree, tempdir)
     programdirname = os.path.join(tempdir, global_vars.name)
-    
+
     # Create/update the master translation file
-    print '\nCreating translation file...'
+    print('\nCreating translation file...')
     if not i18n.main():
         return
-    
+
     # Create the program executable using py2exe
+    # todo: py2exe is not available for Python v3.7
     if os.system('""%s" -O setup.py py2exe -d %s"' % (pythonexe, programdirname)):
         return
-    
+
     # Update the translation files in the temporal subdirectory
     i18n.UpdateTranslationFile(os.path.join(programdirname, 'translations'), version=global_vars.version)
-    
+
     # Create/update 'macros_readme.txt' in the macros subdirectory
     avsp.GenerateMacroReadme(os.path.join(programdirname, 'macros', 'macros_readme.txt'))
-    
+
     # Set the large address aware flag in the executable
-    if not x86_64:
+    err = 0
+    if find_editbin and not x86_64:
         re_vs = re.compile('VS\d+COMNTOOLS', re.I)
         for key, value in os.environ.iteritems():
             match = re_vs.match(key)
@@ -104,19 +110,28 @@ def main():
                     dir = os.path.join(vs_path, 'Common7', 'IDE')
                     if os.path.isdir(dir):
                         os.environ['PATH'] += os.pathsep + dir
-                        print '\nSetting large address aware flag...'
-                        if os.system('""%s" /LARGEADDRESSAWARE "%s""' % 
+                        print('\nSetting large address aware flag...')
+                        if os.system('""%s" /LARGEADDRESSAWARE "%s""' %
                                 (editbin, os.path.join(programdirname, 'run.exe'))):
-                            print 'Failed'
+                            print('Failed')
                         else: break
         else:
-            print "\neditbin not found.  Large address aware flag not set"
-    
+            print("\neditbin not found.  Large address aware flag not set")
+            err = 1
+
+    elif not x86_64:
+        # GPo, need do change the path for LargeAdressAware
+        editbin = os.path.join(editbinPath, 'editbin.exe')
+        print ('\nSetting large address aware flag...')
+        if os.system('""%s" /LARGEADDRESSAWARE "%s""' % (editbin, os.path.join(programdirname, 'run.exe'))):
+            print("\neditbin not found.  Large address aware flag not set")
+            err = 1 #Breaks the upx, is error for LargAdressAware save time
+
     # Compress the files with UPX, if available
     if x86_64:
-        print "\nSkipping UPX'ing on x86-64 builds"
-    elif  __debug__:
-        print "\nDebug mode, skipping UPX'ing"
+        print("\nSkipping UPX'ing on x86-64 builds")
+    elif  __debug__ or err == 1:
+        print("\nDebug mode, skipping UPX'ing")
     else:
         if not os.path.isfile(upx):
             upx = isinpath('upx.exe')
@@ -128,12 +143,12 @@ def main():
                         args.append(os.path.join(root, file))
             subprocess.call(args)
         else:
-            print "\nUPX not found"
-    
+            print("\nUPX not found")
+
     # Manage the files
-    os.rename(os.path.join(programdirname, 'run.exe'), 
+    os.rename(os.path.join(programdirname, 'run.exe'),
               os.path.join(programdirname, '{0}.exe'.format(global_vars.name)))
-    os.rename(os.path.join(programdirname, 'README.md'), 
+    os.rename(os.path.join(programdirname, 'README.md'),
               os.path.join(programdirname, 'readme.txt'))
     atexit.register(shutil.rmtree, 'build')
 
@@ -141,13 +156,13 @@ def main():
     if not os.path.isfile(exe7z):
         exe7z = isinpath('7z.exe')
     if exe7z:
-        print '\nCreating 7z archive...'
+        print('\nCreating 7z archive...')
         zipname = zipname.replace('.zip', '.7z')
         if os.path.isfile(zipname):
             os.remove(zipname)
         subprocess.call([exe7z, 'a', '-bd', '-r', zipname, programdirname])
     else:
-        print '\nCreating ZIP archive...'
+        print('\nCreating ZIP archive...')
         if os.path.isfile(zipname):
             os.remove(zipname)
         zip = zipfile.ZipFile(zipname, 'w', zipfile.ZIP_DEFLATED)

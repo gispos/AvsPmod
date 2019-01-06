@@ -1,3 +1,13 @@
+Version 2.6.0.1 GPo
+-----------------
+
+- With pinterf (pfmod) modifications
+- Avisynth header version 6
+- For moore see changelog
+
+Releases GPo:
+<https://github.com/gispos/AvsPmod/releases>
+
 
 What is AviSynth?
 -----------------
@@ -114,9 +124,6 @@ Development:
 
 Releases:
 <https://github.com/AvsPmod/AvsPmod/releases>
-
-Releases GPo:
-<https://github.com/gispos/AvsPmod/releases>
 
 Filter database wiki:
 <https://github.com/AvsPmod/AvsPmod/wiki/Filter-database>

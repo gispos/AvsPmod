@@ -27,7 +27,11 @@
 # Scripts:
 #     global_vars.py (application info and other shared variables)
 
-import __builtin__
+try:
+    import __builtin__ as builtins
+except ImportError:
+    #The __builtin__ module was renamed to builtins in Python3.
+    import builtins
 import sys
 import os
 import os.path
@@ -37,7 +41,8 @@ import re
 import global_vars
 
 def _(s): return s
-__builtin__._ = _
+builtins._ = _ # Python3
+# Python2 only: __builtin__._ = _
 
 pythonexe = sys.executable 
 pygettextpath = os.path.join(sys.prefix, 'Tools', 'i18n', 'pygettext.py')
@@ -108,7 +113,11 @@ def GenerateMessages(messageSet, args):
     
     oldline = ''
     newlines = []
-    if isinstance(args, basestring):
+    from six import string_types # for Python 2 and 3
+    if isinstance(args, string_types): # no basestring
+        # V3: The builtin basestring abstract type was removed. 
+        # Use str instead. The str and bytes types don’t have functionality enough in common to warrant 
+        # a shared base class. The 2to3 tool replaces every occurrence of basestring with str.
         os.system('""%s" "%s" %s"' % (pythonexe, pygettextpath, args))
     else:
         filename, menuLabel, statusString = args

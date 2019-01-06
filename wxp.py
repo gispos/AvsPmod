@@ -42,9 +42,22 @@ import time
 
 import wx.lib.newevent
 import socket
-import thread
-import StringIO
-import cPickle
+try:
+    import thread
+except:
+    pass
+    # or import threading??
+try:
+    from StringIO import StringIO
+except ImportError:
+    from io import StringIO # not 100% the same, ComvertError can occur
+    # Python 3: The StringIO and cStringIO modules are gone.
+    # Instead, import the io module and use io.StringIO or io.BytesIO for text and data respectively.
+
+try:
+    import cPickle # Python 2
+except ImportError:
+    import pickle as cPickle # Python 3
 
 from icons import checked_icon, unchecked_icon
 
@@ -110,12 +123,12 @@ def MakeWindowTransparent(window, amount, intangible=False):
     import ctypes
     user32 = ctypes.windll.user32
     hwnd = window.GetHandle()
-    style = user32.GetWindowLongA(hwnd, 0xffffffecL)
+    style = user32.GetWindowLongA(hwnd, 0xffffffec) # Python3: no L suffix after 0xffffffec
     style |= 0x00080000
     if intangible:
-        style |= 0x00000020L
+        style |= 0x00000020  # Python3: no L suffix
         window.SetWindowStyleFlag(window.GetWindowStyleFlag()|wx.STAY_ON_TOP)
-    user32.SetWindowLongA(hwnd, 0xffffffecL, style)
+    user32.SetWindowLongA(hwnd, 0xffffffec, style)  # Python3: no L suffix after 0xffffffec
     user32.SetLayeredWindowAttributes(hwnd, 0, amount, 2)
     
 def GetTranslatedShortcut(shortcut):

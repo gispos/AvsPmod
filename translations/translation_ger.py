@@ -16,18 +16,18 @@
 
 # Übersetzt von Henrik . AvsP 2.0.1  Danke für die Hilfe, besonders LigH ,doxville,Brother John, Selur und Rippraff !
 
-version = "2.5.1.09"
+version = "2.5.1.18"
 
 messages = {
     "AviSynth script" : u"", # New in v2.3.0
-    "AviSynth fonts and colors" : u"Avisynthschriftarten und Farben",
+    "AviSynth fonts and colors" : u"AviSynt Schriftarten und Farben",
     "Background" : u"Hintergrund",
-    "Font" : u"Schriftarten",
+    "Font" : u"Schriftart",
     "Text color" : u"Textfarbe",
-    "Select a predefined theme" : u"", # New in v2.5.1 r452
-    "Only change colours" : u"", # New in v2.5.1 r452
+    "Select a predefined theme" : u"Wähle ein vordefiniertes Thema", # New in v2.5.1 r452
+    "Only change colours" : u"Nur Farben ändern", # New in v2.5.1 r452
     "When selecting a theme, don't change current fonts" : u"", # New in v2.5.1 r452
-    "OK" : u"OK",
+    "OK" : u"",
     "Cancel" : u"Abbrechen",
     "Page:" : u"", # New in v2.3.1
     "Page: %d" : u"", # New in v2.3.1
@@ -66,7 +66,7 @@ messages = {
     "Initial value:" : u"Anfänglicher Wert:",
     "Add or override AviSynth functions in the database" : u"Hinzufügen oder überschreiben der Avisynthfunktioen in der Datenbank",
     "Core filters" : u"Corefilter",
-    "Plugins" : u"Plugins",
+    "Plugins" : u"",
     "User functions" : u"Anwenderfunktionen",
     "Script functions" : u"Skriptfunktionen",
     "Clip properties" : u"Clip Eigenschaften",
@@ -82,8 +82,8 @@ messages = {
     "Clear manual presets" : u"Lösche selbst erstellte Voreinstellungen",
     "When importing, don't show the choice dialog" : u"", # New in v2.2.1
     "Edit function information" : u"Funktionsinformationen bearbeiten",
-    "Name:" : u"Name",
-    "Type:" : u"Type",
+    "Name:" : u"",
+    "Type:" : u"",
     "clip property" : u"Clipeigenschaft",
     "core filter" : u"Corefilter",
     "plugin" : u"Plugin",
@@ -178,11 +178,11 @@ messages = {
     "Leave blank to use the default directory. Changing it needs admin rights on Windows" : u"", # New in v2.4.0
     "Plugins autoload directory:" : u"", # New in v2.4.0
     "Override the current working directory" : u"", # New in v2.4.0
-    "Use a custom working directory" : u"Verwende Benutzerdefiniertes Arbeitsverzeichniss",
+    "Use a custom working directory" : u"Verwende Benutzerdefiniertes Arbeitsverzeichnis",
     "For all scripts" : u"Für alle Skripts",
     "Use the custom directory also for scripts saved to file, instead of its parent" : u"", # New in v2.4.0
-    "Specify an alternative working directory" : u"Wähle ein alternatives Arbeitsverzeichniss",
-    "Working directory:" : u"Arbeitsverzeichniss",
+    "Specify an alternative working directory" : u"Wähle ein alternatives Arbeitsverzeichnis",
+    "Working directory:" : u"Arbeitsverzeichnis",
     "External player:" : u"Externer Player:",
     "Location of external program for script playback" : u"Verzeichnis des externen Programms für Skriptplayback",
     "Executable files" : u"", # New in v2.3.0
@@ -260,9 +260,9 @@ messages = {
     "Only on tabs of the same characteristics" : u"", # New in v2.5.0
     "Only share timeline for clips with the same resolution and frame count" : u"", # New in v2.5.0
     "Determines which mouse wheel function is used, see below tabs" : u"", # New in v2.5.1.09
-    "Frames step" : u"Frames Schritt", # New in v2.5.1.09
-    "Mouse Wheel Function" : u"Mausrad Funktion", # New in v2.5.1.09
-    "Tabs scrolling" : u"Tabs scrollen", # New in v2.5.1.09
+    "Frames step" : u"Frames Schritt",
+    "Mouse Wheel Function" : u"Mausrad Funktion",
+    "Tabs scrolling" : u"Tabs wechseln",
     "Enable scroll wheel through similar tabs" : u"", # New in v2.2.1
     "Mouse scroll wheel cycles through tabs with similar videos" : u"", # New in v2.0.1
     "Enable scroll wheel through tabs on the same group" : u"", # New in v2.5.0
@@ -276,8 +276,8 @@ messages = {
     "Min text lines on video preview" : u"Min Textzeilen der Video-Vorschaufunktion",
     "Minimum number of lines to show when displaying the video preview" : u"Minimalanzahl von Zeilen der Video-Vorschaufunktion",
     "Customize the video information shown in the program status bar" : u"Anpassen der Videoinformationen , die in der Programm-Status-Bar gezeigt werden",
-    "Customize video status bar..." : u"Anpassen der Video-Status-Bar",
-    "Error message font" : u"", # New in v2.5.1 r452
+    "Customize video status bar..." : u"Anpassen der Video Status-Bar",
+    "Error message font..." : u"", # New in v2.5.1.18
     "Set the font used for displaying the error if evaluating the script fails" : u"", # New in v2.5.1 r452
     "User Sliders" : u"Benutzer-Schieberegler",
     "Hide slider window by default" : u"Ausblenden des Schiebereglerfensters als Standard",
@@ -299,9 +299,9 @@ messages = {
     "Create placeholders for arguments which have no database information" : u"Platzhalter für Argumente erstellen, die keine Datenbankinformationen haben",
     "undocumented" : u"Undokumentiert",
     "Determines which filters will initially have hidden arguments in the slider window" : u"Stellt zuerst fest, welche Filter versteckt Argumente im Schiebereglerfenster haben",
-    "Fold all" : u"Alle eingeklappt",
-    "Fold non-numbers" : u"Nichtnumerische eingeklappt",
-    "Fold none" : u"Alle ausgeklappt",
+    "Fold all" : u"Alle eingeklappen",
+    "Fold non-numbers" : u"Nichtnumerische eingeklappen",
+    "Fold none" : u"Alle ausgeklappen",
     "Fold startup setting" : u"Filterparameter Ein-/Ausklappen",
     "Filter exclusion list:" : u"Filterausschlußliste",
     "Specify filters never to build automatic sliders for" : u"Spezifiziert Filter, für die kein automatischer Schieberegler erstellt wird.",
@@ -338,7 +338,7 @@ messages = {
     "Start save image dialogs on the last used directory" : u"", # New in v2.4.0
     "Choose a default pattern for image filenames. %s -> script title, %06d -> frame number padded to six digits" : u"", # New in v2.5.0
     "Default image filename pattern" : u"", # New in v2.5.0
-    "Ask for JPEG quality" : u"Frage nach JPEG Qualität", # New in v2.5.0
+    "Ask for JPEG quality" : u"Frage nach JPEG Qualität",
     "When saving a JPEG image, prompt for the quality level. Use the value from the last time if not checked" : u"", # New in v2.5.0
     "Misc" : u"Sonstiges",
     "Choose the language used for the interface" : u"", # New in v2.3.0
@@ -347,15 +347,19 @@ messages = {
     "Use large size video controls" : u"", # New in v2.4.1
     "Show keyboard images in the script tabs when video has focus" : u"Zeigen der Tastaturabbildungen (keyboard images)in den Skript-Tabs, wenn Video fokusiert",
     "Use keyboard images in tabs" : u"Verwenden von Tastaturabbildungen (keyboard images) bei Tabulatoren",
-    "Show tabs in multiline style" : u"Tabs im Multiline Style anzeigen", # New in v2.2.1
+    "Show tabs in multiline style" : u"Tabs im Multiline Style anzeigen",
     "There can be several rows of tabs" : u"", # New in v2.2.1
-    "All tabs will have same width" : u"Alle Tabs haben die gleiche Breite", # New in v2.2.1
-    "Show tabs in fixed width" : u"Fixe Breite für Tabs", # New in v2.2.1
-    "Invert scroll wheel direction (Tabs, Zoom)" : u"Mausrad Direktion vertauschen (Tabs, Zoom)", # New in v2.5.1.09
+    "All tabs will have same width" : u"Alle Tabs haben die gleiche Breite",
+    "Show tabs in fixed width" : u"Fixe Breite für Tabs",
+    "Invert scroll wheel direction (Tabs, Zoom)" : u"Mausrad Direktion vertauschen (Tabs, Zoom)",
     "Scroll the mouse wheel up for changing tabs to the right" : u"", # New in v2.4.1
-    "Invert scroll wheel direction (Frame)" : u"Mausrad Direktion vertauschen (Frame) ", # New in v2.5.1.09
-    "Invert wheel direction for frame scrolling" : u"Für Frame scrollen Mausrad Direktion vertauschen", # New in v2.5.1.09
-    "Only allow a single instance of AvsPmod" : u"Nur eine Programminstanz erlauben", # New in v2.2.1
+    "Invert scroll wheel direction (Frame)" : u"Mausrad Direktion vertauschen (Frame) ",
+    "Invert wheel direction for frames step" : u"", # New in v2.5.1.18
+    "Automatically load bookmarks from script only if tab count 1" : u"Beim ersten Skript immer Bookmarks vom Skript laden", # New in v2.5.1.18
+    "On first script load bookmarks from script" : u"", # New in v2.5.1.18
+    "Automatically load bookmarks from script if tab changed" : u"Beim Tab wechsel Bookmarks vom Skript laden", # New in v2.5.1.18
+    "Tabs changing load bookmarks from script" : u"", # New in v2.5.1.18
+    "Only allow a single instance of AvsPmod" : u"Nur eine Programminstanz erlauben",
     "Show warning at startup if there are dlls with bad naming in default plugin folder" : u"", # New in v2.2.1
     "Show warning for bad plugin naming at startup" : u"", # New in v2.2.1
     "Max number of recent filenames" : u"Max.Anzahl neuer Dateinamen",
@@ -456,35 +460,35 @@ messages = {
     "New tab" : u"Neuer Tab",
     "Open an existing script" : u"Öffne ein vorhandenes Skript",
     "Open..." : u"Öffnen...",
-    "Reopen the last closed tab" : u"", # New in v2.4.0
-    "Undo close tab" : u"Geschlossenen Tab wiederherstellen", # New in v2.4.0
+    "Reopen the last closed tab" : u"Zuletzt geschlossenen Tab öffnen", # New in v2.4.0
+    "Undo close tab" : u"Geschlossenen Tab wiederherstellen",
     "Close tab" : u"Tab schließen",
     "Close the current tab" : u"Aktuellen Tab schließen",
     "Close all tabs" : u"Schließe alle Tabs",
     "Close every tab" : u"Schließe jeden Tab",
-    "Rename tab" : u"Tab umbenennen", # New in v2.2.1
+    "Rename tab" : u"Tab umbenennen",
     "Rename the current tab. If script file is existing, also rename it" : u"", # New in v2.2.1
     "Save the current script" : u"Speichere aktuelles Skript",
     "Choose where to save the current script" : u"Speicherverzeichnis des aktuellen Skripts",
     "Save script as..." : u"Speichere Skript als...",
-    "Reload script" : u"Skript neu laden", # New in v2.4.1
+    "Reload script" : u"Skript neu laden",
     "Reopen the current script file if it has changed" : u"", # New in v2.4.1
     "If the current script is saved to a file, open its directory" : u"", # New in v2.5.1
-    "Open script's directory" : u"Verzeichniss des Skripts öffnen", # New in v2.5.1
-    "Save the current script as a HTML document" : u"Speichere das aktuelle Skript als HTML Dokument", # New in v2.5.0
-    "Export HTML" : u"Exportieren als HTML", # New in v2.5.0
-    "&Print script" : u"Drucken", # New in v2.3.1
-    "Configure page for printing" : u"Konfiguriere Seite", # New in v2.3.1
-    "Page setup" : u"Seiten Einstellungen", # New in v2.3.1
-    "Include the script filename and page number at the top of each page" : u"Skript Name und Seiten Nummer als Kopfzeile verwenden", # New in v2.3.1
-    "Print header" : u"Drucke Kopfzeile", # New in v2.3.1
-    "Word-wrap long lines" : u"Zeilenumbruch für lange Zeilen", # New in v2.3.1
-    "Apply the current zoom to the output" : u"Verwende aktuellen Zoom", # New in v2.3.1
-    "Use zoom" : u"Verwende Zoom", # New in v2.3.1
-    "Display print preview" : u"Zeige Druckervorschau", # New in v2.3.1
-    "Print preview" : u"Zeige Vorschau", # New in v2.3.1
-    "&Print" : u"Drucken", # New in v2.3.1
-    "Print to printer or file" : u"Auftrag an Drucker oder Datei", # New in v2.3.1
+    "Open script's directory" : u"Verzeichnis des Skripts öffnen",
+    "Save the current script as a HTML document" : u"Speichere das aktuelle Skript als HTML Dokument",
+    "Export HTML" : u"Exportieren als HTML",
+    "&Print script" : u"Drucken",
+    "Configure page for printing" : u"Konfiguriere Seite",
+    "Page setup" : u"Seiten Einstellungen",
+    "Include the script filename and page number at the top of each page" : u"Skript Name und Seiten Nummer als Kopfzeile verwenden",
+    "Print header" : u"Drucke Kopfzeile",
+    "Word-wrap long lines" : u"Zeilenumbruch für lange Zeilen",
+    "Apply the current zoom to the output" : u"Verwende aktuellen Zoom",
+    "Use zoom" : u"Verwende Zoom",
+    "Display print preview" : u"Zeige Druckervorschau",
+    "Print preview" : u"Zeige Vorschau",
+    "&Print" : u"Drucken",
+    "Print to printer or file" : u"Auftrag an Drucker oder Datei",
     "Load a session into the tabs" : u"Lade eine Session in Tabs",
     "Load session..." : u"Lade Session...",
     "Save all the scripts as a session, including slider info" : u"Speichern aller Skripte einer Session, inklusive Info des Schiebereglers",
@@ -508,15 +512,15 @@ messages = {
     "Find..." : u"Suchen...",
     "Find next" : u"Weitersuchen",
     "Find the next instance of given text" : u"Nächste Instanz in diesem Text suchen",
-    "Find previous" : u"Finde vorheriges", # New in v2.4.0
-    "Find the previous instance of given text" : u"", # New in v2.4.0
-    "Open a replace text dialog box" : u"Öffen der Dialogbox Ersetzen",
+    "Find previous" : u"Finde vorheriges",
+    "Find the previous instance of given text" : u"Vorherige Instanz in diesem Text suchen", # New in v2.4.0
+    "Open a replace text dialog box" : u"Öffne Ersetzen-Dialog",
     "Replace..." : u"Ersetzen...",
-    "Replace next" : u"Ersetze nächstes", # New in v2.4.0
-    "Replace the next instance of given text" : u"", # New in v2.4.0
+    "Replace next" : u"Ersetze nächstes",
+    "Replace the next instance of given text" : u"Ersetze nächste Instanz in diesem Text", # New in v2.4.0
     "Select All" : u"Alles auswählen",
     "Select all the text" : u"Gesammten Text auswählen",
-    "&Insert" : u"&Einfügen",
+    "&Insert" : u"",
     "Expand a snippet tag, or select a snippet from the list" : u"", # New in v2.5.0
     "Insert snippet" : u"", # New in v2.5.0
     "Choose a source file to insert into the text" : u"Sourcedatei auswählen, um sie in den Text einzufügen",
@@ -556,11 +560,11 @@ messages = {
     "Show the calltip for the filter (only works if cursor within the arguments)" : u"Zeige Filtercalltips (arbeitet nur wenn der Cursor innerhalb der Argumente steht)",
     "Show function definition" : u"Zeige Funktiosdefinition",
     "Show the AviSynth function definition dialog for the filter" : u"Zeige die Avisynth-Funktions-Definitions-Dialog für den Filter",
-    "Filter help file" : u"Filter-Hilfedatei", 
+    "Filter help file" : u"Filter Hilfedatei", 
     "Run the help file for the filter (only works if cursor within the arguments or name is highlighted)" : u"Starte die Hilfedatei für die Filter (arbeitet nur wenn der Cursor innerhalb der Argumente steht oder Name hervorgehoben ist)",
     "Include functions defined in the current script in the filter database, only for this tab" : u"", # New in v2.5.1 r452
     "Parse script for function definitions" : u"", # New in v2.5.1 r452
-    "&Miscellaneous" : u"", # New in v2.2.1
+    "&Miscellaneous" : u"Sonstiges", # New in v2.2.1
     "Move line up" : u"Zeile hochrücken",
     "Move the current line or selection up by one line" : u"Zeile oder Auswahl um eine Zeile hochrücken",
     "Move line down" : u"Zeile nach unten rücken",
@@ -570,6 +574,9 @@ messages = {
     "Copy avisynth error to clipboard" : u"", # New in v2.2.1
     "Copy the avisynth error message shown on the preview window to the clipboard" : u"", # New in v2.2.1
     "&Video" : u"",
+    "Bookmarks" : u"", # New in v2.4.0
+    "Bookmarks to script" : u"", # New in v2.5.1.18
+    "Bookmarks from script" : u"", # New in v2.5.1.18
     "Add/Remove bookmark" : u"", # New in v2.2.1
     "Mark the current frame on the frame slider" : u"Markiere das aktuelle Einzelbild am Eizeldbild-Schieberegler",
     "Clear all bookmarks" : u"Lösche alle Lesezeichen",
@@ -689,6 +696,8 @@ messages = {
     "Select custom color" : u"", # New in v2.5.1 r452
     "Create the new AviSynth clip on the same environment. Useful for tweaking parameters" : u"", # New in v2.4.0
     "Keep variables on refreshing" : u"", # New in v2.4.0
+    "Save last view position and zoom on tab change" : u"", # New in v2.5.1.18
+    "Save view pos on tab change" : u"", # New in v2.5.1.18
     "Save image as..." : u"Speichere Bild als...",
     "Save the current frame as a bitmap" : u"Speicher das aktuelle Einzelbild als Bitmap-Datei",
     "Quick save image" : u"", # New in v2.5.0
@@ -724,11 +733,15 @@ messages = {
     "If checked, the video preview will not be shown under any circumstances" : u"Wenn angehakt, wird unter keinen Umständen die Video-Vorschaufunktion gezeigt werden",
     "Associate .avs files with AvsP" : u"Assoziiere .avs-Dateien mit AvsP",
     "Configure this computer to open .avs files with AvsP when double-clicked. Run again to disassociate" : u"", # New in v2.4.0
-    "AviSynth function definition..." : u"AviSynth-Funktionsdefinition",
     "Edit the various AviSynth script fonts and colors" : u"Bearbeite die verschiedenen Schriftarten und Farben im Avisynth-Skript",
-    "Fonts and colors..." : u"Schriftarten und Farben",
+    "Fonts and colors..." : u"Schriftarten und Farben...",
+    "Make fonts and colors backup" : u"Erstelle Schriftarten && Farben Backup", # New in v2.5.1.18
+    "Make script fonts and colors backup" : u"", # New in v2.5.1.18
+    "Load fonts and colors backup" : u"Lade Schriftarten && Farben Backup", # New in v2.5.1.18
+    "Restores script fonts and colors from backup" : u"", # New in v2.5.1.18
+    "AviSynth function definition..." : u"AviSynth Funktionsdefinitionen...",
     "Edit the extension-based templates for inserting sources" : u"Bearbeite die Dateierweiterung basierenden Vorlagen um die Sources einzufügen",
-    "Extension templates..." : u"Datei-Typ basierende Vorlagen...", 
+    "Extension templates..." : u"Dateityp basierende Vorlagen...", 
     "Snippets..." : u"", # New in v2.5.0
     "Edit insertable text snippets" : u"", # New in v2.5.0
     "Configure the program keyboard shortcuts" : u"Programmkonfiguration der Tastatur Kurzbefehle",
@@ -745,7 +758,7 @@ messages = {
     "Learn more about AvsP user sliders (from the AvsP website)" : u"Lerne mehr über AvsP Benutzer-Schieberegler (von der AvsP Webseite)",
     "User sliders" : u"Benutzer-Schieberegler",
     "Learn more about AvsP macros (from the AvsP website)" : u"Lerne mehr über AvsP Macros (von der AvsP Webseite)",
-    "Macros" : u"Macros",
+    "Macros" : u"",
     "Avisynth help" : u"Avisynth Hilfe",
     "Open the avisynth help html" : u"Öffne Avisynth-HTML-Hilfe",
     "Open Avisynth plugins folder" : u"", # New in v2.2.1
@@ -778,10 +791,10 @@ messages = {
     "Crop editor" : u"Cropeditor",
     "You can drag the crop regions with the left mouse button when this dialog is visible, cropping the edge closest to the initial mouse click." : u"Bei diesem Dialog ,kann die Cropfunktion auch mittels linker Maustaste im Bild ausgeführt werden.",
     "Auto-crop" : u"", # New in v2.4.0
-    "Samples" : u"", # New in v2.4.0
+    "Samples" : u"Vorlagen", # New in v2.4.0
     "At script end" : u"Am Skriptende",
     "At script cursor" : u"Am Skriptcursor", 
-    "Copy to clipboard" : u"Kopiere zum Clipboard ",
+    "Copy to clipboard" : u"Kopiere zum Clipboard",
     "Insert Crop() command:" : u"Eingabe Crop() Befehl:",
     "Apply" : u"Übernehmen",
     "Trim editor" : u"Trim Editor",
@@ -790,10 +803,14 @@ messages = {
     "Keep unselected regions" : u"Behalte freie Bereiche", 
     "Mark video frames inside/outside selection" : u"Video-Frames innerhalb/außerhalb der Auswahl markieren",
     "Use Dissolve() with overlap frames:" : u"", # New in v2.2.1
-    "Insert Trim() commands:" : u"Eingabe Trim() Befehle",
-    "Insert Dissolve() commands:" : u"", # New in v2.2.1
+    "Single clips (c0..cn) with prefix:" : u"", # New in v2.5.1.18
+    "Insert Trim() commands: " : u"", # New in v2.5.1.18
+    "Insert clips commands: " : u"", # New in v2.5.1.18
+    "Insert Dissolve(trim,) commands: " : u"", # New in v2.5.1.18
+    "Insert Dissolve(clips,) commands: " : u"", # New in v2.5.1.18
     "Use the buttons which appear on the video slider handle to create the frame selections to trim." : u"Video-Schieberegler für die Bildauswahl zum trimmen benutzen ",
-    "The script's directory doesn't exist anymore!" : u"", # New in v2.5.1
+    "The script's directory doesn't exist anymore!" : u"Das Skript Verzeichnis exestiert nicht mehr", # New in v2.5.1
+    "%d Bookmarks imported" : u"", # New in v2.5.1.18
     "Print Preview" : u"", # New in v2.3.1
     "Failed to create print preview" : u"", # New in v2.3.1
     "Print Error" : u"", # New in v2.3.1
@@ -829,28 +846,28 @@ messages = {
     "Colorspace:" : u"Farbraum",
     "Field or frame based:" : u"Feld oder Einzelbild basierend",
     "Parity:" : u"Parität",
-    "Audio" : u"Audio",
+    "Audio" : u"",
     "Channels:" : u"Kanäle",
-    "Hz" : u"Hz",
+    "Hz" : u"",
     "Sampling rate:" : u"Abtastrate",
     "Sample type:" : u"Sample-Typ",
     "bits" : u"Bits",
     "samples" : u"Samples", 
     "Could not find the macros folder!" : u"", # New in v2.2.1
-    "Failed to import the selected tool" : u"Fehlgeschlagen, um das gewählte Werkzeug zu importieren",
+    "Failed to import the selected tool" : u"Werkzeug importieren ist Fehlgeschlagen",
     "You must restart for changes to take effect!" : u"Sie müssen neu starten, damit Änderungen wirksam werden!",
     "Basic (1)" : u"", # New in v2.5.1 r452
     "Override all fonts to use a specified monospace font (no effect on scrap window)" : u"", # New in v2.2.1
     "Use monospaced font:" : u"", # New in v2.2.1
     "Default:" : u"Standard",
     "Comment:" : u"Kommentar",
-    "Block Comment:" : u"", # New in v2.2.1
+    "Block Comment:" : u"Block Kommentar", # New in v2.2.1
     "__END__ Comment:" : u"", # New in v2.2.1
     "Number:" : u"Nummer",
-    "String:" : u"String:",
-    "Triple-quoted string:" : u"Triple-quoted string:",
+    "String:" : u"",
+    "Triple-quoted string:" : u"",
     "Assignment:" : u"", # New in v2.5.0
-    "Operator:" : u"Operator",
+    "Operator:" : u"",
     "Basic (2)" : u"", # New in v2.5.1 r452
     "Internal filter:" : u"Interner Filter",
     "External filter:" : u"Externer Filter",
@@ -870,20 +887,22 @@ messages = {
     "Bad number:" : u"Fehlerhafte Nummer",
     "Margin line numbers:" : u"Randzeilennummern:",
     "Miscellaneous word:" : u"Rand Zeilennummern", 
-    "Calltip:" : u"Calltip",
-    "Calltip highlight:" : u"Hervorhebung Calltip:",
-    "Cursor:" : u"Cursor:",
+    "Calltip:" : u"",
+    "Calltip highlight:" : u"Calltip hervorheben:",
+    "Cursor:" : u"",
     "If checked, highlight also foreground" : u"", # New in v2.5.1 r452
     "Selection highlight:" : u"", # New in v2.2.1
     "Current line highlight:" : u"", # New in v2.2.1
     "Highlight the line that the caret is currently in" : u"Zeile mit Einschaltungszeichen hervorheben",
     "Fold margin:" : u"", # New in v2.2.1
     "Scrap window" : u"", # New in v2.2.1
+    "Information" : u"Information",
+    "Settings have been read from backup file\n" : u"", # New in v2.5.1.18
     "File extension shouldn't contain dots!" : u"", # New in v2.5.1 r452
     "Insert aborted:" : u"Eingabe abgebrochen",
     "Edit extension-based templates" : u"Bearbeite Dateivorlagen",
     "File extension" : u"Dateinamenserweiterung",
-    "Template" : u"Schablone",
+    "Template" : u"Vorlage",
     "This info is used for inserting sources based on file extensions." : u"Diese Information wird für Source basierende Dateinamenserweiterung benötigt",
     "Any instances of *** in the template are replaced with the filename." : u"Jede Instanz von *** in den Vorlagen wird ersetzt mit den Dateinamen",
     "(If you want relative paths instead of the full filename, use [***].)" : u"", # New in v2.2.1
@@ -906,6 +925,9 @@ messages = {
     "Active thread on Doom9's forum" : u"", # New in v2.2.1
     "This program is freeware under the GPL license." : u"Dieses Programm ist Freeware unter der GPL Lizenz.",
     "Input a frame number or time (hr:min:sec) and hit Enter. Right-click to retrieve from history." : u"", # New in v2.2.1
+    "bell at bookmarks" : u"", # New in v2.5.1.18
+    "highlight bookmarks" : u"", # New in v2.5.1.18
+    "set highlight color..." : u"", # New in v2.5.1.18
     "copy as time" : u"", # New in v2.2.1
     "copy" : u"", # New in v2.2.1
     "paste" : u"", # New in v2.2.1
@@ -972,6 +994,7 @@ messages = {
     "AviSynth plugins" : u"", # New in v2.3.0
     "VirtualDub plugins" : u"", # New in v2.3.0
     "VFAPI plugins" : u"", # New in v2.3.0
+    "Script import" : u"", # New in v2.5.1.18
     "AvxSynth plugins" : u"", # New in v2.4.0
     "Insert a plugin" : u"Eingabe Plugin",
     "No bookmarks defined!" : u"Keine Lesezeichen definiert",
@@ -980,17 +1003,17 @@ messages = {
     "Line: %(line)i  Col: %(col)i" : u"Zeile: %(line)i  Col: %(col)i",
     "Frame Based" : u"Einzelbild basierend",
     "Field Based" : u"Feld basierend",
-    "Bottom Field First" : u"Bottom Field zuerst",
-    "BFF" : u"BFF",
-    "Top Field First" : u"Top Field zuerst",
-    "TFF" : u"TFF",
-    "Integer" : u"Integer",
-    "Float" : u"Float",
-    "pos" : u"pos",
-    "hex" : u"hex",
+    "Bottom Field First" : u"Unteres Feld zuerst",
+    "BFF" : u"",
+    "Top Field First" : u"Oberes Feld zuerst",
+    "TFF" : u"",
+    "Integer" : u"",
+    "Float" : u"",
+    "pos" : u"",
+    "hex" : u"",
     "rgb" : u"RGB",
-    "rgba" : u"rgba",
-    "yuv" : u"yuv",
+    "rgba" : u"",
+    "yuv" : u"",
     "Edit AviSynth function information" : u"Bearbeite Information der Avisynthfunktionen ",
     "  Function name" : u"Funktiosname",
     "Function arguments" : u"Funktionsargumente", 
@@ -1000,6 +1023,8 @@ messages = {
     "Invalid filter customization file!" : u"Falsche Fileranpassungsdatei",
     "Save filter customization file" : u"Speichern Fileranpassungsdatei",
     "Invalid argument!" : u"Falsches Argument",
+    "Exit program?" : u"", # New in v2.5.1.18
+    "Question" : u"Frage",
     "Save changes before previewing?" : u"Speichern der Änderungen vor der Vorschau",
     "Select an external player" : u"Wähle einen externen Player",
     "A program must be specified to use this feature!" : u"Ein Programm muss angegeben werden um dieses Eigenschaften zu nutzen",
@@ -1025,7 +1050,7 @@ messages = {
     "Don't show me this again" : u"", # New in v2.2.1
     "Changing the plugins autoload directory writes to the Windows registry." : u"", # New in v2.4.0
     "You're changing the plugins autoload directory.\nDo you wish to change it for all applications? This will\nrequire writing to {0}" : u"", # New in v2.4.0
-    "Save as" : u"Speicher als", 
+    "Save as" : u"Speichere als", 
     "Select a directory" : u"Verzeichnis auswählen",
     "Enter information" : u"Informationen eintragen",
     "Progress" : u"Bearbeitung",
@@ -1039,9 +1064,9 @@ messages = {
     "Failed to open the AVI file" : u"Konnte die AVI-Datei nicht öffnen",
     "Failed to open the AVI frame" : u"Konnte das AVI-Einzelbild nicht öffnen",
     "Failed to retrieve AVI frame" : u"Konnte das AVI-Einzelbild nicht wiederherstellen",
-    "Ctrl" : u"Ctrl",
-    "Alt" : u"Alt",
-    "Shift" : u"Shift",
+    "Ctrl" : u"",
+    "Alt" : u"",
+    "Shift" : u"",
     "Error Window" : u"", # New in v2.4.0
     "Quick find" : u"", # New in v2.4.0
     "Find/replace text" : u"", # New in v2.4.0
@@ -1061,18 +1086,18 @@ messages = {
     "Cannot find \"%(text)s\"" : u"", # New in v2.3.0
     "Replaced %(count)i times" : u"Ersetzt %(count)i mal",
     "Program Settings" : u"Programm Einstellungen",
-    "Browse" : u"Browse",
+    "Browse" : u"",
     "* Requires program restart for full effect" : u"* Erfordert Programm Neustart für vollen Effekt",
     "Invalid directory!" : u"Ungültiges Verzeichnis",
     "Invalid filename!" : u"Ungültiger Dateiname",
     "Edit shortcuts" : u"Bearbeite Kurzbefehle",
-    "Menu label" : u" Menue Titel",
+    "Menu label" : u" Menü Titel",
     "Keyboard shortcut" : u"Tastaur Kurzbefehl",
     "Double-click or hit enter on an item in the list to edit the shortcut." : u"Doppelklick/Enter auf einen Begriff in der Liste um einen Kurzbefehl zu bearbeiten",
     "Shortcut" : u"", # New in v2.2.1
     "Action" : u"", # New in v2.2.1
     "Edit the keyboard shortcut" : u"Bearbeite Tastatur Kurzbefehl",
-    "Key:" : u"Key",
+    "Key:" : u"",
     "Clear" : u"Löschen",
     "%(keyString)s not found in key string list" : u"%(keyString)s konnte nicht in der key Sring Liste gefunden werden",
     "This shortcut is being used by:" : u"Diese Kurzbefehl wird benutzt von",
@@ -1081,7 +1106,6 @@ messages = {
     "Error: key %(key)s does not exist!" : u"Fehler: key %(key)s existiert nicht!",
     "Item %(newKey)s already exists!" : u"Element %(newKey)s existiert schon!",
     "Are you sure you want to rename from %(oldName)s to %(newName)s?" : u"Sind Sie sicher das Sie umbenennen möchten%(oldName)s zu %(newName)s?",
-    "Question" : u"Frage",
      "Insert a new item" : u"Ein neues Element einfügen",
     "Must enter a name!" : u"Es muss ein Name vergeben werden",
     "Warning: no value entered for item %(newKey)s!" : u"Warnung: Für das Element wurde kein Wert eingetragen %(newKey)s!",
@@ -1211,8 +1235,6 @@ messages = {
     "Random Clip Order" : u"", # New in v2.3.0
     "Save Image Sequence" : u"", # New in v2.3.0
     "Shift Bookmarks by frames" : u"", # New in v2.3.0
-    "_startup" : u"", # New in v2.5.1.06
-    "_startup_avs" : u"", # New in v2.5.1.06
     "Example (Resize)" : u"", # New in v2.3.0
     "Examples" : u"", # New in v2.3.0
     "Customized" : u"", # New in v2.3.0
@@ -1289,7 +1311,6 @@ messages = {
     "Failed to run the external player!\n\nOpen the macro file in the \"Macros\" subdirectory\nwith a text editor and edit the executable\ndirectory appropriately!" : u"", # New in v2.3.0
 
     #--- Macro: Save Image Sequence ---#
-    "Bookmarks" : u"", # New in v2.4.0
     "Save image sequence" : u"", # New in v2.4.0
     "Output format" : u"", # New in v2.4.0
     "Select frames" : u"", # New in v2.4.0
@@ -1309,7 +1330,6 @@ messages = {
     "Saving images..." : u"", # New in v2.3.0
     "scene_{0:0{1}}" : u"", # New in v2.5.0
     "%d image files created." : u"", # New in v2.3.0
-    "Information" : u"Information",
 
     #--- Macro: Shift Bookmarks by frames ---#
     "Introduce the number of frames:" : u"", # New in v2.3.0

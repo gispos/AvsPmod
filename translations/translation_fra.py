@@ -17,7 +17,7 @@
 # French traslation authors:
 #   André v2.0.2
 
-version = "2.5.1"
+version = "2.5.1.09"
 
 messages = {
     "AviSynth script" : u"", # New in v2.3.0
@@ -25,7 +25,9 @@ messages = {
     "Background" : u"Arrière-plan",
     "Font" : u"Police",
     "Text color" : u"Couleur",
-    "Reset" : u"", # New in v2.5.0
+    "Select a predefined theme" : u"", # New in v2.5.1
+    "Only change colours" : u"", # New in v2.5.1
+    "When selecting a theme, don't change current fonts" : u"", # New in v2.5.1
     "OK" : u"", # New in v1.2.1
     "Cancel" : u"Annuler",
     "Page:" : u"", # New in v2.3.1
@@ -161,6 +163,9 @@ messages = {
     "Translation updated" : u"", # New in v2.3.0
     "%s translation file updated.  No new messages to translate." : u"", # New in v2.3.0
     "%s language couldn't be loaded" : u"", # New in v2.3.0
+    "Solarized light" : u"", # New in v2.5.1
+    "Solarized dark" : u"", # New in v2.5.1
+    "Zenburn" : u"", # New in v2.5.1
     "Alternatively, specify now its directory." : u"", # New in v2.4.0
     "Select the {0} directory" : u"", # New in v2.4.0
     "Make sure you have AviSynth installed and that there are no unstable plugins or avsi files in the AviSynth plugins directory." : u"Vérifier qu'Avisynth est installé correctement et qu'aucun filtre / script avsi instable n'est présent dans le répertoire plugins d'Avisynth.",
@@ -191,18 +196,10 @@ messages = {
     "Documentation search url:" : u"URL pour la recherche de documentation :",
     "The web address to search if docs aren't found (the filter's name replaces %filtername%)" : u"L'adresse web de recherche de documents si non trouvé localement (%filtername% contient le nom du filtre)",
     "Text" : u"", # New in v2.2.1
-    "Show filter calltips" : u"Afficher les bulle d'aides des filtres",
-    "Turn on/off automatic tips when typing filter names" : u"Active/Désactive les bulles d'aide automatiques en cours de frappe des noms de filtres",
-    "Always show calltips any time the cursor is within the filter's arguments" : u"Active/Désactive l'affichage automatique des bulles d'aide quand le curseur se situe dans les paramètres d'un filtre",
-    "Frequent calltips" : u"Bulles d'aide automatiques",
-    "Syntax highlighting" : u"Mise en évidence / coloration syntaxique",
-    "Turn on/off avisynth-specific text colors and fonts" : u"Active/Désactive les couleures et polices spécifiques à Avisynth",
+    "Highlight the text as if it wasn't enclosed by triple quotes" : u"", # New in v2.5.1
+    "Style inside triple-quoted strings" : u"", # New in v2.5.1
     "Prefer functions over variables" : u"", # New in v2.5.0
     "When a word could be either a function or a variable, highlight it as function" : u"", # New in v2.5.0
-    "Show autocomplete on capital letters" : u"Sur lettres majuscules, afficher la liste automatique ",
-    "Turn on/off automatic autocomplete list when typing words starting with capital letters" : u"Active/Désactive la liste des filtres quand un mot est commencé par une lettre en majuscule",
-    "Amount of letters typed" : u"", # New in v2.3.0
-    "Show autocomplete list when typing a certain amount of letters" : u"", # New in v2.2.1
     "Don't allow lines wider than the window" : u"Retour à la ligne automatique si la ligne dépasse la taille de la fenêtre",
     "Wrap text" : u"Retour à la ligne auto",
     "Draw lines at fold points" : u"", # New in v2.2.1
@@ -213,6 +210,14 @@ messages = {
     "Tab width" : u"Largeur de tab",
     "Initial space to reserve for the line margin in terms of number of digits. Set it to 0 to disable showing line numbers" : u"", # New in v2.3.1
     "Line margin width" : u"Largeur de la marge",
+    "Show filter calltips" : u"Afficher les bulle d'aides des filtres",
+    "Turn on/off automatic tips when typing filter names" : u"Active/Désactive les bulles d'aide automatiques en cours de frappe des noms de filtres",
+    "Always show calltips any time the cursor is within the filter's arguments" : u"Active/Désactive l'affichage automatique des bulles d'aide quand le curseur se situe dans les paramètres d'un filtre",
+    "Frequent calltips" : u"Bulles d'aide automatiques",
+    "Show autocomplete on capital letters" : u"Sur lettres majuscules, afficher la liste automatique ",
+    "Turn on/off automatic autocomplete list when typing words starting with capital letters" : u"Active/Désactive la liste des filtres quand un mot est commencé par une lettre en majuscule",
+    "Amount of letters typed" : u"", # New in v2.3.0
+    "Show autocomplete list when typing a certain amount of letters" : u"", # New in v2.2.1
     "Autocomplete" : u"Remplissage automatique",
     "AviSynth user function database" : u"", # New in v2.4.2
     "Select what functions beside internal and user-defined will be included in the database" : u"", # New in v2.4.2
@@ -255,6 +260,10 @@ messages = {
     "Shared timeline" : u"", # New in v2.2.1
     "Only on tabs of the same characteristics" : u"", # New in v2.5.0
     "Only share timeline for clips with the same resolution and frame count" : u"", # New in v2.5.0
+    "Determines which mouse wheel function is used, see below tabs" : u"", # New in v2.5.1.09
+    "Frames scrolling" : u"", # New in v2.5.1.09
+    "Mouse Wheel Function" : u"", # New in v2.5.1.09
+    "Tabs scrolling" : u"", # New in v2.5.1.09
     "Enable scroll wheel through similar tabs" : u"", # New in v2.2.1
     "Mouse scroll wheel cycles through tabs with similar videos" : u"Permettre de se déplacer d'onglet à onglet (videos similaires seulement) avec la roue de la sourie",
     "Enable scroll wheel through tabs on the same group" : u"", # New in v2.5.0
@@ -269,6 +278,8 @@ messages = {
     "Minimum number of lines to show when displaying the video preview" : u"Nombre de lignes minimum a afficher dans la partie éditeur lors de l'affichage de la vidéo",
     "Customize the video information shown in the program status bar" : u"Personnaliser les informations de la barre d'état de la fenêtre vidéo",
     "Customize video status bar..." : u"Personnaliser la barre d'état vidéo...",
+    "Error message font" : u"", # New in v2.5.1
+    "Set the font used for displaying the error if evaluating the script fails" : u"", # New in v2.5.1
     "User Sliders" : u"Curseurs utilisateur",
     "Hide slider window by default" : u"Par défaut, cacher la zone des curseurs",
     "Keep the slider window hidden by default when previewing a video" : u"Par défaut, garde la zone des curseurs cachée dans la fenetre de prévisualisation vidéo",
@@ -276,6 +287,8 @@ messages = {
     "Create user sliders automatically using the filter database" : u"Cré des curseurs utilisateurs automatiquement depuis la base de données des filtres",
     "Create user sliders for int and float arguments" : u"Cré des curseurs utilisateurs pour les paramètres int et float",
     "type int/float (numerical slider)" : u"int/float (curseurs numériques)",
+    "Create listboxes for int list arguments" : u"", # New in v2.5.1
+    "type int (list)" : u"", # New in v2.5.1
     "Create color pickers for hex color arguments" : u"Cré un bouton pour choix de couleur en hex",
     "type int (hex color)" : u"int (couleur en hex)",
     "Create radio boxes for bool arguments" : u"Cré des boutons pour les paramètres bool",
@@ -308,10 +321,17 @@ messages = {
     "Prompt to save when previewing" : u"Proposer de sauvegarder le script avant d'afficher la vidéo correspondante",
     "Create a temporary preview script with unsaved changes when previewing the video" : u"Cré un script temporaire incluant les modifications non sauvegardées et servant à la prévisualisation vidéo",
     "Preview scripts with unsaved changes" : u"", # New in v2.2.1
-    "Don't prompt to save scripts without file" : u"", # New in v2.3.0
     "When closing a tab, don't prompt to save the script if it doesn't already exist on the filesystem" : u"", # New in v2.3.0
+    "When closing tab, don't prompt to save scripts without file" : u"", # New in v2.5.1.09
     "Prompt to save each script with unsaved changes when exiting the program" : u"Demande pour chaque script modifié non sauvegardé si une sauvegarde est nécessaire",
     "Prompt to save scripts on program exit" : u"A la fermeture, demander si les modifications du(es) script(s) sont à enregistrer",
+    "Only with existing script" : u"", # New in v2.5.1.09
+    "When exiting the program, don't prompt to save the script if it doesn't already exist on the filesystem" : u"", # New in v2.5.1.09
+    "Auto" : u"", # New in v2.5.1
+    "Auto: CRLF on Windows and LF on *nix for new scripts, existing scripts keep their current line endings" : u"", # New in v2.5.1
+    "Force CRLF" : u"", # New in v2.5.1
+    "Force LF" : u"", # New in v2.5.1
+    "Line endings" : u"", # New in v2.5.1
     "Save *.avs scripts with AvsPmod markings" : u"", # New in v2.2.1
     "Save AvsPmod-specific markings (user sliders, toggle tags, etc) as a commented section in the *.avs file" : u"", # New in v2.2.1
     "Start dialogs on the last used directory" : u"", # New in v2.4.0
@@ -332,8 +352,10 @@ messages = {
     "There can be several rows of tabs" : u"", # New in v2.2.1
     "All tabs will have same width" : u"", # New in v2.2.1
     "Show tabs in fixed width" : u"", # New in v2.2.1
-    "Invert scroll wheel direction" : u"", # New in v2.4.1
+    "Invert scroll wheel direction (Tabs, Zoom)" : u"", # New in v2.5.1.09
     "Scroll the mouse wheel up for changing tabs to the right" : u"", # New in v2.4.1
+    "Invert scroll wheel direction (Frame)" : u"", # New in v2.5.1.09
+    "Invert wheel direction for frame scrolling" : u"", # New in v2.5.1.09
     "Only allow a single instance of AvsPmod" : u"", # New in v2.2.1
     "Show warning at startup if there are dlls with bad naming in default plugin folder" : u"", # New in v2.2.1
     "Show warning for bad plugin naming at startup" : u"", # New in v2.2.1
@@ -425,6 +447,11 @@ messages = {
     "Fit inside window" : u"Ajuster à la fenêtre",
     "Vertically" : u"", # New in v2.2.1
     "Horizontally" : u"", # New in v2.2.1
+    "Black" : u"", # New in v2.5.1
+    "Dark grey" : u"", # New in v2.5.1
+    "Medium grey" : u"", # New in v2.5.1
+    "Light grey" : u"", # New in v2.5.1
+    "White" : u"", # New in v2.5.1
     "&File" : u"&Fichier",
     "Create a new tab" : u"Créer un nouvel onglet",
     "New tab" : u"Nouvel onglet",
@@ -518,6 +545,8 @@ messages = {
     "Toggle the fold point On/OFF at the current line" : u"", # New in v2.2.1
     "Toggle all fold points On/OFF" : u"", # New in v2.2.1
     "Toggle all folds" : u"Permutter (montrer/cacher) tous les curseurs",
+    "Toggle text wrap" : u"", # New in v2.5.1.09
+    "Toggle text wrap On/OFF" : u"", # New in v2.5.1.09
     "&AviSynth function" : u"", # New in v2.2.1
     "Show list of filternames matching the partial text at the cursor" : u"Affiche la liste des filtres correspondant au texte partiel au niveau du curseur",
     "Autocomplete all" : u"", # New in v2.2.1
@@ -530,6 +559,8 @@ messages = {
     "Show the AviSynth function definition dialog for the filter" : u"Affiche la définition AvsP de la fonction en cours et permet sa modification",
     "Filter help file" : u"Aide filtre",
     "Run the help file for the filter (only works if cursor within the arguments or name is highlighted)" : u"Charge le fichier d'aide associé à ce filtre (uniquement si le curseur se situe dans les paramètres ou si le nom du filtre est sélectionné",
+    "Include functions defined in the current script in the filter database, only for this tab" : u"", # New in v2.5.1
+    "Parse script for function definitions" : u"", # New in v2.5.1
     "&Miscellaneous" : u"", # New in v2.2.1
     "Move line up" : u"Monter ligne",
     "Move the current line or selection up by one line" : u"Monte la ligne courante ou sélection d'une ligne vers le haut",
@@ -560,6 +591,8 @@ messages = {
     "Clear all tab groups" : u"", # New in v2.5.0
     "Apply offsets" : u"", # New in v2.5.0
     "Use the difference between showed frames when the tabs were added to the group as offsets" : u"", # New in v2.5.0
+    "Offset also bookmarks" : u"", # New in v2.5.1
+    "Apply the offset also to the currently set bookmarks" : u"", # New in v2.5.1
     "&Navigate" : u"", # New in v2.2.1
     "Go to &bookmark" : u"", # New in v2.2.1
     "Go to next bookmarked frame" : u"Va au favori suivant",
@@ -611,6 +644,10 @@ messages = {
     "Set selection startpoint" : u"Définir le début de la sélection",
     "Set a selection endpoint (shows the trim editor if not visible)" : u"Défini la fin d'une sélection (affiche l'éditeur de trim si invisible)",
     "Set selection endpoint" : u"Définir la fin de la sélection",
+    "Move selections before the current frame" : u"", # New in v2.5.1
+    "The current selections are cut from the timeline and inserted before the current frame. Bookmarks are shifted accordingly." : u"", # New in v2.5.1
+    "Move selections after the current frame" : u"", # New in v2.5.1
+    "The current selections are cut from the timeline and inserted after the current frame. Bookmarks are shifted accordingly." : u"", # New in v2.5.1
     "Zoom video preview to 25%" : u"Affiche la video avec une taille d'image de 25%",
     "Zoom video preview to 50%" : u"Affiche la video avec une taille d'image de 50%",
     "Zoom video preview to 100% (normal)" : u"Affiche la video avec une taille d'image de 100% (par défaut)",
@@ -633,6 +670,24 @@ messages = {
     "Use full range" : u"", # New in v2.3.0
     "For YV12 only, assume it is progressive (default)" : u"", # New in v2.2.1
     "For YV12 only, assume it is interlaced" : u"", # New in v2.2.1
+    "Bith &depth" : u"", # New in v2.5.1
+    "8-bit" : u"", # New in v2.5.1
+    "Regular 8-bit depth (default)" : u"", # New in v2.5.1
+    "Stacked 16-bit, MSB on top, range reduced to 10-bit. Requires MaskTools v2 loaded" : u"", # New in v2.5.1
+    "Stacked yuv420p10 or yuv444p10" : u"", # New in v2.5.1
+    "Stacked 16-bit, MSB on top" : u"", # New in v2.5.1
+    "Stacked yuv420p16 or yuv444p16" : u"", # New in v2.5.1
+    "Interleaved 16-bit (little-endian), range reduced to 10-bit. Requires MaskTools v2 loaded" : u"", # New in v2.5.1
+    "Interleaved yuv420p10 or yuv444p10" : u"", # New in v2.5.1
+    "Interleaved 16-bit (little-endian)" : u"", # New in v2.5.1
+    "Interleaved yuv420p16 or yuv444p16" : u"", # New in v2.5.1
+    "Background &color" : u"", # New in v2.5.1
+    "Follow current theme" : u"", # New in v2.5.1
+    "Use RGB {hex_value}" : u"", # New in v2.5.1
+    "Use a custom color" : u"", # New in v2.5.1
+    "Custom" : u"", # New in v2.5.1
+    "Choose the color used if 'custom' is selected" : u"", # New in v2.5.1
+    "Select custom color" : u"", # New in v2.5.1
     "Create the new AviSynth clip on the same environment. Useful for tweaking parameters" : u"", # New in v2.4.0
     "Keep variables on refreshing" : u"", # New in v2.4.0
     "Save image as..." : u"Enregistrer l'image sous...",
@@ -647,6 +702,8 @@ messages = {
     "Toggle the video preview" : u"Active / Désactive la fenêtre vidéo",
     "Toggle preview placement" : u"", # New in v2.5.1
     "When not using a separate window for the video preview, toggle between showing it at the bottom (default) or to the right" : u"", # New in v2.5.1
+    "Toggle extended left move" : u"", # New in v2.5.1.09
+    "Video window extended left move" : u"", # New in v2.5.1.09
     "Release all open videos from memory" : u"Décharge de la mémoire toutes les vidéos en cours",
     "Release all videos from memory" : u"Décharger toutes les vidéos de la mémoire",
     "Switch focus between the video preview and the text editor" : u"Bascule le focus entre l'éditeur de texte et la fenêtre vidéo",
@@ -760,6 +817,9 @@ messages = {
     "No image to save" : u"Pas d'image à enregistrer",
     "Error requesting frame {number}" : u"", # New in v2.5.0
     "Couldn't open clipboard" : u"", # New in v2.4.2
+    "Cannot use crop editor unless bit depth is set to 8" : u"", # New in v2.5.1
+    "Cannot change bit depth while crop editor is open!" : u"", # New in v2.5.1
+    "Interleaved RGB48" : u"", # New in v2.5.1
     "Error loading the script" : u"Erreur pendant le chargement du script",
     "Starting analysis pass..." : u"", # New in v2.3.0
     "Frame %s/%s (%#.4g fps)" : u"", # New in v2.4.2
@@ -780,15 +840,19 @@ messages = {
     "Could not find the macros folder!" : u"", # New in v2.2.1
     "Failed to import the selected tool" : u"L'importation de l'outils sélectionné a échouée",
     "You must restart for changes to take effect!" : u"Vous devez relancer l'application pour que les modifications soient appliquées !",
-    "Basic" : u"Simple",
+    "Basic (1)" : u"", # New in v2.5.1
+    "Override all fonts to use a specified monospace font (no effect on scrap window)" : u"", # New in v2.2.1
+    "Use monospaced font:" : u"", # New in v2.2.1
     "Default:" : u"Par défaut :",
     "Comment:" : u"Commentaires :",
     "Block Comment:" : u"", # New in v2.2.1
     "__END__ Comment:" : u"", # New in v2.2.1
     "Number:" : u"Nombres :",
-    "Operator:" : u"Opérateurs :",
     "String:" : u"Chaines de caractères :",
     "Triple-quoted string:" : u"", # New in v1.2.1
+    "Assignment:" : u"", # New in v2.5.0
+    "Operator:" : u"Opérateurs :",
+    "Basic (2)" : u"", # New in v2.5.1
     "Internal filter:" : u"Filtres internes :",
     "External filter:" : u"Filtres externes :",
     "Internal function:" : u"Fonctions internes :",
@@ -796,11 +860,9 @@ messages = {
     "Unknown function:" : u"", # New in v2.5.0
     "Clip property:" : u"Définitions / propriétés :",
     "Parameter:" : u"", # New in v2.5.0
-    "Assignment:" : u"", # New in v2.5.0
-    "AviSynth keyword:" : u"Mots clefs AviSynth :",
     "AviSynth data type:" : u"Type de donnée AviSynth :",
+    "AviSynth keyword:" : u"Mots clefs AviSynth :",
     "AvsP user slider:" : u"Curseurs utilisateur AvsP :",
-    "Monospaced font:" : u"Police à largeur constante :",
     "Advanced" : u"Avancé",
     "Incomplete string:" : u"Chaines de caractères incomplète :",
     "Syntax highlight strings which are not completed in a single line differently" : u"Coloration syntaxique différente pour les chaînes de caractères incomplètes sur une même ligne",
@@ -812,14 +874,13 @@ messages = {
     "Calltip:" : u"Bulle d'aide :",
     "Calltip highlight:" : u"Coloration syntaxique dans la bulles d'aide :",
     "Cursor:" : u"Curseur :",
+    "If checked, highlight also foreground" : u"", # New in v2.5.1
     "Selection highlight:" : u"", # New in v2.2.1
     "Current line highlight:" : u"", # New in v2.2.1
     "Highlight the line that the caret is currently in" : u"Surligne la ligne où se situe le curseur",
     "Fold margin:" : u"", # New in v2.2.1
     "Scrap window" : u"", # New in v2.2.1
-    "Override all fonts to use a specified monospace font (no effect on scrap window)" : u"", # New in v2.2.1
-    "Use monospaced font:" : u"", # New in v2.2.1
-    "No dot required in file extension!" : u"Entrer l'extention sans . !",
+    "File extension shouldn't contain dots!" : u"", # New in v2.5.1
     "Insert aborted:" : u"Insertion annulée",
     "Edit extension-based templates" : u"Editer le remplissages automatique pour les extentions de fichiers",
     "File extension" : u"Extention",
@@ -840,9 +901,9 @@ messages = {
     "Could not find the Avisynth plugins folder!" : u"", # New in v2.2.1
     "Could not find %(readme)s!" : u"%(readme)s introuvable !",
     "Could not find %(changelog)s!" : u"", # New in v2.4.1
-    "AvsPmod version %(version)s " : u"", # New in v2.2.1
+    "{prog_name} v{version} ({arch})" : u"", # New in v2.5.1
     "AvsP Website" : u"Site internet d'AvsP",
-    "AvsPmod repository" : u"", # New in v2.4.0
+    "AvsPmod Website" : u"", # New in v2.5.1
     "Active thread on Doom9's forum" : u"", # New in v2.2.1
     "This program is freeware under the GPL license." : u"Ce programme est gratuit (freeware) sous licence GPL.",
     "Input a frame number or time (hr:min:sec) and hit Enter. Right-click to retrieve from history." : u"", # New in v2.2.1
@@ -899,7 +960,6 @@ messages = {
     "Save session before closing all tabs?" : u"Sauver la session avant de fermer tous les tabs ?",
     "Save current script" : u"Enregistrer le script courant",
     "Directory %(dirname)s does not exist!" : u"Répertoire %(dirname)s n'existe pas !",
-    "Syntax highlighting is not active!" : u"", # New in v2.5.0
     "Script has no text!" : u"", # New in v2.5.0
     "HTML files" : u"", # New in v2.5.0
     "Load a session" : u"Charger une session",
@@ -974,6 +1034,8 @@ messages = {
     "Error in the macro:" : u"erreur dans la macro :",
     "Couldn't find %(macrofilename)s" : u"%(macrofilename)s introuvable",
     "An AviSynth script editor" : u"Editeur de scripts Avisynth",
+    "Error trying to display the clip" : u"", # New in v2.5.1
+    "Is bit-depth set correctly?" : u"", # New in v2.5.1
     "Invalid string: " : u"", # New in v2.4.0
     "Failed to open the AVI file" : u"Echec de l'ouverture du fichier AVI",
     "Failed to open the AVI frame" : u"Echec de l'ouverture de la frame AVI",
@@ -1150,6 +1212,8 @@ messages = {
     "Random Clip Order" : u"", # New in v2.3.0
     "Save Image Sequence" : u"", # New in v2.3.0
     "Shift Bookmarks by frames" : u"", # New in v2.3.0
+    "_startup" : u"", # New in v2.5.1.09
+    "_startup_avs" : u"", # New in v2.5.1.09
     "Example (Resize)" : u"", # New in v2.3.0
     "Examples" : u"", # New in v2.3.0
     "Customized" : u"", # New in v2.3.0
