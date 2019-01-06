@@ -7523,7 +7523,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     (reverseMatrixDict['Interlaced'], '', self.OnMenuVideoYUV2RGB, _('For YV12 only, assume it is interlaced'), wx.ITEM_RADIO, False),
                     ),
                 ),
-                (_('Bith &depth'),
+                (_('Bit &depth'),
                     (
                     (_('8-bit'), '', self.OnMenuVideoBitDepth, _('Regular 8-bit depth (default)'), wx.ITEM_RADIO, True),
                     (_('Stacked yuv420p10 or yuv444p10'), '', self.OnMenuVideoBitDepth, _('Stacked 16-bit, MSB on top, range reduced to 10-bit. Requires MaskTools v2 loaded'), wx.ITEM_RADIO, False),
@@ -14770,9 +14770,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     if not saved:
                          wx.MessageBox(_('Error: can not save the Session'), _('Error'), style=wx.OK|wx.ICON_ERROR)
                     else:
-                        msg = 'Session is saved as _LastErrorSession.ses'
-                        ID = wx.MessageBox(u'\n\n'.join(msg, _('Trying do freeing the scripts memory?')),
-                                       _('Question'), style=wx.OK|wx.CANCEL|wx.ICON_QUESTION)
+                        ID = wx.MessageBox('Session is saved as _LastErrorSession.ses\n\n' +
+                                           'Trying do freeing the scripts memory?',
+                                           _('Question'), style=wx.OK|wx.CANCEL|wx.ICON_QUESTION)
                         if ID == wx.OK:
                             # not helpful ?, avspmod freeze
                             for index in xrange(self.scriptNotebook.GetPageCount()):
@@ -15428,9 +15428,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if not saved:
                  wx.MessageBox(_('Error: can not save the Session'), _('Error'), style=wx.OK|wx.ICON_ERROR)
             else:
-                msg = 'Session is saved as _LastErrorSession.ses'
-                ID = wx.MessageBox(u'\n\n'.join(msg, _('Trying do freeing the scripts memory?')),
-                               _('Question'), style=wx.OK|wx.CANCEL|wx.ICON_QUESTION)
+                ID = wx.MessageBox('Session is saved as _LastErrorSession.ses\n\n' +
+                                    'Trying do freeing the scripts memory?',
+                                    _('Question'), style=wx.OK|wx.CANCEL|wx.ICON_QUESTION)
                 if ID == wx.OK:
                     # helpful ?, or avspmod freeze
                     for index in xrange(self.scriptNotebook.GetPageCount()):
