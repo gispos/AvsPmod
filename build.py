@@ -54,7 +54,7 @@ import i18n
 import global_vars
 
 # GPo, need do change the path for LargeAdressAware, editbin path hard coded
-find_editbin = False  #when True search for editbin (original code)
+find_editbin = True  #when True search for editbin (original code)
 editbinPath = r'C:\Users\GPo\AppData\Local\Programs\Common\Microsoft\Visual C++ for Python\9.0\VC\bin'
 
 def isinpath(path):

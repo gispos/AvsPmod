@@ -12,6 +12,11 @@ GPo source: https://github.com/gispos/AvsPmod
 GPo releases: https://github.com/gispos/AvsPmod/releases
 
 --------------------------
+Version 2.6.0.2 [2019-01-07] GPo
+--------------------------
+Bug fix version
+
+--------------------------
 Version 2.6.0.1 [2019-01-04] GPo
 --------------------------
 - Added to Trim Editor the option 'Single clips' with custom prefix, this insert c0=Trim(?,?)..cn=Trim(?,?) commands.

@@ -9473,7 +9473,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         vidmenus = [self.videoWindow.contextMenu, self.GetMenuBar().GetMenu(2)]
         id = event.GetId()
         for vidmenu in vidmenus:
-            menu = vidmenu.FindItemById(vidmenu.FindItem(_('Bith &depth'))).GetSubMenu()
+            menu = vidmenu.FindItemById(vidmenu.FindItem(_('Bit &depth'))).GetSubMenu()
             menuItem = menu.FindItemById(id)
             if menuItem:
                 menuItem.Check()
@@ -14771,13 +14771,16 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                          wx.MessageBox(_('Error: can not save the Session'), _('Error'), style=wx.OK|wx.ICON_ERROR)
                     else:
                         ID = wx.MessageBox('Session is saved as _LastErrorSession.ses\n\n' +
-                                           'Trying do freeing the scripts memory?',
-                                           _('Question'), style=wx.OK|wx.CANCEL|wx.ICON_QUESTION)
+                                            'Trying do freeing the scripts memory?',
+                                            _('Question'), style=wx.OK|wx.CANCEL|wx.ICON_QUESTION)
                         if ID == wx.OK:
-                            # not helpful ?, avspmod freeze
+                            # not helpful ?, avspmod freeze ?
                             for index in xrange(self.scriptNotebook.GetPageCount()):
-                                script = self.scriptNotebook.GetPage(index)
-                                script.AVI = None
+                                try:
+                                    script = self.scriptNotebook.GetPage(index)
+                                    script.AVI = None
+                                except:
+                                    pass
                             #~self.ExitProgram()
 
                 return False
@@ -15434,8 +15437,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 if ID == wx.OK:
                     # helpful ?, or avspmod freeze
                     for index in xrange(self.scriptNotebook.GetPageCount()):
-                        script = self.scriptNotebook.GetPage(index)
-                        script.AVI = None
+                        try:
+                            script = self.scriptNotebook.GetPage(index)
+                            script.AVI = None
+                        except:
+                            pass
                     #~self.ExitProgram()
 
     def PaintAVIFrame(self, inputdc, script, frame, shift=True, isPaintEvent=False):
