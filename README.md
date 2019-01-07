@@ -1,4 +1,4 @@
-Version 2.6.0.1 GPo
+Version 2.6.0.2 GPo
 -----------------
 
 - With pinterf (pfmod) modifications
