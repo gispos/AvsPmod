@@ -9064,7 +9064,14 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.OnGroupClearAllTabGroups(event)
 
     def OnMenuVideoGroupAssignTabGroup(self, event):
-        label = event.GetEventObject().GetLabel(event.GetId())
+        # GPo
+        item = self.tab_group_menu.FindItemById(event.GetId())
+        if item == None:
+            item = self.videoWindow.contextMenu.FindItemById(event.GetId())
+        if item == None:
+            event.Skip()
+            return
+        label = item.GetLabel()
         self.AssignTabGroup(label)
 
     def OnMenuVideoGotoLastScrolled(self, event):
@@ -11742,6 +11749,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             return
         self.lastContextMenuWin = win
         pos = win.ScreenToClient(event.GetPosition())
+
         # update 'video -> add tab to group' submenu
         group_menu_id = win.contextMenu.FindItem(_('Add tab to group'))
         if group_menu_id != wx.NOT_FOUND:

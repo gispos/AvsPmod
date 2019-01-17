@@ -12,6 +12,11 @@ GPo source: https://github.com/gispos/AvsPmod
 GPo releases: https://github.com/gispos/AvsPmod/releases
 
 --------------------------
+Version 2.6.0.3 [2019-01-17] GPo
+--------------------------
+Bug fix: 'Add tab to group' from kontext or video menu resulted in an error.
+
+--------------------------
 Version 2.6.0.2 [2019-01-07] GPo
 --------------------------
 Bug fix version
