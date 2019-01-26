@@ -52,7 +52,7 @@ try: _
 except NameError:
     def _(s): return s
 
-
+"""
 def avs_plus_get_colorspace_name(pixel_type):
 
     avs_ColorspaceDict = {
@@ -123,7 +123,7 @@ def avs_plus_get_colorspace_name(pixel_type):
     if pixel_type in avs_ColorspaceDict:
         return avs_ColorspaceDict[pixel_type]
     return ''
-
+"""
 
 class AvsClipBase:
 
@@ -535,7 +535,7 @@ class AvsClipBase:
             indexV = 4*(x/2) + 3 + y * self.pitch
         else:
             return (-1,-1,-1)
-        return (self.ptrY[indexY], self.ptrU[indexU], self.ptrV[indexV])
+        return (abs(self.ptrY[indexY]), abs(self.ptrU[indexU]), abs(self.ptrV[indexV]))
 
     def GetPixelRGB(self, x, y, BGR=True):
         if self.IsRGB:

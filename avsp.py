@@ -5930,6 +5930,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'workdir': os.path.join('%programdir%', 'tools'),
             'useworkdir': False,
             'alwaysworkdir': False,
+            'customplugindir': False,   # GPo
+            'plugindirregister': False, # GPo
             'externalplayer': '',
             'externalplayerargs': '',
             'docsearchpaths': ';'.join(['%pluginsdir%',
@@ -6071,6 +6073,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if oldOptions and 'parseavsi' in oldOptions:
             self.options['autoloadedavsi'] = oldOptions['parseavsi']
 
+
     def SetPaths(self):
         '''Set configurable paths'''
         self.avisynthdir = ''
@@ -6087,6 +6090,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 key.Close()
             except WindowsError:
                 self.defaultavisynthdir = ''
+
             if self.options['usealtdir'] and os.path.isdir(altdir_exp):
                 self.avisynthdir = self.options['altdir']
                 global_vars.avisynth_library_dir = altdir_exp
@@ -6094,33 +6098,33 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.options['usealtdir'] = False
                 if os.path.isdir(self.defaultavisynthdir):
                     self.avisynthdir = self.ExpandVars(self.defaultavisynthdir, False, '%avisynthdir%')
+
             avisynthdir_exp = self.ExpandVars(self.avisynthdir)
             if (not os.path.isfile(self.ExpandVars(self.options['avisynthhelpfile'])) and
                 os.path.isfile(os.path.join(avisynthdir_exp, 'docs', 'english', 'index.htm'))):
                     self.options['avisynthhelpfile'] = os.path.join('%avisynthdir%', 'docs', 'english', 'index.htm')
-            self.defaultpluginsdir = self.ExpandVars(os.path.join('%avisynthdir%', 'plugins'))
+
+            # GPo, read plugins path from the registry or read not and let the user set the path
+            if self.options['customplugindir'] and os.path.isdir(self.options['pluginsdir']):
+                return
             try:
-                # Get the plugins directory from the registry (current user, only AviSynth 2.6)
-                key = _winreg.OpenKey(_winreg.HKEY_CURRENT_USER, 'Software\\AviSynth')
+                # Get the plugins directory from the registry (local machine, AviSynth 2.5-2.6 and avs+)
+                key = _winreg.OpenKey(_winreg.HKEY_LOCAL_MACHINE, 'Software\\AviSynth')
                 value = os.path.expandvars(_winreg.QueryValueEx(key, 'plugindir2_5')[0])
                 if os.path.isdir(value):
                     self.options['pluginsdir'] = self.ExpandVars(value, False, '%pluginsdir%')
                 else:
-                    raise WindowsError
-                key.Close()
-            except WindowsError:
-                try:
-                    # Get the plugins directory from the registry (local machine, AviSynth 2.5-2.6)
-                    key = _winreg.OpenKey(_winreg.HKEY_LOCAL_MACHINE, 'Software\\AviSynth')
-                    value = os.path.expandvars(_winreg.QueryValueEx(key, 'plugindir2_5')[0])
+                    value = os.path.expandvars(_winreg.QueryValueEx(key, 'plugindir+')[0])   # GPo added avs+
                     if os.path.isdir(value):
                         self.options['pluginsdir'] = self.ExpandVars(value, False, '%pluginsdir%')
                     else:
                         raise WindowsError
-                    key.Close()
-                except WindowsError:
-                    if os.path.isdir(self.defaultpluginsdir):
-                        self.options['pluginsdir'] = self.defaultpluginsdir
+                key.Close()
+            except WindowsError:
+                self.options['pluginsdir'] = ''
+                wx.MessageBox(_("Cannot read the avisynth plugins directory from the registry\n")+
+                              _("HKLM\Software\Avisynth\'plugindir2_5' or 'plugindir+' is missing or wrong.\n\n")+
+                              _("You should set the plugins path under options manually or register it."), 'Information')
         else:
             if self.options['usealtdir'] and os.path.isdir(altdir_exp):
                 self.avisynthdir = self.options['altdir']
@@ -6729,12 +6733,16 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         return ''.join(argList)
 
     def getOptionsDlgInfo(self):
+        plugtxt = 'Plugins directory 64 bit:' if self.x86_64 else 'Plugins directory 32 bit:'
         return (
             (_('Paths'),
                 ((_('Available variables: %programdir%, %avisynthdir%, %pluginsdir%'), wxp.OPT_ELEM_SEP, None, '', dict(width=0, expand=False) ), ),
                 ((_('Use a custom AviSynth directory')+' *', wxp.OPT_ELEM_CHECK, 'usealtdir', _('Choose a different version than the installed'), dict() ), ),
                 ((_('Custom AviSynth directory:')+' *', wxp.OPT_ELEM_DIR, 'altdir', _('Alternative location of avisynth.dll/avxsynth.so'), dict(buttonText='...', buttonWidth=30) ), ),
-                ((_('Plugins autoload directory:'), wxp.OPT_ELEM_DIR, 'pluginsdir', _('Leave blank to use the default directory. Changing it needs admin rights on Windows'), dict(buttonText='...', buttonWidth=30) ), ),
+                #((_('Plugins autoload directory:'), wxp.OPT_ELEM_DIR, 'pluginsdir', _('Leave blank to use the default directory. Changing it needs admin rights on Windows'), dict(buttonText='...', buttonWidth=30) ), ),
+                ((_(plugtxt), wxp.OPT_ELEM_DIR, 'pluginsdir', _('Leave blank for reset or choose a directory for manually set or for register'), dict(buttonText='...', buttonWidth=30) ), ),
+                ((_('Disable autoload, set manually')+' *', wxp.OPT_ELEM_CHECK, 'customplugindir', _('If plugins autoload fails set the path manually. Read only. Only for proper program functions'), dict(ident=20) ),
+                 (_('Register the plugins directory')+' *', wxp.OPT_ELEM_CHECK, 'plugindirregister', _('This changes the plugins directory for Avisynth itself. On Windows Registry values in HKLM are changed.'), dict() ), ),
                 ((_('Use a custom working directory'), wxp.OPT_ELEM_CHECK, 'useworkdir', _('Override the current working directory'), dict() ),
                  (_('For all scripts'), wxp.OPT_ELEM_CHECK, 'alwaysworkdir', _("Use the custom directory also for scripts saved to file, instead of its parent"), dict() ), ),
                 ((_('Working directory:'), wxp.OPT_ELEM_DIR, 'workdir', _('Specify an alternative working directory'), dict(buttonText='...', buttonWidth=30) ), ),
@@ -11086,14 +11094,15 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 mintextlines = self.options['mintextlines'] + \
                       int(self.currentScript.GetWrapMode() == stc.STC_WRAP_NONE)
             self.SetMinimumScriptPaneSize(mintextlines)
+            if mintextlines > 0:
+                sash_pos = self.GetMainSplitterNegativePosition(pos=None, forcefit=True)
+            else:
+                sash_pos = 6
         else:
             mintextlines = 0 if self.currentScript.GetSize().width > 2 else 400
             self.mainSplitter.SetMinimumPaneSize(mintextlines)
-
-        if self.zoomwindow:
             sash_pos = 6
-        else:
-            sash_pos = self.GetMainSplitterNegativePosition(pos=None, forcefit=True)
+
         self.Freeze()
         self.mainSplitter.SetSashPosition(sash_pos)
         self.currentScript.lastSplitVideoPos = self.mainSplitter.GetSashPosition() - \
@@ -15019,7 +15028,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     h = int(vidheight * self.zoomfactor)
                 else:
                     h = pos
-                pos = -(h + 2 * self.yo + 5 + self.mainSplitter.GetSashSize()/2)
+                hs = 18 if self.videoWindow.GetVirtualSize()[0] > self.videoWindow.GetClientSize()[0] else 5
+                pos = -(h + 2 * self.yo + hs + self.mainSplitter.GetSashSize()/2)
             else:
                 if pos is None:
                     if script.AVI is None:
@@ -17197,8 +17207,16 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             old_use_custom_video_background = self.options['use_customvideobackground']
             old_custom_video_background = self.options['customvideobackground']
             self.options.update(dlg.GetDict())
-            if self.options['pluginsdir'] != old_plugins_directory:
-                self.SetPluginsDirectory(old_plugins_directory)
+
+            # GPo, reset it if the user clears the plugins path. Invalid path is already checked
+            # do not use default values, that can be wrong.
+            if not self.options['pluginsdir']:
+                self.options['pluginsdir'] = old_plugins_directory
+            elif self.options['plugindirregister']:
+                if self.options['pluginsdir'] != old_plugins_directory:
+                    self.SetPluginsDirectory(old_plugins_directory)
+            self.options['plugindirregister'] = False
+
             for key in ['altdir', 'workdir', 'pluginsdir', 'avisynthhelpfile',
                         'externalplayer', 'docsearchpaths']:
                 self.options[key] = self.ExpandVars(self.options[key], False, '%' + key + '%')
@@ -17239,36 +17257,62 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     self.OnEraseBackground()
         dlg.Destroy()
 
+    # GPo, Have a look on the bug
     def SetPluginsDirectory(self, oldpluginsdirectory):
         '''Set the plugins autoload directory
 
         AviSynth: write to registry (admin rights needed)
         AvxSynth: set an environment variable
-        '''
+
+        ##### This is the wormy part ;) if Avisynth path is not found, 'defaultpluginsdir' is faulty and all go wrong.
         if not self.options['pluginsdir']:
             self.options['pluginsdir'] = self.defaultpluginsdir
+        ################
+        '''
+
         pluginsdir_exp = self.ExpandVars(self.options['pluginsdir'])
+        if not os.path.isdir(pluginsdir_exp):
+            self.options['pluginsdir'] = old_plugins_directory
+            return
         if os.name == 'nt':
-            s1 = (_('Changing the plugins autoload directory writes to the Windows registry.') +
-                  _(' Admin rights are needed.'))
-            s2 = _('Do you wish to continue?')
+            value = ''
+            try:
+                key = _winreg.OpenKey(_winreg.HKEY_CURRENT_USER, 'Software\\AviSynth')
+                value = os.path.expandvars(_winreg.QueryValueEx(key, 'plugindir2_5')[0])
+            except:
+                pass
+            hkcu = _("Delet incompatible: HKCU\Software\Avisynth\plugindir2_5\n") if value else _('')
+            s1 = (_("Changing the plugins directory writes to the Windows registry.\n") +
+                  _("Writing to: HKLM\Software\Avisynth\plugindir2_5\n")+
+                 hkcu + _(" Admin rights are needed."))
+            s2 = _("Do you wish to continue?")
             ret = wx.MessageBox('%s\n\n%s' % (s1, s2), _('Warning'), wx.YES_NO|wx.ICON_EXCLAMATION)
             if ret == wx.YES:
+                value = ''
                 f = tempfile.NamedTemporaryFile(delete=False)
-                txt = textwrap.dedent(u'''\
-                HKCU\\Software\\Avisynth
-                'plugindir2_5'= "{dir}"
-                HKLM\\Software\\Avisynth
-                'plugindir2_5'= "{dir}"
-                ''').format(dir=pluginsdir_exp)
+                if value:
+                    txt = textwrap.dedent(u'''\
+                    HKCU\\Software\\Avisynth
+                    'plugindir2_5'= DELETE
+                    HKLM\\Software\\Avisynth
+                    'plugindir2_5'= "{dir}"
+                    ''').format(dir=pluginsdir_exp)
+                else:
+                    txt = textwrap.dedent(u'''\
+                    HKLM\\Software\\Avisynth
+                    'plugindir2_5'= "{dir}"
+                    ''').format(dir=pluginsdir_exp)
+
                 f.write(txt.encode('utf16'))
                 f.close()
                 if ctypes.windll.shell32.ShellExecuteW(None, u'runas', u'cmd',
                         u'/k "regini "{f}" & del "{f}""'.format(f=f.name), None, 0) > 32:
+                    self.options['customplugindir'] = False
                     return
+                else:
+                   wx.MessageBox(_('Plugins dir registration failed'), _('Error'), wx.OK|wx.ICON_ERROR)
             self.options['pluginsdir'] = oldpluginsdirectory
         else:
-            pluginsdir_exp = self.ExpandVars(self.options['pluginsdir'])
             os.environ['AVXSYNTH_RUNTIME_PLUGIN_PATH'] = pluginsdir_exp
             shell = os.environ.get('SHELL') # write to the shell's rc file
             if shell:
@@ -17293,6 +17337,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                     break
                             else:
                                 f.write(export)
+                        self.options['customplugindir'] = False
 
     def getMacrosLabelFromFile(self, filename):
         f = open(filename)

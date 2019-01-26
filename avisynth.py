@@ -1,5 +1,5 @@
 # avisynth - Python AviSynth/AvxSynth wrapper
-# 
+#
 # Copyright 2007 Peter Jang <http://avisynth.nl/users/qwerpoi>
 #           2010-2017 the AvsPmod authors <https://github.com/avspmod/avspmod>
 #
@@ -7,12 +7,12 @@
 #  it under the terms of the GNU General Public License as published by
 #  the Free Software Foundation; either version 2 of the License, or
 #  (at your option) any later version.
-# 
+#
 #  This program is distributed in the hope that it will be useful,
 #  but WITHOUT ANY WARRANTY; without even the implied warranty of
 #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #  GNU General Public License for more details.
-# 
+#
 #  You should have received a copy of the GNU General Public License
 #  along with this program; if not, write to the Free Software
 #  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA, or visit
@@ -80,7 +80,7 @@ weak_dict = weakref.WeakKeyDictionary()
 # in avisynth.cffi_all enums and consts from avisynth_c.h are ...
 # so in avs class we should define them in the same way as in avisynth_h.c
 # these constants can be accessed from avisynth.py with avs. prefix.
-# e.g. avisynth_c.h defined AVS_PLANAR_U as 
+# e.g. avisynth_c.h defined AVS_PLANAR_U as
 #   AVS_PLANAR_U=1<<1
 # in avisynth_cffi.py it should be declared as
 #   AVS_PLANAR_U = ..., // 1<<1,
@@ -88,7 +88,7 @@ weak_dict = weakref.WeakKeyDictionary()
 # From pyavs.py constants can be accessed as avisynth.avs.XXXXX, e.g. avisynth.avs.AVS_PLANAR_U
 
 class avs(): # lowercase for compatibility with the cffi bindings
-    
+
     # Constants
     AVS_SAMPLE_INT8  = 1 << 0
     AVS_SAMPLE_INT16 = 1 << 1
@@ -329,7 +329,7 @@ class avs(): # lowercase for compatibility with the cffi bindings
     AVS_FRAME_ALIGN = 64
 
     #CPU flags: no need
-  
+
 #ctypes helper
 def by_ref_at(obj, offset):
     objtype = obj.__class__
@@ -343,19 +343,19 @@ class AvisynthError(Exception):
 
 
 class AVS_ScriptEnvironment(object):
-    
+
     def __init__(self, version=6):
         self.cdata = avs_create_script_environment(version)
         weak_dict[self] = []
-    
+
     def from_param(obj):
         if not isinstance(obj, AVS_ScriptEnvironment):
             raise TypeError("Wrong argument: AVS_ScriptEnvironment expected")
         return obj.cdata
-    
+
     def __del__(self):
         avs_delete_script_environment(self)
-    
+
     def invoke(self, name, args=[], arg_names=None):
         if not isinstance(args, AVS_Value):
             args = AVS_Value(args, env=self)
@@ -368,32 +368,32 @@ class AVS_ScriptEnvironment(object):
         if ret.is_error():
             raise AvisynthError(ret.as_error())
         return ret.get_value()
-    
+
     try: # 5
         avidll.avs_get_error
         def get_error(self): return avs_get_error(self)
     except: pass
-    
+
     def get_cpu_flags(self):
         return avs_get_cpu_flags(self)
-    
+
     def check_version(self,version):
         # 0 -> True, -1 -> False
         return not bool(avs_check_version(self, version))
-    
+
     def save_string(self,string): # useless with ctypes
         return avs_save_string(self, string, len(string))
-    
+
     def add_function(self, name, params, py_function, userdata=None):
         # it won't work, see http://bugs.python.org/issue5710
         if userdata is None:
             userdata = ctypes.c_void_p()
         return avs_add_function(self, name, params, APPLYFUNC(py_function),
                                 ctypes.byref(userdata))
-    
+
     def function_exists(self, name):
         return avs_function_exists(self, name)
-    
+
     def get_var(self, name, type=False):
         if isinstance(name, unicode):
             # mbcs will replace invalid characters anyway
@@ -404,46 +404,46 @@ class AVS_ScriptEnvironment(object):
         if type:
             return value.get_value(self), value.get_type()
         return value.get_value(self)
-    
+
     def set_var(self, name, value):
         if not isinstance(value, AVS_Value):
             value = AVS_Value(value, self)
         return avs_set_var(self, name, value)
-    
+
     def set_global_var(self, name, value):
         if not isinstance(value, AVS_Value):
             value = AVS_Value(value, self)
         return avs_set_global_var(self, name, value)
-    
+
     def new_video_frame_a(self, vi, align=avs.AVS_FRAME_ALIGN):
         return avs_new_video_frame_a(self, vi, align)
-    
+
     def make_writable(self, AVS_VideoFrame):
         return avs_make_writable(self, ctypes.byref(AVS_VideoFrame.cdata))
-    
+
     def bit_blt(self, dstp, dst_pitch, srcp, src_pitch, row_size, height):
         avs_bit_blt(self, dstp, dst_pitch, srcp, src_pitch, row_size, height)
-    
+
     def at_exit(self, py_function, userdata):
         return avs_at_exit(self, SHUTDOWNFUNC(py_function), ctypes.POINTER(userdata))
-    
+
     def set_memory_max(self, mem):
         return avs_set_memory_max(self, mem)
-    
+
     def set_working_dir(self, new_dir):
         if isinstance(new_dir, unicode):
             new_dir = new_dir.encode(encoding, 'backslashreplace')
         return avs_set_working_dir(self, new_dir)
-    
+
     def subframe(self, src, rel_offset, new_pitch, new_row_size, new_height):
         return avs_subframe(self, src, rel_offset, new_pitch, new_row_size, new_height)
-    
+
     def subframe_planar(self, src, rel_offset, new_pitch, new_row_size,
                         new_height, rel_offsetU, rel_offsetV, new_pitchUV):
         return avs_subframe(self, src, rel_offset, new_pitch, new_row_size,
                             new_height, rel_offsetU, rel_offsetV, new_pitchUV)
 
- 
+
 # Now in interface.cpp
 
 
@@ -459,127 +459,185 @@ class AVS_VideoInfo_C(ctypes.Structure):
                 ("num_audio_samples",ctypes.c_int64),
                 ("nchannels",ctypes.c_int),
                 ("image_type",ctypes.c_int)]
-   
-    
+
+
 class AVS_VideoInfo(object):
-    
+
     def __init__(self, vi=None):
         self.cdata = vi or pointer(VideoInfo())
         for field, type in self.cdata.contents._fields_:
             setattr(self, field, getattr(self.cdata.contents, field))
-    
+
     def __str__(self):
         string = str(self.__class__)
         for field, type in self.cdata.contents._fields_:
             string += ', {0}: {1}'.format(field, getattr(self.cdata.contents, field))
         return string
-    
+
     def from_param(obj):
         if not isinstance(obj, AVS_VideoInfo):
             raise TypeError("Wrong argument: AVS_VideoInfo expected")
         return obj.cdata
-    
+
     def has_video(self):
         return self.cdata.contents.width != 0
-    
+
     def has_audio(self):
         return self.cdata.contents.audio_samples_per_second != 0
-    
+
     def is_rgb(self):
         return self.cdata.contents.pixel_type & avs.AVS_CS_BGR != 0
-    
+
     def is_rgb24(self):
         return ((self.cdata.contents.pixel_type & avs.AVS_CS_BGR24) == avs.AVS_CS_BGR24) and \
             ((self.cdata.contents.pixel_type & avs.AVS_CS_SAMPLE_BITS_MASK) == avs.AVS_CS_SAMPLE_BITS_8)
-    
+
     def is_rgb32(self):
         return ((self.cdata.contents.pixel_type & avs.AVS_CS_BGR32) == avs.AVS_CS_BGR32) and \
             ((self.cdata.contents.pixel_type & avs.AVS_CS_SAMPLE_BITS_MASK) == avs.AVS_CS_SAMPLE_BITS_8)
-    
+
     def is_yuv(self):
         return self.cdata.contents.pixel_type & avs.AVS_CS_YUV != 0
-    
+
     def is_yuy2(self):
         return (self.cdata.contents.pixel_type & avs.AVS_CS_YUY2) == avs.AVS_CS_YUY2
-    
+
     def is_yv24(self):
         return bool(avs_is_yv24(self.cdata)) #V6
         #return (self.cdata.contents.pixel_type & avs.AVS_CS_PLANAR_MASK) == (avs.AVS_CS_YV24 & avs.AVS_CS_PLANAR_FILTER)
-    
+
     def is_yv16(self):
         return bool(avs_is_yv16(self.cdata)) #V6
         #return (self.cdata.contents.pixel_type & avs.AVS_CS_PLANAR_MASK) == (avs.AVS_CS_YV16 & avs.AVS_CS_PLANAR_FILTER)
-    
+
     def is_yv12(self):
         return bool(avs_is_yv12(self.cdata)) #V6
         #return (self.cdata.contents.pixel_type & avs.AVS_CS_PLANAR_MASK) == (avs.AVS_CS_YV12 & avs.AVS_CS_PLANAR_FILTER)
-    
+
     def is_yv411(self):
         return bool(avs_is_yv411(self.cdata)) #V6
         #return (self.cdata.contents.pixel_type & avs.AVS_CS_PLANAR_MASK) == (avs.AVS_CS_YV411 & avs.AVS_CS_PLANAR_FILTER)
-    
+
     def is_y8(self):
         return bool(avs_is_y8(self.cdata)) #V6
         #return (self.cdata.contents.pixel_type & avs.AVS_CS_PLANAR_MASK) == (avs.AVS_CS_Y8 & avs.AVS_CS_PLANAR_FILTER)
-    
+
     def is_property(self, property):
         return (self.cdata.contents.pixel_type & property) == property
-    
+
     def is_planar(self):
         return self.cdata.contents.pixel_type & avs.AVS_CS_PLANAR != 0
-    
+
     def is_interleaved(self):
         return self.cdata.contents.pixel_type & avs.AVS_CS_INTERLEAVED != 0
-    
+
     def is_color_space(self, c_space):
         return bool(avs_is_color_space(self.cdata, c_space)); #V6
         #if self.cdata.is_planar():
         #    return (self.cdata.contents.pixel_type & avs.AVS_CS_PLANAR_MASK) == (c_space & avs.AVS_CS_PLANAR_FILTER)
         #else:
         #    return (self.cdata.contents.pixel_type & c_space) == c_space
-    
+
     def is_field_based(self):
         return self.cdata.contents.image_type & avs.AVS_IT_FIELDBASED != 0
-    
+
     def is_parity_known(self):
         return (self.cdata.contents.image_type & avs.AVS_IT_FIELDBASED != 0) and \
             (self.cdata.contents.image_type & (avs.AVS_IT_BFF | avs.AVS_IT_TFF) != 0)
-    
+
     def is_bff(self):
         return self.cdata.contents.image_type & avs.AVS_IT_BFF != 0
-    
+
     def is_tff(self):
         return self.cdata.contents.image_type & avs.AVS_IT_TFF != 0
-    
+
     def is_v_plane_first(self):
         # todo: move to avs_is_y when it's safe for classic avisynth
-        return not self.is_y() and self.is_planar() and (self.cdata.contents.pixel_type & 
+        return not self.is_y() and self.is_planar() and (self.cdata.contents.pixel_type &
             (avs.AVS_CS_VPLANEFIRST | avs.AVS_CS_UPLANEFIRST)) == avs.AVS_CS_VPLANEFIRST # Shouldn't use this
-    
+
     def get_plane_width_subsampling(self, plane): # Subsampling in bitshifts!
-        return avs_get_plane_width_subsampling(self.cdata, plane); #V6
+        #return avs_get_plane_width_subsampling(self.cdata, plane); #V6
+        if plane == avs.AVS_PLANAR_Y:  # No subsampling
+            return 0
+        if self.is_y8():
+            raise AvisynthError("Filter error: get_plane_width_subsampling not "
+                                "available on Y8 pixel type.")
+        if (plane == avs.AVS_PLANAR_U or plane == avs.AVS_PLANAR_V):
+            if self.is_yuy2():
+                return 1
+            elif self.is_planar():
+                return ((self.cdata.contents.pixel_type >> avs.AVS_CS_SHIFT_SUB_WIDTH) + 1) & 3
+            else:
+                raise AvisynthError("Filter error: get_plane_width_subsampling "
+                                    "called with unsupported pixel type.")
+        raise AvisynthError("Filter error: get_plane_width_subsampling called "
+                            "with unsupported plane.")
 
     def get_plane_height_subsampling(self, plane): # Subsampling in bitshifts!
-        return avs_get_plane_height_subsampling(self.cdata, plane) #V6
+        #return avs_get_plane_height_subsampling(self.cdata, plane) #V6
+        if plane == avs.AVS_PLANAR_Y:  # No subsampling
+            return 0
+        if self.is_y8():
+            raise AvisynthError("Filter error: get_plane_height_subsampling "
+                                "not available on Y8 pixel type.")
+        if (plane == avs.AVS_PLANAR_U or plane == avs.AVS_PLANAR_V):
+            if self.is_yuy2():
+                return 0
+            elif self.is_planar():
+                return ((self.cdata.contents.pixel_type >> avs.AVS_CS_SHIFT_SUB_HEIGHT) + 1) & 3
+            else:
+                raise AvisynthError("Filter error: get_plane_height_subsampling "
+                                    "called with unsupported pixel type.")
+        raise AvisynthError("Filter error: get_plane_height_subsampling called "
+                            "with unsupported plane.")
 
     def bits_per_pixel(self): # Lookup Interleaved, calculate PLANAR's
-        return avs_bits_per_pixel(self.cdata); #V6
+        #return avs_bits_per_pixel(self.cdata); #V6
+        for csp in ((avs.AVS_CS_BGR24, 24), (avs.AVS_CS_BGR32, 32),
+                    (avs.AVS_CS_YUY2, 16), (avs.AVS_CS_Y8, 8)):
+            if self.cdata.contents.pixel_type == csp[0]: return csp[1]
+        if self.is_planar():
+            S = self.get_plane_width_subsampling(avs.AVS_PLANAR_U) + \
+                self.get_plane_height_subsampling(avs.AVS_PLANAR_U) if self.is_yuv() else 0
+            return ( ((1 << S) + 2) * (8 << ((self.pixel_type >> avs.AVS_CS_SHIFT_SAMPLE_BITS) & 3)) ) >> S
+        return 0
 
     def bytes_from_pixels(self, pixels):
-        return avs_bits_per_pixel(self.cdata); #V6
+        #return avs_bits_per_pixel(self.cdata); #V6
+        if not self.is_y8() and self.is_planar(): # For planar images, will return luma plane
+            return pixels << ((self.cdata.contents.pixel_type >> avs.AVS_CS_SHIFT_SAMPLE_BITS) & 3)
+        else:
+            return pixels * (self.bits_per_pixel() >> 3)
 
     def row_size(self, plane):
-        return avs_row_size(self.cdata, plane); #V6
+        #return avs_row_size(self.cdata, plane); #V6
+        rowsize = self.bytes_from_pixels(self.cdata.contents.width)
+        if plane in (avs.AVS_PLANAR_U, avs.AVS_PLANAR_V):
+            return (rowsize >> self.get_plane_width_subsampling(plane)) \
+                   if not self.is_y8() and self.is_planar() else 0
+        elif plane in (avs.AVS_PLANAR_U_ALIGNED, avs.AVS_PLANAR_V_ALIGNED): # Aligned rowsize
+            return ((rowsize >> self.get_plane_width_subsampling(plane)) + avs.AVS_FRAME_ALIGN-1) & \
+                   (~(avs.AVS_FRAME_ALIGN-1)) if not self.is_y8() and self.is_planar() else 0
+        elif plane == avs.AVS_PLANAR_Y_ALIGNED: # Aligned rowsize
+            return (rowsize + avs.AVS_FRAME_ALIGN-1) & (~(avs.AVS_FRAME_ALIGN-1))
+        return rowsize
 
     def bmp_size(self):
-        return avs_bmp_size(self.cdata); #V6
+        #return avs_bmp_size(self.cdata); #V6
+        if not self.isy8() and self.is_planar(): # Y plane
+            Ybytes  = ((self.RowSize(avs.AVS_PLANAR_Y) + 3) & ~3) * self.height
+            UVbytes = ((self.RowSize(avs.AVS_PLANAR_U) + 3) & ~3) * self.height >> \
+                      self.get_plane_height_subsampling(PLANAR_U)
+            return Ybytes + UVbytes * 2
+        return self.cdata.contents.height * ((self.row_size() + 3) & ~3)
 
     def samples_per_second(self):
         return self.cdata.contents.audio_samples_per_second
-    
+
     def is_sample_type(self, testtype):
         return (self.cdata.contents.sample_type & testtype) != 0
-    
+
     def bytes_per_channel_sample(self):
         if self.cdata.contents.sample_type == avs.AVS_SAMPLE_INT8 :
             return ctypes.sizeof(ctypes.c_char)
@@ -592,46 +650,46 @@ class AVS_VideoInfo(object):
         if self.cdata.contents.sample_type == avs.AVS_SAMPLE_FLOAT:
             return ctypes.sizeof(ctypes.c_float)
         return 0
-    
+
     def bytes_per_audio_sample(self):
         return self.bytes_per_channel() * self.cdata.contents.nchannels
-    
+
     def audio_samples_from_frames(self, frames):
         if self.has_audio() and self.cdata.contents.fps_denominator:
             return frames * self.cdata.contents.audio_samples_per_second \
                 * self.cdata.contents.fps_denominator / self.cdata.contents.fps_numerator
         else: return 0
-    
+
     def frames_from_audio_samples(self, samples):
         if self.has_audio() and self.cdata.contents.fps_denominator:
             return samples * self.cdata.contents.fps_numerator / self.cdata.contents.fps_denominator \
                 / self.contents.cdata.audio_samples_per_second
         else: return 0
-    
+
     def audio_samples_from_bytes(self,bytes):
         return bytes / self.bytes_per_audio_sample() if self.has_audio() else 0
-    
+
     def bytes_from_audio_samples(self, samples):
         return samples * self.bytes_per_audio_sample()
-    
+
     def audio_channels(self):
         return self.cdata.contents.nchannels if self.has_audio() else 0
-    
+
     def sample_type(self):
         return self.cdata.contents.sample_type
-    
+
     def set_property(self, property):
         self.cdata.contents.image_type |= property
-    
+
     def clear_property(self, property):
         self.cdata.contents.image_type &= ~property
-    
+
     def set_field_based(self, is_field_based):
-        if is_field_based: 
+        if is_field_based:
             self.cdata.contents.image_type |= avs.AVS_IT_FIELDBASED
         else:
             self.cdata.contents.image_type &= ~avs.AVS_IT_FIELDBASED
-     
+
     def set_fps(self, numerator, denominator): # useful mutator
         if numerator == 0 or denominator == 0:
             self.cdata.contents.fps_numerator = 0
@@ -643,7 +701,7 @@ class AVS_VideoInfo(object):
                 x, y = y, x % y
             self.cdata.contents.fps_numerator = numerator / x
             self.cdata.contents.fps_denominator = denominator / x
-    
+
     def is_same_colorspace(self, vi):
         return (self.cdata.contents.pixel_type == vi.pixeltype) or (self.is_yv12() and vi.is_yv12())
 
@@ -682,31 +740,31 @@ class AVS_Clip:
         if not isinstance(obj, AVS_Clip):
             raise TypeError("Wrong argument: AVS_Clip expected")
         return obj.cdata
-        
+
     def copy(self):
         return avs_copy_clip(self)
-    
+
     def __del__(self):
         avs_release_clip(self)
-    
+
     def get_frame(self,n):
         self._error = None
         try:
             return AVS_VideoFrame(avs_get_frame(self, n))
         except Exception as err:
-            # Clear the exception traceback in order to avoid keeping an 
-            # additional reference to the clip, which would cause its 
-            # destruction to be postponed until the process finishes (if 
-            # that's the last exception). It would then cause a new exception 
-            # as the env doesn't exist anymore at that point (maybe even 
+            # Clear the exception traceback in order to avoid keeping an
+            # additional reference to the clip, which would cause its
+            # destruction to be postponed until the process finishes (if
+            # that's the last exception). It would then cause a new exception
+            # as the env doesn't exist anymore at that point (maybe even
             # avisynth was already unloaded).
             self._error = ''.join(traceback.format_exception_only(type(err), err))
             sys.exc_clear()
-    
+
     def get_parity(self, n):
         """ return field parity if field_based, else parity of first field in frame"""
         return avs_get_parity(self, n)
-    
+
     def get_audio(self, n):
         src = self.get_frame(n)
         vi = self.get_video_info()
@@ -715,24 +773,24 @@ class AVS_Clip:
             count = vi.audio_samples_from_frames(1)
             buffer_size = count * vi.sample_type() * vi.audio_channels()
             buffer = ctypes.create_string_buffer(buffer_size)
-            return avs_get_audio(self, ctypes.addressof(buffer), max(0, start), 
+            return avs_get_audio(self, ctypes.addressof(buffer), max(0, start),
                                  count) # start and count are in samples
-    
-    def set_cache_hints(self, cachehints, frame_range): 
+
+    def set_cache_hints(self, cachehints, frame_range):
         return avs_set_cache_hints(self, cachehints, frame_range)
-    
+
     def get_error(self):
         error = avs_clip_get_error(self) or self._error
         self._error = None # avs_clip_get_error is used for more than get_frame
         return error
-    
+
     def get_video_info(self):
         return AVS_VideoInfo(avs_get_video_info(self))
-    
+
     def get_version(self):
         return avs_get_version(self)
 
-        
+
 class AVS_VideoFrameBuffer_C(ctypes.Structure):
     _fields_ = [("data",ctypes.POINTER(ctypes.c_ubyte)),
                 ("data_size",ctypes.c_int),
@@ -757,38 +815,62 @@ class AVS_VideoFrame_C(ctypes.Structure):
                ]
 
 class AVS_VideoFrame(object):
-    
+
     def __init__(self, video_frame):
         self.cdata = video_frame
-    
+
     def from_param(obj):
         if not isinstance(obj, AVS_VideoFrame):
             raise TypeError("Wrong argument: AVS_VideoFrame expected")
         return obj.cdata
-    
+
     def __del__(self):
         avs_release_video_frame(self)
-    
+
     def copy(self):
         return avs_copy_video_frame(self)
-    
+
     def __str__(self):
         string = str(self.__class__)
         for field, type in self.cdata.contents._fields_:
             string += ', {0}: {1}'.format(field, getattr(self.cdata.contents, field))
         return string
-    
+
     def get_pitch(self, plane=avs.AVS_PLANAR_Y):
-        return avs_get_pitch_p(self.cdata, plane); #V6
+        #return avs_get_pitch_p(self.cdata, plane); #V6
+        if plane in (avs.AVS_PLANAR_U, avs.AVS_PLANAR_V):   #V3
+            return self.cdata.contents.pitchUV
+        return self.cdata.contents.pitch
 
     def get_row_size(self, plane=avs.AVS_PLANAR_Y):
-        return avs_get_row_size_p(self.cdata, plane); #V6
+        #return avs_get_row_size_p(self.cdata, plane); #V6
+        if plane in (avs.AVS_PLANAR_U, avs.AVS_PLANAR_V):  #V3
+            #return self.cdata.contents.row_sizeUV if self.cdata.contents.pitchUV != 0 else 0 # 5
+            return self.cdata.contents.row_size / 2 if self.cdata.contents.pitchUV != 0 else 0
+        elif plane in (avs.AVS_PLANAR_U_ALIGNED, avs.AVS_PLANAR_V_ALIGNED):
+            if self.cdata.contents.pitchUV != 0:
+                #r = (self.cdata.contents.row_sizeUV + FRAME_ALIGN-1) & (~(FRAME_ALIGN-1)) # Aligned rowsize
+                r = (self.cdata.contents.row_size / 2 + avs.AVS_FRAME_ALIGN-1) & (~(avs.AVS_FRAME_ALIGN-1)) # Aligned rowsize
+                if r <= self.cdata.contents.pitchUV:
+                    return r
+                #return self.cdata.contents.row_sizeUV
+                return self.cdata.contents.row_size / 2
+            else: return 0
+        elif plane in (avs.AVS_PLANAR_ALIGNED, avs.AVS_PLANAR_Y_ALIGNED):
+            r = (self.cdata.contents.row_size + avs.AVS_FRAME_ALIGN-1) & (~(avs.AVS_FRAME_ALIGN-1)) # Aligned rowsize
+            if r <= self.cdata.contents.pitch:
+                return r
+            return self.cdata.contents.row_size
+        return self.cdata.contents.row_size
 
     def get_height(self, plane=avs.AVS_PLANAR_Y):
-        return avs_get_height_p(self.cdata, plane); #V6
+        #return avs_get_height_p(self.cdata, plane); #V6
+        if plane in (avs.AVS_PLANAR_U, avs.AVS_PLANAR_V):    #V3
+            return self.cdata.contents.height / 2 if self.cdata.contents.pitchUV != 0 else 0
+        return self.cdata.contents.height
 
     def get_frame_buffer(self): return self.cdata.contents.vfb
-    
+
     # not nice. Accessing the internal fields directly despite the big warning:
     # // DO NOT USE THIS STRUCTURE DIRECTLY
     # todo remove this hardcoded part when get_read_ptr and get_write_ptr will be real interface function
@@ -797,49 +879,48 @@ class AVS_VideoFrame(object):
         elif plane == avs.AVS_PLANAR_V or plane == avs.AVS_PLANAR_R: return self.cdata.contents.offsetV
         elif plane == avs.AVS_PLANAR_A: return self.cdata.contents.offsetA
         return self.cdata.contents.offset # AVS_PLANAR_Y or AVS_PLANAR_G
-    
+
     def get_read_ptr(self, plane=avs.AVS_PLANAR_Y):
-        return avs_get_read_ptr_p(self.cdata, plane) #V6
-        #return by_ref_at(self.get_frame_buffer().contents.data, self.get_offset(plane))
-    
+        #return avs_get_read_ptr_p(self.cdata, plane) #V6
+        return by_ref_at(self.get_frame_buffer().contents.data, self.get_offset(plane))  #V3
+
     def is_writable(self):
         return bool(avs_is_writable(self.cdata)) #V6
-        #return self.cdata.contents.refcount == 1 and self.get_frame_buffer().contents.refcount == 1
-    
+        #return self.cdata.contents.refcount == 1 and self.get_frame_buffer().contents.refcount == 1   #V3
+
     def get_write_ptr(self, plane=avs.AVS_PLANAR_Y):
-        return avs_get_write_ptr_p(self.cdata, plane) #V6
-'''
-        if (not plane or plane == avs.AVS_PLANAR_Y):
+        #return avs_get_write_ptr_p(self.cdata, plane) #V6
+        if (not plane or plane == avs.AVS_PLANAR_Y):   #V3
             if self.is_writable():
                 self.get_frame_buffer().contents.sequence_number += 1
                 return by_ref_at(self.get_frame_buffer().contents.data, self.get_offset(plane))
             else: return 0
         return by_ref_at(self.get_frame_buffer().contents.data, self.get_offset(plane))
- '''
-        
+
+
 class AVS_Value(object):
-    
+
     def __init__(self, value=None, env=None, release_on_del=True):
         self.cdata = AVS_Value_C()
         self.set_void()
-        self.env = env # for using with clips, we assume all belong to the same env 
+        self.env = env # for using with clips, we assume all belong to the same env
         self._release_on_del = release_on_del
         if value is not None:
             self.set_value(value, env)
-    
+
     def from_param(obj):
         if not isinstance(obj, AVS_Value):
             raise TypeError("Wrong argument: AVS_ScriptEnvironment expected")
-        return obj.cdata    
-    
+        return obj.cdata
+
     def __str__(self):
         return str(self.get_value())
-    
+
     def __repr__(self):
         return repr(self.get_value())
-    
+
     # set methods
-    
+
     def set_value(self, value, env=None):
         if   isinstance(value, bool):       self.set_bool(value)
         elif isinstance(value, int):        self.set_int(value)
@@ -847,47 +928,47 @@ class AVS_Value(object):
         elif isinstance(value, basestring): self.set_string(value, env)
         elif isinstance(value, AVS_Clip):   self.set_clip(value)
         elif isinstance(value, AVS_Value):  self.copy_from(value)
-        elif isinstance(value, (ctypes._SimpleCData, ctypes.Structure, 
+        elif isinstance(value, (ctypes._SimpleCData, ctypes.Structure,
                                 ctypes.Union)):  self.set_cdata(value)
         elif isinstance(value, collections.Iterable): self.set_array(value)
         else:
             raise AvisynthError('invalid type: {type}'.format(type=type(value)))
-    
+
     def __call__(self, val, env=None):
         self.set_value(val, env)
-    
+
     def copy_from(self, value):
         avs_copy_value(ctypes.byref(self.cdata), value)
         self.env = value.env
         self._release_on_del = value._release_on_del
-    
+
     def set_void(self):
         self.cdata.type = ord('v')
         self.cdata.array_size = 0
-    
+
     def set_cdata(self, value):
         if self.is_defined():
             self.release()
         self.cdata = value
-    
+
     def set_bool(self, value):
         if self.is_defined():
             self.release()
         self.cdata.type = ord('b')
         self.cdata.d.b = value
-    
+
     def set_int(self, value):
         if self.is_defined():
             self.release()
         self.cdata.type = ord('i')
         self.cdata.d.i = value
-    
+
     def set_float(self, value):
         if self.is_defined():
             self.release()
         self.cdata.type = ord('f')
         self.cdata.d.f = value
-    
+
     def set_string(self, value, env=None):
         if self.is_defined():
             self.release()
@@ -898,7 +979,7 @@ class AVS_Value(object):
             weak_dict[env].append(value)
         self.cdata.type = ord('s')
         self.cdata.d.s = value
-    
+
     def set_error(self, value, env=None):
         if self.is_defined():
             self.release()
@@ -909,12 +990,12 @@ class AVS_Value(object):
             weak_dict[env].append(value)
         self.cdata.type = ord('s')
         self.cdata.d.s = value
-    
+
     def set_clip(self, value):
         if self.is_defined():
             self.release()
         avs_set_to_clip(ctypes.byref(self.cdata), value)
-    
+
     def set_array(self, values, env=None):
         if self.is_defined():
             self.release()
@@ -928,12 +1009,12 @@ class AVS_Value(object):
         self.cdata.type = ord('a')
         self.cdata.array_size = length
         self.cdata.d.a = ctypes.cast(ctypes.pointer(avs_values), ctypes.POINTER(AVS_Value_C))
-    
+
     # check type methods
-    
+
     def is_defined(self):
         return self.cdata.type not in (0, ord('v'))
-    
+
     def get_type(self):
         if self.is_bool():
             type = 'bool'
@@ -952,31 +1033,31 @@ class AVS_Value(object):
         else:
             type = None
         return type
-    
+
     def is_bool(self):
         return self.cdata.type == ord('b')
-    
+
     def is_int(self):
         return self.cdata.type == ord('i')
-    
+
     def is_float(self):
         return self.cdata.type in (ord('f'), ord('i'))
-    
+
     def is_string(self):
         return self.cdata.type == ord('s')
-    
+
     def is_error(self):
         return self.cdata.type == ord('e')
-    
+
     def is_clip(self):
         return self.cdata.type == ord('c')
-    
+
     def is_array(self):
         return self.cdata.type == ord('a')
-    
+
     # get methods
-    
-    def get_value(self, env=None):     
+
+    def get_value(self, env=None):
         if   self.is_bool():   return self.as_bool()
         elif self.is_int():    return self.as_int()
         elif self.is_float():  return self.as_float()
@@ -984,37 +1065,37 @@ class AVS_Value(object):
         elif self.is_error():  return self.as_error()
         elif self.is_clip():   return self.as_clip(env)
         elif self.is_array():  return self.as_array(env)
-    
+
     def as_bool(self):
         if self.is_bool():
             return self.cdata.d.b
         else:
             raise AvisynthError("Not a bool")
-    
+
     def as_int(self):
         if self.is_int():
             return self.cdata.d.i
         else:
             raise AvisynthError("Not an int")
-    
+
     def as_float(self):
         if self.is_float():
             return self.cdata.d.f
         else:
             raise AvisynthError("Not a float")
-    
+
     def as_string(self):
         if self.is_string():
             return self.cdata.d.s
         else:
             raise AvisynthError("Not a string")
-    
+
     def as_error(self):
         if self.is_error():
             return self.cdata.d.s
         else:
             raise AvisynthError("Not an error")
-    
+
     def as_clip(self, env=None):
         if self.is_clip():
             env = env or self.env
@@ -1023,33 +1104,33 @@ class AVS_Value(object):
             return AVS_Clip(avs_take_clip(self, env))
         else:
             raise AvisynthError("Not a clip")
-    
+
     def as_array(self, env=None):
         if self.is_array():
             return [self.array_elt(i, env) for i in range(self.array_size())]
         else:
             raise AvisynthError("Not an array")
-    
+
     def array_size(self):
         return self.cdata.array_size if self.is_array() else 1
-    
+
     def array_elt(self, index, env=None):
         if not 0 <= index < self.array_size():
-            raise IndexError 
+            raise IndexError
         return AVS_Value(self.cdata.d.a[index] if self.is_array() else self.cdata,
                          env=env or self.env, release_on_del=False).get_value()
-    
+
     def __len__(self):
         return self.array_size()
-    
+
     def __getitem__(self, index):
         if isinstance(index, slice):
             pass # TODO
         else:
             return self.array_elt(index)
-    
+
     # free memory
-    
+
     def release(self):
         if self.is_array():
             for index in range(self.array_size()):
@@ -1057,7 +1138,7 @@ class AVS_Value(object):
         avs_release_value(self)
         if self.is_defined():
             self.set_void()
-    
+
     def __del__(self):
         if self._release_on_del:
             self.release()
@@ -1077,21 +1158,21 @@ class U(ctypes.Union):
        # AvxSynth extends AVS_Value with a 64-bit integer type.
        if os.name != 'nt':
            _fields_.append(('l',ctypes.c_longlong))
-   
-           
+
+
 AVS_Value_C._fields_ = [("type",ctypes.c_short),
                         ("array_size",ctypes.c_short),
                         ("d", U)]
 
-    
+
 class FilterInfo(ctypes.Structure):
     pass
 
 
-GETFRAME = FUNCTYPE(ctypes.POINTER(AVS_VideoFrame_C), ctypes.POINTER(FilterInfo), 
+GETFRAME = FUNCTYPE(ctypes.POINTER(AVS_VideoFrame_C), ctypes.POINTER(FilterInfo),
                     ctypes.c_int)
 GETPARITY = FUNCTYPE(ctypes.c_int, ctypes.POINTER(FilterInfo), ctypes.c_int)
-GETAUDIO = FUNCTYPE(ctypes.c_int, ctypes.POINTER(FilterInfo), ctypes.c_void_p, 
+GETAUDIO = FUNCTYPE(ctypes.c_int, ctypes.POINTER(FilterInfo), ctypes.c_void_p,
                     ctypes.c_int64, ctypes.c_int64)
 SETCACHEHINTS = FUNCTYPE(ctypes.c_int, ctypes.POINTER(FilterInfo), ctypes.c_int,
                          ctypes.c_int)
@@ -1112,11 +1193,11 @@ FilterInfo._fields_=[("child",ctypes.c_void_p),
 #def CreateAVS_VideoInfoCT(result,func,arguments):return AVS_VideoInfo(result)
 #def CreateAVS_ScriptEnvironmentCT(result,func,arguments):return AVS_ScriptEnvironment(result)
 
-        
+
 #setup avisynth_c functions
 
 # AVS_ScriptEnvironment functions
-avs_create_script_environment=avidll.avs_create_script_environment 
+avs_create_script_environment=avidll.avs_create_script_environment
 avs_create_script_environment.restype = ctypes.c_void_p
 avs_create_script_environment.argtypes= [ctypes.c_int]
 #avs_create_script_environment.errcheck=CreateAVS_ScriptEnvironmentCT
@@ -1148,7 +1229,7 @@ avs_vsprintf.restype = ctypes.c_char_p
 avs_vsprintf.argtypes=[AVS_ScriptEnvironment,ctypes.c_char_p,ctypes.c_void_p]
 
 
-APPLYFUNC = FUNCTYPE(AVS_Value, AVS_ScriptEnvironment, AVS_Value, 
+APPLYFUNC = FUNCTYPE(AVS_Value, AVS_ScriptEnvironment, AVS_Value,
                      ctypes.c_void_p)
 
 avs_add_function=avidll.avs_add_function
@@ -1336,7 +1417,7 @@ except:
     avs_bits_per_component=bits_per_component_like_FUNC_TYPE(internal_fake_bits_per_component) # always returns 8
 
 # end of Avisynth+ extensions
-# todo: move them to wrapper functions 
+# todo: move them to wrapper functions
 
 avs_make_writable=avidll.avs_make_writable
 avs_make_writable.restype=ctypes.c_int
@@ -1482,7 +1563,7 @@ AVS_Value.avs_release_value=avs_release_value
 
 
 def test():
-    
+
     env = AVS_ScriptEnvironment(3)
     print('environment created:', env)
     err = env.get_error()
@@ -1492,7 +1573,7 @@ def test():
     print('checking for interface 3:', env.check_version(3))
     print('checking for interface 33:', env.check_version(33))
     print(env.invoke('VersionString'))
-    
+
     print('\nsome internal functions...')
     for function_name in env.get_var('$InternalFunctions$').split()[:10]:
         try:
@@ -1509,7 +1590,7 @@ def test():
     try:
 #        ret = env.invoke('Version')
         ret = env.invoke('BlankClip', [100, 200, 300])
-#        ret = env.invoke('Eval', 
+#        ret = env.invoke('Eval',
 #                         ['assert(false, "assert message")', 'script title'])
     except AvisynthError as err:
         print('error:', env.get_error())

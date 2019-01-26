@@ -5,16 +5,22 @@ GPo mod:
 Large Address Aware Flag is set (32bit version).
 forked from vdcrim: https://github.com/AvsPmod/AvsPmod
 
-Modifications by pinterf (pfmod) 
+Modifications (Avisnth header V6) by pinterf (pfmod) 
 
-pinterf source: https://github.com/pinterf/AvsPmod  (work in process)
+pinterf source: https://github.com/pinterf/AvsPmod
 GPo source: https://github.com/gispos/AvsPmod
 GPo releases: https://github.com/gispos/AvsPmod/releases
 
 --------------------------
-Version 2.6.0.3 [2019-01-17] GPo
+Version 2.6.0.4 [2019-01-25] GPo
 --------------------------
-Bug fix: 'Add tab to group' from kontext or video menu resulted in an error.
+- Bug fix: 32bit Version crashes
+- Bug fix: YUV values can be wrong or negative.
+- Bug fix: 'Add tab to group' from context or video menu resulted in an error.
+- Change the handling of plugins dir. There should never again problems.
+- Error handling if avisynth.dll can not load. Source from vdcrim.
+Change the db click behavior on video window, if video smaller than the window height, 
+script window expands the height full (not only to the set minimum lines count).
 
 --------------------------
 Version 2.6.0.2 [2019-01-07] GPo
