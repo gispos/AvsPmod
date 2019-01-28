@@ -13771,7 +13771,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if refreshVideo and self.trimDialog.IsShown():
                 self.ShowVideoFrame()
 
-    def DeleteAllFrameBookmarks(self, bmtype=None, start=0, end=None, refreshVideo=True):
+    def DeleteAllFrameBookmarks(self, bmtype=None, start=None, end=None, refreshVideo=True):
         if bmtype is None:
             self.DeleteFrameBookmark(None, refreshVideo=refreshVideo)
         else:
@@ -13782,7 +13782,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 bookmarks = slider.GetBookmarks()
                 lastindex = len(bookmarks) - 1
                 bm = [(value, bmType) for (value, bmType) in bookmarks.items()
-                      if bmtype == bmType and value >= start and (end is None or value <= end)]
+                      if bmtype == bmType and (start is None or value >= start) and (end is None or value <= end)]
                 if not bm:
                     return
                 toggle_color = False
