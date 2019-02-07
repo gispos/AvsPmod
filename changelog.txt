@@ -12,6 +12,11 @@ GPo source: https://github.com/gispos/AvsPmod
 GPo releases: https://github.com/gispos/AvsPmod/releases
 
 --------------------------
+Version 2.6.0.6 [2019-02-05] GPo
+--------------------------
+- Known issues with the Avisynth V6 header fixed. 
+
+--------------------------
 Version 2.6.0.4 [2019-01-25] GPo
 --------------------------
 - Bug fix: 32bit Version crashes

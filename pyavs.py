@@ -167,6 +167,7 @@ class AvsClipBase:
         self.IsYV411 = None
         self.IsY8 = None
         self.avsplus_colorspace = False
+        self.bits_per_component = None
         self.IsPlanar = None
         self.IsInterleaved = None
         self.IsFieldBased = None
@@ -296,8 +297,6 @@ class AvsClipBase:
         self.IsRGB = self.vi.is_rgb()
         self.IsRGB24 = self.vi.is_rgb24()
         self.IsRGB32 = self.vi.is_rgb32()
-        #self.IsRGB48 = self.vi.is_rgb48()  # not yet needed
-        #self.IsRGB64 = self.vi.is_rgb64()
         self.IsYUV = self.vi.is_yuv()
         self.IsYUY2 = self.vi.is_yuy2()
         self.IsYV24 = self.vi.is_yv24()
@@ -305,6 +304,7 @@ class AvsClipBase:
         self.IsYV12 = self.vi.is_yv12()
         self.IsYV411 = self.vi.is_yv411()
         self.IsY8 = self.vi.is_y8()
+        self.bits_per_component = self.vi.bits_per_component() # 8,10,12,14,16,32
 
         # Possible even for classic avs:
         '''
@@ -316,26 +316,17 @@ class AvsClipBase:
         self.IsY = self.vi.is_y() # use this one instead of IsY8
         self.num_components = self.vi.num_components() # 1-4
         self.component_size = self.vi.component_size() # 1, 2, 4 (in bytes)
-        self.bits_per_component = self.vi.bits_per_component() # 8,10,12,14,16,32
         '''
 
         # GPo, avs plus get colorspace
         cName = ''
         if self.env.function_exists('PixelType') and self.clip:
-            #self.num_components = self.vi.num_components() # 1-4
-            #self.component_size = self.vi.component_size() # 1, 2, 4 (in bytes)
-            #self.bits_per_component = self.vi.bits_per_component() # 8,10,12,14,16,32
             cName = self.env.invoke("PixelType", self.clip)
             #cName = avs_plus_get_colorspace_name(self.vi.pixel_type)
         if cName:
-            # RGB workaround 32,64 bit and 24,48 bit (old Header v3)
-            #~self.IsRGB24 = cName == 'RGB24'
-            #~self.IsRGB32 = cName == 'RGB32'
             self.avsplus_colorspace = True
             self.Colorspace = (cName*self.avsplus_colorspace)
         else:
-            #~self.IsRGB24 = self.vi.is_rgb24()
-            #~self.IsRGB32 = self.vi.is_rgb32()
             self.Colorspace = ('RGB24'*self.IsRGB24 + 'RGB32'*self.IsRGB32 + 'YUY2'*self.IsYUY2 + 'YV12'*self.IsYV12 +
                                'YV24'*self.IsYV24 + 'YV16'*self.IsYV16 + 'YV411'*self.IsYV411 + 'Y8'*self.IsY8
                                )
@@ -400,7 +391,7 @@ class AvsClipBase:
                 self.display_clip = clip
                 vi = self.display_clip.get_video_info()
                 self.DisplayWidth = vi.width
-                self.DisplayHeight = vi.height + 10  # GPo + 10
+                self.DisplayHeight = vi.height + 8
             else:
                 self.clip = clip
         except avisynth.AvisynthError as err:
@@ -458,7 +449,7 @@ class AvsClipBase:
                     matrix[0] = '709'
                 else:
                     matrix[0] = '601'
-            matrix[1] = 'Rec' if (matrix[1] == 'tv' or matrix[0] == '2020') else 'PC.'  # GPo, Rec2020 disabled in MenuItems
+            matrix[1] = 'Rec' if matrix[1] == 'tv' else 'PC.'
             self.matrix = matrix[1] + matrix[0]
         if interlaced is not None:
             self.interlaced = interlaced
@@ -473,10 +464,6 @@ class AvsClipBase:
         if not self._ConvertToRGB():
             return self.CreateErrorClip(display_clip_error=True)
         return True
-
-    def _ConvertToRGB(self):
-        '''Convert to RGB for display. Return True if successful'''
-        pass
 
     def _GetFrame(self, frame):
         if self.initialized:
@@ -493,14 +480,9 @@ class AvsClipBase:
             self.pitch = self.src_frame.get_pitch()
             self.pitchUV = self.src_frame.get_pitch(avisynth.avs.AVS_PLANAR_U)
             self.ptrY = self.src_frame.get_read_ptr()
-            if x86_64:
-                self.ptrY = self._cffi2ctypes_ptr(self.ptrY)
             if not self.IsY8:
                 self.ptrU = self.src_frame.get_read_ptr(avisynth.avs.AVS_PLANAR_U)
                 self.ptrV = self.src_frame.get_read_ptr(avisynth.avs.AVS_PLANAR_V)
-                if x86_64:
-                    self.ptrU = self._cffi2ctypes_ptr(self.ptrU)
-                    self.ptrV = self._cffi2ctypes_ptr(self.ptrV)
             # Display clip
             if self.display_clip:
                 self.display_frame = self.display_clip.get_frame(frame)
@@ -508,20 +490,15 @@ class AvsClipBase:
                     return False
                 self.display_pitch = self.display_frame.get_pitch()
                 self.pBits = self.display_frame.get_read_ptr()
-                if x86_64:
-                    self.pBits = self._cffi2ctypes_ptr(self.pBits)
                 if self.RGB48: ## -> RGB24
                     pass
             self.current_frame = frame
             return True
         return False
 
-    def _cffi2ctypes_ptr(self, ptr):
-        return ctypes.cast(
-                    int(avisynth.ffi.cast('unsigned long long', ptr)),
-                    ctypes.POINTER(ctypes.c_ubyte))
-
     def GetPixelYUV(self, x, y):
+        if self.bits_per_component > 8: # TODO
+            return (-1,-1,-1)
         if self.IsPlanar:
             indexY = x + y * self.pitch
             if self.IsY8:
@@ -535,7 +512,7 @@ class AvsClipBase:
             indexV = 4*(x/2) + 3 + y * self.pitch
         else:
             return (-1,-1,-1)
-        return (abs(self.ptrY[indexY]), abs(self.ptrU[indexU]), abs(self.ptrV[indexV]))
+        return (self.ptrY[indexY], self.ptrU[indexU], self.ptrV[indexV])
 
     def GetPixelRGB(self, x, y, BGR=True):
         if self.IsRGB:
@@ -755,7 +732,7 @@ if os.name == 'nt':
     NULL = 0
     OF_READ = UINT(0)
     BI_RGB = 0
-    GENERIC_WRITE = 0x40000000
+    GENERIC_WRITE = 0x40000000L
     CREATE_ALWAYS = 2
     FILE_ATTRIBUTE_NORMAL  = 0x00000080
 
@@ -853,6 +830,11 @@ if os.name == 'nt':
                 return True
             return False
 
+
+        # GPo, on x64 gets an error if pitch > row_size and high prefetch is used,
+        # ctypes 'long int too long to convert' in ctypes.memmove
+        # fixed with ubyte, but is memmove necessary...
+        """
         def DrawFrame(self, frame, dc=None, offset=(0,0), size=None):
             if not self._GetFrame(frame):
                 return
@@ -868,10 +850,28 @@ if os.name == 'nt':
                     pBits = self.pBits
                 else:
                     buf = ctypes.create_string_buffer(self.display_pitch * self.DisplayHeight)
-                    pBits = ctypes.addressof(buf)
+                    #pBits = ctypes.addressof(buf)
+                    pBits = ctypes.cast(buf, ctypes.POINTER(ctypes.c_ubyte))  # GPo
                     ctypes.memmove(pBits, self.pBits, self.display_pitch * (self.DisplayHeight - 1) + row_size)
+
                 DrawDibDraw(handleDib[0], hdc, offset[0], offset[1], w, h,
                             self.pInfo, pBits, 0, 0, w, h, 0)
+                return True
+        """
+
+        # GPo, I see visual no differenze is pitch greater then row_size
+        def DrawFrame(self, frame, dc=None, offset=(0,0), size=None):
+            if not self._GetFrame(frame):
+                return
+            if dc:
+                hdc = dc.GetHDC()
+                if size is None:
+                    w = self.DisplayWidth
+                    h = self.DisplayHeight
+                else:
+                    w, h = size
+                DrawDibDraw(handleDib[0], hdc, offset[0], offset[1], w, h,
+                            self.pInfo, self.pBits, 0, 0, w, h, 0)
                 return True
 
 

@@ -44,9 +44,8 @@ import sys
 import traceback
 import os.path
 import collections
-
+import ctypes
 import cffi
-
 
 # Try to load the library from the selected directory
 try:
@@ -1250,42 +1249,12 @@ class AVS_VideoInfo(object):
             == avs.AVS_CS_VPLANEFIRST # Shouldn't use this
 
     def get_plane_width_subsampling(self, plane): # interface.cpp
-        #return avs.avs_get_plane_width_subsampling(self.cdata, plane);  #V6
+        return avs.avs_get_plane_width_subsampling(self.cdata, plane);  #V6
         # IF V6: became and interface fn
-        if plane == avs.AVS_PLANAR_Y:  # No subsampling
-            return 0
-        if self.is_y8():
-            raise AvisynthError('Filter error: get_plane_width_subsampling not '
-                                'available on Y8 pixel type.')
-        if (plane == avs.AVS_PLANAR_U or plane == avs.AVS_PLANAR_V):
-            if self.is_yuy2():
-                return 1
-            elif self.is_planar():
-                return ((self.pixel_type >> avs.AVS_CS_SHIFT_SUB_WIDTH) + 1) & 3
-            else:
-                raise AvisynthError('Filter error: get_plane_width_subsampling '
-                                    'called with unsupported pixel type.')
-        raise AvisynthError('Filter error: get_plane_width_subsampling called '
-                            'with unsupported plane.')
 
     def get_plane_height_subsampling(self, plane): # interface.cpp
-        #return avs.avs_get_plane_height_subsampling(self.cdata, plane); #V6
+        return avs.avs_get_plane_height_subsampling(self.cdata, plane); #V6
         # IF V6: became and interface fn
-        if plane == avs.AVS_PLANAR_Y:  # No subsampling
-            return 0
-        if self.is_y8():
-            raise AvisynthError('Filter error: get_plane_height_subsampling not '
-                                'available on Y8 pixel type.')
-        if (plane == avs.AVS_PLANAR_U or plane == avs.AVS_PLANAR_V):
-            if self.is_yuy2():
-                return 0
-            elif self.is_planar():
-                return ((self.pixel_type >> avs.AVS_CS_SHIFT_SUB_HEIGHT) + 1) & 3
-            else:
-                raise AvisynthError('Filter error: get_plane_height_subsampling '
-                                    'called with unsupported pixel type.')
-        raise AvisynthError('Filter error: get_plane_height_subsampling called '
-                            'with unsupported plane.')
 
     def bits_per_pixel(self): #V6
         return avs.avs_bits_per_pixel(self.cdata)
@@ -1407,23 +1376,24 @@ class AVS_VideoFrame(object):
     def get_frame_buffer(self): # interface.cpp
         return self.cdata.vfb
 
-    # not nice. Accessing the internal fields directly despite the big warning:
-    # // DO NOT USE THIS STRUCTURE DIRECTLY
-    # todo remove this hardcoded part when get_read_ptr and get_write_ptr will be real interface function
-    def get_offset(self, plane=avs.AVS_PLANAR_Y): # interface.cpp
-        if plane == avs.AVS_PLANAR_U or plane == avs.AVS_PLANAR_B: return self.cdata.offsetU
-        elif plane == avs.AVS_PLANAR_V or plane == avs.AVS_PLANAR_R: return self.cdata.offsetV
-        elif plane == avs.AVS_PLANAR_A: return self.cdata.contents.offsetA
-        return self.cdata.offset # AVS_PLANAR_Y or AVS_PLANAR_G
-
     def get_read_ptr(self, plane=avs.AVS_PLANAR_Y):
-        return avs.avs_get_read_ptr_p(self.cdata, plane)  #V6
+        #return avs.avs_get_read_ptr_p(self.cdata, plane)  #V6
+        return ctypes.cast(                                # GPo
+                int(ffi.cast('unsigned long long',
+                avs.avs_get_read_ptr_p(self.cdata, plane))),
+                ctypes.POINTER(ctypes.c_ubyte)
+                )
 
     def is_writable(self):
         return bool(avs.avs_is_writable(self.cdata))
 
     def get_write_ptr(self, plane=avs.AVS_PLANAR_Y):
-        return avs.avs_get_write_ptr_p(self.cdata, plane)
+        #return avs.avs_get_write_ptr_p(self.cdata, plane) # V6
+        return ctypes.cast(                                # GPo
+                int(ffi.cast('unsigned long long',
+                avs.avs_get_write_ptr_p(self.cdata, plane))),
+                ctypes.POINTER(ctypes.c_ubyte)
+                )
 
 
 class AVS_Value(object):

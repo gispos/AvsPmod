@@ -11873,8 +11873,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     right = w_dc - int(script.AVI.DisplayWidth * self.zoomfactor) - self.xo
                 else:
                     # GPo 2018  added wd  (for move moore to left)
-                    wd = max(w_scrolled - int(script.AVI.DisplayWidth * self.zoomfactor), 0)
-                    right = w_dc - (w_scrolled - x0) + 2 + wd
+                    if self.extended_move:
+                        wd = max((w_scrolled - int(script.AVI.DisplayWidth * self.zoomfactor))-4, 2)
+                    else:
+                        wd = 2
+                    right = w_dc - (w_scrolled - x0) + wd
                 if right > 0:
                     dc.SetClippingRegion(w_dc - right, 0, right, h_dc)
                     dc.Clear()
@@ -17257,7 +17260,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     self.OnEraseBackground()
         dlg.Destroy()
 
-    # GPo, Have a look on the bug
+    # GPo, changed
     def SetPluginsDirectory(self, oldpluginsdirectory):
         '''Set the plugins autoload directory
 
@@ -17275,34 +17278,17 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.options['pluginsdir'] = old_plugins_directory
             return
         if os.name == 'nt':
-            value = ''
-            try:
-                key = _winreg.OpenKey(_winreg.HKEY_CURRENT_USER, 'Software\\AviSynth')
-                value = os.path.expandvars(_winreg.QueryValueEx(key, 'plugindir2_5')[0])
-            except:
-                pass
-            hkcu = _("Delet incompatible: HKCU\Software\Avisynth\plugindir2_5\n") if value else _('')
             s1 = (_("Changing the plugins directory writes to the Windows registry.\n") +
                   _("Writing to: HKLM\Software\Avisynth\plugindir2_5\n")+
-                 hkcu + _(" Admin rights are needed."))
+                  _(" Admin rights are needed."))
             s2 = _("Do you wish to continue?")
             ret = wx.MessageBox('%s\n\n%s' % (s1, s2), _('Warning'), wx.YES_NO|wx.ICON_EXCLAMATION)
             if ret == wx.YES:
-                value = ''
                 f = tempfile.NamedTemporaryFile(delete=False)
-                if value:
-                    txt = textwrap.dedent(u'''\
-                    HKCU\\Software\\Avisynth
-                    'plugindir2_5'= DELETE
-                    HKLM\\Software\\Avisynth
-                    'plugindir2_5'= "{dir}"
-                    ''').format(dir=pluginsdir_exp)
-                else:
-                    txt = textwrap.dedent(u'''\
-                    HKLM\\Software\\Avisynth
-                    'plugindir2_5'= "{dir}"
-                    ''').format(dir=pluginsdir_exp)
-
+                txt = textwrap.dedent(u'''\
+                HKLM\\Software\\Avisynth
+                'plugindir2_5'= "{dir}"
+                ''').format(dir=pluginsdir_exp)
                 f.write(txt.encode('utf16'))
                 f.close()
                 if ctypes.windll.shell32.ShellExecuteW(None, u'runas', u'cmd',
@@ -17310,7 +17296,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     self.options['customplugindir'] = False
                     return
                 else:
-                   wx.MessageBox(_('Plugins dir registration failed'), _('Error'), wx.OK|wx.ICON_ERROR)
+                    wx.MessageBox(_('Plugins dir registration failed'), _('Error'), wx.OK|wx.ICON_ERROR)
             self.options['pluginsdir'] = oldpluginsdirectory
         else:
             os.environ['AVXSYNTH_RUNTIME_PLUGIN_PATH'] = pluginsdir_exp
