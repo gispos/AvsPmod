@@ -12,6 +12,12 @@ GPo source: https://github.com/gispos/AvsPmod
 GPo releases: https://github.com/gispos/AvsPmod/releases
 
 --------------------------
+Version 2.6.0.7 [2019-07-20] GPo
+--------------------------
+- Bug fix: RGB48 planar, RGB64 planar displayed values wrong
+- Some small changes I do not remember ;)
+
+--------------------------
 Version 2.6.0.6 [2019-02-05] GPo
 --------------------------
 - Known issues with the Avisynth V6 header fixed. 
@@ -20,7 +26,7 @@ Version 2.6.0.6 [2019-02-05] GPo
 Version 2.6.0.4 [2019-01-25] GPo
 --------------------------
 - Bug fix: 32bit Version crashes
-- Bug fix: YUV values can be wrong or negative.
+- Bug fix: YUV values can be wrong.
 - Bug fix: 'Add tab to group' from context or video menu resulted in an error.
 - Change the handling of plugins dir. There should never again problems.
 - Error handling if avisynth.dll can not load. Source from vdcrim.

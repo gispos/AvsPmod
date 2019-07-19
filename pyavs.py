@@ -177,6 +177,7 @@ class AvsClipBase:
         self.HasVideo = None
         self.Colorspace = None
         self.ffms_info_cache = {}
+
         #self.num_components = None   # not yet needed
         #self.component_size = None
         #self.bits_per_component = None
@@ -191,7 +192,7 @@ class AvsClipBase:
             if isinstance(script, avisynth.AVS_Clip):
                 raise ValueError("env must be defined when providing a clip")
             try:
-                self.env = avisynth.AVS_ScriptEnvironment(3)
+                self.env = avisynth.AVS_ScriptEnvironment(6)
             except OSError:
                 return
             if hasattr(self.env, 'get_error'):
@@ -516,6 +517,8 @@ class AvsClipBase:
 
     def GetPixelRGB(self, x, y, BGR=True):
         if self.IsRGB:
+            if self.IsPlanar and self.bits_per_component > 8: # Todo
+                return (-1,-1,-1)
             bytes = self.vi.bytes_from_pixels(1)
             if BGR:
                 indexB = (x * bytes) + (self.Height - 1 - y) * self.pitch

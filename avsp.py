@@ -6247,7 +6247,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'true', 'false', 'try', 'catch',
         ]
         self.avsdatatypes = [
-            'clip', 'int', 'float', 'string', 'bool', 'var', 'func'  # GPo add 'func' GPo Avisynth_Neo compatiple
+            'clip', 'int', 'float', 'string', 'bool', 'var', 'func'  # GPo add 'func' Avisynth_Neo compatiple
         ]
         self.avsoperators = [
             '-', '*', ',', '.', '/', ':', '?', '\\', '+', '<', '>', '=',
@@ -7034,7 +7034,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.scriptNotebook.AddPage(scriptWindow, self.NewFileName)
         # Create the program's video preview window
         self.videoWindow = self.createVideoWindow(self.videoSplitter)
-
         # Create the program's menu
         shortcutList = []
         oldShortcuts = ([item[0] for item in self.options['shortcuts']], self.options['shortcuts'])
@@ -9594,6 +9593,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     def OnMenuVideoReleaseMemory(self, event):
         self.HidePreviewWindow()
+        self.SetVideoStatusText()
         for index in xrange(self.scriptNotebook.GetPageCount()):
             script = self.scriptNotebook.GetPage(index)
             script.AVI = None
@@ -10013,12 +10013,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     def OnMenuOptionsEnableLineByLineUpdate(self, event):
         id = event.GetId()
         menuItem = self.GetMenuBar().FindItemById(id)
-        if not self.options['autoupdatevideo']:
-            self.options['autoupdatevideo'] = True
-            menuItem.Check(True)
-        else:
-            self.options['autoupdatevideo'] = False
-            menuItem.Check(False)
+        self.options['autoupdatevideo'] = not self.options['autoupdatevideo']
+        menuItem.Check(self.options['autoupdatevideo'])
 
     def OnMenuOptionsDisablePreview(self, event):
         id = event.GetId()
@@ -10042,12 +10038,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     def OnMenuOptionsMonospaceFont(self, event):
         id = event.GetId()
         menuItem = self.GetMenuBar().FindItemById(id)
-        if not self.options['usemonospacedfont']:
-            self.options['usemonospacedfont'] = True
-            menuItem.Check(True)
-        else:
-            self.options['usemonospacedfont'] = False
-            menuItem.Check(False)
+        self.options['usemonospacedfont'] = not self.options['usemonospacedfont']
+        menuItem.Check(self.options['usemonospacedfont'])
         for index in xrange(self.scriptNotebook.GetPageCount()):
             script = self.scriptNotebook.GetPage(index)
             script.SetTextStyles(self.options['textstyles'], self.options['usemonospacedfont'])
@@ -10055,12 +10047,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     def OnMenuOptionsEnableParanoiaMode(self, event):
         id = event.GetId()
         menuItem = self.GetMenuBar().FindItemById(id)
-        if not self.options['paranoiamode']:
-            self.options['paranoiamode'] = True
-            menuItem.Check(True)
-        else:
-            self.options['paranoiamode'] = False
-            menuItem.Check(False)
+        self.options['paranoiamode'] = not self.options['paranoiamode']
+        menuItem.Check(self.options['paranoiamode'])
         f = open(self.optionsfilename, mode='wb')
         cPickle.dump(self.options, f, protocol=0)
         f.close()
@@ -14325,7 +14313,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         videoWindow = self.videoWindow
         script = self.currentScript
         if script.AVI is None:
-            self.UpdateScriptAVI(script, forceRefresh=True)
+            #~self.UpdateScriptAVI(script, forceRefresh=True)           # GPo, whe don't need do go in error while moving the mouse
+            return '' if string_ else (0, 0), None, None, None, None    # if not AVI so return false
         w, h = script.AVI.DisplayWidth, script.AVI.DisplayHeight
         dc = wx.ClientDC(videoWindow)
         dc.SetDeviceOrigin(self.xo, self.yo)
@@ -14783,7 +14772,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     saved = False
                     try:
                         saved = self.SaveSession(os.path.join(self.programdir, '_LastErrorSession.ses'), previewvisible=False)
-                        self.SaveScript(os.path.join(self.programdir, '_LastErrorScript.avs'))
+                        #self.SaveScript(os.path.join(self.programdir, '_LastErrorScript.avs'))
                     except:
                         pass
 
@@ -15445,7 +15434,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             saved = False
             try:
                 saved = self.SaveSession(os.path.join(self.programdir, '_LastErrorSession.ses'), previewvisible=False)
-                self.SaveScript(os.path.join(self.programdir, '_LastErrorScript.avs'))
+                #~self.SaveScript(os.path.join(self.programdir, '_LastErrorScript.avs'))
             except:
                 pass
 
