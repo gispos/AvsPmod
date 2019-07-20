@@ -16,6 +16,7 @@ Version 2.6.0.7 [2019-07-20] GPo
 --------------------------
 - Bug fix: RGB48 planar, RGB64 planar displayed values wrong
 - Some small changes I do not remember ;)
+r2 - Added show pixelinfo on tab change with keyboard, if mouse pos in video window
 
 --------------------------
 Version 2.6.0.6 [2019-02-05] GPo

@@ -10596,6 +10596,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.AddFrameBookmark(value, bmtype)
         event.Skip()
 
+    # GPo
+    def PointInRect(self, p, r):
+        if (p[0] > r[0] and p[0] < r[2] and p[1] > r[1] and p[1] < r[3]):
+            return True
+        return False
+
     def OnNotebookPageChanged(self, event):
         # Get the newly selected script
         script = self.scriptNotebook.GetPage(event.GetSelection())
@@ -10679,15 +10685,22 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     self.videoSlider.SetValue(0)
 
         # Misc
+        self.SetVideoStatusText()
         if self.boolVideoWindowFocused:
             self.videoWindow.SetFocus()
+            # GPo
+            if self.showVideoPixelInfo:
+                if self.PointInRect(self.videoWindow.ScreenToClient(wx.GetMousePosition()), self.videoWindow.GetClientRect()):
+                    pixelInfo = self.GetPixelInfo(None, string_=True)
+                    if pixelInfo[1] != None:
+                        self.SetVideoStatusText(addon=pixelInfo)
+
         elif self.findDialog.IsShown():
             self.findDialog.SetFocus()
         elif self.replaceDialog.IsShown():
             self.replaceDialog.SetFocus()
         else:
             script.SetFocus()
-        self.SetVideoStatusText()
         self.UpdateProgramTitle()
         self.oldlinenum = None
         if self.options['tabsbookmarksfromscript']:
