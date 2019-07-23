@@ -5282,6 +5282,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.oldBoolSliders = None
         self.xo = self.yo = 5
         self.saveViewPos = False        # GPo, keep view XY and zoom for each script
+        self.tabChangeLoadBookmarks = self.options['tabsbookmarksfromscript']
         self.play_speed_factor = 1.0
         self.play_drop = False          # GPo 2018 change to False
         self.playing_video = False
@@ -6014,6 +6015,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'promptexitsaveonlyexisting': False,  # GPo
             'bookmarksfromscript': False,         # GPo
             'tabsbookmarksfromscript': False,     # GPo
+            'middlemousefunc': 1,                 # GPo
             'bookmarkshilightcolor': wx.Colour(240, 140, 140), # GPo
             'savemarkedavs': True,
             'eol': 'auto',
@@ -6839,6 +6841,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 ((_('Tabs changing load bookmarks from script'), wxp.OPT_ELEM_CHECK, 'tabsbookmarksfromscript', _('Automatically load bookmarks from script if tab changed'), dict() ), ),
                 ((_('Only allow a single instance of AvsPmod')+' *', wxp.OPT_ELEM_CHECK, 'singleinstance', _('Only allow a single instance of AvsPmod'), dict() ), ),
                 ((_('Show warning for bad plugin naming at startup'), wxp.OPT_ELEM_CHECK, 'dllnamewarning', _('Show warning at startup if there are dlls with bad naming in default plugin folder'), dict() ), ),
+                ((_('Middle mouse on script (0 open source, 1 show video frame)'), wxp.OPT_ELEM_SPIN, 'middlemousefunc', _('Middle mouse button behavior on the script'), dict(min_val=0, max_val=1) ), ),  # GPo 2019
                 ((_('Max number of recent filenames'), wxp.OPT_ELEM_SPIN, 'nrecentfiles', _('This number determines how many filenames to store in the recent files menu'), dict(min_val=0) ), ),
                 ((_('Custom jump size:'), wxp.OPT_ELEM_SPIN, 'customjump', _('Jump size used in video menu'), dict(min_val=0) ), ),
                 ((_('Custom jump size units'), wxp.OPT_ELEM_RADIO, 'customjumpunits', _('Units of custom jump size'), dict(choices=[(_('frames'), 'frames'),(_('seconds'), 'sec'),(_('minutes'), 'min'),(_('hours'), 'hr')]) ), ),
@@ -7402,6 +7405,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     (_('Bookmarks to script'), '', self.OnMenuBookmarksToScript),
                     (_('Bookmarks from script'), '', self.OnMenuBookmarksFromScript),
                     #(''),
+                    #(_('Tab change load bookmarks'), '', self.OnMenuTabChangeLoadBookmarks, '', wx.ITEM_CHECK, self.options['tabsbookmarksfromscript']),
                     #(_('bell at bookmarks'), '', self.OnMenuVideoBookmarksBell),
                     #(_('hilight at bookmarks'), '', self.OnMenuVideoBookmarksHilight),
                     #(_('set hilight color...'), '', self.OnMenuVideoSetBookmarkHiligthColor),
@@ -7842,6 +7846,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             #),
             (_('Bookmarks to script'), '', self.OnMenuBookmarksToScript),     # GPo, 2018
             (_('Bookmarks from script'), '', self.OnMenuBookmarksFromScript), # GPo, 2018
+            (''),
+            (_('Tab change load bookmarks'), '', self.OnMenuTabChangeLoadBookmarks, '', wx.ITEM_CHECK, self.options['tabsbookmarksfromscript']), # GPo 2019
             (''),
             (_('Select all'), '', self.OnMenuEditSelectAll),
             (''),
@@ -8417,6 +8423,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if event != None:  # On Menu click wait a short time
                 wx.CallLater(700, self.GetStatusBar().SetStatusText, _('%d Bookmarks imported') % len(bookmarkDict))
         return len(bookmarkDict)
+
+    def OnMenuTabChangeLoadBookmarks(self, event):
+        self.tabChangeLoadBookmarks = event.IsChecked()
 
     def OnMenuFileRenameTab(self, index, pos=None):
         if not self.scriptNotebook.dblClicked\
@@ -9708,6 +9717,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.RunExternalPlayer()
 
     def OnMenuVideoInfo(self, event):
+        if self.currentScript.AVI is None:
+            wx.Bell()
+            return
         dlg = wx.Dialog(self, wx.ID_ANY, _('Video information'))
         vi = self.GetVideoInfoDict()
         labels = (
@@ -9717,6 +9729,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 (_('Length:'), '%i %s (%s)' % (vi['framecount'], _('frames'), vi['totaltime'])),
                 (_('Frame rate:'), '%.03f %s (%i/%i)' % (vi['framerate'], _('fps'), vi['frameratenum'], vi['framerateden'])),
                 (_('Colorspace:'), vi['colorspace']),
+                (_('Bit depth:'), '%i' % (vi['bitdepth'])),
                 (_('Field or frame based:'), vi['fieldframebased']),
                 (_('Parity:'), vi['parity']),
                 ),
@@ -10596,12 +10609,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.AddFrameBookmark(value, bmtype)
         event.Skip()
 
-    # GPo
-    def PointInRect(self, p, r):
-        if (p[0] > r[0] and p[0] < r[2] and p[1] > r[1] and p[1] < r[3]):
-            return True
-        return False
-
     def OnNotebookPageChanged(self, event):
         # Get the newly selected script
         script = self.scriptNotebook.GetPage(event.GetSelection())
@@ -10690,7 +10697,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.videoWindow.SetFocus()
             # GPo
             if self.showVideoPixelInfo:
-                if self.PointInRect(self.videoWindow.ScreenToClient(wx.GetMousePosition()), self.videoWindow.GetClientRect()):
+                if self.videoWindow.GetClientRect().Inside(self.videoWindow.ScreenToClient(wx.GetMousePosition())):
                     pixelInfo = self.GetPixelInfo(None, string_=True)
                     if pixelInfo[1] != None:
                         self.SetVideoStatusText(addon=pixelInfo)
@@ -10703,7 +10710,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             script.SetFocus()
         self.UpdateProgramTitle()
         self.oldlinenum = None
-        if self.options['tabsbookmarksfromscript']:
+        if self.tabChangeLoadBookmarks:
             self.OnMenuBookmarksFromScript(event=None, beep=False)
 
     def OnNotebookPageChanging(self, event):
@@ -10931,14 +10938,18 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     def OnMiddleDownScriptWindow(self, event):
         script = self.currentScript
-        xypos = event.GetPosition()
-        script.GotoPos(script.PositionFromPoint(xypos))
+        if self.options['middlemousefunc'] == 0:
+            xypos = event.GetPosition()
+            script.GotoPos(script.PositionFromPoint(xypos))
         self.middleDownScript = True
 
     def OnMiddleUpScriptWindow(self, event):
         if self.middleDownScript:
             self.middleDownScript = False
-            self.InsertSource()
+            if (self.options['middlemousefunc'] == 1) and (self.currentScript.GetTextLength() > 5):
+                self.ShowVideoFrame()
+            else:
+                self.InsertSource()
 
     def OnKeyDownVideoWindow(self, event):
         key = event.GetKeyCode()
@@ -11253,7 +11264,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         else:
             videoWindow = self.videoWindow
             if event and event.Dragging() and event.LeftIsDown() and videoWindow.HasCapture():
-                newPoint = event.GetPosition()
+                try:
+                    newPoint = event.GetPosition()
+                except:
+                    return  # GPo
                 if videoWindow.GetRect().Inside(newPoint):
                     newOriginX = videoWindow.oldOrigin[0] - (newPoint[0] - videoWindow.oldPoint[0])
                     newOriginY = videoWindow.oldOrigin[1] - (newPoint[1] - videoWindow.oldPoint[1])
@@ -11275,7 +11289,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         newOriginY = ymax
                     videoWindow.Scroll(newOriginX, newOriginY)
                 else:
-                    videoWindow.ReleaseMouse()
+                    try:
+                        videoWindow.ReleaseMouse()
+                    except:
+                        # GPo, fix if Capture is losen by other programs (popup windows etc.)
+                        #~videoWindow.CaptureMouse()
+                        #~videoWindow.ReleaseMouse()
+                        pass
                     videoWindow.SetCursor(wx.StockCursor(wx.CURSOR_DEFAULT))
             elif self.showVideoPixelInfo: #self.options['showvideopixelinfo']:
                 if True:#self.FindFocus() == videoWindow:
@@ -11293,7 +11313,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     def OnLeftUpVideoWindow(self, event):
         videoWindow = self.videoWindow
         if videoWindow.HasCapture():
-            videoWindow.ReleaseMouse()
+            try:
+                videoWindow.ReleaseMouse()
+            except:
+                # GPo, fix if Capture is losen by other programs (popup windows etc.)
+                #~videoWindow.CaptureMouse()
+                #~videoWindow.ReleaseMouse()
+                pass
             videoWindow.SetCursor(wx.StockCursor(wx.CURSOR_DEFAULT))
         event.Skip()
 
@@ -11569,6 +11595,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             ('%FRN', _('Framerate numerator')),
             ('%FRD', _('Framerate denominator')),
             ('%CS', _('Colorspace')),
+            ('%BIT', _('Bits per component')),
             ('%FB', _('Field or frame based')),
             ('%P', _('Parity')),
             ('%PS', _('Parity short (BFF or TFF)')),
@@ -12536,7 +12563,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             filename = os.path.join(dirname, basename)
 
             # Get script's text, adding the marked version of the script if required
-            #~ txt = self.regexp.sub(self.re_replace, script.GetText())
             scriptText = script.GetText()
             txt = self.getCleanText(scriptText)
             if txt != scriptText and self.options['savemarkedavs']:
@@ -12556,8 +12582,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.SetScriptTabname(basename, script)
             if os.path.isdir(dirname):
                 self.options['recentdir'] = dirname
-            self.refreshAVI = True
-            #~ script.previewtxt = None
+            '''
+            # GPo, I think we don't need force update here, script is not changed
+            if script was changed before, refreshAVI was set to True
+            '''
+            #~self.refreshAVI = True
             self.UpdateRecentFilesList(filename)
         else:
             return None
@@ -14265,7 +14294,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 pixelclr = pixelrgb
         else:
             pixelpos, pixelhex, pixelrgb, pixelrgba, pixelyuv, pixelclr = '', '', '', '', '', ''
-        frameratenum, framerateden, audiorate, audiolength, audiochannels, audiobits, colorspace, parity = v.FramerateNumerator, v.FramerateDenominator, v.Audiorate, v.Audiolength, v.Audiochannels, v.Audiobits, v.Colorspace, v.GetParity
+        frameratenum, framerateden, audiorate, audiolength, audiochannels, audiobits, colorspace, parity, bitdepth = v.FramerateNumerator, v.FramerateDenominator, v.Audiorate, v.Audiolength, v.Audiochannels, v.Audiobits, v.Colorspace, v.GetParity, v.bits_per_component
         if v.IsFrameBased:
             fieldframebased = _('Frame Based')
         else:
@@ -14305,6 +14334,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             ('%TT', '{totaltime}'),
             ('%FR', '{framerate:.3f}'),
             ('%CS', '{colorspace}'),
+            ('%BIT', '{bitdepth}'),
             ('%AR', '{aspectratio}'),
             ('%FB', '{fieldframebased}'),
             ('%PS', '{parityshort}'),
@@ -14326,7 +14356,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         videoWindow = self.videoWindow
         script = self.currentScript
         if script.AVI is None:
-            #~self.UpdateScriptAVI(script, forceRefresh=True)           # GPo, whe don't need do go in error while moving the mouse
+            #~self.UpdateScriptAVI(script, forceRefresh=True)           # GPo, we don't need do go in error while moving the mouse
             return '' if string_ else (0, 0), None, None, None, None    # if not AVI so return false
         w, h = script.AVI.DisplayWidth, script.AVI.DisplayHeight
         dc = wx.ClientDC(videoWindow)
@@ -14351,10 +14381,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             rgb = dc.GetPixel(x, y)
             R,G,B = rgb.Get()
             A = 0
+            cR = '*'
+            cY = '*'
             hexcolor = '$%02x%02x%02x' % (R,G,B)
             Y = 0.257*R + 0.504*G + 0.098*B + 16
             U = -0.148*R - 0.291*G + 0.439*B + 128
             V = 0.439*R - 0.368*G - 0.071*B + 128
+
             if 'flipvertical' in self.flip:
                 y = script.AVI.DisplayHeight - 1 - y
             if 'fliphorizontal' in self.flip:
@@ -14365,23 +14398,38 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     avsYUV = script.AVI.GetPixelYUV(x, y)
                     if avsYUV != (-1,-1,-1):
                         Y,U,V = avsYUV
+                        cY = ''
                     if script.AVI.IsRGB32:
                         avsRGBA = script.AVI.GetPixelRGBA(x, y)
                         if avsRGBA != (-1,-1,-1,-1):
                             R,G,B,A = avsRGBA
+                            cR = ''
+                            #cY = ''
                     else:
                         avsRGB = script.AVI.GetPixelRGB(x, y)
                         if avsRGB != (-1,-1,-1):
                             R,G,B = avsRGB
+                            cR = ''
+                            #cY = ''
                 except:
                     pass
+
+            # GPo test, calc the hex and yuv from the returned values
+            """
+            hexcolor = '$%02x%02x%02x' % (R,G,B)
+            if cY != '':
+                Y = 0.257*R + 0.504*G + 0.098*B + 16
+                U = -0.148*R - 0.291*G + 0.439*B + 128
+                V = 0.439*R - 0.368*G - 0.071*B + 128
+            # GPo end
+            """
             if not string_:
                 return (x, y), hexcolor.upper()[1:], (R, G, B), (R, G, B, A), (Y, U, V)
             xystring = '%s=(%i,%i)' % (_('pos'),x,y)
-            hexstring = '%s=%s' % (_('hex'),hexcolor.upper())
-            rgbstring = '%s=(%i,%i,%i)' % (_('rgb'),R,G,B)
-            rgbastring = '%s=(%i,%i,%i,%i)' % (_('rgba'),R,G,B,A)
-            yuvstring = '%s=(%i,%i,%i)' % (_('yuv'),Y,U,V)
+            hexstring = '%s=%s' % (_('*hex'),hexcolor.upper())
+            rgbstring = '%s=(%i,%i,%i)' % (_(cR+'rgb'),R,G,B)
+            rgbastring = '%s=(%i,%i,%i,%i)' % (_(cR+'rgba'),R,G,B,A)
+            yuvstring = '%s=(%i,%i,%i)' % (_(cY+'yuv'),Y,U,V)
             return xystring, hexstring, rgbstring, rgbastring, yuvstring
         else:
             if not 0 <= x < w:

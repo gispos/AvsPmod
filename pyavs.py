@@ -517,7 +517,7 @@ class AvsClipBase:
 
     def GetPixelRGB(self, x, y, BGR=True):
         if self.IsRGB:
-            if self.IsPlanar and self.bits_per_component > 8: # Todo
+            if self.bits_per_component > 8: # Todo
                 return (-1,-1,-1)
             bytes = self.vi.bytes_from_pixels(1)
             if BGR:

@@ -12,6 +12,16 @@ GPo source: https://github.com/gispos/AvsPmod
 GPo releases: https://github.com/gispos/AvsPmod/releases
 
 --------------------------
+Version 2.6.0.8 [2019-07-22] GPo
+--------------------------
+- Added middle mouse button behavior on the script can be changed. options>misc (now default: show frame if script not empty)
+- Added tab context 'Tab change load bookmarks' enables, disables temporal the function
+- Added video info 'bits_per_component' (bitdepth), see option>video>customize the status bar %BIT
+- Added indicator if the pixelinfo (RGB, YUV, HEX) returned from avisynth or display, it's from display an asterisk is shown *
+- Removing annoying and unneeded force script update after saving the script.
+- a few other code changes
+
+--------------------------
 Version 2.6.0.7 [2019-07-20] GPo
 --------------------------
 - Bug fix: RGB48 planar, RGB64 planar displayed values wrong
