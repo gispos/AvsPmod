@@ -1,0 +1,26 @@
+[x264 CRF Slow]
+ffmpeg.exe -i "$video_input" -vcodec libx264 -preset slow -crf $video_quality -vf setsar=sar=$par_x/$par_y -acodec aac -b:a 128k -y "$video_output" 
+
+[x264 CRF Medium]
+ffmpeg.exe -i "$video_input" -vcodec libx264 -crf $video_quality -vf setsar=sar=$par_x/$par_y -acodec aac -b:a 128k -y "$video_output" 
+
+[x265 CRF Slow]
+ffmpeg.exe -i "$video_input" -vcodec libx265 -preset slow -crf $video_quality -vf setsar=sar=$par_x/$par_y -acodec aac -b:a 128k -y "$video_output" 
+
+[x265 CRF Medium]
+ffmpeg.exe -i "$video_input" -vcodec libx265 -crf $video_quality -vf setsar=sar=$par_x/$par_y -acodec aac -b:a 128k -y "$video_output"
+
+[nv_h264 VBR HQ]
+ffmpeg.exe -i "$video_input" -vcodec h264_nvenc -preset slow -profile:v main -rc vbr_hq -b:v $video_bitrate_k -vf setsar=sar=$par_x/$par_y -acodec aac -b:a 128k -y "$video_output"
+
+[nv_h264 CQP]
+ffmpeg.exe -i "$video_input" -vcodec h264_nvenc -preset slow -profile:v main -rc constqp -qp $video_quality -vf setsar=sar=$par_x/$par_y -acodec aac -b:a 128k -y "$video_output"  
+
+[nv_h265 VBR HQ]
+ffmpeg.exe -i "$video_input" -vcodec hevc_nvenc -preset slow -profile:v main -rc vbr_hq -b:v $video_bitrate_k -vf setsar=sar=$par_x/$par_y -acodec aac -b:a 128k -y "$video_output"
+
+[nv_h265 CQP]
+ffmpeg.exe -i "$video_input" -vcodec hevc_nvenc -preset slow -profile:v main -rc constqp -qp $video_quality -vf setsar=sar=$par_x/$par_y -acodec aac -b:a 128k -y "$video_output"
+
+[DNxHR HQ]
+ffmpeg.exe -i "$video_input" -c:v dnxhd -profile:v dnxhr_hq -vf "format=yuv422p, setsar=sar=$par_x/$par_y" -c:a pcm_s16le "$video_output"
