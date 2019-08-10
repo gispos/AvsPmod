@@ -9349,7 +9349,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 except ValueError:
                     zoompercent = 100
                 if (zoompercent >= 100) or (zoompercent in [25, 50]):    # GPo 2018
-                    zoomfactor = float(zoompercent / 100.00)
+                    zoomfactor = float(zoompercent / 100.0)
                 else:
                     return
 
@@ -9358,8 +9358,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     self.zoomwindowfit = False
                     self.zoomwindowfill = False
                     self.currentScript.lastSplitVideoPos = None
-
-        self.zoomfactor = zoomfactor
+        try:
+            self.zoomfactor = self.fix_zoom(zoomfactor)
+        except:
+            self.zoomfactor = 1
 
         if show:
             self.ShowVideoFrame(scroll=scroll)
@@ -10947,7 +10949,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if self.middleDownScript:
             self.middleDownScript = False
             if (self.options['middlemousefunc'] == 1) and (self.currentScript.GetTextLength() > 5):
-                self.ShowVideoFrame()
+                self.ShowVideoFrame(forceCursor=self.refreshAVI)
             else:
                 self.InsertSource()
 
@@ -10979,7 +10981,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     # GPo 2018  reduce a bit the code size (moore then once used)
     def ZoomAndScroll(self, old_zoomfactor, new_zoomfactor):
-        self.zoomfactor = max(min(new_zoomfactor, 20.0), 0.1)   # Zoom limit set
+        self.zoomfactor = self.fix_zoom(max(min(new_zoomfactor, 20.0), 0.1))
         xrel, yrel = self.videoWindow.ScreenToClient(wx.GetMousePosition())
         xpos, ypos = self.videoWindow.CalcUnscrolledPosition(xrel, yrel)
         xpos = (xpos - self.xo) * self.zoomfactor / old_zoomfactor + self.xo
@@ -11000,9 +11002,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             factor = 1 + 0.25 * abs(rotation) / event.GetWheelDelta()
             old_zoomfactor = self.zoomfactor
             if rotation > 0:
-                self.zoomfactor *= factor
+                self.zoomfactor = self.fix_zoom(self.zoomfactor * factor)
             else:
-                self.zoomfactor /= factor
+                self.zoomfactor = self.fix_zoom(self.zoomfactor / factor)
 
             self.videoWindow.Freeze()
             try:
@@ -11881,6 +11883,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 w_dc, h_dc = dc.GetSize()
                 w_scrolled, h_scrolled = self.videoWindow.GetVirtualSize()
                 x0, y0 = self.videoWindow.GetViewStart()
+                zfa = 4 if self.zoomfactor <= 2 else 6 # GPo
                 if y0 < self.yo:
                     dc.SetClippingRegion(0, 0, w_dc, self.yo - y0)
                     dc.Clear()
@@ -11892,7 +11895,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 if h_dc == h_scrolled:
                     bottom = h_dc - int(script.AVI.DisplayHeight * self.zoomfactor) - self.yo
                 else:
-                    bottom = h_dc - (h_scrolled - y0) + 2
+                    bottom = h_dc - (h_scrolled - y0) + zfa
                 if bottom > 0:
                     dc.SetClippingRegion(0, h_dc - bottom, w_dc, bottom)
                     dc.Clear()
@@ -11902,9 +11905,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 else:
                     # GPo 2018  added wd  (for move moore to left)
                     if self.extended_move:
-                        wd = max((w_scrolled - int(script.AVI.DisplayWidth * self.zoomfactor))-4, 2)
+                        wd = max((w_scrolled - int(script.AVI.DisplayWidth * self.zoomfactor))-4, zfa)
                     else:
-                        wd = 2
+                        wd = zfa
                     right = w_dc - (w_scrolled - x0) + wd
                 if right > 0:
                     dc.SetClippingRegion(w_dc - right, 0, right, h_dc)
@@ -14737,6 +14740,16 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         self.currentScript.SetFocus()
 
+    # GPo, for zoom layout bugfix
+    def fix_zoom(self, zoom ):
+        k = int(1000.0 / zoom) # integer value
+        new_zoom = 1000.0 / float(k) # float value
+        while True:
+            k2 = int(1000.0 / new_zoom ) # integer value
+            if  k2 == k:
+                return  new_zoom
+            new_zoom -= 0.0000001
+
     def ShowVideoFrame(self, framenum=None, forceRefresh=False, wrap=True, script=None,
                        userScrolling=False, keep_env=None, forceLayout=False, doLayout=True,
                        resize=None, scroll=None, focus=True, adjust_handle=False,
@@ -14746,15 +14759,19 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         # Exit if disable preview option is turned on
         if self.options['disablepreview']:
             return
+
+        # Update the script AVI
+        if script is None:
+            script = self.currentScript
+        if script.AVI is None:
+            forceRefresh = True
+            forceCursor = True
+        display_clip_refresh_needed = script.display_clip_refresh_needed
+        forceCursor = forceCursor or self.refreshAVI
+
         if forceCursor:
             wx.SetCursor(wx.StockCursor(wx.CURSOR_WAIT))
         try:
-            # Update the script AVI
-            if script is None:
-                script = self.currentScript
-            if script.AVI is None:
-                forceRefresh = True
-            display_clip_refresh_needed = script.display_clip_refresh_needed
             if self.UpdateScriptAVI(script, forceRefresh, keep_env=keep_env, showCursor=not forceCursor) is None:
                 #~ wx.MessageBox(_('Error loading the script'), _('Error'), style=wx.OK|wx.ICON_ERROR)
                 return False
@@ -14877,19 +14894,24 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 script.sliderWindow.Refresh()
 
             # Resize the video window as necessary
+            #self.zoomfactor = self.fix_zoom(self.zoomfactor) # GPo, have linked to all zoom set functions
             oldSize = self.videoWindow.GetVirtualSize()
             videoWidth = w = int(script.AVI.DisplayWidth * self.zoomfactor)
             videoHeight = h = int(script.AVI.DisplayHeight * self.zoomfactor)
             if self.zoomwindowfit:
-                self.videoWindow.SetVirtualSize((0, 0))
+                vs = (0,0)
+                self.videoWindow.SetVirtualSize(vs)
             if doLayout:
-                if forceLayout or not self.previewWindowVisible or videoWidth != self.oldWidth or videoHeight != self.oldHeight:
+                if forceLayout or not self.previewWindowVisible or (videoWidth != self.oldWidth) or (videoHeight != self.oldHeight):
                     # GPo 2018
+                    zfa = 4 if self.zoomfactor <= 2 else 6  # GPo, make the free space larger over 2.0 zoom
                     if self.extended_move and not self.zoomwindow and not self.separatevideowindow:
                         wA, hA = self.GetClientSize()
-                        self.videoWindow.SetVirtualSize((w+self.xo + 2 + int(wA/2), h+self.yo + 2))
+                        vs = (w + self.xo + zfa + int(wA/2), h + self.yo + zfa)
+                        self.videoWindow.SetVirtualSize((w + self.xo + zfa + int(wA/2), h + self.yo + zfa))
                     else:
-                        self.videoWindow.SetVirtualSize((w+self.xo + 2, h+self.yo + 2))
+                        vs = (w + self.xo + zfa, h + self.yo + zfa)
+                        self.videoWindow.SetVirtualSize((w + self.xo + zfa, h + self.yo + zfa))
                     if resize is None:
                         if self.currentScript.lastSplitVideoPos is not None:
                             resize = False
@@ -15207,6 +15229,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                             wx.SPLIT_HORIZONTAL else zoomfactorWidth
                     else:
                         self.zoomfactor = min(zoomfactorWidth, zoomfactorHeight)
+                    self.zoomfactor = self.fix_zoom(self.zoomfactor)
                 except TypeError:
                     pass
             fitHeight = fitWidth = None
@@ -15589,6 +15612,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             except:
                 self.videoWindow.PrepareDC(inputdc)
             inputdc.SetUserScale(self.zoomfactor, self.zoomfactor)
+            #inputdc.StretchBlit(0, 0, int(w*self.zoomfactor), int(h*self.zoomfactor), dc, 0, 0, w, h)
             inputdc.Blit(0, 0, w, h, dc, 0, 0)
             if isPaintEvent and self.zoomwindowfill and self.firstToggled:
                 wx.CallAfter(self.ShowVideoFrame)

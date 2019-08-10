@@ -23,4 +23,4 @@ ffmpeg.exe -i "$video_input" -vcodec hevc_nvenc -preset slow -profile:v main -rc
 ffmpeg.exe -i "$video_input" -vcodec hevc_nvenc -preset slow -profile:v main -rc constqp -qp $video_quality -vf setsar=sar=$par_x/$par_y -acodec aac -b:a 128k -y "$video_output"
 
 [DNxHR HQ]
-ffmpeg.exe -i "$video_input" -c:v dnxhd -profile:v dnxhr_hq -vf "format=yuv422p, setsar=sar=$par_x/$par_y" -c:a pcm_s16le "$video_output"
+ffmpeg.exe -i "$video_input" -c:v dnxhd -profile:v dnxhr_hq -vf "format=yuv422p, setsar=sar=$par_x/$par_y" -c:a pcm_s16le "$video_output".mov
