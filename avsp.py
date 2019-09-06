@@ -5270,6 +5270,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.zoomwindowfill = False
         self.extended_move = False   # GPo
         self.bellAtBookmark = False  # GPo
+        self.options['lastscriptid'] = None # GPo, clear last saved image filename
         self.lastcrop = ""
         self.oldWidth = 0
         self.oldHeight = 0
@@ -10981,7 +10982,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     # GPo 2018  reduce a bit the code size (moore then once used)
     def ZoomAndScroll(self, old_zoomfactor, new_zoomfactor):
-        self.zoomfactor = self.fix_zoom(max(min(new_zoomfactor, 20.0), 0.1))
+        self.zoomfactor = self.fix_zoom(max(min(new_zoomfactor, 40.0), 0.1))
         xrel, yrel = self.videoWindow.ScreenToClient(wx.GetMousePosition())
         xpos, ypos = self.videoWindow.CalcUnscrolledPosition(xrel, yrel)
         xpos = (xpos - self.xo) * self.zoomfactor / old_zoomfactor + self.xo
@@ -12499,6 +12500,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             rows = self.scriptNotebook.GetRowCount()
         self.scriptNotebook.DeletePage(index)
         self.currentScript = self.scriptNotebook.GetPage(self.scriptNotebook.GetSelection())
+        self.options['lastscriptid'] = None # GPo, clear last saved image filename
         self.UpdateTabImages()
         if self.options['multilinetab']:
             if rows != self.scriptNotebook.GetRowCount():
@@ -13079,8 +13081,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     defaultdir = source_dir
                 if not title:
                     title = os.path.splitext(source_base)[0]
+
             id = script.GetId()
-            if id == self.options['lastscriptid']:
+            if (id == self.options['lastscriptid']) and silent:  # GPo, (silent) reset filename to default on save dlg
                 fmt = self.options['imagenameformat']
             else:
                 fmt = self.options['imagenamedefaultformat']
@@ -13120,10 +13123,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     self.options['imagechoice'] = dlg.GetFilterIndex()
                     self.options['imagesavedir'] = os.path.dirname(filename)
                     fmt = os.path.splitext(os.path.basename(filename))[0]
-                    fmt = re.sub(re.escape(title), '%s', fmt, 1)
+                    #fmt = re.sub(re.escape(title), '%s', fmt, 1)  # GPo
                     fmt = re.sub(r'([0]*?)%d' % frame,
                                  lambda m: '%%0%dd' % len(m.group(0)) if m.group(1) else '%d',
                                  fmt, 1)
+
                     self.options['imagenameformat'] = fmt
                     self.options['lastscriptid'] = id
                 dlg.Destroy()
@@ -14384,8 +14388,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             rgb = dc.GetPixel(x, y)
             R,G,B = rgb.Get()
             A = 0
-            cR = '*'
-            cY = '*'
+            cR = cY = '*'
             hexcolor = '$%02x%02x%02x' % (R,G,B)
             Y = 0.257*R + 0.504*G + 0.098*B + 16
             U = -0.148*R - 0.291*G + 0.439*B + 128
@@ -14407,13 +14410,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         if avsRGBA != (-1,-1,-1,-1):
                             R,G,B,A = avsRGBA
                             cR = ''
-                            #cY = ''
                     else:
                         avsRGB = script.AVI.GetPixelRGB(x, y)
                         if avsRGB != (-1,-1,-1):
                             R,G,B = avsRGB
                             cR = ''
-                            #cY = ''
                 except:
                     pass
 

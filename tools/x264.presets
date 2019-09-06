@@ -27,3 +27,6 @@ x264.exe --crf $video_quality --zones $credits_frame,$last_frame,q=40 $extra_opt
 
 [CRF Very Fast]
 x264.exe --preset veryfast --crf $video_quality --zones $credits_frame,$last_frame,q=40 $extra_options --sar $par_x:$par_y --output "$video_output" "$video_input"
+
+[lossless]
+x264.exe --preset ultrafast --crf 0  --zones $credits_frame,$last_frame, $extra_options --sar $par_x:$par_y --output "$video_output" "$video_input"

@@ -30,7 +30,7 @@ name = 'AvsPmod'
 description = _('An AviSynth script editor')
 url = 'http://avspmod.github.io/'
 license = 'GNU GPL v2'
-version = '2.6.0.9'
+version = '2.6.1.0'
 
 # Used to pass the shared library location to avisynth.py, don't touch
 avisynth_library_dir = ''
