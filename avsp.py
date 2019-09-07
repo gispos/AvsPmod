@@ -11884,7 +11884,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 w_dc, h_dc = dc.GetSize()
                 w_scrolled, h_scrolled = self.videoWindow.GetVirtualSize()
                 x0, y0 = self.videoWindow.GetViewStart()
-                zfa = 4 if self.zoomfactor <= 2 else 6 # GPo
+                zfa = 2 if self.zoomfactor <= 2 else 4 # GPo
                 if y0 < self.yo:
                     dc.SetClippingRegion(0, 0, w_dc, self.yo - y0)
                     dc.Clear()
@@ -14900,18 +14900,15 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             videoWidth = w = int(script.AVI.DisplayWidth * self.zoomfactor)
             videoHeight = h = int(script.AVI.DisplayHeight * self.zoomfactor)
             if self.zoomwindowfit:
-                vs = (0,0)
-                self.videoWindow.SetVirtualSize(vs)
+                self.videoWindow.SetVirtualSize((0,0))
             if doLayout:
                 if forceLayout or not self.previewWindowVisible or (videoWidth != self.oldWidth) or (videoHeight != self.oldHeight):
                     # GPo 2018
-                    zfa = 4 if self.zoomfactor <= 2 else 6  # GPo, make the free space larger over 2.0 zoom
+                    zfa = 2 if self.zoomfactor <= 2 else 4  # GPo, make the free space larger over 2.0 zoom
                     if self.extended_move and not self.zoomwindow and not self.separatevideowindow:
                         wA, hA = self.GetClientSize()
-                        vs = (w + self.xo + zfa + int(wA/2), h + self.yo + zfa)
                         self.videoWindow.SetVirtualSize((w + self.xo + zfa + int(wA/2), h + self.yo + zfa))
                     else:
-                        vs = (w + self.xo + zfa, h + self.yo + zfa)
                         self.videoWindow.SetVirtualSize((w + self.xo + zfa, h + self.yo + zfa))
                     if resize is None:
                         if self.currentScript.lastSplitVideoPos is not None:
@@ -15104,7 +15101,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     h = int(vidheight * self.zoomfactor)
                 else:
                     h = pos
-                hs = 18 if self.videoWindow.GetVirtualSize()[0] > self.videoWindow.GetClientSize()[0] else 5
+                hs = 18 if self.videoWindow.GetVirtualSize()[0] > self.videoWindow.GetClientSize()[0] else 6
                 pos = -(h + 2 * self.yo + hs + self.mainSplitter.GetSashSize()/2)
             else:
                 if pos is None:
