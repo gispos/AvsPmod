@@ -12,6 +12,13 @@ GPo source: https://github.com/gispos/AvsPmod
 GPo releases: https://github.com/gispos/AvsPmod/releases
 
 --------------------------
+Version 2.6.1.1 [2019-11-10] GPo
+--------------------------
+- changed WM_COPYDATA 
+- Added changes from r2 and r3 release
+- Compatible with AvsPThump v2
+
+--------------------------
 Version 2.6.1.0 [2019-09-05] GPo
 --------------------------
 - Bugfix filename "Quick save Image"

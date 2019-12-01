@@ -5270,7 +5270,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.zoomwindowfill = False
         self.extended_move = False   # GPo
         self.bellAtBookmark = False  # GPo
-        self.options['lastscriptid'] = None # GPo, clear last saved image filename
+        #self.options['lastscriptid'] = None # GPo, clear last saved image filename
         self.lastcrop = ""
         self.oldWidth = 0
         self.oldHeight = 0
@@ -5567,8 +5567,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         pCDS = ctypes.cast(l_param, PCOPYDATASTRUCT)
         ide = pCDS.contents.dwData
         if ide == 1:
-            if self.scriptNotebook.GetPageCount() <= 1:
-                return 1
             s = ctypes.wstring_at(pCDS.contents.lpData)
             self.FindTabByName(s)
         elif ide == 2:
@@ -5577,6 +5575,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.OpenFile(s)
             else:
                 wx.Bell()
+        elif ide > 100:  # Addr of sender data, return it to sender
+            s = ctypes.wstring_at(pCDS.contents.lpData)
+            if self.FindTabByName(s) > -1:
+               self.PostMessage(w_param, 33000, ide, int(self.GetHandle()))
+
         return 1
 
     def custom_inform_handler(self, w_param, l_param):
@@ -10715,7 +10718,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.oldlinenum = None
         if self.tabChangeLoadBookmarks:
             self.OnMenuBookmarksFromScript(event=None, beep=False)
-
+            """
+            c = self.OnMenuBookmarksFromScript(event=None, beep=False)
+            if c <= 0:
+                self.DeleteAllFrameBookmarks(bmtype=0)
+            """
     def OnNotebookPageChanging(self, event):
         if self.cropDialog.IsShown():
             wx.MessageBox(_('Cannot switch tabs while crop editor is open!'), _('Error'), style=wx.OK|wx.ICON_ERROR)
@@ -12500,7 +12507,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             rows = self.scriptNotebook.GetRowCount()
         self.scriptNotebook.DeletePage(index)
         self.currentScript = self.scriptNotebook.GetPage(self.scriptNotebook.GetSelection())
-        self.options['lastscriptid'] = None # GPo, clear last saved image filename
+        #self.options['lastscriptid'] = None # GPo, clear last saved image filename
         self.UpdateTabImages()
         if self.options['multilinetab']:
             if rows != self.scriptNotebook.GetRowCount():
@@ -13082,8 +13089,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 if not title:
                     title = os.path.splitext(source_base)[0]
 
-            id = script.GetId()
-            if (id == self.options['lastscriptid']) and silent:  # GPo, (silent) reset filename to default on save dlg
+            id = title if title else script.GetId() # GPo, GetId gets always the same ID, index dependent
+            if (id == self.options['lastscriptid']):
                 fmt = self.options['imagenameformat']
             else:
                 fmt = self.options['imagenamedefaultformat']
@@ -13123,7 +13130,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     self.options['imagechoice'] = dlg.GetFilterIndex()
                     self.options['imagesavedir'] = os.path.dirname(filename)
                     fmt = os.path.splitext(os.path.basename(filename))[0]
-                    #fmt = re.sub(re.escape(title), '%s', fmt, 1)  # GPo
+                    fmt = re.sub(re.escape(title), '%s', fmt, 1)
                     fmt = re.sub(r'([0]*?)%d' % frame,
                                  lambda m: '%%0%dd' % len(m.group(0)) if m.group(1) else '%d',
                                  fmt, 1)
