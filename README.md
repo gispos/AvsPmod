@@ -5,7 +5,7 @@ Version 2.6.1.2 GPo
 - Avisynth header version 6
 - For more see changelog
 
-Note: AvsPmod needs write permissions in its own directory. So please do not unzip into a system program directory!
+AvsPmod needs write permissions in its own directory. So please do not unzip into a system program directory!
 ----------------
 
 Releases GPo:
