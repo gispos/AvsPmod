@@ -1,9 +1,12 @@
-Version 2.6.1.1 GPo
+Version 2.6.1.2 GPo
 -----------------
 
 - With pinterf (pfmod) modifications
 - Avisynth header version 6
 - For more see changelog
+
+Note: AvsPmod needs write permissions in its own directory. So please do not unzip into a system program directory!
+----------------
 
 Releases GPo:
 <https://github.com/gispos/AvsPmod/releases>

@@ -1,7 +1,7 @@
 # AvsP - an AviSynth editor
 #
 # GPo mod based on the last release from vdcrim (2.5.1)
-# Modifications by pinterf (pfmod)
+# Modifications (Avisynth Header v6) by pinterf (pfmod)
 #
 # ###############
 #
@@ -5640,6 +5640,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     def getOptionsDict(self):
         oldOptions = None
+
         if os.path.isfile(self.optionsfilename):
             try:
                 with open(self.optionsfilename, mode='rb') as f:
@@ -5649,6 +5650,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 shutil.copy2(self.optionsfilename,
                              os.path.splitext(self.optionsfilename)[0] + '.BAD')
                 oldOptions = {}
+
         if oldOptions and oldOptions.get('version').startswith('1.'):
             oldOptions = None
 
@@ -5972,7 +5974,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'autoloadedplugins': True,
             'autoloadedavsi': True,
             # VIDEO OPTIONS
-            'mousewheelfunc': 0,      # GPo 2018
+            'mousewheelfunc': 1,    # GPo 2018
             'dragupdate': True,
             'focusonrefresh': True,
             'previewunsavedchanges': True,
@@ -6017,21 +6019,21 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'closeneversaved': False,
             'promptexitsave': True,
             'promptexitsaveonlyexisting': False,  # GPo
-            'bookmarksfromscript': False,         # GPo
-            'tabsbookmarksfromscript': False,     # GPo
+            'bookmarksfromscript': True,         # GPo
+            'tabsbookmarksfromscript': True,     # GPo
             'middlemousefunc': 1,                 # GPo
             'bookmarkshilightcolor': wx.Colour(240, 140, 140), # GPo
-            'savemarkedavs': True,
+            'savemarkedavs': False,  # GPo False
+            'nomarkedscriptloadwarning' : False,  # GPo, disable warn when loading marked script
             'eol': 'auto',
             'loadstartupbookmarks': True,
             'nrecentfiles': 5,
             'allowresize': False,
-            'mintextlines': 2,
+            'mintextlines': 4,
             'usetabimages': True,
             'multilinetab': False,
             'fixedwidthtab': False,
             'invertscrolling': False,
-            'enableframescrolling': False,
             'invertframescrolling': False,
             'dllnamewarning': True,
             # TOGGLE OPTIONS
@@ -6827,7 +6829,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 ((_('Prompt to save scripts on program exit'), wxp.OPT_ELEM_CHECK, 'promptexitsave', _('Prompt to save each script with unsaved changes when exiting the program'), dict() ), ),
                 ((_('Only with existing script'), wxp.OPT_ELEM_CHECK, 'promptexitsaveonlyexisting', _("When exiting the program, don't prompt to save the script if it doesn't already exist on the filesystem"), dict(ident=20) ), ),   # GPo 2018
                 ((_('Line endings'), wxp.OPT_ELEM_LIST, 'eol', _('Auto: CRLF on Windows and LF on *nix for new scripts, existing scripts keep their current line endings'), dict(choices=[(_('Auto'), 'auto'), (_('Force CRLF'), 'force crlf'), (_('Force LF'), 'force lf')]) ), ),
-                ((_('Save *.avs scripts with AvsPmod markings'), wxp.OPT_ELEM_CHECK, 'savemarkedavs', _('Save AvsPmod-specific markings (user sliders, toggle tags, etc) as a commented section in the *.avs file'), dict() ), ),
+                ((_('Save or read .avs scripts with AvsPmod markings'), wxp.OPT_ELEM_CHECK, 'savemarkedavs', _('Save and read AvsPmod-specific markings (user sliders, toggle tags, etc) as a commented section in the *.avs file\nWarning! Changes made by another editor are not visible when loading the script again.'), dict() ), ),
+                ((_('No warning when loading'), wxp.OPT_ELEM_CHECK, 'nomarkedscriptloadwarning', _("I know what I'm doing. No warning when loading a script marked by AvsPmod"), dict(ident=20) ), ),   # GPo 2020
                 ((_('Start dialogs on the last used directory'), wxp.OPT_ELEM_CHECK, 'userecentdir', _("If unchecked, the script's directory is used"), dict() ), ),
                 ((_('Start save image dialogs on the last used directory'), wxp.OPT_ELEM_CHECK, 'useimagesavedir', _("If unchecked, the script's directory is used"), dict() ), ),
                 ((_('Default image filename pattern'), wxp.OPT_ELEM_STRING, 'imagenamedefaultformat', _("Choose a default pattern for image filenames. %s -> script title, %06d -> frame number padded to six digits"), dict() ), ),
@@ -11207,7 +11210,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         else:
             if self.refreshAVI:
                 # GPo 2018, forceCursor
-                self.ShowVideoFrame(forceCursor=True)
+                self.ShowVideoFrame(forceCursor=self.options['refreshpreview'])
 
             videoWindow = self.videoWindow
             videoWindow.CaptureMouse()
@@ -12182,7 +12185,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             title = self.scriptNotebook.GetPageText(index)
             if title.lower().startswith(fname.lower()):
                 if select:
-                   self.SelectTab(index)
+                   self.SelectTab(index) # GPo, evtl. wx.CallAfter(self.SelectTab, index)
                 return index
         return -1
 
@@ -12337,7 +12340,26 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         lines = txt.rstrip().split('\n')
         lines.reverse()
         header = '### AvsP marked script ###'
-        if lines[0] == header:
+        if self.options['savemarkedavs'] and (lines[0] == header):  # GPo, add save option must also enabled
+            if not self.options['nomarkedscriptloadwarning']:
+                # GPo, warn the user
+                dlg = wx.MessageDialog(self, _('AvsP marked script found, do you want to load it?\n' +
+                                               'Changes made with another editor are not visible, and if the script is saved again,' +
+                                               ' all invisible changes will be lost!\n\n' +
+                                               'If you don''t want to save marked scripts, you should deactivate it under\n' +
+                                               'Options > Video > "Save or read scripts with AvsPmod markings"'),
+                                             _('Warning'), wx.YES_NO)
+
+                ID = dlg.ShowModal()
+                dlg.Destroy()
+                if ID == wx.ID_NO:
+                    if returnFull:
+                        return (txt, txt), f_encoding, eol
+                    else:
+                        return txt, f_encoding, eol
+
+                # end warn user
+
             newlines = []
             for line in lines[1:]:
                 if line == header:
@@ -12349,6 +12371,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         return (txt, txt), f_encoding, eol
                     else:
                         return txt, f_encoding, eol
+
             newlines.reverse()
             if returnFull:
                 return ('\n'.join(newlines), txt), f_encoding, eol
@@ -13899,7 +13922,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.menuBookmark.DestroyItem(self.menuBookmark.FindItemByPosition(0))
         pos = 0
         bookmarkList = list(self.GetBookmarkFrameList().items())
-        if len(bookmarkList) > 1000: return
+        if len(bookmarkList) > 1500: return
         sortItem = self.menuBookmark.FindItemByPosition(1)
         timecodeItem = self.menuBookmark.FindItemByPosition(2)
         titleItem = self.menuBookmark.FindItemByPosition(3)
@@ -14775,12 +14798,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             forceRefresh = True
             forceCursor = True
         display_clip_refresh_needed = script.display_clip_refresh_needed
-        forceCursor = forceCursor or self.refreshAVI
+        forceCursor = forceCursor or (self.refreshAVI and self.options['refreshpreview'])
 
         if forceCursor:
             wx.SetCursor(wx.StockCursor(wx.CURSOR_WAIT))
         try:
-            if self.UpdateScriptAVI(script, forceRefresh, keep_env=keep_env, showCursor=not forceCursor) is None:
+            if self.UpdateScriptAVI(script, forceRefresh, keep_env=keep_env, showCursor=self.options['refreshpreview'] and not forceCursor) is None:
                 #~ wx.MessageBox(_('Error loading the script'), _('Error'), style=wx.OK|wx.ICON_ERROR)
                 return False
 

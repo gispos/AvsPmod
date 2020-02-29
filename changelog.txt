@@ -3,13 +3,22 @@ CHANGELOG
 
 GPo mod:
 Large Address Aware Flag is set (32bit version).
-forked from vdcrim: https://github.com/AvsPmod/AvsPmod
+Forked from vdcrim: https://github.com/AvsPmod/AvsPmod
 
-Modifications (Avisnth header V6) by pinterf (pfmod) 
+Modifications (Avisynth header v6) by pinterf (pfmod) 
 
 pinterf source: https://github.com/pinterf/AvsPmod
 GPo source: https://github.com/gispos/AvsPmod
 GPo releases: https://github.com/gispos/AvsPmod/releases
+
+--------------------------
+Version 2.6.1.2 [2020-02-29] GPo
+--------------------------
+---- By default 'Save or read marked script' is now deactivated (Options > Save\Load > 'Save or read avs scripts with AvsPmod markings'.
+---- Now, if the option deactivated, AvsPmod doesn't read the marked script, otherwise a warning is displayed.
+---- But if 'you know what you doing' you can disable the warning under the options. Problems with marked scripts, see Doom9.
+- Bug Fix, the screen cursor goes crazy if the script auto update deactivated
+- Changed some default program settings (for the new users).
 
 --------------------------
 Version 2.6.1.1 [2019-11-10] GPo
