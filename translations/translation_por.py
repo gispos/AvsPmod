@@ -17,7 +17,7 @@
 # Português(Br) translation authors:
 #   Veiga v1.2.0 - v2.0.1
 
-version = "2.5.1.09"
+version = "2.6.1.3"
 
 messages = {
     "AviSynth script" : u"", # New in v2.3.0
@@ -166,6 +166,9 @@ messages = {
     "Solarized light" : u"", # New in v2.5.1
     "Solarized dark" : u"", # New in v2.5.1
     "Zenburn" : u"", # New in v2.5.1
+    "Cannot read the avisynth plugins directory from the registry\n" : u"", # New in v2.6.1.3
+    "HKLM\\Software\\Avisynth'plugindir2_5' or 'plugindir+' is missing or wrong.\n\n" : u"", # New in v2.6.1.3
+    "You should set the plugins path under options manually or register it." : u"", # New in v2.6.1.3
     "Alternatively, specify now its directory." : u"", # New in v2.4.0
     "Select the {0} directory" : u"", # New in v2.4.0
     "Make sure you have AviSynth installed and that there are no unstable plugins or avsi files in the AviSynth plugins directory." : u"Certifique-se de que você tem o AviSynth instalado, e não tem nenhum arquivo (plugin ou avsi) instável no diretório de plugins do AviSynth ",
@@ -176,8 +179,11 @@ messages = {
     "Use a custom AviSynth directory" : u"", # New in v2.4.0
     "Alternative location of avisynth.dll/avxsynth.so" : u"", # New in v2.4.0
     "Custom AviSynth directory:" : u"", # New in v2.4.0
-    "Leave blank to use the default directory. Changing it needs admin rights on Windows" : u"", # New in v2.4.0
-    "Plugins autoload directory:" : u"", # New in v2.4.0
+    "Leave blank for reset or choose a directory for manually set or for register" : u"", # New in v2.6.1.3
+    "Disable autoload, set manually" : u"", # New in v2.6.1.3
+    "If plugins autoload fails set the path manually. Read only. Only for proper program functions" : u"", # New in v2.6.1.3
+    "Register the plugins directory" : u"", # New in v2.6.1.3
+    "This changes the plugins directory for Avisynth itself. On Windows Registry values in HKLM are changed." : u"", # New in v2.6.1.3
     "Override the current working directory" : u"", # New in v2.4.0
     "Use a custom working directory" : u"", # New in v2.4.0
     "For all scripts" : u"", # New in v2.4.0
@@ -261,7 +267,7 @@ messages = {
     "Only on tabs of the same characteristics" : u"", # New in v2.5.0
     "Only share timeline for clips with the same resolution and frame count" : u"", # New in v2.5.0
     "Determines which mouse wheel function is used, see below tabs" : u"", # New in v2.5.1.09
-    "Frames scrolling" : u"", # New in v2.5.1.09
+    "Frames step" : u"", # New in v2.6.1.3
     "Mouse Wheel Function" : u"", # New in v2.5.1.09
     "Tabs scrolling" : u"", # New in v2.5.1.09
     "Enable scroll wheel through similar tabs" : u"", # New in v2.2.1
@@ -278,7 +284,7 @@ messages = {
     "Minimum number of lines to show when displaying the video preview" : u"Número mínimo de linhas da janela de texto, com a janela de video ativa ",
     "Customize the video information shown in the program status bar" : u"Configuração das informações de video mostradas na barra de status",
     "Customize video status bar..." : u"Configurar infos p/ barrra de status",
-    "Error message font" : u"", # New in v2.5.1
+    "Error message font..." : u"", # New in v2.6.1.3
     "Set the font used for displaying the error if evaluating the script fails" : u"", # New in v2.5.1
     "User Sliders" : u"Slider de Função",
     "Hide slider window by default" : u"Ocultar a janela de slider(defaut)",
@@ -332,8 +338,10 @@ messages = {
     "Force CRLF" : u"", # New in v2.5.1
     "Force LF" : u"", # New in v2.5.1
     "Line endings" : u"", # New in v2.5.1
-    "Save *.avs scripts with AvsPmod markings" : u"", # New in v2.2.1
-    "Save AvsPmod-specific markings (user sliders, toggle tags, etc) as a commented section in the *.avs file" : u"", # New in v2.2.1
+    "Save and read AvsPmod-specific markings (user sliders, toggle tags, etc) as a commented section in the *.avs file\nWarning! Changes made by another editor are not visible when loading the script again." : u"", # New in v2.6.1.3
+    "Save or read .avs scripts with AvsPmod markings" : u"", # New in v2.6.1.3
+    "I know what I'm doing. No warning when loading a script marked by AvsPmod" : u"", # New in v2.6.1.3
+    "No warning when loading" : u"", # New in v2.6.1.3
     "Start dialogs on the last used directory" : u"", # New in v2.4.0
     "If unchecked, the script's directory is used" : u"", # New in v2.4.0
     "Start save image dialogs on the last used directory" : u"", # New in v2.4.0
@@ -355,10 +363,16 @@ messages = {
     "Invert scroll wheel direction (Tabs, Zoom)" : u"", # New in v2.5.1.09
     "Scroll the mouse wheel up for changing tabs to the right" : u"", # New in v2.4.1
     "Invert scroll wheel direction (Frame)" : u"", # New in v2.5.1.09
-    "Invert wheel direction for frame scrolling" : u"", # New in v2.5.1.09
+    "Invert wheel direction for frames step" : u"", # New in v2.6.1.3
+    "Automatically load bookmarks from script only if tab count 1" : u"", # New in v2.6.1.3
+    "On first script load bookmarks from script" : u"", # New in v2.6.1.3
+    "Automatically load bookmarks from script if tab changed" : u"", # New in v2.6.1.3
+    "Tabs changing load bookmarks from script" : u"", # New in v2.6.1.3
     "Only allow a single instance of AvsPmod" : u"", # New in v2.2.1
     "Show warning at startup if there are dlls with bad naming in default plugin folder" : u"", # New in v2.2.1
     "Show warning for bad plugin naming at startup" : u"", # New in v2.2.1
+    "Middle mouse button behavior on the script" : u"", # New in v2.6.1.3
+    "Middle mouse on script (0 open source, 1 show video frame)" : u"", # New in v2.6.1.3
     "Max number of recent filenames" : u"Últimos arquivos(nº máximo)",
     "This number determines how many filenames to store in the recent files menu" : u"Determina o número máximo de nome de arquivos abertos recentemente que serão mostrados como últimos arquivos",
     "Custom jump size:" : u"Definir tamanho do avanço/retrocesso",
@@ -571,6 +585,9 @@ messages = {
     "Copy avisynth error to clipboard" : u"", # New in v2.2.1
     "Copy the avisynth error message shown on the preview window to the clipboard" : u"", # New in v2.2.1
     "&Video" : u"&Video",
+    "Bookmarks" : u"", # New in v2.4.0
+    "Bookmarks to script" : u"", # New in v2.6.1.3
+    "Bookmarks from script" : u"", # New in v2.6.1.3
     "Add/Remove bookmark" : u"", # New in v2.2.1
     "Mark the current frame on the frame slider" : u"Marcar quadro atual no slider de quadro",
     "Clear all bookmarks" : u"Desmarcar todos os quadros",
@@ -670,7 +687,7 @@ messages = {
     "Use full range" : u"", # New in v2.3.0
     "For YV12 only, assume it is progressive (default)" : u"", # New in v2.2.1
     "For YV12 only, assume it is interlaced" : u"", # New in v2.2.1
-    "Bith &depth" : u"", # New in v2.5.1
+    "Bit &depth" : u"", # New in v2.6.1.3
     "8-bit" : u"", # New in v2.5.1
     "Regular 8-bit depth (default)" : u"", # New in v2.5.1
     "Stacked 16-bit, MSB on top, range reduced to 10-bit. Requires MaskTools v2 loaded" : u"", # New in v2.5.1
@@ -690,6 +707,8 @@ messages = {
     "Select custom color" : u"", # New in v2.5.1
     "Create the new AviSynth clip on the same environment. Useful for tweaking parameters" : u"", # New in v2.4.0
     "Keep variables on refreshing" : u"", # New in v2.4.0
+    "Save last view position and zoom on tab change" : u"", # New in v2.6.1.3
+    "Save view pos on tab change" : u"", # New in v2.6.1.3
     "Save image as..." : u"Salvar imagem como...",
     "Save the current frame as a bitmap" : u"Salvar quadro atual como bitmap",
     "Quick save image" : u"", # New in v2.5.0
@@ -725,9 +744,13 @@ messages = {
     "If checked, the video preview will not be shown under any circumstances" : u"Nunca mostrar janela de video",
     "Associate .avs files with AvsP" : u"Associar arquivos .avs com AvsP",
     "Configure this computer to open .avs files with AvsP when double-clicked. Run again to disassociate" : u"", # New in v2.4.0
-    "AviSynth function definition..." : u"Configurar ajuda de  função...",
     "Edit the various AviSynth script fonts and colors" : u"Escolha fonte e côr p/ os vários scripts Avisynth",
     "Fonts and colors..." : u"Fontes e Cores",
+    "Make fonts and colors backup" : u"", # New in v2.6.1.3
+    "Make script fonts and colors backup" : u"", # New in v2.6.1.3
+    "Load fonts and colors backup" : u"", # New in v2.6.1.3
+    "Restores script fonts and colors from backup" : u"", # New in v2.6.1.3
+    "AviSynth function definition..." : u"Configurar ajuda de  função...",
     "Edit the extension-based templates for inserting sources" : u"Edita a associacão (extensão - modelo) para inserir Arq. fontes",
     "Extension templates..." : u"Extensão de modelos",
     "Snippets..." : u"", # New in v2.5.0
@@ -774,6 +797,7 @@ messages = {
     "Save as..." : u"Salvar como...",
     "Reload" : u"", # New in v2.4.1
     "Open directory" : u"", # New in v2.5.1
+    "Tab change load bookmarks" : u"", # New in v2.6.1.3
     "Copy to new tab" : u"Copiar p/ nova tabulação",
     "Reposition to" : u"", # New in v2.2.1
     "Crop editor" : u"Editor crop",
@@ -791,10 +815,14 @@ messages = {
     "Keep unselected regions" : u"Manter as regiões não selecionadas",
     "Mark video frames inside/outside selection" : u"Marcar os quadros dentro/fora da seleção",
     "Use Dissolve() with overlap frames:" : u"", # New in v2.2.1
-    "Insert Trim() commands:" : u"Inserir comandos de corte -Trim()",
-    "Insert Dissolve() commands:" : u"", # New in v2.2.1
+    "Single clips (c0..cn) with prefix:" : u"", # New in v2.6.1.3
+    "Insert Trim() commands: " : u"", # New in v2.6.1.3
+    "Insert clips commands: " : u"", # New in v2.6.1.3
+    "Insert Dissolve(trim,) commands: " : u"", # New in v2.6.1.3
+    "Insert Dissolve(clips,) commands: " : u"", # New in v2.6.1.3
     "Use the buttons which appear on the video slider handle to create the frame selections to trim." : u"Use os botões que aparecem no slider de video para criar seleções de corte",
     "The script's directory doesn't exist anymore!" : u"", # New in v2.5.1
+    "%d Bookmarks imported" : u"", # New in v2.6.1.3
     "Print Preview" : u"", # New in v2.3.1
     "Failed to create print preview" : u"", # New in v2.3.1
     "Print Error" : u"", # New in v2.3.1
@@ -828,6 +856,7 @@ messages = {
     "Length:" : u"Comprimento",
     "Frame rate:" : u"Quadros / segundo",
     "Colorspace:" : u"Sistema de cor",
+    "Bit depth:" : u"", # New in v2.6.1.3
     "Field or frame based:" : u"Formato (campo ou quadro:)",
     "Parity:" : u"Paridade",
     "Audio" : u"Audio",
@@ -880,6 +909,8 @@ messages = {
     "Highlight the line that the caret is currently in" : u"Realça a linha em que o cursor se encontra",
     "Fold margin:" : u"", # New in v2.2.1
     "Scrap window" : u"", # New in v2.2.1
+    "Information" : u"Informação",
+    "Settings have been read from backup file\n" : u"", # New in v2.6.1.3
     "File extension shouldn't contain dots!" : u"", # New in v2.5.1
     "Insert aborted:" : u"Inserção abortada",
     "Edit extension-based templates" : u"Editar extensão associada a modelo",
@@ -907,6 +938,9 @@ messages = {
     "Active thread on Doom9's forum" : u"", # New in v2.2.1
     "This program is freeware under the GPL license." : u"Este programa sob licença GPL é livre",
     "Input a frame number or time (hr:min:sec) and hit Enter. Right-click to retrieve from history." : u"", # New in v2.2.1
+    "bell at bookmarks" : u"", # New in v2.6.1.3
+    "highlight bookmarks" : u"", # New in v2.6.1.3
+    "set highlight color..." : u"", # New in v2.6.1.3
     "copy as time" : u"", # New in v2.2.1
     "copy" : u"", # New in v2.2.1
     "paste" : u"", # New in v2.2.1
@@ -933,6 +967,7 @@ messages = {
     "Framerate numerator" : u"Numerador de quadros/segundo",
     "Framerate denominator" : u"Denominador de quadros/segundo",
     "Colorspace" : u"Sistema de cor",
+    "Bits per component" : u"", # New in v2.6.1.3
     "Field or frame based" : u"Formato (campo ou quadro)",
     "Parity" : u"Paridade",
     "Parity short (BFF or TFF)" : u"Ordem dos campos (BFF or TFF)",
@@ -973,6 +1008,7 @@ messages = {
     "AviSynth plugins" : u"", # New in v2.3.0
     "VirtualDub plugins" : u"", # New in v2.3.0
     "VFAPI plugins" : u"", # New in v2.3.0
+    "Script import" : u"", # New in v2.6.1.3
     "AvxSynth plugins" : u"", # New in v2.4.0
     "Insert a plugin" : u"Inserir um plugin",
     "No bookmarks defined!" : u"Não existe ponto marcado definido",
@@ -988,10 +1024,7 @@ messages = {
     "Integer" : u"Fixo",
     "Float" : u"Variavel",
     "pos" : u"pos",
-    "hex" : u"hex",
-    "rgb" : u"rgb",
-    "rgba" : u"rgba",
-    "yuv" : u"yuv",
+    "*hex" : u"", # New in v2.6.1.3
     "Edit AviSynth function information" : u"Editor de informção da função Avisynth",
     "  Function name" : u" Nome da função",
     "Function arguments" : u"Argumentos da função",
@@ -1001,6 +1034,8 @@ messages = {
     "Invalid filter customization file!" : u"Arquivo de configuração de filtro inválido",
     "Save filter customization file" : u"Salvar arquivo de configuração de filtro",
     "Invalid argument!" : u"Agumento inválido!",
+    "Error: can not save the Session" : u"", # New in v2.6.1.3
+    "Question" : u"Pergunta",
     "Save changes before previewing?" : u"Salvar as alterações antes da pré-visulização",
     "Select an external player" : u"Selecione um Player externo",
     "A program must be specified to use this feature!" : u"Para usar esta caracteristica, é preciso indicar um programa",
@@ -1024,7 +1059,9 @@ messages = {
     "Toggle \"%(label)s\" section" : u"Ativar/Desat. secção: \"%(label)s\" ",
     "Above plugin names contain undesirable symbols.\nRename them to only use alphanumeric or underscores,\nor make sure to use them in short name style only." : u"", # New in v2.3.0
     "Don't show me this again" : u"", # New in v2.2.1
-    "Changing the plugins autoload directory writes to the Windows registry." : u"", # New in v2.4.0
+    "Changing the plugins directory writes to the Windows registry.\n" : u"", # New in v2.6.1.3
+    "Writing to: HKLM\\Software\\Avisynth\\plugindir2_5\n" : u"", # New in v2.6.1.3
+    "Plugins dir registration failed" : u"", # New in v2.6.1.3
     "You're changing the plugins autoload directory.\nDo you wish to change it for all applications? This will\nrequire writing to {0}" : u"", # New in v2.4.0
     "Save as" : u"Salvar como",
     "Select a directory" : u"Selecionar um diretório",
@@ -1082,7 +1119,6 @@ messages = {
     "Error: key %(key)s does not exist!" : u"Erro: chave %(key)s não existe",
     "Item %(newKey)s already exists!" : u"Item %(newKey)s já existe!",
     "Are you sure you want to rename from %(oldName)s to %(newName)s?" : u"Tem certesa que quer renomear de:%(oldName)s para:%(newName)s? ",
-    "Question" : u"Pergunta",
     "Insert a new item" : u"Insira um novo item",
     "Must enter a name!" : u"Necessario entrar um nome!",
     "Warning: no value entered for item %(newKey)s!" : u"Cuidado: não incluido valor p/ item %(newKey)s!",
@@ -1212,8 +1248,6 @@ messages = {
     "Random Clip Order" : u"", # New in v2.3.0
     "Save Image Sequence" : u"", # New in v2.3.0
     "Shift Bookmarks by frames" : u"", # New in v2.3.0
-    "_startup" : u"", # New in v2.5.1.09
-    "_startup_avs" : u"", # New in v2.5.1.09
     "Example (Resize)" : u"", # New in v2.3.0
     "Examples" : u"", # New in v2.3.0
     "Customized" : u"", # New in v2.3.0
@@ -1290,7 +1324,6 @@ messages = {
     "Failed to run the external player!\n\nOpen the macro file in the \"Macros\" subdirectory\nwith a text editor and edit the executable\ndirectory appropriately!" : u"", # New in v2.3.0
 
     #--- Macro: Save Image Sequence ---#
-    "Bookmarks" : u"", # New in v2.4.0
     "Save image sequence" : u"", # New in v2.4.0
     "Output format" : u"", # New in v2.4.0
     "Select frames" : u"", # New in v2.4.0
@@ -1310,7 +1343,6 @@ messages = {
     "Saving images..." : u"", # New in v2.3.0
     "scene_{0:0{1}}" : u"", # New in v2.5.0
     "%d image files created." : u"", # New in v2.3.0
-    "Information" : u"Informação",
 
     #--- Macro: Shift Bookmarks by frames ---#
     "Introduce the number of frames:" : u"", # New in v2.3.0

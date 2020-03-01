@@ -6023,8 +6023,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'tabsbookmarksfromscript': True,     # GPo
             'middlemousefunc': 1,                 # GPo
             'bookmarkshilightcolor': wx.Colour(240, 140, 140), # GPo
-            'savemarkedavs': False,  # GPo False
-            'nomarkedscriptloadwarning' : False,  # GPo, disable warn when loading marked script
+            'savemarkedavs': True,
+            #'nomarkedscriptloadwarning' : False,  # GPo, disable warn when loading marked script
             'eol': 'auto',
             'loadstartupbookmarks': True,
             'nrecentfiles': 5,
@@ -6033,7 +6033,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'usetabimages': True,
             'multilinetab': False,
             'fixedwidthtab': False,
-            'invertscrolling': False,
+            'invertscrolling': True,
             'invertframescrolling': False,
             'dllnamewarning': True,
             # TOGGLE OPTIONS
@@ -6829,8 +6829,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 ((_('Prompt to save scripts on program exit'), wxp.OPT_ELEM_CHECK, 'promptexitsave', _('Prompt to save each script with unsaved changes when exiting the program'), dict() ), ),
                 ((_('Only with existing script'), wxp.OPT_ELEM_CHECK, 'promptexitsaveonlyexisting', _("When exiting the program, don't prompt to save the script if it doesn't already exist on the filesystem"), dict(ident=20) ), ),   # GPo 2018
                 ((_('Line endings'), wxp.OPT_ELEM_LIST, 'eol', _('Auto: CRLF on Windows and LF on *nix for new scripts, existing scripts keep their current line endings'), dict(choices=[(_('Auto'), 'auto'), (_('Force CRLF'), 'force crlf'), (_('Force LF'), 'force lf')]) ), ),
-                ((_('Save or read .avs scripts with AvsPmod markings'), wxp.OPT_ELEM_CHECK, 'savemarkedavs', _('Save and read AvsPmod-specific markings (user sliders, toggle tags, etc) as a commented section in the *.avs file\nWarning! Changes made by another editor are not visible when loading the script again.'), dict() ), ),
-                ((_('No warning when loading'), wxp.OPT_ELEM_CHECK, 'nomarkedscriptloadwarning', _("I know what I'm doing. No warning when loading a script marked by AvsPmod"), dict(ident=20) ), ),   # GPo 2020
+                ((_('Save or read .avs scripts with AvsPmod markings'), wxp.OPT_ELEM_CHECK, 'savemarkedavs', _('Save and read AvsPmod-specific markings (user sliders, toggle tags, etc) as a commented section in the *.avs file'), dict() ), ),
+                #((_('No warning when loading'), wxp.OPT_ELEM_CHECK, 'nomarkedscriptloadwarning', _("I know what I'm doing. No warning when loading a script marked by AvsPmod"), dict(ident=20) ), ),   # GPo 2020
                 ((_('Start dialogs on the last used directory'), wxp.OPT_ELEM_CHECK, 'userecentdir', _("If unchecked, the script's directory is used"), dict() ), ),
                 ((_('Start save image dialogs on the last used directory'), wxp.OPT_ELEM_CHECK, 'useimagesavedir', _("If unchecked, the script's directory is used"), dict() ), ),
                 ((_('Default image filename pattern'), wxp.OPT_ELEM_STRING, 'imagenamedefaultformat', _("Choose a default pattern for image filenames. %s -> script title, %06d -> frame number padded to six digits"), dict() ), ),
@@ -12340,7 +12340,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         lines = txt.rstrip().split('\n')
         lines.reverse()
         header = '### AvsP marked script ###'
+
         if self.options['savemarkedavs'] and (lines[0] == header):  # GPo, add save option must also enabled
+            newhash = ''
+            orghash = ''
+            """
             if not self.options['nomarkedscriptloadwarning']:
                 # GPo, warn the user
                 dlg = wx.MessageDialog(self, _('AvsP marked script found, do you want to load it?\n' +
@@ -12349,7 +12353,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                                'If you don''t want to save marked scripts, you should deactivate it under\n' +
                                                'Options > Video > "Save or read scripts with AvsPmod markings"'),
                                              _('Warning'), wx.YES_NO)
-
                 ID = dlg.ShowModal()
                 dlg.Destroy()
                 if ID == wx.ID_NO:
@@ -12357,15 +12360,16 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         return (txt, txt), f_encoding, eol
                     else:
                         return txt, f_encoding, eol
-
-                # end warn user
-
+            """
             newlines = []
             for line in lines[1:]:
                 if line == header:
                     break
                 if line.startswith('# '):
-                    newlines.append(line[2:])
+                    if (len(line) > 14) and (line[2:14] == '#scripthash:'):  # GPo, get the last stored hash
+                        orghash = line[14:].rstrip()
+                    else:
+                        newlines.append(line[2:])
                 else:
                     if returnFull:
                         return (txt, txt), f_encoding, eol
@@ -12373,6 +12377,28 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         return txt, f_encoding, eol
 
             newlines.reverse()
+
+            # GPo read now the new hash
+            idx = txt.find(header)
+            if idx > 1:
+                cleantxt = txt[:idx-1].rstrip()
+                newhash = md5(cleantxt.encode('utf8')).hexdigest()
+
+            # GPo, now compare the stored hash with the new hash
+            if orghash and newhash and (orghash != newhash):
+                dlg = wx.MessageDialog(self, _('AvsPmod marked script and original script different\n' +
+                                               'Changes made with another editor are not visible and will be lost when saving again.\n\n' +
+                                               'Do you want to load the AvsPmod marked script?'),
+                                             _('Warning'), wx.YES_NO)
+                ID = dlg.ShowModal()
+                dlg.Destroy()
+                if ID != wx.ID_YES:
+                    if returnFull:
+                        return (txt, txt), f_encoding, eol
+                    else:
+                        return txt, f_encoding, eol
+
+
             if returnFull:
                 return ('\n'.join(newlines), txt), f_encoding, eol
             else:
@@ -12601,9 +12627,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             scriptText = script.GetText()
             txt = self.getCleanText(scriptText)
             if txt != scriptText and self.options['savemarkedavs']:
+                stxt = txt.rstrip()
+                hash = '# #scripthash:' + md5(stxt.encode('utf8')).hexdigest()  # GPo
                 header = '### AvsP marked script ###'
                 base = '\n'.join(['# %s' % line for line in scriptText.split('\n')])
-                txt = '%(txt)s\n%(header)s\n%(base)s\n%(header)s' % locals()
+                #~txt = '%(txt)s\n%(header)s\n%(base)s\n%(header)s' % locals()
+                txt = '%(txt)s\n%(header)s\n%(hash)s\n%(base)s\n%(header)s' % locals()  # GPo, added store the hash from original script
 
             # Encode text and save it to the specified file
             txt = self.GetEncodedText(txt, bom=True)

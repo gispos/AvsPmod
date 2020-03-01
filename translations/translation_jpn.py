@@ -17,7 +17,7 @@
 # Japanese translation authors:
 #   niiyan v2.0.2 - v2.4.1
 
-version = "2.5.1.09"
+version = "2.6.1.3"
 
 messages = {
     "AviSynth script" : u"AviSynth スクリプト",
@@ -166,6 +166,9 @@ messages = {
     "Solarized light" : u"", # New in v2.5.1
     "Solarized dark" : u"", # New in v2.5.1
     "Zenburn" : u"", # New in v2.5.1
+    "Cannot read the avisynth plugins directory from the registry\n" : u"", # New in v2.6.1.3
+    "HKLM\\Software\\Avisynth'plugindir2_5' or 'plugindir+' is missing or wrong.\n\n" : u"", # New in v2.6.1.3
+    "You should set the plugins path under options manually or register it." : u"", # New in v2.6.1.3
     "Alternatively, specify now its directory." : u"代わりに、今そのディレクトリを指定して下さい。",
     "Select the {0} directory" : u"{0} ディレクトリを選択",
     "Make sure you have AviSynth installed and that there are no unstable plugins or avsi files in the AviSynth plugins directory." : u"AviSynth がインストールされているか、AviSynth のプラグインディレクトリに不安定なプラグインや avsi ファイルがないか確認してください。",
@@ -176,8 +179,11 @@ messages = {
     "Use a custom AviSynth directory" : u"カスタム AviSynth ディレクトリを使用",
     "Alternative location of avisynth.dll/avxsynth.so" : u"avisynth.dll/avxsynth.so の代替場所",
     "Custom AviSynth directory:" : u"カスタム AviSynth ディレクトリ:",
-    "Leave blank to use the default directory. Changing it needs admin rights on Windows" : u"デフォルトのディレクトリを使用するには空白のままにして下さい。変更には Windows の管理者権限が必要です",
-    "Plugins autoload directory:" : u"プラグインオートロードディレクトリ",
+    "Leave blank for reset or choose a directory for manually set or for register" : u"", # New in v2.6.1.3
+    "Disable autoload, set manually" : u"", # New in v2.6.1.3
+    "If plugins autoload fails set the path manually. Read only. Only for proper program functions" : u"", # New in v2.6.1.3
+    "Register the plugins directory" : u"", # New in v2.6.1.3
+    "This changes the plugins directory for Avisynth itself. On Windows Registry values in HKLM are changed." : u"", # New in v2.6.1.3
     "Override the current working directory" : u"現在の作業ディレクトリをオーバーライド",
     "Use a custom working directory" : u"カスタム作業ディレクトリを使用",
     "For all scripts" : u"すべてのスクリプトに適用",
@@ -261,7 +267,7 @@ messages = {
     "Only on tabs of the same characteristics" : u"", # New in v2.5.0
     "Only share timeline for clips with the same resolution and frame count" : u"", # New in v2.5.0
     "Determines which mouse wheel function is used, see below tabs" : u"", # New in v2.5.1.09
-    "Frames scrolling" : u"", # New in v2.5.1.09
+    "Frames step" : u"", # New in v2.6.1.3
     "Mouse Wheel Function" : u"", # New in v2.5.1.09
     "Tabs scrolling" : u"", # New in v2.5.1.09
     "Enable scroll wheel through similar tabs" : u"スクロールホイールによるタブの切り替えを許可",
@@ -278,7 +284,7 @@ messages = {
     "Minimum number of lines to show when displaying the video preview" : u"ビデオプレビューを表示する時に表示するテキストの最小行数",
     "Customize the video information shown in the program status bar" : u"プログラムステータスバーに表示されるビデオ情報をカスタマイズ",
     "Customize video status bar..." : u"ビデオステータスバーのカスタマイズ...",
-    "Error message font" : u"", # New in v2.5.1
+    "Error message font..." : u"", # New in v2.6.1.3
     "Set the font used for displaying the error if evaluating the script fails" : u"", # New in v2.5.1
     "User Sliders" : u"ユーザースライダ",
     "Hide slider window by default" : u"デフォルトでスライダウィンドウを隠す",
@@ -332,8 +338,10 @@ messages = {
     "Force CRLF" : u"", # New in v2.5.1
     "Force LF" : u"", # New in v2.5.1
     "Line endings" : u"", # New in v2.5.1
-    "Save *.avs scripts with AvsPmod markings" : u"*.avs スクリプトを AvsPmod 独自のマーキング付きで保存",
-    "Save AvsPmod-specific markings (user sliders, toggle tags, etc) as a commented section in the *.avs file" : u"AvsPmod 独自のマーキング（ユーザースライダ、切り替えタグなど）を *.avs ファイル内にコメントとして保存する",
+    "Save and read AvsPmod-specific markings (user sliders, toggle tags, etc) as a commented section in the *.avs file\nWarning! Changes made by another editor are not visible when loading the script again." : u"", # New in v2.6.1.3
+    "Save or read .avs scripts with AvsPmod markings" : u"", # New in v2.6.1.3
+    "I know what I'm doing. No warning when loading a script marked by AvsPmod" : u"", # New in v2.6.1.3
+    "No warning when loading" : u"", # New in v2.6.1.3
     "Start dialogs on the last used directory" : u"ダイアログを最後に使用されたディレクトリから開始する",
     "If unchecked, the script's directory is used" : u"チェックを外すと、スクリプトのディレクトリが使用される",
     "Start save image dialogs on the last used directory" : u"画像保存ダイアログを最後に使用されたディレクトリから開始する",
@@ -355,10 +363,16 @@ messages = {
     "Invert scroll wheel direction (Tabs, Zoom)" : u"", # New in v2.5.1.09
     "Scroll the mouse wheel up for changing tabs to the right" : u"タブを右に切り替える時はマウスホイールを上にスクロールする",
     "Invert scroll wheel direction (Frame)" : u"", # New in v2.5.1.09
-    "Invert wheel direction for frame scrolling" : u"", # New in v2.5.1.09
+    "Invert wheel direction for frames step" : u"", # New in v2.6.1.3
+    "Automatically load bookmarks from script only if tab count 1" : u"", # New in v2.6.1.3
+    "On first script load bookmarks from script" : u"", # New in v2.6.1.3
+    "Automatically load bookmarks from script if tab changed" : u"", # New in v2.6.1.3
+    "Tabs changing load bookmarks from script" : u"", # New in v2.6.1.3
     "Only allow a single instance of AvsPmod" : u"AvsPmod にシングルインスタンスのみ許可",
     "Show warning at startup if there are dlls with bad naming in default plugin folder" : u"デフォルトのプラグインフォルダにおかしなネーミングの DLL がある場合、起動時に警告を表示",
     "Show warning for bad plugin naming at startup" : u"起動時におかしなネーミングのプラグインに関する警告を表示",
+    "Middle mouse button behavior on the script" : u"", # New in v2.6.1.3
+    "Middle mouse on script (0 open source, 1 show video frame)" : u"", # New in v2.6.1.3
     "Max number of recent filenames" : u"最近使ったファイル名の最大保存数",
     "This number determines how many filenames to store in the recent files menu" : u"この数値が最近使ったファイルのメニューで保存されるファイル名の数を決定する",
     "Custom jump size:" : u"カスタムジャンプサイズ:",
@@ -571,6 +585,9 @@ messages = {
     "Copy avisynth error to clipboard" : u"AviSynth エラーをクリップボードにコピー",
     "Copy the avisynth error message shown on the preview window to the clipboard" : u"プレビューウィンドウに表示された AviSynth エラーメッセージを",
     "&Video" : u"ビデオ(&V)",
+    "Bookmarks" : u"ブックマーク",
+    "Bookmarks to script" : u"", # New in v2.6.1.3
+    "Bookmarks from script" : u"", # New in v2.6.1.3
     "Add/Remove bookmark" : u"ブックマークの追加/削除",
     "Mark the current frame on the frame slider" : u"現在のフレームをフレームスライダ上にマークする",
     "Clear all bookmarks" : u"すべてのブックマークをクリア",
@@ -670,7 +687,7 @@ messages = {
     "Use full range" : u"フルレンジを使用",
     "For YV12 only, assume it is progressive (default)" : u"YV12 についてのみ、プログレッシブと仮定（デフォルト）",
     "For YV12 only, assume it is interlaced" : u"YV12 についてのみ、インターレースと仮定",
-    "Bith &depth" : u"", # New in v2.5.1
+    "Bit &depth" : u"", # New in v2.6.1.3
     "8-bit" : u"", # New in v2.5.1
     "Regular 8-bit depth (default)" : u"", # New in v2.5.1
     "Stacked 16-bit, MSB on top, range reduced to 10-bit. Requires MaskTools v2 loaded" : u"", # New in v2.5.1
@@ -690,6 +707,8 @@ messages = {
     "Select custom color" : u"", # New in v2.5.1
     "Create the new AviSynth clip on the same environment. Useful for tweaking parameters" : u"新しい AviSynth スクリプトを同じ環境で作成。パラメータの調整に有用",
     "Keep variables on refreshing" : u"更新時に変数を保持",
+    "Save last view position and zoom on tab change" : u"", # New in v2.6.1.3
+    "Save view pos on tab change" : u"", # New in v2.6.1.3
     "Save image as..." : u"名前を付けて画像を保存...",
     "Save the current frame as a bitmap" : u"現在のフレームをビットマップファイルとして保存",
     "Quick save image" : u"", # New in v2.5.0
@@ -725,9 +744,13 @@ messages = {
     "If checked, the video preview will not be shown under any circumstances" : u"チェックすると、ビデオプレビューが常に非表示になる",
     "Associate .avs files with AvsP" : u".avs ファイルを AvsP と関連付け",
     "Configure this computer to open .avs files with AvsP when double-clicked. Run again to disassociate" : u"ダブルクリック時に AVS ファイルを AvsP を使って開くようにこのコンピュータを設定する。関連付けを解除するにはもう一度実行して下さい",
-    "AviSynth function definition..." : u"AviSynth 関数の定義...",
     "Edit the various AviSynth script fonts and colors" : u"さまざまな AviSynth スクリプトのフォントと色を編集する",
     "Fonts and colors..." : u"フォントと色...",
+    "Make fonts and colors backup" : u"", # New in v2.6.1.3
+    "Make script fonts and colors backup" : u"", # New in v2.6.1.3
+    "Load fonts and colors backup" : u"", # New in v2.6.1.3
+    "Restores script fonts and colors from backup" : u"", # New in v2.6.1.3
+    "AviSynth function definition..." : u"AviSynth 関数の定義...",
     "Edit the extension-based templates for inserting sources" : u"ソースの挿入のための拡張子別テンプレートを編集",
     "Extension templates..." : u"拡張子別テンプレート...",
     "Snippets..." : u"", # New in v2.5.0
@@ -774,6 +797,7 @@ messages = {
     "Save as..." : u"名前を付けて保存...",
     "Reload" : u"再読み込み",
     "Open directory" : u"", # New in v2.5.1
+    "Tab change load bookmarks" : u"", # New in v2.6.1.3
     "Copy to new tab" : u"新しいタブにコピー",
     "Reposition to" : u"位置の変更",
     "Crop editor" : u"クロップエディタ",
@@ -791,10 +815,14 @@ messages = {
     "Keep unselected regions" : u"選択された範囲以外を残す",
     "Mark video frames inside/outside selection" : u"選択範囲の内/外のビデオフレームにマークを付ける",
     "Use Dissolve() with overlap frames:" : u"Dissolve() を使用（オーバラップするフレーム数）:",
-    "Insert Trim() commands:" : u"Trim() コマンドを挿入:",
-    "Insert Dissolve() commands:" : u"Dissolve() コマンドを挿入:",
+    "Single clips (c0..cn) with prefix:" : u"", # New in v2.6.1.3
+    "Insert Trim() commands: " : u"", # New in v2.6.1.3
+    "Insert clips commands: " : u"", # New in v2.6.1.3
+    "Insert Dissolve(trim,) commands: " : u"", # New in v2.6.1.3
+    "Insert Dissolve(clips,) commands: " : u"", # New in v2.6.1.3
     "Use the buttons which appear on the video slider handle to create the frame selections to trim." : u"選択範囲の生成にはビデオスライダのつまみの上にあるボタンを使用してください。",
     "The script's directory doesn't exist anymore!" : u"", # New in v2.5.1
+    "%d Bookmarks imported" : u"", # New in v2.6.1.3
     "Print Preview" : u"印刷プレビュー",
     "Failed to create print preview" : u"印刷プレビューの作成に失敗しました",
     "Print Error" : u"印刷エラー",
@@ -828,6 +856,7 @@ messages = {
     "Length:" : u"長さ:",
     "Frame rate:" : u"フレームレート:",
     "Colorspace:" : u"色空間:",
+    "Bit depth:" : u"", # New in v2.6.1.3
     "Field or frame based:" : u"フィールドベース/フレームベース:",
     "Parity:" : u"パリティ:",
     "Audio" : u"音声",
@@ -880,6 +909,8 @@ messages = {
     "Highlight the line that the caret is currently in" : u"現在キャレットがある行を強調",
     "Fold margin:" : u"折り畳みの余白:",
     "Scrap window" : u"スクラップウィンドウ",
+    "Information" : u"情報",
+    "Settings have been read from backup file\n" : u"", # New in v2.6.1.3
     "File extension shouldn't contain dots!" : u"", # New in v2.5.1
     "Insert aborted:" : u"挿入中止:",
     "Edit extension-based templates" : u"拡張子ベースのテンプレートを編集",
@@ -907,6 +938,9 @@ messages = {
     "Active thread on Doom9's forum" : u"Doom9 フォーラム AvsP スレッド",
     "This program is freeware under the GPL license." : u"このプログラムは、GPL ライセンスのフリーウェアです。",
     "Input a frame number or time (hr:min:sec) and hit Enter. Right-click to retrieve from history." : u"フレーム番号または時間（時:分:秒）を入力し、Enter キーを押して下さい。右クリックで履歴から検索できます。",
+    "bell at bookmarks" : u"", # New in v2.6.1.3
+    "highlight bookmarks" : u"", # New in v2.6.1.3
+    "set highlight color..." : u"", # New in v2.6.1.3
     "copy as time" : u"時間のコピー",
     "copy" : u"コピー",
     "paste" : u"貼り付け",
@@ -933,6 +967,7 @@ messages = {
     "Framerate numerator" : u"フレームレート分子",
     "Framerate denominator" : u"フレームレート分母",
     "Colorspace" : u"色空間",
+    "Bits per component" : u"", # New in v2.6.1.3
     "Field or frame based" : u"フィールド/フレームベース",
     "Parity" : u"パリティ",
     "Parity short (BFF or TFF)" : u"パリティ 省略形（BFF/TFF）",
@@ -973,6 +1008,7 @@ messages = {
     "AviSynth plugins" : u"AviSynth プラグイン",
     "VirtualDub plugins" : u"VirtualDub プラグイン",
     "VFAPI plugins" : u"VFAPI プラグイン",
+    "Script import" : u"", # New in v2.6.1.3
     "AvxSynth plugins" : u"AvxSynth プラグイン",
     "Insert a plugin" : u"プラグインの挿入",
     "No bookmarks defined!" : u"ブックマークが未定義です！",
@@ -988,10 +1024,7 @@ messages = {
     "Integer" : u"整数",
     "Float" : u"浮動小数点数",
     "pos" : u"座標",
-    "hex" : u"16進数",
-    "rgb" : u"",
-    "rgba" : u"",
-    "yuv" : u"",
+    "*hex" : u"", # New in v2.6.1.3
     "Edit AviSynth function information" : u"AviSynth 関数情報の編集",
     "  Function name" : u"  関数名",
     "Function arguments" : u"関数の引数",
@@ -1001,6 +1034,8 @@ messages = {
     "Invalid filter customization file!" : u"無効なフィルタカスタマイズファイルです！",
     "Save filter customization file" : u"フィルタカスタマイズファイルの保存",
     "Invalid argument!" : u"無効な引数です！",
+    "Error: can not save the Session" : u"", # New in v2.6.1.3
+    "Question" : u"質問",
     "Save changes before previewing?" : u"プレビュー前に変更を保存しますか？",
     "Select an external player" : u"外部プレーヤーの選択",
     "A program must be specified to use this feature!" : u"この機能を使用するにはプログラムを指定する必要があります！",
@@ -1024,7 +1059,9 @@ messages = {
     "Toggle \"%(label)s\" section" : u"\"%(label)s\" のセクションをトグル",
     "Above plugin names contain undesirable symbols.\nRename them to only use alphanumeric or underscores,\nor make sure to use them in short name style only." : u"上記のプラグイン名には好ましくない記号が含まれています。\n英数字またはアンダースコアのみを使用するようにリネームするか、\n必ずショートネームスタイルでのみそれらの名前を使用して下さい。",
     "Don't show me this again" : u"二度とこれを見せないでください",
-    "Changing the plugins autoload directory writes to the Windows registry." : u"プラグイン自動読込ディレクトリの変更は Windows のレジストリに書き込まれます。",
+    "Changing the plugins directory writes to the Windows registry.\n" : u"", # New in v2.6.1.3
+    "Writing to: HKLM\\Software\\Avisynth\\plugindir2_5\n" : u"", # New in v2.6.1.3
+    "Plugins dir registration failed" : u"", # New in v2.6.1.3
     "You're changing the plugins autoload directory.\nDo you wish to change it for all applications? This will\nrequire writing to {0}" : u"プラグイン自動読込ディレクトリを変更しようとしています。\nすべてのアプリケーションに対して変更しますか？\n{0} への書き込みが必要です。",
     "Save as" : u"名前を付けて保存",
     "Select a directory" : u"ディレクトリの選択",
@@ -1082,7 +1119,6 @@ messages = {
     "Error: key %(key)s does not exist!" : u"エラー: キー %(key)s は存在しません！",
     "Item %(newKey)s already exists!" : u"アイテム %(newKey)s はすでに存在します！",
     "Are you sure you want to rename from %(oldName)s to %(newName)s?" : u"本当に %(oldName)s から %(newName)s にリネームしたいですか？",
-    "Question" : u"質問",
     "Insert a new item" : u"新しいアイテムの挿入",
     "Must enter a name!" : u"名前を入力してください！",
     "Warning: no value entered for item %(newKey)s!" : u"警告: アイテム %(newKey)s に対する値が未入力です！",
@@ -1212,8 +1248,6 @@ messages = {
     "Random Clip Order" : u"ランダム順にクリップを連結",
     "Save Image Sequence" : u"イメージシーケンスの保存",
     "Shift Bookmarks by frames" : u"指定フレーム数だけブックマークを移動",
-    "_startup" : u"", # New in v2.5.1.09
-    "_startup_avs" : u"", # New in v2.5.1.09
     "Example (Resize)" : u"例（リサイズ）",
     "Examples" : u"例",
     "Customized" : u"カスタマイズ",
@@ -1290,7 +1324,6 @@ messages = {
     "Failed to run the external player!\n\nOpen the macro file in the \"Macros\" subdirectory\nwith a text editor and edit the executable\ndirectory appropriately!" : u"外部プレーヤーの起動に失敗しました！\n\nテキストエディタで \"Macros\" サブディレクトリの\nマクロファイルを開き、実行ファイルのディレクトリを\n適切に編集して下さい！",
 
     #--- Macro: Save Image Sequence ---#
-    "Bookmarks" : u"ブックマーク",
     "Save image sequence" : u"画像シークエンスの保存",
     "Output format" : u"出力フォーマット",
     "Select frames" : u"フレームの選択",
@@ -1310,7 +1343,6 @@ messages = {
     "Saving images..." : u"画像の保存中...",
     "scene_{0:0{1}}" : u"", # New in v2.5.0
     "%d image files created." : u"%d 個の画像ファイルが生成されました。",
-    "Information" : u"情報",
 
     #--- Macro: Shift Bookmarks by frames ---#
     "Introduce the number of frames:" : u"移動するフレーム数",

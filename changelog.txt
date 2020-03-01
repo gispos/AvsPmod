@@ -12,6 +12,17 @@ GPo source: https://github.com/gispos/AvsPmod
 GPo releases: https://github.com/gispos/AvsPmod/releases
 
 --------------------------
+Version 2.6.1.3 [2020-03-01] GPo
+--------------------------
+On the topic: Save or read marked script
+- By default 'Save or read marked script' is now activated again.
+- Optional selectable warnings removed, keep it simple.
+New behavior:
+The md5 hash of the original script is now saved within the 'AvsP marked script' and is compared when it is reopened.
+If there are differences, a warning appears, this warning cannot be deactivated.
+So you can turn on to save or read 'AvsP marked scripts' and you only get a warning if the original has been changed.
+
+--------------------------
 Version 2.6.1.2 [2020-02-29] GPo
 --------------------------
 ---- By default 'Save or read marked script' is now deactivated (Options > Save\Load > 'Save or read avs scripts with AvsPmod markings'.

@@ -16,7 +16,7 @@
 
 # Übersetzt von Henrik . AvsP 2.0.1  Danke für die Hilfe, besonders LigH ,doxville,Brother John, Selur und Rippraff !
 
-version = "2.5.1.18"
+version = "2.6.1.3"
 
 messages = {
     "AviSynth script" : u"", # New in v2.3.0
@@ -24,8 +24,8 @@ messages = {
     "Background" : u"Hintergrund",
     "Font" : u"Schriftart",
     "Text color" : u"Textfarbe",
-    "Select a predefined theme" : u"Wähle ein vordefiniertes Thema", # New in v2.5.1 r452
-    "Only change colours" : u"Nur Farben ändern", # New in v2.5.1 r452
+    "Select a predefined theme" : u"Wähle ein vordefiniertes Thema",
+    "Only change colours" : u"Nur Farben ändern",
     "When selecting a theme, don't change current fonts" : u"", # New in v2.5.1 r452
     "OK" : u"",
     "Cancel" : u"Abbrechen",
@@ -165,6 +165,9 @@ messages = {
     "Solarized light" : u"", # New in v2.5.1 r452
     "Solarized dark" : u"", # New in v2.5.1 r452
     "Zenburn" : u"", # New in v2.5.1 r452
+    "Cannot read the avisynth plugins directory from the registry\n" : u"", # New in v2.6.1.3
+    "HKLM\\Software\\Avisynth'plugindir2_5' or 'plugindir+' is missing or wrong.\n\n" : u"", # New in v2.6.1.3
+    "You should set the plugins path under options manually or register it." : u"", # New in v2.6.1.3
     "Alternatively, specify now its directory." : u"", # New in v2.4.0
     "Select the {0} directory" : u"", # New in v2.4.0
     "Make sure you have AviSynth installed and that there are no unstable plugins or avsi files in the AviSynth plugins directory." : u"", # New in v2.0.0
@@ -175,8 +178,11 @@ messages = {
     "Use a custom AviSynth directory" : u"", # New in v2.4.0
     "Alternative location of avisynth.dll/avxsynth.so" : u"", # New in v2.4.0
     "Custom AviSynth directory:" : u"", # New in v2.4.0
-    "Leave blank to use the default directory. Changing it needs admin rights on Windows" : u"", # New in v2.4.0
-    "Plugins autoload directory:" : u"", # New in v2.4.0
+    "Leave blank for reset or choose a directory for manually set or for register" : u"", # New in v2.6.1.3
+    "Disable autoload, set manually" : u"", # New in v2.6.1.3
+    "If plugins autoload fails set the path manually. Read only. Only for proper program functions" : u"", # New in v2.6.1.3
+    "Register the plugins directory" : u"", # New in v2.6.1.3
+    "This changes the plugins directory for Avisynth itself. On Windows Registry values in HKLM are changed." : u"", # New in v2.6.1.3
     "Override the current working directory" : u"", # New in v2.4.0
     "Use a custom working directory" : u"Verwende Benutzerdefiniertes Arbeitsverzeichnis",
     "For all scripts" : u"Für alle Skripts",
@@ -331,8 +337,10 @@ messages = {
     "Force CRLF" : u"", # New in v2.5.1 r452
     "Force LF" : u"", # New in v2.5.1 r452
     "Line endings" : u"", # New in v2.5.1 r452
-    "Save *.avs scripts with AvsPmod markings" : u"", # New in v2.2.1
-    "Save AvsPmod-specific markings (user sliders, toggle tags, etc) as a commented section in the *.avs file" : u"", # New in v2.2.1
+    "Save and read AvsPmod-specific markings (user sliders, toggle tags, etc) as a commented section in the *.avs file\nWarning! Changes made by another editor are not visible when loading the script again." : u"", # New in v2.6.1.3
+    "Save or read .avs scripts with AvsPmod markings" : u"", # New in v2.6.1.3
+    "I know what I'm doing. No warning when loading a script marked by AvsPmod" : u"", # New in v2.6.1.3
+    "No warning when loading" : u"", # New in v2.6.1.3
     "Start dialogs on the last used directory" : u"", # New in v2.4.0
     "If unchecked, the script's directory is used" : u"", # New in v2.4.0
     "Start save image dialogs on the last used directory" : u"", # New in v2.4.0
@@ -355,13 +363,15 @@ messages = {
     "Scroll the mouse wheel up for changing tabs to the right" : u"", # New in v2.4.1
     "Invert scroll wheel direction (Frame)" : u"Mausrad Direktion vertauschen (Frame) ",
     "Invert wheel direction for frames step" : u"", # New in v2.5.1.18
-    "Automatically load bookmarks from script only if tab count 1" : u"Beim ersten Skript immer Bookmarks vom Skript laden", # New in v2.5.1.18
+    "Automatically load bookmarks from script only if tab count 1" : u"Beim ersten Skript immer Bookmarks vom Skript laden",
     "On first script load bookmarks from script" : u"", # New in v2.5.1.18
-    "Automatically load bookmarks from script if tab changed" : u"Beim Tab wechsel Bookmarks vom Skript laden", # New in v2.5.1.18
+    "Automatically load bookmarks from script if tab changed" : u"Beim Tab wechsel Bookmarks vom Skript laden",
     "Tabs changing load bookmarks from script" : u"", # New in v2.5.1.18
     "Only allow a single instance of AvsPmod" : u"Nur eine Programminstanz erlauben",
     "Show warning at startup if there are dlls with bad naming in default plugin folder" : u"", # New in v2.2.1
     "Show warning for bad plugin naming at startup" : u"", # New in v2.2.1
+    "Middle mouse button behavior on the script" : u"", # New in v2.6.1.3
+    "Middle mouse on script (0 open source, 1 show video frame)" : u"", # New in v2.6.1.3
     "Max number of recent filenames" : u"Max.Anzahl neuer Dateinamen",
     "This number determines how many filenames to store in the recent files menu" : u"Diese Zahl stellt fest wieviele Dateinamen im FileMenue gespeichert werden", 
     "Custom jump size:" : u"Eigene Sprungweite ",
@@ -460,7 +470,7 @@ messages = {
     "New tab" : u"Neuer Tab",
     "Open an existing script" : u"Öffne ein vorhandenes Skript",
     "Open..." : u"Öffnen...",
-    "Reopen the last closed tab" : u"Zuletzt geschlossenen Tab öffnen", # New in v2.4.0
+    "Reopen the last closed tab" : u"Zuletzt geschlossenen Tab öffnen",
     "Undo close tab" : u"Geschlossenen Tab wiederherstellen",
     "Close tab" : u"Tab schließen",
     "Close the current tab" : u"Aktuellen Tab schließen",
@@ -513,11 +523,11 @@ messages = {
     "Find next" : u"Weitersuchen",
     "Find the next instance of given text" : u"Nächste Instanz in diesem Text suchen",
     "Find previous" : u"Finde vorheriges",
-    "Find the previous instance of given text" : u"Vorherige Instanz in diesem Text suchen", # New in v2.4.0
+    "Find the previous instance of given text" : u"Vorherige Instanz in diesem Text suchen",
     "Open a replace text dialog box" : u"Öffne Ersetzen-Dialog",
     "Replace..." : u"Ersetzen...",
     "Replace next" : u"Ersetze nächstes",
-    "Replace the next instance of given text" : u"Ersetze nächste Instanz in diesem Text", # New in v2.4.0
+    "Replace the next instance of given text" : u"Ersetze nächste Instanz in diesem Text",
     "Select All" : u"Alles auswählen",
     "Select all the text" : u"Gesammten Text auswählen",
     "&Insert" : u"",
@@ -564,7 +574,7 @@ messages = {
     "Run the help file for the filter (only works if cursor within the arguments or name is highlighted)" : u"Starte die Hilfedatei für die Filter (arbeitet nur wenn der Cursor innerhalb der Argumente steht oder Name hervorgehoben ist)",
     "Include functions defined in the current script in the filter database, only for this tab" : u"", # New in v2.5.1 r452
     "Parse script for function definitions" : u"", # New in v2.5.1 r452
-    "&Miscellaneous" : u"Sonstiges", # New in v2.2.1
+    "&Miscellaneous" : u"Sonstiges",
     "Move line up" : u"Zeile hochrücken",
     "Move the current line or selection up by one line" : u"Zeile oder Auswahl um eine Zeile hochrücken",
     "Move line down" : u"Zeile nach unten rücken",
@@ -676,7 +686,7 @@ messages = {
     "Use full range" : u"", # New in v2.3.0
     "For YV12 only, assume it is progressive (default)" : u"", # New in v2.2.1
     "For YV12 only, assume it is interlaced" : u"", # New in v2.2.1
-    "Bith &depth" : u"", # New in v2.5.1 r452
+    "Bit &depth" : u"", # New in v2.6.1.3
     "8-bit" : u"", # New in v2.5.1 r452
     "Regular 8-bit depth (default)" : u"", # New in v2.5.1 r452
     "Stacked 16-bit, MSB on top, range reduced to 10-bit. Requires MaskTools v2 loaded" : u"", # New in v2.5.1 r452
@@ -735,9 +745,9 @@ messages = {
     "Configure this computer to open .avs files with AvsP when double-clicked. Run again to disassociate" : u"", # New in v2.4.0
     "Edit the various AviSynth script fonts and colors" : u"Bearbeite die verschiedenen Schriftarten und Farben im Avisynth-Skript",
     "Fonts and colors..." : u"Schriftarten und Farben...",
-    "Make fonts and colors backup" : u"Erstelle Schriftarten && Farben Backup", # New in v2.5.1.18
+    "Make fonts and colors backup" : u"Erstelle Schriftarten && Farben Backup",
     "Make script fonts and colors backup" : u"", # New in v2.5.1.18
-    "Load fonts and colors backup" : u"Lade Schriftarten && Farben Backup", # New in v2.5.1.18
+    "Load fonts and colors backup" : u"Lade Schriftarten && Farben Backup",
     "Restores script fonts and colors from backup" : u"", # New in v2.5.1.18
     "AviSynth function definition..." : u"AviSynth Funktionsdefinitionen...",
     "Edit the extension-based templates for inserting sources" : u"Bearbeite die Dateierweiterung basierenden Vorlagen um die Sources einzufügen",
@@ -786,12 +796,13 @@ messages = {
     "Save as..." : u"Speichere als...",
     "Reload" : u"Neu laden",
     "Open directory" : u"Öffne Verzeichnis",
+    "Tab change load bookmarks" : u"", # New in v2.6.1.3
     "Copy to new tab" : u"Zu einem neuen Tab kopieren",
     "Reposition to" : u"", # New in v2.2.1
     "Crop editor" : u"Cropeditor",
     "You can drag the crop regions with the left mouse button when this dialog is visible, cropping the edge closest to the initial mouse click." : u"Bei diesem Dialog ,kann die Cropfunktion auch mittels linker Maustaste im Bild ausgeführt werden.",
     "Auto-crop" : u"", # New in v2.4.0
-    "Samples" : u"Vorlagen", # New in v2.4.0
+    "Samples" : u"Vorlagen",
     "At script end" : u"Am Skriptende",
     "At script cursor" : u"Am Skriptcursor", 
     "Copy to clipboard" : u"Kopiere zum Clipboard",
@@ -809,7 +820,7 @@ messages = {
     "Insert Dissolve(trim,) commands: " : u"", # New in v2.5.1.18
     "Insert Dissolve(clips,) commands: " : u"", # New in v2.5.1.18
     "Use the buttons which appear on the video slider handle to create the frame selections to trim." : u"Video-Schieberegler für die Bildauswahl zum trimmen benutzen ",
-    "The script's directory doesn't exist anymore!" : u"Das Skript Verzeichnis exestiert nicht mehr", # New in v2.5.1
+    "The script's directory doesn't exist anymore!" : u"Das Skript Verzeichnis exestiert nicht mehr",
     "%d Bookmarks imported" : u"", # New in v2.5.1.18
     "Print Preview" : u"", # New in v2.3.1
     "Failed to create print preview" : u"", # New in v2.3.1
@@ -844,6 +855,7 @@ messages = {
     "Length:" : u"Länge",
     "Frame rate:" : u"Wiederholungsrate der Einzelbilder",
     "Colorspace:" : u"Farbraum",
+    "Bit depth:" : u"", # New in v2.6.1.3
     "Field or frame based:" : u"Feld oder Einzelbild basierend",
     "Parity:" : u"Parität",
     "Audio" : u"",
@@ -861,7 +873,7 @@ messages = {
     "Use monospaced font:" : u"", # New in v2.2.1
     "Default:" : u"Standard",
     "Comment:" : u"Kommentar",
-    "Block Comment:" : u"Block Kommentar", # New in v2.2.1
+    "Block Comment:" : u"Block Kommentar",
     "__END__ Comment:" : u"", # New in v2.2.1
     "Number:" : u"Nummer",
     "String:" : u"",
@@ -954,6 +966,7 @@ messages = {
     "Framerate numerator" : u"Zähler Bildwiederholgungsrate",
     "Framerate denominator" : u"Nenner Bildwiederholgungsrate ",
     "Colorspace" : u"Farbraum",
+    "Bits per component" : u"", # New in v2.6.1.3
     "Field or frame based" : u"Feld oder Einzelbild basierend",
     "Parity" : u"Parität",
     "Parity short (BFF or TFF)" : u"Parität kurz (BFF or TFF)",
@@ -1010,10 +1023,7 @@ messages = {
     "Integer" : u"",
     "Float" : u"",
     "pos" : u"",
-    "hex" : u"",
-    "rgb" : u"RGB",
-    "rgba" : u"",
-    "yuv" : u"",
+    "*hex" : u"", # New in v2.6.1.3
     "Edit AviSynth function information" : u"Bearbeite Information der Avisynthfunktionen ",
     "  Function name" : u"Funktiosname",
     "Function arguments" : u"Funktionsargumente", 
@@ -1023,7 +1033,7 @@ messages = {
     "Invalid filter customization file!" : u"Falsche Fileranpassungsdatei",
     "Save filter customization file" : u"Speichern Fileranpassungsdatei",
     "Invalid argument!" : u"Falsches Argument",
-    "Exit program?" : u"", # New in v2.5.1.18
+    "Error: can not save the Session" : u"", # New in v2.6.1.3
     "Question" : u"Frage",
     "Save changes before previewing?" : u"Speichern der Änderungen vor der Vorschau",
     "Select an external player" : u"Wähle einen externen Player",
@@ -1048,7 +1058,9 @@ messages = {
     "Toggle \"%(label)s\" section" : u"Umschalten \"%(label)s\" Abschnitt",
     "Above plugin names contain undesirable symbols.\nRename them to only use alphanumeric or underscores,\nor make sure to use them in short name style only." : u"", # New in v2.3.0
     "Don't show me this again" : u"", # New in v2.2.1
-    "Changing the plugins autoload directory writes to the Windows registry." : u"", # New in v2.4.0
+    "Changing the plugins directory writes to the Windows registry.\n" : u"", # New in v2.6.1.3
+    "Writing to: HKLM\\Software\\Avisynth\\plugindir2_5\n" : u"", # New in v2.6.1.3
+    "Plugins dir registration failed" : u"", # New in v2.6.1.3
     "You're changing the plugins autoload directory.\nDo you wish to change it for all applications? This will\nrequire writing to {0}" : u"", # New in v2.4.0
     "Save as" : u"Speichere als", 
     "Select a directory" : u"Verzeichnis auswählen",
