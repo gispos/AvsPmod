@@ -12342,34 +12342,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         header = '### AvsP marked script ###'
 
         if self.options['savemarkedavs'] and (lines[0] == header):  # GPo, add save option must also enabled
-            newhash = ''
-            orghash = ''
-            """
-            if not self.options['nomarkedscriptloadwarning']:
-                # GPo, warn the user
-                dlg = wx.MessageDialog(self, _('AvsP marked script found, do you want to load it?\n' +
-                                               'Changes made with another editor are not visible, and if the script is saved again,' +
-                                               ' all invisible changes will be lost!\n\n' +
-                                               'If you don''t want to save marked scripts, you should deactivate it under\n' +
-                                               'Options > Video > "Save or read scripts with AvsPmod markings"'),
-                                             _('Warning'), wx.YES_NO)
-                ID = dlg.ShowModal()
-                dlg.Destroy()
-                if ID == wx.ID_NO:
-                    if returnFull:
-                        return (txt, txt), f_encoding, eol
-                    else:
-                        return txt, f_encoding, eol
-            """
             newlines = []
             for line in lines[1:]:
                 if line == header:
                     break
                 if line.startswith('# '):
-                    if (len(line) > 14) and (line[2:14] == '#scripthash:'):  # GPo, get the last stored hash
-                        orghash = line[14:].rstrip()
-                    else:
-                        newlines.append(line[2:])
+                    newlines.append(line[2:])
                 else:
                     if returnFull:
                         return (txt, txt), f_encoding, eol
@@ -12378,14 +12356,14 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
             newlines.reverse()
 
-            # GPo read now the new hash
+            # GPo read now the original script
+            orgtxt = ''
             idx = txt.find(header)
             if idx > 1:
-                cleantxt = txt[:idx-1].rstrip()
-                newhash = md5(cleantxt.encode('utf8')).hexdigest()
+                orgtxt = txt[:idx-1].rstrip()
 
-            # GPo, now compare the stored hash with the new hash
-            if orghash and newhash and (orghash != newhash):
+            # GPo, now compare it with the marked part
+            if self.getCleanText('\n'.join(newlines)).rstrip() != orgtxt:
                 dlg = wx.MessageDialog(self, _('AvsPmod marked script and original script different\n' +
                                                'Changes made with another editor are not visible and will be lost when saving again.\n\n' +
                                                'Do you want to load the AvsPmod marked script?'),
@@ -12627,12 +12605,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             scriptText = script.GetText()
             txt = self.getCleanText(scriptText)
             if txt != scriptText and self.options['savemarkedavs']:
-                stxt = txt.rstrip()
-                hash = '# #scripthash:' + md5(stxt.encode('utf8')).hexdigest()  # GPo
                 header = '### AvsP marked script ###'
                 base = '\n'.join(['# %s' % line for line in scriptText.split('\n')])
-                #~txt = '%(txt)s\n%(header)s\n%(base)s\n%(header)s' % locals()
-                txt = '%(txt)s\n%(header)s\n%(hash)s\n%(base)s\n%(header)s' % locals()  # GPo, added store the hash from original script
+                txt = '%(txt)s\n%(header)s\n%(base)s\n%(header)s' % locals()
 
             # Encode text and save it to the specified file
             txt = self.GetEncodedText(txt, bom=True)

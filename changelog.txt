@@ -12,6 +12,12 @@ GPo source: https://github.com/gispos/AvsPmod
 GPo releases: https://github.com/gispos/AvsPmod/releases
 
 --------------------------
+Version 2.6.1.4 [2020-03-01] GPo
+--------------------------
+- Changed the 'AvsP marked script' and original script compare routine
+---- Now no md5 Hash needed, only simple text compare is used
+
+--------------------------
 Version 2.6.1.3 [2020-03-01] GPo
 --------------------------
 On the topic: Save or read marked script
