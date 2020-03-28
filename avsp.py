@@ -5566,15 +5566,33 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     def custom_copy_data(self, w_param, l_param):
         pCDS = ctypes.cast(l_param, PCOPYDATASTRUCT)
         ide = pCDS.contents.dwData
-        if ide == 1:
+        if ide == 1:   # find and select tab
             s = ctypes.wstring_at(pCDS.contents.lpData)
             self.FindTabByName(s)
-        elif ide == 2:
+        elif ide == 2: # open file
             s = ctypes.wstring_at(pCDS.contents.lpData)
             if os.path.isfile(s):
                 self.OpenFile(s)
             else:
                 wx.Bell()
+        elif ide == 3: # find and release tab video memory
+            s = ctypes.wstring_at(pCDS.contents.lpData)
+            idx = self.FindTabByName(s, False)
+            if idx > -1:
+                script = self.scriptNotebook.GetPage(idx)
+                if idx == self.scriptNotebook.GetSelection():
+                    self.HidePreviewWindow()
+                    self.SetVideoStatusText()
+                script.AVI = None
+        elif ide == 4: # find and close tab
+            s = ctypes.wstring_at(pCDS.contents.lpData)
+            idx = self.FindTabByName(s, False)
+            if idx > -1:
+                wx.CallAfter(self.CloseTab, idx)
+        elif ide == 5:  # find only the tab
+            s = ctypes.wstring_at(pCDS.contents.lpData)
+            return self.FindTabByName(s, False)
+
         elif ide > 100:  # Addr of sender data, return it to sender
             s = ctypes.wstring_at(pCDS.contents.lpData)
             if self.FindTabByName(s) > -1:
@@ -6019,12 +6037,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'closeneversaved': False,
             'promptexitsave': True,
             'promptexitsaveonlyexisting': False,  # GPo
-            'bookmarksfromscript': True,         # GPo
-            'tabsbookmarksfromscript': True,     # GPo
+            'bookmarksfromscript': True,          # GPo
+            'tabsbookmarksfromscript': True,      # GPo
             'middlemousefunc': 1,                 # GPo
             'bookmarkshilightcolor': wx.Colour(240, 140, 140), # GPo
             'savemarkedavs': True,
-            #'nomarkedscriptloadwarning' : False,  # GPo, disable warn when loading marked script
             'eol': 'auto',
             'loadstartupbookmarks': True,
             'nrecentfiles': 5,
@@ -6036,6 +6053,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'invertscrolling': True,
             'invertframescrolling': False,
             'dllnamewarning': True,
+            'doublefuncnamewarning': True,
             # TOGGLE OPTIONS
             'alwaysontop': False,
             'previewalwaysontop': False,
@@ -6502,6 +6520,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.installed_plugins_filternames = set()
         self.installed_avsi_filternames = set()
         self.dllnameunderscored = set()
+        doublefuncList = [] # GPo
 
         # get version info
         try:
@@ -6557,7 +6576,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     print>>sys.stderr, 'Error parsing plugin string at function "%s"\n' % long_name
                     break
                 dllname = long_name[:pos]
+
                 self.installed_plugins.add(dllname)
+
                 if dllname in baddllnameList:
                     pass
                 elif not dllname[0].isalpha() and dllname[0] != '_':
@@ -6570,6 +6591,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 if self.options['autoloadedplugins']:
                     pluginfuncList.append((long_name, 2))
                     self.plugin_shortnames[short_name.lower()].append(long_name.lower())
+
+                # GPo, test multi func
+                if long_name.lower() in self.installed_plugins_filternames:
+                    doublefuncList.append(dllname + '.dll - ' + short_name)
+                #
                 self.installed_plugins_filternames.add(long_name.lower())
                 if dllname.count('_'):
                     self.dllnameunderscored.add(dllname.lower())
@@ -6578,6 +6604,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 funclist += pluginfuncList
             if baddllnameList and self.options['dllnamewarning']:
                 self.IdleCall.append((self.ShowWarningOnBadNaming, (baddllnameList, ), {}, ''))
+            if doublefuncList and self.options['doublefuncnamewarning']:
+                self.IdleCall.append((self.ShowWarningOnBadNaming, (doublefuncList, True), {}, ''))
+
         # autoloaded avsi files
         try:
             userfunc = env.get_var("$UserFunctions$")
@@ -6586,6 +6615,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         else:
             userfuncList = []
             for name in userfunc.split():
+                # GPo, not useful
+                #~if name.lower() in self.installed_avsi_filternames:
+                    #~doublefuncList.append('User function - ' + name)
                 self.installed_avsi_filternames.add(name.lower())
                 userfuncList.append((name, 3))
             if self.options['autoloadedavsi']:
@@ -6845,9 +6877,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 ((_('Invert scroll wheel direction (Tabs, Zoom)'), wxp.OPT_ELEM_CHECK, 'invertscrolling', _('Scroll the mouse wheel up for changing tabs to the right'), dict() ), ),
                 ((_('Invert scroll wheel direction (Frame)'), wxp.OPT_ELEM_CHECK, 'invertframescrolling', _('Invert wheel direction for frames step'), dict() ), ),   # GPo 2018
                 ((_('On first script load bookmarks from script'), wxp.OPT_ELEM_CHECK, 'bookmarksfromscript', _('Automatically load bookmarks from script only if tab count 1'), dict() ), ),
-                ((_('Tabs changing load bookmarks from script'), wxp.OPT_ELEM_CHECK, 'tabsbookmarksfromscript', _('Automatically load bookmarks from script if tab changed'), dict() ), ),
+                ((_('Tabs changing loads bookmarks from script'), wxp.OPT_ELEM_CHECK, 'tabsbookmarksfromscript', _('Automatically load bookmarks from script if tab changed'), dict() ), ),
                 ((_('Only allow a single instance of AvsPmod')+' *', wxp.OPT_ELEM_CHECK, 'singleinstance', _('Only allow a single instance of AvsPmod'), dict() ), ),
                 ((_('Show warning for bad plugin naming at startup'), wxp.OPT_ELEM_CHECK, 'dllnamewarning', _('Show warning at startup if there are dlls with bad naming in default plugin folder'), dict() ), ),
+                ((_('Show warning for double func naming at startup'), wxp.OPT_ELEM_CHECK, 'doublefuncnamewarning', _('Show warning at startup if there are more the one function with the same name'), dict() ), ),
                 ((_('Middle mouse on script (0 open source, 1 show video frame)'), wxp.OPT_ELEM_SPIN, 'middlemousefunc', _('Middle mouse button behavior on the script'), dict(min_val=0, max_val=1) ), ),  # GPo 2019
                 ((_('Max number of recent filenames'), wxp.OPT_ELEM_SPIN, 'nrecentfiles', _('This number determines how many filenames to store in the recent files menu'), dict(min_val=0) ), ),
                 ((_('Custom jump size:'), wxp.OPT_ELEM_SPIN, 'customjump', _('Jump size used in video menu'), dict(min_val=0) ), ),
@@ -7815,6 +7848,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         # Create the right-click menu
         menuInfo = (
             (_('Close'), '', self.OnMenuFileClose),
+            (_('Close all the other'), '', self.OnMenuOtherFilesClose),
             (_('Rename'), '', self.OnMenuFileRenameTab),
             (_('Group'),
                 (
@@ -7845,16 +7879,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             (_('Reload'), '', self.OnMenuFileReloadScript),
             (_('Open directory'), '', self.OnMenuFileOpenScriptDirectory),
             (''),
-            #(_('Bookmarks'),  # GPo, variant
-               #(
-               #(_('Bookmarks to script'), '', self.OnMenuBookmarksToScript),
-               #(_('Bookmarks from script'), '', self.OnMenuBookmarksFromScript),
-               #),
-            #),
             (_('Bookmarks to script'), '', self.OnMenuBookmarksToScript),     # GPo, 2018
             (_('Bookmarks from script'), '', self.OnMenuBookmarksFromScript), # GPo, 2018
             (''),
-            (_('Tab change load bookmarks'), '', self.OnMenuTabChangeLoadBookmarks, '', wx.ITEM_CHECK, self.options['tabsbookmarksfromscript']), # GPo 2019
+            (_('Release video memory'), '', self.OnMenuScriptReleaseMemory), # GPo 2020
+            (_('Release all other video memory'), '', self.OnMenuOtherScriptReleaseMemory), # GPo 2020
+            (''),
+            (_('Tab change loads bookmarks'), '', self.OnMenuTabChangeLoadBookmarks, '', wx.ITEM_CHECK, self.options['tabsbookmarksfromscript']), # GPo 2019
             (''),
             (_('Select all'), '', self.OnMenuEditSelectAll),
             (''),
@@ -8335,6 +8366,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     def OnMenuFileClose(self, event):
         self.CloseTab(prompt=True)
+
+    def OnMenuOtherFilesClose(self, event):
+        idx = self.scriptNotebook.GetSelection()
+        count = self.scriptNotebook.GetPageCount()
+        for index in xrange(count,-1,-1):
+            if index != idx:
+                self.CloseTab(index, prompt=True)
 
     def OnMenuFileCloseAllTabs(self, event):
         self.CloseAllTabs()
@@ -9615,6 +9653,31 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         for index in xrange(self.scriptNotebook.GetPageCount()):
             script = self.scriptNotebook.GetPage(index)
             script.AVI = None
+
+    def OnMenuScriptReleaseMemory(self, event): # GPo
+        self.Freeze()
+        try:
+          self.HidePreviewWindow()
+          self.SetVideoStatusText()
+          self.currentScript.AVI = None
+          # now pick the first script that is initialized
+          for index in xrange(self.scriptNotebook.GetPageCount()):
+              script = self.scriptNotebook.GetPage(index)
+              if (script != None) and (script.AVI != None) and not script.display_clip_refresh_needed:
+                  self.SelectTab(index)
+                  self.ShowVideoFrame(script=script)
+                  break
+        finally:
+           self.Thaw()
+           #self.Refresh()
+           #self.Update()
+
+    def OnMenuOtherScriptReleaseMemory(self, event): # GPo
+        idx = self.scriptNotebook.GetSelection()
+        for index in xrange(self.scriptNotebook.GetPageCount()):
+            if idx != index:
+              script = self.scriptNotebook.GetPage(index)
+              script.AVI = None
 
     def OnMenuVideoToggle(self, event):
         if self.previewWindowVisible:
@@ -17277,15 +17340,20 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     self.scriptNotebook.SetSize((w, h-1))
                     self.scriptNotebook.SetSize((w, h))
 
-    def ShowWarningOnBadNaming(self, baddllnameList):
+    def ShowWarningOnBadNaming(self, baddllnameList, isFunc=False):
         wx.Bell()
         dlg = wx.Dialog(self, wx.ID_ANY, _('Warning'))
         bmp = wx.StaticBitmap(dlg, wx.ID_ANY, wx.ArtProvider.GetBitmap(wx.ART_WARNING))
         baddllnameList.append('\n')
-        message = wx.StaticText(dlg, wx.ID_ANY, '.{0}\n'.format('dll' if os.name == 'nt' else 'so').join(baddllnameList) +\
-                                                _('Above plugin names contain undesirable symbols.\n'
-                                                  'Rename them to only use alphanumeric or underscores,\n'
-                                                  'or make sure to use them in short name style only.'))
+        if not isFunc:
+            message = wx.StaticText(dlg, wx.ID_ANY, '.{0}\n'.format('dll' if os.name == 'nt' else 'so').join(baddllnameList) +\
+                                                    _('Above plugin names contain undesirable symbols.\n'
+                                                      'Rename them to only use alphanumeric or underscores,\n'
+                                                      'or make sure to use them in short name style only.'))
+        else:
+            message = wx.StaticText(dlg, wx.ID_ANY, '\n'.join(baddllnameList) +\
+                                                    _('This function is beta!\nFound more then one function with the same name.\n'
+                                                      'You should clean up your plugins.'))
         msgsizer = wx.BoxSizer(wx.HORIZONTAL)
         msgsizer.Add(bmp)
         msgsizer.Add(message, 0, wx.LEFT, 10)
@@ -17299,7 +17367,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         dlgsizer.Add(btnsizer, 0, wx.ALL|wx.ALIGN_CENTER, 10)
         dlg.SetSizerAndFit(dlgsizer)
         dlg.ShowModal()
-        self.options['dllnamewarning'] = not checkbox.IsChecked()
+        if isFunc:
+            self.options['doublefuncnamewarning'] = not checkbox.IsChecked()
+        else:
+            self.options['dllnamewarning'] = not checkbox.IsChecked()
         dlg.Destroy()
 
     def ShowOptions(self, startPageIndex=0):

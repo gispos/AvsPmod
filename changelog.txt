@@ -12,6 +12,17 @@ GPo source: https://github.com/gispos/AvsPmod
 GPo releases: https://github.com/gispos/AvsPmod/releases
 
 --------------------------
+Version 2.6.1.5 [2020-03-28] GPo
+--------------------------
+- Added to the tab popup menu:
+    - 'Close all other' close all the other tabs
+    - 'Release video memory' for the selected tab
+    - 'Release all other video memory' releases all other tabs video memory
+- Beta! Check at startup for multiple functions with the same name. (env.get_var("$PluginFunctions$"))
+    - Either I'm doing something wrong or avisynth, but you can easily deactivate it ;)
+- WndProc WM_COPYDATA features expanded
+
+--------------------------
 Version 2.6.1.4 [2020-03-01] GPo
 --------------------------
 - Changed the 'AvsP marked script' and original script compare routine
