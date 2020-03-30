@@ -54,7 +54,7 @@ use_classic_wx = True # fix True at the moment: use pre v4.0.0 wxPython
 
 if use_classic_wx:
   import wxversion
-  wxversion.select('2.8')
+  wxversion.select('2.9.3') # GPo: 2.9.3.0 is very fine
   # wxversion.select('3.0.2') #PF 20181221 #GPo not working, mouse wheel problems and other bugs
   import wx
 else:

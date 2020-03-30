@@ -12,6 +12,17 @@ GPo source: https://github.com/gispos/AvsPmod
 GPo releases: https://github.com/gispos/AvsPmod/releases
 
 --------------------------
+Version 2.6.1.7 [2020-03-29] GPo
+--------------------------
+- Compatible with Win10 UTF-8
+- no other changes
+
+--------------------------
+Version 2.6.1.6 [2020-03-29] GPo
+--------------------------
+- only test build for Win10 with UTF-8
+
+--------------------------
 Version 2.6.1.5 [2020-03-28] GPo
 --------------------------
 - Added to the tab popup menu:
