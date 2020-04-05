@@ -12,6 +12,20 @@ GPo source: https://github.com/gispos/AvsPmod
 GPo releases: https://github.com/gispos/AvsPmod/releases
 
 --------------------------
+Version 2.6.1.8 [2020-04-04] GPo
+--------------------------
+- Add mouse browse buttons (forward/backward(AUX2,AUX1)) functionality on script and video window
+    - Options > Misc > 'Mouse browse buttons' 
+        - (for more Info please have a look on the tooltip) 
+- Changed component for middle mouse button function, please select your middle mouse button option new.
+- Changed the functionality for a tab change with the mouse wheel or browse buttons:
+    - Tabs always changed now, no more video window move possible with mouse wheel. That was irritating.
+    - Are there tabs with similar videos or tabs with the same group, then only these tabs are selected (As usual).
+        - Otherwise all tabs are run through.
+        -  (The option for 'similar' or 'group' can be changed under Option > Video)
+- Bugfix Close Tab, Close all Tabs, Mouse wheel on video window
+
+--------------------------
 Version 2.6.1.7 [2020-03-29] GPo
 --------------------------
 - Compatible with Win10 UTF-8
