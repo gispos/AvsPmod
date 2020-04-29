@@ -1287,7 +1287,7 @@ class AvsStyledTextCtrl(stc.StyledTextCtrl):
                     info = u''
                 argInfo.append((item, argtype.lower(), name, boolMulti, boolOptional, info))
             except ValueError:
-                if item.lower() in ('clip', 'int', 'float', 'bool', 'string', 'func'):          # GPo 'func' Avisynth Neo
+                if item.lower() in ('clip', 'int', 'float', 'bool', 'string', 'func', 'array'):          # GPo 'func', 'array' Neo or >= v3.52
                     argInfo.append((item, item.lower(), u'', boolMulti, boolOptional, u''))
                 else:
                     # Assume it's a clip
@@ -5341,7 +5341,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.Bind(wx.EVT_CLOSE, self.OnClose)
         self.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self.OnNotebookPageChanged)
         self.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGING, self.OnNotebookPageChanging)
-        #~ self.Bind(wx.EVT_LEFT_DCLICK, self.OnLeftDClickWindow)
 
         if not self.separatevideowindow:
             def OnSize(event):
@@ -5488,6 +5487,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.scriptNotebook.SetSelection(index)
         self.currentScript.SetFocus()
 
+        # GPo 2020, scrptWindow and videoWindow binds on create, videoControls also on create but to another func
+        # exclude Statusbar, it's binding with videoControls, exclude all scriptNotebook children
+        self.BindObjMouseAux(self, self.GetStatusBar().GetHandle())
+        self.BindObjMouseAux(self.scriptNotebook, -3)
+
         # Warn if option files are damaged
         if self.loaderror:
             print>>sys.stderr, '{0}: {1}'.format(_('Error'), _('Damaged {0}. Using default settings.').format(', '.join(self.loaderror)))
@@ -5622,6 +5626,18 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if pw > -1 and pl > -1:
             self.PostMessage(w_param, l_param, pw, pl)
 ### end GPo
+
+    def BindObjMouseAux(self, obj, excludeChildren = -2):
+        if wx.VERSION >= (2,9):
+            obj.Bind(wx.EVT_MOUSE_AUX1_DOWN, self.OnMouseAux1Down)
+            obj.Bind(wx.EVT_MOUSE_AUX2_DOWN, self.OnMouseAux2Down)
+            if excludeChildren == -3:
+                return
+            for child in obj.GetChildren():
+                if child.GetHandle() == excludeChildren:
+                    continue
+                child.Bind(wx.EVT_MOUSE_AUX1_DOWN, self.OnMouseAux1Down)
+                child.Bind(wx.EVT_MOUSE_AUX2_DOWN, self.OnMouseAux2Down)
 
     def ProcessArguments(self, args):
         if args:
@@ -6275,7 +6291,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'true', 'false', 'try', 'catch',
         ]
         self.avsdatatypes = [
-            'clip', 'int', 'float', 'string', 'bool', 'var', 'func'  # GPo add 'func' Avisynth_Neo compatiple
+            'clip', 'int', 'float', 'string', 'bool', 'var', 'func', 'array'  # GPo add 'func', 'array' Neo or >= v3.52 compatiple
         ]
         self.avsoperators = [
             '-', '*', ',', '.', '/', ':', '?', '\\', '+', '<', '>', '=',
@@ -6632,7 +6648,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'f': 'float',
             'b': 'bool',
             's': 'string',
-            'n': 'func',        # GPo Avisynth_Neo
+            'n': 'func',        # GPo Avisynth_Neo or >= v3.52
+            'a': 'array',
             '.': 'var',
             #~ '*': '[...]',
         }
@@ -8012,9 +8029,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         scriptWindow.Bind(stc.EVT_STC_SAVEPOINTLEFT, lambda event: self.UpdateScriptTabname(event.GetEventObject()))
         scriptWindow.Bind(stc.EVT_STC_SAVEPOINTREACHED, lambda event: self.UpdateScriptTabname(event.GetEventObject()))
         scriptWindow.Bind(wx.EVT_KEY_UP, self.OnScriptKeyUp)
-        if wx.VERSION > (2, 9):
-            scriptWindow.Bind(wx.EVT_MOUSE_AUX1_DOWN, self.OnMouseAux1Down) # GPo 2020
-            scriptWindow.Bind(wx.EVT_MOUSE_AUX2_DOWN, self.OnMouseAux2Down) # GPo 2020
+        self.BindObjMouseAux(scriptWindow) # GPo 2020
+
         # Drag-and-drop target
         scriptWindow.SetDropTarget(self.scriptDropTarget(scriptWindow, self))
         return scriptWindow
@@ -8040,9 +8056,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         videoWindow.Bind(wx.EVT_LEFT_UP, self.OnLeftUpVideoWindow)
         videoWindow.Bind(wx.EVT_LEFT_DCLICK, self.OnLeftDClickVideoWindow)   # GPo 2018
         videoWindow.Bind(wx.EVT_RIGHT_UP, self.OnRightUpVideoWindow)         # GPo 2018
-        if wx.VERSION > (2,9):
-            videoWindow.Bind(wx.EVT_MOUSE_AUX1_DOWN, self.OnMouseAux1Down)   # GPo 2020
-            videoWindow.Bind(wx.EVT_MOUSE_AUX2_DOWN, self.OnMouseAux2Down)   # GPo 2020
+        self.BindObjMouseAux(videoWindow)                                # GPo 2020
+
         return videoWindow
 
     def createVideoControls(self, parent, primary=True):
@@ -8115,6 +8130,22 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 ctrl.Refresh()
         # Set the sizer and return the panel
         panel.SetSizer(sizer)
+
+        def OnMouseAux1Down(event):
+           self.GotoNextBookmark(reverse=True, forceCursor=True)
+
+        def OnMouseAux2Down(event):
+           self.GotoNextBookmark(forceCursor=True)
+
+        if wx.VERSION >= (2,9):   # GPo 2020, bind mouse brows buttons
+            panel.Bind(wx.EVT_MOUSE_AUX1_DOWN, OnMouseAux1Down)
+            panel.Bind(wx.EVT_MOUSE_AUX2_DOWN, OnMouseAux2Down)
+            for child in panel.GetChildren():
+                child.Bind(wx.EVT_MOUSE_AUX1_DOWN, OnMouseAux1Down)
+                child.Bind(wx.EVT_MOUSE_AUX2_DOWN, OnMouseAux2Down)
+            statusBar = self.GetStatusBar()
+            statusBar.Bind(wx.EVT_MOUSE_AUX1_DOWN, OnMouseAux1Down)
+            statusBar.Bind(wx.EVT_MOUSE_AUX2_DOWN, OnMouseAux2Down)
         return panel
 
     def createCropDialog(self, parent):
@@ -10641,18 +10672,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if slider.HitTestHandle(mousepos):
             frame = slider.GetValue()
             self.AddFrameBookmark(frame)
-            # GPo wrong color, AddFrameBookmark sets the color
-            """
-            colors = [wx.RED, wx.BLACK]
-            colors.remove(self.frameTextCtrl.GetForegroundColour())
-            self.frameTextCtrl.SetForegroundColour(colors[0])
-            self.frameTextCtrl.Refresh()
-            if self.separatevideowindow:
-                self.frameTextCtrl2.SetForegroundColour(colors[0])
-                self.frameTextCtrl2.Refresh()
-            if colors[0] == wx.BLACK and frame in self.bookmarkDict and (event.ControlDown() or event.AltDown() or event.ShiftDown()):
-                del self.bookmarkDict[frame]
-            """
             # GPo
             self.frameTextCtrl.Refresh()
             color = self.frameTextCtrl.GetForegroundColour()
@@ -11324,7 +11343,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 if not self.previewWindowVisible or not self.ScrollSimilarTabsOrTabGroups(-1):
                     self.SelectTab(None, -1)
             else:
-                self.GotoNextBookmark(reverse=True)
+                self.GotoNextBookmark(reverse=True, forceCursor=True)
         elif self.options['mouseauxdown'] == 'custom jump':
             self.OnMenuVideoPrevCustomUnit(None)
         elif self.options['mouseauxdown'] == 'frame step':
@@ -11334,7 +11353,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 if not self.previewWindowVisible or not self.ScrollSimilarTabsOrTabGroups(-1):
                     self.SelectTab(None, -1)
             else:
-                self.GotoNextBookmark(reverse=True)
+                self.GotoNextBookmark(reverse=True, forceCursor=True)
         else:
             event.Veto()
 
@@ -11346,7 +11365,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 if not self.previewWindowVisible or not self.ScrollSimilarTabsOrTabGroups(1):
                     self.SelectTab(None, 1)
             else:
-                self.GotoNextBookmark()
+                self.GotoNextBookmark(forceCursor=True)
         elif self.options['mouseauxdown'] == 'custom jump':
             self.OnMenuVideoNextCustomUnit(None)
         elif self.options['mouseauxdown'] == 'frame step':
@@ -11356,7 +11375,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 if not self.previewWindowVisible or not self.ScrollSimilarTabsOrTabGroups(1):
                     self.SelectTab(None, 1)
             else:
-                self.GotoNextBookmark()
+                self.GotoNextBookmark(forceCursor=True)
         else:
             event.Veto()
 
@@ -14275,7 +14294,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         text = _('Line: %(line)i  Col: %(col)i') % locals()
         statusBar = self.GetStatusBar()
         width = min(statusBar.GetClientSize()[0] - statusBar.GetTextExtent(text)[0] - 6,
-                    statusBar.GetTextExtent(text)[0] + 40)
+                    statusBar.GetTextExtent(text)[0] + 30)
         width = max(0, width)
         statusBar.SetStatusWidths([-1, width])
         statusBar.SetStatusText(text, 1)
@@ -14307,6 +14326,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             else:
                 self.SetStatusWidths([-1, 0])
                 self.SetStatusText(text)
+                self.SetStatusText('', 1)  # wx 2.9 bug
+
         if self.separatevideowindow:
             if len(text2) == 2:
                 width = min(self.videoStatusBar.GetClientSize()[0] - self.videoStatusBar.GetTextExtent(text2[0])[0] - 6,
@@ -14319,6 +14340,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             else:
                 self.videoStatusBar.SetStatusWidths([-1, 0])
                 self.videoStatusBar.SetStatusText(text)
+                self.videoStatusBar.SetStatusText('', 1)  # wx 2.9 bug
 
     def SetVideoCropStatusText(self):
         script = self.currentScript
@@ -15336,7 +15358,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if self.playing_video == '':
             self.PlayPauseVideo()
 
-    def GotoNextBookmark(self, reverse=False):
+    def GotoNextBookmark(self, reverse=False, forceCursor=False):
         if self.playing_video:
             self.PlayPauseVideo()
             self.playing_video = ''
@@ -15361,7 +15383,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             else:
                 new_frame = bookmarkValues[idx]
 
-        self.ShowVideoFrame(new_frame)
+        self.ShowVideoFrame(new_frame, forceCursor=forceCursor)
 
         if self.playing_video == '':
             wx.CallAfter(self.PlayPauseVideo)  # GPo

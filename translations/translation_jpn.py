@@ -17,7 +17,7 @@
 # Japanese translation authors:
 #   niiyan v2.0.2 - v2.4.1
 
-version = "2.6.1.5"
+version = "2.6.1.8"
 
 messages = {
     "AviSynth script" : u"AviSynth スクリプト",
@@ -266,7 +266,7 @@ messages = {
     "Shared timeline" : u"タイムラインの共有",
     "Only on tabs of the same characteristics" : u"", # New in v2.5.0
     "Only share timeline for clips with the same resolution and frame count" : u"", # New in v2.5.0
-    "Determines which mouse wheel function is used, see below tabs" : u"", # New in v2.5.1.09
+    "Determines which mouse wheel function is used, see below tabs.Tab change also possible under Misc -> Mouse browser buttons" : u"", # New in v2.6.1.8
     "Frames step" : u"", # New in v2.6.1.5
     "Mouse Wheel Function" : u"", # New in v2.5.1.09
     "Tabs scrolling" : u"", # New in v2.5.1.09
@@ -369,8 +369,18 @@ messages = {
     "Only allow a single instance of AvsPmod" : u"AvsPmod にシングルインスタンスのみ許可",
     "Show warning at startup if there are dlls with bad naming in default plugin folder" : u"デフォルトのプラグインフォルダにおかしなネーミングの DLL がある場合、起動時に警告を表示",
     "Show warning for bad plugin naming at startup" : u"起動時におかしなネーミングのプラグインに関する警告を表示",
-    "Middle mouse button behavior on the script" : u"", # New in v2.6.1.5
-    "Middle mouse on script (0 open source, 1 show video frame)" : u"", # New in v2.6.1.5
+    "Show warning at startup if there are more the one function with the same name" : u"", # New in v2.6.1.8
+    "Show warning for double func naming at startup" : u"", # New in v2.6.1.8
+    "Bookmark jump" : u"", # New in v2.6.1.8
+    "Custom jump" : u"", # New in v2.6.1.8
+    "Frame step" : u"フレームステップ",
+    "Mouse browser buttons" : u"", # New in v2.6.1.8
+    "Mouse browser buttons (forward/backward) on video and script window\nIf 'Tab change' and tab count less than 2, 'Bookmark jump' is used\nIf 'Tab change' press CTRL or left mouse and 'Bookmark jump' is used\nIf 'Bookmark jump', vice versa" : u"", # New in v2.6.1.8
+    "Tab change" : u"", # New in v2.6.1.8
+    "Middle mouse button behavior on the script, if script empty open source is used" : u"", # New in v2.6.1.8
+    "Middle mouse on script" : u"", # New in v2.6.1.8
+    "Open source" : u"", # New in v2.6.1.8
+    "Show video frame" : u"", # New in v2.6.1.8
     "Max number of recent filenames" : u"最近使ったファイル名の最大保存数",
     "This number determines how many filenames to store in the recent files menu" : u"この数値が最近使ったファイルのメニューで保存されるファイル名の数を決定する",
     "Custom jump size:" : u"カスタムジャンプサイズ:",
@@ -1059,7 +1069,7 @@ messages = {
     "Left-click to select a color, right click to reset to default" : u"左クリックで色の選択、右クリックでデフォルトにリセット",
     "Toggle \"%(label)s\" section" : u"\"%(label)s\" のセクションをトグル",
     "Above plugin names contain undesirable symbols.\nRename them to only use alphanumeric or underscores,\nor make sure to use them in short name style only." : u"上記のプラグイン名には好ましくない記号が含まれています。\n英数字またはアンダースコアのみを使用するようにリネームするか、\n必ずショートネームスタイルでのみそれらの名前を使用して下さい。",
-    "Found more then one function with the same name.\nYou should clean up your plugins." : u"", # New in v2.6.1.5
+    "This function is beta!\nFound more then one function with the same name.\nYou should clean up your plugins." : u"", # New in v2.6.1.8
     "Don't show me this again" : u"二度とこれを見せないでください",
     "Changing the plugins directory writes to the Windows registry.\n" : u"", # New in v2.6.1.5
     "Writing to: HKLM\\Software\\Avisynth\\plugindir2_5\n" : u"", # New in v2.6.1.5
@@ -1270,7 +1280,6 @@ messages = {
 
     #--- Macro: Bookmarks at Intervals ---#
     "Choose a frame step or a number of intervals" : u"フレームステップまたは周期の選択",
-    "Frame step" : u"フレームステップ",
     "Number of intervals" : u"周期",
     "End frame" : u"", # New in v2.5.0
     "Start frame" : u"", # New in v2.5.0

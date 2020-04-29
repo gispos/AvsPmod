@@ -12,6 +12,14 @@ GPo source: https://github.com/gispos/AvsPmod
 GPo releases: https://github.com/gispos/AvsPmod/releases
 
 --------------------------
+Version 2.6.1.9 [2020-04-29] GPo (small changes)
+--------------------------
+- Add new avisynth type 'a' (avisynth with array, pinterf v3.52)
+- Mouse browse button function revised.
+    - now also works on the tabs, video controls and status bar
+    - if the cursor is over the video controls or status bar, a 'Bookmark jump' is called
+- a bit cosmetic: statusbar text, bookmark jump with mouse browse buttons shows wait cursor.
+--------------------------
 Version 2.6.1.8 [2020-04-04] GPo
 --------------------------
 - Add mouse browse buttons (forward/backward(AUX2,AUX1)) functionality on script and video window
