@@ -1399,7 +1399,7 @@ class AvsStyledTextCtrl(stc.StyledTextCtrl):
         # If none of the above, it's a variable name
         if self.AVI is not None:
             vartype = self.AVI.GetVarType(strVar)
-            if vartype in ('int', 'float', 'string', 'bool'):
+            if vartype in ('int', 'float', 'string', 'bool' , 'array', 'func'):
                 return vartype
         return 'var'
 
@@ -8146,6 +8146,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             statusBar = self.GetStatusBar()
             statusBar.Bind(wx.EVT_MOUSE_AUX1_DOWN, OnMouseAux1Down)
             statusBar.Bind(wx.EVT_MOUSE_AUX2_DOWN, OnMouseAux2Down)
+
         return panel
 
     def createCropDialog(self, parent):
@@ -10465,14 +10466,27 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.SetStatusText(_('Input a frame number or time (hr:min:sec) and hit Enter. Right-click to retrieve from history.'))
         frameTextCtrl = event.GetEventObject()
         frameTextCtrl.SetForegroundColour(wx.BLACK)
+        # GPo, alternative to SetSelection without Skip, change the back color to emulate the focused state
+        frameTextCtrl.SetBackgroundColour(wx.LIGHT_GREY)
+        frameTextCtrl.Refresh()
+        #frameTextCtrl.ShowNativeCaret(True) # doese nothing
         wx.CallAfter(frameTextCtrl.SetSelection, -1, -1)
-        event.Skip()
+        # wx 2.9?, if Skip forced, key input goes lose (tabs becomes the input?)
+        # if skip forced, OnButtonTextKillFocus Skip is also needed, but then wx.Bell is called automatically
+        #~event.Skip()
 
     def OnButtonTextKillFocus(self, event):
         frameTextCtrl = event.GetEventObject()
         txt = frameTextCtrl.GetLineText(0)
         if txt and txt not in self.recentframes:
             self.recentframes.append(txt)
+        # GPo, alternative to SetSelection without Skip change the back color
+        color = wx.SystemSettings.GetColour(wx.SYS_COLOUR_WINDOW)
+        frameTextCtrl.SetBackgroundColour(color)
+        frameTextCtrl.Refresh()
+        wx.Yield()
+        # end alternative
+        #~event.Skip() # GPo, needed for wx 2.9 see OnButtonTextSetFocus, but wx calls wx.Bell on Key 'Enter', It annoys me)
         win = self.FindFocus()
         if  win != frameTextCtrl:
             frame = self.videoSlider.GetValue()
@@ -10505,8 +10519,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if frame == -1:
             frame = self.currentScript.AVI.Framecount - 1
         if frame < 0 or (self.currentScript.AVI and frame >= self.currentScript.AVI.Framecount):
+            frame = None
             wx.Bell()
-            return
+            #return   # GPo, do not return, show the current script.frame and kill frameTextCtrl focus (background color has changed)
         if not self.separatevideowindow:
             self.ShowVideoFrame(frame)
         else:

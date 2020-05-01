@@ -12,6 +12,14 @@ GPo source: https://github.com/gispos/AvsPmod
 GPo releases: https://github.com/gispos/AvsPmod/releases
 
 --------------------------
+Version 2.6.1.9.r2 [2020-05-01] GPo (bugfix)
+--------------------------
+- bugfix frame text input:
+     The text is now no longer selected, as a substitute the background color of the entire field is now changed.
+     The wxPython version I use generates a wx.Bell event when I enter 'Enter' on the keyboard, I don't like that. 
+     That's why I chose the lesser evil for me (and for you?).
+
+--------------------------
 Version 2.6.1.9 [2020-04-29] GPo (small changes)
 --------------------------
 - Add new avisynth type 'a' (avisynth with array, pinterf v3.52)
@@ -19,6 +27,7 @@ Version 2.6.1.9 [2020-04-29] GPo (small changes)
     - now also works on the tabs, video controls and status bar
     - if the cursor is over the video controls or status bar, a 'Bookmark jump' is called
 - a bit cosmetic: statusbar text, bookmark jump with mouse browse buttons shows wait cursor.
+
 --------------------------
 Version 2.6.1.8 [2020-04-04] GPo
 --------------------------
