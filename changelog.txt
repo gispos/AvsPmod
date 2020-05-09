@@ -12,6 +12,17 @@ GPo source: https://github.com/gispos/AvsPmod
 GPo releases: https://github.com/gispos/AvsPmod/releases
 
 --------------------------
+Version 2.6.2.0 [2020-05-08] GPo
+--------------------------
+- Added a new mouse event on the script (Left down right click) 
+     - add or remove the first char # on each selected line
+     - nice for enable/disable avisynth functions or whatever
+- Revised zoom fit and fill, fit is now scaled correctly even with a newly loaded script
+- Fixed, Programs Single Instance
+- Bugfix, With every frame step the video window was enlarged when zoom fit or fill was selected.
+- some other changes
+
+--------------------------
 Version 2.6.1.9.r2 [2020-05-01] GPo (bugfix)
 --------------------------
 - bugfix frame text input:
