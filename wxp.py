@@ -273,14 +273,22 @@ class App(wx.App):
 
 class SingleInstanceApp(wx.App):
     outputWindowClass = StdoutStderrWindow
-    port = 50009
+
+    #~port = 50009
+    # GPo 2020, make sure the port in AvsPmode is the same
+    # make a difference between x64, x32
+    xSys = 'x64' if sys.maxsize > 2**32 else 'x32'
+    port = 50009 if xSys == 'x64' else 50008
+
     name = 'SingleInstanceApp'
     IsFirstInstance = True
     boolSingleInstance = True
     def __init__(self, *args, **kwargs):
         # Get extra keyword arguments
+
         if kwargs.has_key('name'):
-            self.name = kwargs.pop('name')
+            #~self.name = kwargs.pop('name')
+            self.name = kwargs.pop('name') + xSys # GPo 2020, make sure the name in AvsPmode is the same
         if kwargs.has_key('port'):
             self.port = kwargs.pop('port')
         # Determine if program is already running or not

@@ -12,6 +12,16 @@ GPo source: https://github.com/gispos/AvsPmod
 GPo releases: https://github.com/gispos/AvsPmod/releases
 
 --------------------------
+Version 2.6.2.1 [2020-05-15] GPo
+--------------------------
+- Program Single Instance now differentiates between 32bit and 64bit instances.
+- Left down right click (zoom 100/200%): After mouse right up button, you can now move the video window directly if left down.
+- On full size double click, the script resets to the height before (if tab not changed).
+- The area without response next to the buttons of the video slider in trim mode has been reduced. (now 2 pixels) 
+- Some bugs caused by switching to another wxPython version have been fixed. I hope all.
+- Other changes
+
+--------------------------
 Version 2.6.2.0 [2020-05-08] GPo
 --------------------------
 - Added a new mouse event on the script (Left down right click) 
