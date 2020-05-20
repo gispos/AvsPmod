@@ -12,6 +12,16 @@ GPo source: https://github.com/gispos/AvsPmod
 GPo releases: https://github.com/gispos/AvsPmod/releases
 
 --------------------------
+Version 2.6.2.2 [2020-05-18] GPo
+--------------------------
+- Added: Menu Video > Play video > 'Use faster playback function' 38% down to 0% faster, depending on the filters used (CPU load).
+- Changed: during playback no pixel information is shown in the status bar. It is pointless to show.
+- Changed component for 'mouse wheel function' please select your option new
+---  'Tab change or scroll' behaves like the original version 2.5.1
+- Issues fixed, script doesn't updated immediately.
+
+--------------------------
+
 Version 2.6.2.1 [2020-05-15] GPo
 --------------------------
 - Program Single Instance now differentiates between 32bit and 64bit instances.

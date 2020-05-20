@@ -2136,8 +2136,8 @@ class AvsStyledTextCtrl(stc.StyledTextCtrl):
                 prev_flag = flag
                 flag = None
             pos += 1
-        #~if wx.VERSION > (2, 9): # GPo 2020, wx 2.9.3 gets error on Refresh
-            #~self.app.IdleCall.append((self.Refresh, tuple(), {}))
+        if wx.VERSION > (2, 9):
+            wx.CallAfter(self.Refresh)
 
     def ColourTo(self, pos, style):
         self.SetStyling(pos +1 - self.endstyled, style)
@@ -5304,6 +5304,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.play_speed_factor = 1.0
         self.play_drop = False          # GPo 2018 change to False
         self.playing_video = False
+        self.play_fastFunc = self.options['playfastfunc']
         self.getPixelInfo = False
         self.sliderOpenString = '[<'
         self.sliderCloseString = '>]'
@@ -5451,16 +5452,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         def OnIdle(event):
             if self.IdleCall:
                 func, args, kwargs = self.IdleCall.pop()
-                '''
-                # GPo 2020, wx 2.9.3 error on TabClose: File avsp.py, in OnIdle File "wx\_core.pyo", line 10675, in Refresh
-                # TypeError: in method 'Window_Refresh', expected argument 1 of type 'wxWindow *'
-                # I found:
-                    def OnStyleNeeded
-                        if wx.VERSION > (2, 9): # GPo 2020, wx 2.9.3 gets error on Refresh, removed and fixed for wx 2.9.3
-                            self.app.IdleCall.append((self.Refresh, tuple(), {}))
-
-                self.app.IdleCall.append > self.app.IdleCall.pop() nothing ?
-                '''
                 func(*args, **kwargs)
 
         self.Bind(wx.EVT_IDLE, OnIdle)
@@ -6031,7 +6022,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'autoloadedplugins': True,
             'autoloadedavsi': True,
             # VIDEO OPTIONS
-            'mousewheelfunc': 1,    # GPo 2018
+            'mousewheelfunc': 'framestep',    # GPo 2020
+            #'mousewheelfunc': 1,    # GPo 2018
             'dragupdate': True,
             'focusonrefresh': True,
             'previewunsavedchanges': True,
@@ -6080,6 +6072,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'tabsbookmarksfromscript': True,         # GPo
             'middlemousefunc': 'show video frame',   # GPo 2020
             'mouseauxdown': 'tab change',            # GPo 2020
+            'playfastfunc': False,                   # GPo 2020
             'bookmarkshilightcolor': wx.Colour(240, 140, 140), # GPo
             'savemarkedavs': True,
             'eol': 'auto',
@@ -6090,7 +6083,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'usetabimages': True,
             'multilinetab': False,
             'fixedwidthtab': False,
-            'invertscrolling': True,
+            'invertscrolling': False,
             'invertframescrolling': False,
             'dllnamewarning': True,
             'doublefuncnamewarning': True,
@@ -6866,7 +6859,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 ((_('Refresh preview automatically'), wxp.OPT_ELEM_CHECK, 'refreshpreview', _('Refresh preview when switch focus on video window or change a value in slider window'), dict() ), ),
                 ((_('Shared timeline'), wxp.OPT_ELEM_CHECK, 'enableframepertab', _('Seeking to a certain frame will seek to that frame on all tabs'), dict() ), ),
                 ((_('Only on tabs of the same characteristics'), wxp.OPT_ELEM_CHECK, 'enableframepertab_same', _('Only share timeline for clips with the same resolution and frame count'), dict(ident=20) ), ),
-                ((_('Mouse Wheel Function'), wxp.OPT_ELEM_RADIO, 'mousewheelfunc', _('Determines which mouse wheel function is used, see below tabs.Tab change also possible under Misc -> Mouse browse buttons'), dict(choices=[(_('Tabs scrolling'), 0),(_('Frames step'), 1)])), ),  # GPo 2018
+                ((_('Mouse wheel function'), wxp.OPT_ELEM_LIST, 'mousewheelfunc', _('Determines which mouse wheel function is used, see below tabs.Tab change also possible under Misc -> Mouse browse buttons'), dict(choices=[(_('Frame step'), 'frame_step'), (_('Tab change'), 'tab_change'), (_('Tab change or scroll'), 'tab_change_or_scroll'),]) ), ), # GPo 2020
                 ((_('Enable scroll wheel through similar tabs'), wxp.OPT_ELEM_CHECK, 'enabletabscrolling', _('Mouse scroll wheel cycles through tabs with similar videos'), dict() ), ),
                 ((_('Enable scroll wheel through tabs on the same group'), wxp.OPT_ELEM_CHECK, 'enabletabscrolling_groups', _('Mouse scroll wheel cycles through tabs assigned to the same tab group'), dict() ), ),
                 ((_('Allow AvsPmod to resize the window'), wxp.OPT_ELEM_CHECK, 'allowresize', _('Allow AvsPmod to resize and/or move the program window when updating the video preview'), dict() ), ),
@@ -7568,6 +7561,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     (_('Maximum speed'), 'Shift+Numpad *', self.OnMenuVideoPlayMax, _('Play the video as fast as possible without dropping frames')),
                     (''),
                     (_('Drop frames'), 'Shift+Numpad .', self.OnMenuVideoPlayDropFrames, _('Maintain correct video speed by skipping frames'), wx.ITEM_CHECK, False),
+                    (_('Use faster playback function'), '', self.OnMenuVideoPlayFunc, _('1/3 faster playback but no programs window update'), wx.ITEM_CHECK, self.options['playfastfunc']),
                     ),
                 ),
                 (''),
@@ -9848,6 +9842,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     def OnMenuVideoPlayDropFrames(self, event):
         self.play_drop = not self.play_drop
 
+    def OnMenuVideoPlayFunc(self, event):
+        self.play_fastFunc = event.IsChecked()
+        self.options['playfastfunc'] = self.play_fastFunc
+
     def OnMenuSaveViewPos(self, event):
         self.saveViewPos = not self.saveViewPos
 
@@ -11172,11 +11170,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     continue
 
             # GPo, if not initialized skip it, don't open all tabs
+            """
             try:
-                if not script.AVI.initialized:
+                if not script.AVI.initialized and (self.options['mousewheelfunc'] != 'tab_change_or_scroll'): # simulate 2.5.1 open all tabs
                     continue
             except AttributeError:
                 return False
+            """
 
             self.refreshAVI = True
             if self.UpdateScriptAVI(script, prompt=True) is None:
@@ -11220,7 +11220,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             finally:
                 self.videoWindow.Thaw()
             return
-        elif self.options['mousewheelfunc'] == 1:
+        elif self.options['mousewheelfunc'] == 'frame_step':
             # GPo 2018  frame skip with mouse wheel
             rotation = event.GetWheelRotation()
             if self.options['invertframescrolling']: rotation = -rotation
@@ -11241,29 +11241,27 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.mouse_wheel_rotation = 0
         if self.options['invertscrolling']: rotation = -rotation
         if rotation > 0:
-            delta = -1
-        else:
             delta = 1
+        else:
+            delta = -1
 
         # Scroll similar tabs or tab groups
         # GPo 2020, if no similar tabs or tab groups found, keep the function and change the tab
-        #  or do nothing but do not change to a nother function
         if not self.ScrollSimilarTabsOrTabGroups(delta):
-            self.SelectTab(None, delta)
-
-        ''' # Scroll video preview  GPo 2020: disabled
-            x0, y0 = self.videoWindow.GetViewStart()
-            scrolls_by_pixel = self.zoomfactor / float(10) * event.GetWheelRotation() / event.GetWheelDelta()
-            horizontal = event.ShiftDown()
-            #if wx.version() >= '2.9':    # GPo: disabled, 2.9.3 wx.MOUSE_WHEEL_HORIZONTAL not exists
-                #horizontal = horizontal or event.GetWheelAxis() == wx.MOUSE_WHEEL_HORIZONTAL
-            if horizontal:
-                scrolls = int(round(self.currentScript.AVI.DisplayWidth * scrolls_by_pixel))
-                self.videoWindow.Scroll(x0 + scrolls, -1)
+            if self.options['mousewheelfunc'] == 'tab_change': # GPo tab change new func
+                self.SelectTab(None, delta)
             else:
-                scrolls = int(round(self.currentScript.AVI.DisplayHeight * scrolls_by_pixel))
-                self.videoWindow.Scroll(-1, y0 - scrolls)
-        '''
+                # Scroll video preview, tab change original func 2.5.1
+                x0, y0 = self.videoWindow.GetViewStart()
+                scrolls_by_pixel = self.zoomfactor / float(10) * event.GetWheelRotation() / event.GetWheelDelta()
+                horizontal = event.ShiftDown()
+                if horizontal:
+                    scrolls = int(round(self.currentScript.AVI.DisplayWidth * scrolls_by_pixel))
+                    self.videoWindow.Scroll(x0 + scrolls, -1)
+                else:
+                    scrolls = int(round(self.currentScript.AVI.DisplayHeight * scrolls_by_pixel))
+                    self.videoWindow.Scroll(-1, y0 - scrolls)
+
     # GPo 2018
     def OnLeftDClickVideoWindow(self, event):
         if self.separatevideowindow:
@@ -11272,22 +11270,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.Freeze()
         try:
             if self.mainSplitter.GetSplitMode() == wx.SPLIT_HORIZONTAL:
-                '''
-                if self.currentScript.GetSize().height  > 4:
-                    mintextlines = 0
-                else:                         # workaround scrollbar visible or not
-                    mintextlines = self.options['mintextlines'] + \
-                          int(self.currentScript.GetWrapMode() == stc.STC_WRAP_NONE)
-                self.SetMinimumScriptPaneSize(mintextlines)
-                if mintextlines > 0:
-                    if self.oldLastSplitVideoPos is not None:  # GPo 2020 added
-                       sash_pos = self.oldLastSplitVideoPos
-                    else:
-                        sash_pos = self.GetMainSplitterNegativePosition(pos=None, forcefit=True)
-                else:
-                    sash_pos = self.mainSplitter.GetSashSize()
-                    self.oldLastSplitVideoPos = self.currentScript.lastSplitVideoPos #GPo 2020 added
-                '''
                 if self.currentScript.GetSize().height  > 4:
                     self.SetMinimumScriptPaneSize(0)
                     sash_pos = self.mainSplitter.GetSashSize()
@@ -11308,7 +11290,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         finally:
             self.Thaw()
             self.ShowVideoFrame(forceLayout=True)
-            #wx.CallAfter(self.ShowVideoFrame,forceLayout=True)
             event.Skip()
 
     # GPo 2018
@@ -11518,8 +11499,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if wx.VERSION > (2, 9):
                 self.OnCropDialogSpinTextChange()
         else:
-            videoWindow = self.videoWindow
-            if event and event.Dragging() and event.LeftIsDown() and videoWindow.HasCapture():
+            if event and event.Dragging() and event.LeftIsDown() and self.videoWindow.HasCapture():
+                videoWindow = self.videoWindow
                 try:
                     newPoint = event.GetPosition()
                 except:
@@ -11551,7 +11532,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         except:
                             pass
                     videoWindow.SetCursor(wx.StockCursor(wx.CURSOR_DEFAULT))
-            elif self.showVideoPixelInfo: #self.options['showvideopixelinfo']:
+            elif self.showVideoPixelInfo and not self.playing_video: # GPo 2020, not playing_video
                 if True:#self.FindFocus() == videoWindow:
                     pixelInfo = self.GetPixelInfo(event, string_=True)
                     if pixelInfo[1] is None:
@@ -12359,9 +12340,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                           _('Error'), style=wx.OK|wx.ICON_ERROR)
             return False
 
-        #wx.Yield()
+        if self.currentScript.GetClientSize()[self.mainSplitter.GetSplitMode() == wx.SPLIT_HORIZONTAL] < 6:
+            self.SetMinimumScriptPaneSize()
+        wx.Yield()
         self.Freeze()
-        self.SetMinimumScriptPaneSize()
 
         # Determine the name of the tab (New File (x))
         index = self.scriptNotebook.GetPageCount()
@@ -12420,13 +12402,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.scriptNotebook.AddPage(scriptWindow,'%s (%s)' % (self.NewFileName, iMax+1), select=select)
             self.Thaw()
 
-        #self.Thaw()
-
         if select:
             self.currentScript = scriptWindow
 
         self.UpdateTabImages()
-        #self.SetMinimumScriptPaneSize()
+        self.SetMinimumScriptPaneSize()
         scriptWindow.SetFocus()
         scriptWindow.EnsureCaretVisible()
 
@@ -15063,6 +15043,78 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 return new_zoom
             new_zoom -= 0.0000001
 
+    # GPo 2020, only for play thread
+    # for initial values must call ShowVideoFrame bevor and after
+    def ShowVideoFrameFast(self, framenum):
+        script = self.currentScript
+
+        if not self.playing_video:
+            if script.AVI.initialized and not script.AVI.IsErrorClip() and \
+                    script.AVI.error_message is None and script.AVI.display_clip.get_error() is None:
+                self.ShowVideoFrame(forceLayout=True)
+            return False
+
+        #if script.oldSliderTexts != script.sliderTexts:
+            #return False
+
+        self.currentframenum = framenum
+        self.videoSlider.SetValue(framenum)
+
+        self.frameTextCtrl.Replace(0, -1, str(framenum))
+        if self.separatevideowindow:
+            self.frameTextCtrl2.Replace(0, -1, str(framenum))
+
+        script.AVI.display_clip.get_frame(framenum)
+        error = script.AVI.display_clip.get_error()
+        if error is not None:
+            if self.playing_video:
+                self.PlayPauseVideo()
+            self.HidePreviewWindow()
+            wx.MessageBox(u'\n\n'.join((_('Error requesting frame {number}').format(number=framenum),
+                              error)), _('Error'), style=wx.OK|wx.ICON_ERROR)
+            return False
+
+        dc = wx.ClientDC(self.videoWindow)
+        self.PaintAVIFrame(dc, script, framenum)
+
+        # If error clip, highlight the line with the error
+        errmsg = script.AVI.error_message
+        if errmsg is not None:
+            if self.playing_video:
+                self.PlayPauseVideo()
+            self.HidePreviewWindow()
+            lines = errmsg.lower().split('\n')
+            items = lines[-1].split()
+            try:
+                index = items.index('line') + 1
+                if index < len(items):
+                    try:
+                        linenum = int(items[index].strip('),')) - 1
+                        if linenum < script.GetLineCount():
+                            posA = script.PositionFromLine(linenum)
+                            posB = script.GetLineEndPosition(linenum)
+                            script.SetSelection(posA, posB)
+                            doFocusScript = True
+                    except ValueError:
+                        pass
+            except ValueError:
+                pass
+            script.SetFocus()
+            script.EnsureCaretVisible()
+            return False
+
+        #self.oldWidth = videoWidth
+        #self.oldHeight = videoHeight
+        #self.oldFramecount = script.AVI.Framecount
+        #script.oldSliderTexts = script.sliderTexts
+        #script.oldAutoSliderInfo = script.autoSliderInfo
+        #script.oldToggleTags = script.toggleTags
+        #script.lastLength = script.AVI.Framecount
+
+        script.lastFramenum = framenum
+        self.SetVideoStatusText(framenum, primary=True)
+        return True
+
     def ShowVideoFrame(self, framenum=None, forceRefresh=False, wrap=True, script=None,
                        userScrolling=False, keep_env=None, forceLayout=False, doLayout=True,
                        resize=None, scroll=None, focus=True, adjust_handle=False,
@@ -16047,22 +16099,27 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.timeEndPeriod(self.play_timer_resolution)
             else:
                 self.play_timer.Stop()
-            self.playing_video = False
+            self.playing_video = False  # set to false bevor self.ShowVideoFrameFast
+            AsyncCall(self.ShowVideoFrameFast, self.currentframenum).Wait()  # GPo 2020, for fast func
             self.play_button.SetBitmapLabel(self.bmpPlay)
             self.play_button.Refresh()
             if self.separatevideowindow:
                 self.play_button2.SetBitmapLabel(self.bmpPlay)
                 self.play_button2.Refresh()
-        elif self.ShowVideoFrame(focus=False) and not self.currentScript.AVI.IsErrorClip():
+        elif self.ShowVideoFrame(focus=False, forceLayout=True, forceCursor=True) \
+                and not self.currentScript.AVI.IsErrorClip():
             script = self.currentScript
             if self.currentframenum == script.AVI.Framecount - 1:
                 return
             self.playing_video = True
             self.play_button.SetBitmapLabel(self.bmpPause)
             self.play_button.Refresh()
+            self.frameTextCtrl.SetForegroundColour(wx.BLACK) # GPo, for fast func
             if self.separatevideowindow:
                 self.play_button2.SetBitmapLabel(self.bmpPause)
                 self.play_button2.Refresh()
+                self.frameTextCtrl2.SetForegroundColour(wx.BLACK) # GPo, for fast func
+
             if self.play_speed_factor == 'max':
                 interval = 1.0 # use a timer anyway to avoid GUI refreshing issues
             else:
@@ -16089,9 +16146,16 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         increment = 1
                     if debug_stats:
                         print (debug_stats_str)
-                    if not AsyncCall(self.ShowVideoFrame, frame + increment,
+
+                    if self.play_fastFunc:
+                        # GPo 2020, use fast func
+                        if not AsyncCall(self.ShowVideoFrameFast, frame + increment).Wait():
+                            return
+                    else:
+                        if not AsyncCall(self.ShowVideoFrame, frame + increment,
                                      check_playing=True, focus=False).Wait():
-                        return
+                            return
+
                     if self.currentframenum == script.AVI.Framecount - 1:
                         self.PlayPauseVideo()
                     else:
@@ -16221,9 +16285,15 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                             increment = 1
                         if debug_stats:
                             print (debug_stats_str)
-                        if not self.parent.ShowVideoFrame(frame + increment,
-                                                          check_playing=True, focus=False):
-                            return
+
+                        # GPo 2020, use fast func
+                        if self.parent.play_fastFunc:
+                            if not self.parent.ShowVideoFrameFast(frame + increment):
+                                return
+                        else:
+                            if not self.parent.ShowVideoFrame(frame + increment, check_playing=True, focus=False):
+                                return
+
                         if self.parent.currentframenum == script.AVI.Framecount - 1:
                             self.parent.PlayPauseVideo()
                         elif not self.Yield(True):
