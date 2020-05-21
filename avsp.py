@@ -6022,8 +6022,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'autoloadedplugins': True,
             'autoloadedavsi': True,
             # VIDEO OPTIONS
-            'mousewheelfunc': 'framestep',    # GPo 2020
-            #'mousewheelfunc': 1,    # GPo 2018
+            'mousewheelfunc': 'frame_step',    # GPo 2020
             'dragupdate': True,
             'focusonrefresh': True,
             'previewunsavedchanges': True,

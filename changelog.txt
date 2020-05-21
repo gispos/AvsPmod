@@ -12,6 +12,11 @@ GPo source: https://github.com/gispos/AvsPmod
 GPo releases: https://github.com/gispos/AvsPmod/releases
 
 --------------------------
+Version 2.6.2.2.r2 [2020-05-21] GPo
+--------------------------
+bugfix save options error
+
+--------------------------
 Version 2.6.2.2 [2020-05-18] GPo
 --------------------------
 - Added: Menu Video > Play video > 'Use faster playback function' 38% down to 0% faster, depending on the filters used (CPU load).
