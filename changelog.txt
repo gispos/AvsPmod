@@ -12,6 +12,25 @@ GPo source: https://github.com/gispos/AvsPmod
 GPo releases: https://github.com/gispos/AvsPmod/releases
 
 --------------------------
+Version 2.6.2.3 [2020-05-23] GPo
+--------------------------
+Sorry for the save options bug in the last version. Component for mouse wheel func was changed but the option name not.
+After fixing the wrong name, the bug still occurred if the own options were kept and no new value was set in the options 
+for the mouse wheel function. That is now fixed.
+
+Added and Changes:
+- Press Ctrl and double click on the video window, expands the height some pixels
+- Temporal enable/disable show 'Filter calltips' even if the option disabled: 
+---- Edit > Avisynth function > 'Show calltip' you can assign a key shortcut, I use F1
+---- Options > Text > 'Show filter calltips Ctrl+Alt' when key Ctrl+Alt together pressed enables/disables calltips temporal
+-------- Beta, no idea if there are any conflicts with user defined shortcuts. But I do not think.
+- During playback, the fps is displayed in the status bar in real time. This is an average value.
+- The normal playback routine has become a bit speed improvement, but I recommend the new one. 'Use faster playback routine'
+Misc:
+- fixed: program crashes If a user slider was changed and playback was active.
+- some code changes
+
+--------------------------
 Version 2.6.2.2.r2 [2020-05-21] GPo
 --------------------------
 bugfix save options error
@@ -19,10 +38,10 @@ bugfix save options error
 --------------------------
 Version 2.6.2.2 [2020-05-18] GPo
 --------------------------
-- Added: Menu Video > Play video > 'Use faster playback function' 38% down to 0% faster, depending on the filters used (CPU load).
+- Added: Menu Video > Play video > 'Use faster playback function', 0 % to 38 % faster playback, depending on CPU load.
 - Changed: during playback no pixel information is shown in the status bar. It is pointless to show.
 - Changed component for 'mouse wheel function' please select your option new
----  'Tab change or scroll' behaves like the original version 2.5.1
+---- Item 'Tab change or scroll' behaves like the original version 2.5.1
 - Issues fixed, script doesn't updated immediately.
 
 --------------------------

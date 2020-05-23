@@ -1646,10 +1646,17 @@ class OptionsDialog(wx.Dialog):
                 index = ctrl.GetSelection()
                 newValue = ctrl.items[index][1]
             elif flag == OPT_ELEM_LIST:
-                if ctrl.client_data: # ctrl.HasClientData() in wxWidgets 2.9+
-                    newValue = ctrl.GetClientData(ctrl.GetSelection())
-                else:
-                    newValue = ctrl.GetValue()
+                try:  # GPo try if component changed to list and options name the same, select index 0
+                    if ctrl.client_data: # ctrl.HasClientData() in wxWidgets 2.9+
+                        newValue = ctrl.GetClientData(ctrl.GetSelection())
+                    else:
+                        newValue = ctrl.GetValue()
+                except:
+                    ctrl.SetSelection(0)
+                    if ctrl.client_data: # ctrl.HasClientData() in wxWidgets 2.9+
+                        newValue = ctrl.GetClientData(ctrl.GetSelection())
+                    else:
+                        newValue = ctrl.GetValue()
             elif flag == OPT_ELEM_BUTTON:
                 newValue = self.optionsOriginal[key]
             else: # flag == OPT_ELEM_STRING:
