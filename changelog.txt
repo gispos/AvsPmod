@@ -12,6 +12,12 @@ GPo source: https://github.com/gispos/AvsPmod
 GPo releases: https://github.com/gispos/AvsPmod/releases
 
 --------------------------
+Version 2.6.2.4 [2020-05-24] GPo
+--------------------------
+fixed: when the slider window was visible and a new tab was created the image in the video window disappeared at this time.
+fixed: when the first script was opened the video window flickered slightly.
+
+--------------------------
 Version 2.6.2.3 [2020-05-23] GPo
 --------------------------
 Sorry for the save options bug in the last version. Component for mouse wheel func was changed but the option name not.

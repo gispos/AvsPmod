@@ -7152,9 +7152,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.toolbarHeight = spos
 
         if wx.VERSION < (2, 9):
+            self.programSplitter.Freeze()
             self.programSplitter.SetSashSize(0)
             self.programSplitter.SplitHorizontally(self.mainSplitter, self.videoControls, -spos)
-
+            self.programSplitter.Thaw()
         # Set the minimum pane sizes
         self.SetMinimumScriptPaneSize()
         self.videoSplitter.SetMinimumPaneSize(3)
@@ -7176,13 +7177,17 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.programSplitter.Bind(wx.EVT_SIZE, OnProgramSplitterSize)
 
         if not self.separatevideowindow:
+            self.mainSplitter.Freeze()
             if self.mainSplitter.GetSplitMode() == wx.SPLIT_HORIZONTAL:
                 self.mainSplitter.SplitHorizontally(self.scriptNotebook, self.videoPane)
             else:
                 self.mainSplitter.SplitVertically(self.scriptNotebook, self.videoPane)
+            self.mainSplitter.Thaw()
         else:
+            self.mainSplitter.Freeze()
             self.mainSplitter.SplitHorizontally(self.scriptNotebook, wx.Panel(self.mainSplitter, wx.ID_ANY))
             self.mainSplitter.Unsplit()
+            self.mainSplitter.Thaw()
             # Layout the separate video window
             self.videoControls2 = self.createVideoControls(self.videoDialog, primary=False)
             self.videoStatusBar = wx.StatusBar(self.videoDialog, wx.ID_ANY)#self.videoDialog.CreateStatusBar()
@@ -8000,8 +8005,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         return nb
 
     def createScriptWindow(self):
-        # Create the instance of the window
-        scriptWindow = AvsStyledTextCtrl(self.scriptNotebook, self, style=wx.STATIC_BORDER)
+        # Create the instance of the window                         # GPo 2020, size,pos wx 2.9
+        scriptWindow = AvsStyledTextCtrl(self.scriptNotebook, self, pos=(-50,-50), size=(10,10), style=wx.STATIC_BORDER)
         # Bind variables to the window instance
         scriptWindow.filename = ""
         scriptWindow.workdir = ""
@@ -8031,8 +8036,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             scriptWindow.contextMenu = self.menuBackups[0] if self.menuBackups else self.GetMenuBar().GetMenu(1)
         except AttributeError:
             pass
-
-        scriptWindow.sliderWindow = wx.ScrolledWindow(self.videoSplitter, wx.ID_ANY, style=wx.STATIC_BORDER|wx.TAB_TRAVERSAL)
+                                                                                     # GPo 2020, wx 2.9
+        scriptWindow.sliderWindow = wx.ScrolledWindow(self.videoSplitter, wx.ID_ANY, pos=(0,0), size=(10,10), style=wx.STATIC_BORDER|wx.TAB_TRAVERSAL)
         scriptWindow.sliderWindow.SetScrollRate(10, 10)
         scriptWindow.sliderSizer = wx.GridBagSizer(hgap=0, vgap=10)
         if wx.VERSION < (2, 9):
@@ -8068,7 +8073,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         return scriptWindow
 
     def createVideoWindow(self, parent):
-        videoWindow = wx.ScrolledWindow(parent, style=wx.STATIC_BORDER|wx.WANTS_CHARS)
+        videoWindow = wx.ScrolledWindow(parent, pos=(0,0), style=wx.STATIC_BORDER|wx.WANTS_CHARS)
         videoWindow.SetScrollRate(1, 1)
         try:
             videoWindow.contextMenu = self.menuBackups[1] if self.menuBackups else self.GetMenuBar().GetMenu(2)
@@ -8088,7 +8093,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         videoWindow.Bind(wx.EVT_LEFT_UP, self.OnLeftUpVideoWindow)
         videoWindow.Bind(wx.EVT_LEFT_DCLICK, self.OnLeftDClickVideoWindow)   # GPo 2018
         videoWindow.Bind(wx.EVT_RIGHT_UP, self.OnRightUpVideoWindow)         # GPo 2018
-        self.BindObjMouseAux(videoWindow)                                # GPo 2020
+        self.BindObjMouseAux(videoWindow)                                    # GPo 2020
 
         return videoWindow
 
@@ -12354,8 +12359,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         if self.currentScript.GetClientSize()[self.mainSplitter.GetSplitMode() == wx.SPLIT_HORIZONTAL] < 6:
             self.SetMinimumScriptPaneSize()
-        wx.Yield()
-        self.Freeze()
 
         # Determine the name of the tab (New File (x))
         index = self.scriptNotebook.GetPageCount()
@@ -12404,7 +12407,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             scriptWindow.ParseFunctions(text)
             self.scriptNotebook.AddPage(scriptWindow,'%s (%s)' % (self.NewFileName, iMax+1), select=False)
             scriptWindow.SetText(text)
-            self.Thaw()
             if select:
                 self.refreshAVI = True
                 self.scriptNotebook.SetSelection(self.scriptNotebook.GetPageCount()-1)
@@ -12412,7 +12414,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if select:
                 self.HidePreviewWindow()
             self.scriptNotebook.AddPage(scriptWindow,'%s (%s)' % (self.NewFileName, iMax+1), select=select)
-            self.Thaw()
 
         if select:
             self.currentScript = scriptWindow
@@ -15295,7 +15296,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                             resize = False
                         else:
                             resize = True
-                        #~resize = not self.zoomwindow  # GPo 2020
 
                     self.LayoutVideoWindows(w, h, resize, forceRefresh=forceRefresh or
                                                           display_clip_refresh_needed)
@@ -15313,6 +15313,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if scroll is not None: # GPo
                 self.videoWindow.Freeze()
             if newSize != oldSize or newVideoSize != oldVideoSize or not self.previewWindowVisible:
+                #wx.Bell()  # for testing
                 self.previewWindowVisible = True
                 # GPo 2020, if zoomwindow zoom must calc new, if preview wasn't visible
                 # also must new set the video size values (self.zoomfactor is changed)
@@ -15482,10 +15483,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             #if self.zoomwindow:
                 #self.currentScript.lastSplitVideoPos = sash_pos #GPo moved to OnFocusVideoWindow
         else:
+            self.mainSplitter.Freeze()  # GPo 2020, wx 2.9 yeeep flicker free !!
             if self.mainSplitter.GetSplitMode() == wx.SPLIT_HORIZONTAL:
                 self.mainSplitter.SplitHorizontally(self.scriptNotebook, self.videoPane, sash_pos)
             else:
                 self.mainSplitter.SplitVertically(self.scriptNotebook, self.videoPane, sash_pos)
+            self.mainSplitter.Thaw()
 
     def GetMainSplitterNegativePosition(self, pos=None, forcefit=False):
         if not forcefit and self.currentScript.lastSplitVideoPos is not None:
@@ -15533,11 +15536,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if self.currentScript.lastSplitSliderPos is None: # GPo 2020
             self.currentScript.lastSplitSliderPos = self.videoSplitter.GetSashPosition()
         # Show the sliders
+        self.videoSplitter.Freeze() # GPo wx 2.9
         if self.videoSplitter.IsSplit():
             self.videoSplitter.ReplaceWindow(self.videoSplitter.GetWindow2(), script.sliderWindow)
             self.videoSplitter.SetSashPosition(self.currentScript.lastSplitSliderPos)
         else:
             self.videoSplitter.SplitVertically(self.videoWindow, script.sliderWindow, self.currentScript.lastSplitSliderPos)
+        self.videoSplitter.Thaw()
         script.sliderWindow.Show()
         script.sliderWindowShown = True
         button.SetBitmapLabel(button.bmpHide)
