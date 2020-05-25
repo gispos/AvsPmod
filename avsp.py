@@ -11405,7 +11405,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         else:
             if self.refreshAVI:  # GPo, on double clicked (zoom full size), self.refreshAVI is after first mouse down False
                 # GPo 2018, 2020
-                #self.ShowVideoFrame(forceCursor=self.options['refreshpreview'] and self.ScriptChanged(self.currentScript))
                 if self.ShowVideoFrame(forceCursor=self.options['refreshpreview'] and self.ScriptChanged(self.currentScript)) and self.zoomwindowfill:
                     self.CalculateZoomFitFill(self.currentScript)
                     self.ShowVideoFrame()
@@ -15661,7 +15660,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             """
 
             boolNewAVI = False
-            if self.refreshAVI and (self.options['refreshpreview'] or forceRefresh):
+            if self.refreshAVI and self.options['refreshpreview'] or forceRefresh:
                 fitHeight = fitWidth = None
                 if not script.previewtxt:
                     script.Colourise(0, script.GetTextLength())
