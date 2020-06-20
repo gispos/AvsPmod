@@ -1800,11 +1800,6 @@ class AvsStyledTextCtrl(stc.StyledTextCtrl):
             key in (wx.WXK_RETURN, wx.WXK_NUMPAD_ENTER, wx.WXK_TAB) and
             not (event.ControlDown() or event.AltDown() or event.ShiftDown())):
                 self.FinishAutocomplete(key=key)
-        elif event.ControlDown() and event.AltDown() and not self.app.options['calltips'] \
-            and self.app.options['calltipsshortcut']:
-                self.app.calltipstemporal = not self.app.calltipstemporal
-                self.UpdateCalltip(force=True)
-            #event.Skip()
         else:
             event.Skip()
 
@@ -5271,6 +5266,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.scriptDropTarget = ScriptDropTarget
 
         # Create all the program's controls and dialogs
+        self.blockStatusbar = False
         self.NewFileName = _('New File')
         self.scrapWindow = ScrapWindow(self)
         self.bookmarkDict = {}
@@ -5548,6 +5544,30 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.backupTimer = BackupTimer(self)
         if self.options['periodicbackup']:
             self.backupTimer.Start(self.options['periodicbackup'] * 60000)
+
+        # GPo 2020, block SetVideoStatusText for a certain period (
+        class StatusbarTimer(wx.Timer):
+            def __init__(self, parent):
+                wx.Timer.__init__(self)
+                self.parent = parent
+            def Notify(self):
+                self.Stop()
+                self.parent.blockStatusbar = False
+                #if self.parent.previewWindowVisible:
+                    #self.parent.SetVideoStatusText()
+        self.StatusbarTimer = StatusbarTimer(self)
+    """
+    def StatusbarTimer_Stop(self):
+        self.blockStatusbar = False
+        if self.previewWindowVisible:
+            self.SetVideoStatusText()
+    """
+    def StatusbarTimer_Start(self, ms=3000, txt=''):
+        self.blockStatusbar = True
+        if txt:
+            self.GetStatusBar().SetStatusText(txt)
+        #~wx.CallLater(ms, self.StatusbarTimer_Stop)  # not so good, needs a counter e.g. blockStatusbar -= 1; if blockStatusbar <= 0
+        self.StatusbarTimer.Start(ms)
 
 #### GPo 2018 WndProc messages
 
@@ -5984,7 +6004,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'colourdata': '1',
             'zoomindex': 2,
             'exitstatus': 0,
-            'reservedshortcuts': ['Escape', 'Tab', 'Shift+Tab', 'Ctrl+Z', 'Ctrl+Y', 'Ctrl+X', 'Ctrl+C', 'Ctrl+V', 'Ctrl+A', 'Ctrl+Alt'],
+            'reservedshortcuts': ['Escape', 'Tab', 'Shift+Tab', 'Ctrl+Z', 'Ctrl+Y', 'Ctrl+X', 'Ctrl+C', 'Ctrl+V', 'Ctrl+A'],
             # GENERAL OPTIONS
             'altdir': os.path.join('%programdir%', 'tools'),
             'usealtdir': False,
@@ -6005,7 +6025,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'docsearchurl':'http://www.google.com/search?q=%filtername%+Avisynth',
             # TEXT OPTIONS
             'calltips': True,
-            'calltipsshortcut': False,  #GPo enable/disable calltips on key Ctrl+Alt
             'frequentcalltips': False,
             'syntaxhighlight_preferfunctions': False,
             'syntaxhighlight_styleinsidetriplequotes': True,
@@ -6843,7 +6862,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 ((_('Line margin width'), wxp.OPT_ELEM_SPIN, 'numlinechars', _('Initial space to reserve for the line margin in terms of number of digits. Set it to 0 to disable showing line numbers'), dict(min_val=0) ), ),
                 ((_('Show filter calltips'), wxp.OPT_ELEM_CHECK, 'calltips', _('Turn on/off automatic tips when typing filter names'), dict() ), ),
                 ((_('Frequent calltips'), wxp.OPT_ELEM_CHECK, 'frequentcalltips', _("Always show calltips any time the cursor is within the filter's arguments"), dict(ident=20) ), ),
-                ((_('Show filter calltips Ctrl+Alt'), wxp.OPT_ELEM_CHECK, 'calltipsshortcut', _('If automatic calltips off, enable/disable temporal show calltips with Ctrl+Alt'), dict() ), ),
                 ((_('Show autocomplete on capital letters'), wxp.OPT_ELEM_CHECK, 'autocomplete', _('Turn on/off automatic autocomplete list when typing words starting with capital letters'), dict() ), ),
                 (('       '+_('Amount of letters typed'), wxp.OPT_ELEM_SPIN, 'autocompletelength', _('Show autocomplete list when typing a certain amount of letters'), dict(min_val=0) ), ),
             ),
@@ -7654,8 +7672,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 (_('Keep variables on refreshing'), '', self.OnMenuVideoReuseEnvironment, _('Create the new AviSynth clip on the same environment. Useful for tweaking parameters'), wx.ITEM_CHECK, False),
                 (_('Save view pos on tab change'), '', self.OnMenuSaveViewPos, _('Save last view position and zoom on tab change'), wx.ITEM_CHECK, False),
                 (''),
-                (_('Save image as...'), '', self.OnMenuVideoSaveImage, _('Save the current frame as a bitmap')),
-                (_('Quick save image'), '', self.OnMenuVideoQuickSaveImage, _('Save the current frame as a bitmap with a default filename, overwriting the file if already exists')),
+                (_('Save image as...'), '', self.OnMenuVideoSaveImage, _('Save the current frame as image file. If you not change the frame number, ''Quick save image'' uses the name.')),
+                (_('Quick save image'), '', self.OnMenuVideoQuickSaveImage, _('Save the current frame with a default filename, overwriting the file if already exists. Press CTRL to reset the default name formatting')),
                 (_('Copy image to clipboard'), '', self.OnMenuVideoCopyImageClipboard, _('Copy the current frame to the clipboard as a bitmap')),
                 (''),
                 (_('Refresh preview'), 'F5', self.OnMenuVideoRefresh, _('Force the script to reload and refresh the video frame')),
@@ -8542,7 +8560,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.DeleteAllFrameBookmarks(bmtype=0)
             self.MacroSetBookmark(bookmarkDict.items())
             if event != None:  # On Menu click wait a short time
-                wx.CallLater(700, self.GetStatusBar().SetStatusText, _('%d Bookmarks imported') % len(bookmarkDict))
+                #~wx.CallLater(700, self.GetStatusBar().SetStatusText, _('%d Bookmarks imported') % len(bookmarkDict))
+                self.StatusbarTimer_Start(txt='%d Bookmarks imported' % len(bookmarkDict))
+
         return len(bookmarkDict)
 
     def OnMenuTabChangeLoadBookmarks(self, event):
@@ -9300,10 +9320,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.SaveImage()
 
     def OnMenuVideoQuickSaveImage(self, event):
-        path = self.SaveImage(silent=True)
+        reset = wx.GetKeyState(wx.WXK_CONTROL) # GPo 2020, reset the name format to default
+        path = self.SaveImage(silent=True, resetFormat=reset)
         if path:
-            text = _(u'Image saved to "{0}"').format(path)
-            self.GetStatusBar().SetStatusText(text)
+            self.StatusbarTimer_Start(txt=_(u'Image saved to "{0}"').format(path))
 
     def OnMenuVideoCopyImageClipboard(self, event):
         script = self.currentScript
@@ -13364,7 +13384,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     last_length=script.lastLength, f_encoding=script.encoding, eol=script.eol,
                     workdir=script.workdir, group=script.group, group_frame=script.group_frame)
 
-    def SaveImage(self, filename='', frame=None, silent=False, index=None, avs_clip=None, default='', quality=None, depth=None):
+    def SaveImage(self, filename='', frame=None, silent=False, index=None, avs_clip=None, default='', quality=None, depth=None, resetFormat=False):
         script, index = self.getScriptAtIndex(index)
         # avs_clip: use 'index' tab, but with an alternative clip
         if not avs_clip:
@@ -13387,12 +13407,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     title = os.path.splitext(source_base)[0]
 
             id = title if title else script.GetId() # GPo, GetId gets always the same ID, index dependent
-            if (id == self.options['lastscriptid']):
+            if (id == self.options['lastscriptid']) and self.options['imagenameformat'] and not resetFormat:
                 fmt = self.options['imagenameformat']
             else:
                 fmt = self.options['imagenamedefaultformat']
             try:
-                defaultname =  fmt % (title, frame)
+                defaultname = fmt % (title, frame)
             except:
                 try:
                     defaultname = fmt % frame
@@ -13428,12 +13448,15 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     self.options['imagesavedir'] = os.path.dirname(filename)
                     fmt = os.path.splitext(os.path.basename(filename))[0]
                     fmt = re.sub(re.escape(title), '%s', fmt, 1)
-                    fmt = re.sub(r'([0]*?)%d' % frame,
-                                 lambda m: '%%0%dd' % len(m.group(0)) if m.group(1) else '%d',
-                                 fmt, 1)
+                    if fmt.find(str(frame)):   # GPo 2020, if not, Formatting is lost
+                        fmt = re.sub(r'([0]*?)%d' % frame,
+                                     lambda m: '%%0%dd' % len(m.group(0)) if m.group(1) else '%d',
+                                     fmt, 1)
+                        self.options['imagenameformat'] = fmt
+                        self.options['lastscriptid'] = id
+                    else:
+                        self.options['lastscriptid'] = '' # reset default format
 
-                    self.options['imagenameformat'] = fmt
-                    self.options['lastscriptid'] = id
                 dlg.Destroy()
         else:
             filter = None
@@ -14423,6 +14446,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     def SetVideoStatusText(self, frame=None, primary=True, addon='', addon0=''):
         if self.cropDialog.IsShown():
             self.SetVideoCropStatusText()
+            return
+        if self.blockStatusbar:  # GPo 2020
             return
         if not frame:
             frame = self.videoSlider.GetValue()

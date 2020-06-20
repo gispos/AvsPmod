@@ -12,6 +12,21 @@ GPo source: https://github.com/gispos/AvsPmod
 GPo releases: https://github.com/gispos/AvsPmod/releases
 
 --------------------------
+Version 2.6.2.6 [2020-06-20] GPo
+--------------------------
+*'Save image' and 'Quick save image' revised:
+- Save image dialog: If the frame number is not changed, the name (the formatting) is then used for 'Quick save image'.
+- Otherwise the standard formatting is used for 'Quick save image'.
+- If CTRL is held down while clicking 'Quick save image', the standard formatting is used (reseted).
+- You can read this in the status bar when the mouse is over the respective menu (tooltips)
+-
+*Status bar with display suppression:
+- If an image is saved with 'Quick save image' or bookmarks are loaded, 
+- the information (name, count) is displayed in the status bar for min 3 seconds. Other information is suppressed.
+-
+Show Calltip with Ctrl + Alt removed, problems with other shortcuts.
+
+--------------------------
 Version 2.6.2.5 [2020-05-25] GPo
 --------------------------
 fixed: refresh video (F5)
