@@ -54,19 +54,19 @@ try:
 except:
     directory = ur''
 if os.name == 'nt':
-    if __debug__:
-        if directory:
-            ffi = cffi.FFI()
-            ffi.cdef('bool SetDllDirectoryW(wchar_t *);')
-            kernel32 = ffi.dlopen('kernel32')
-            if hasattr(kernel32, 'SetDllDirectoryW'):
+    if directory:
+        ffi = cffi.FFI()
+        ffi.cdef('bool SetDllDirectoryW(wchar_t *);')
+        kernel32 = ffi.dlopen('kernel32')
+        if hasattr(kernel32, 'SetDllDirectoryW'):
+            kernel32.SetDllDirectoryW(directory)
+            if __debug__:
                 print('Using a custom AviSynth directory:', directory)
-                kernel32.SetDllDirectoryW(directory)
-            else:
-                print ('No SetDllDirectoryW on this version of Windows, '
-                       'using AviSynth from PATH')
-        else:
-            print('Using AviSynth from PATH')
+        elif __debug__:
+            print ('No SetDllDirectoryW on this version of Windows, '
+                'using AviSynth from PATH')
+    elif __debug__:
+        print('Using AviSynth from PATH')
 else: # TODO
     if __debug__:
         if directory:

@@ -12,6 +12,21 @@ GPo source: https://github.com/gispos/AvsPmod
 GPo releases: https://github.com/gispos/AvsPmod/releases
 
 --------------------------
+Version 2.6.2.7 [2020-06-27] GPo
+--------------------------
+* 'Run analisys pass' revised. Dialog shows now average fps in real time.
+* A checkbox for restarting has been added to the options dialog, if activated the program restarts. 
+* Video menu slightly revised, new menu 'Tools'
+* Path and parameters for an external tool added.
+- Options>Paths>'External tool', parameters predefined for AvsMeter.
+- The menus are locatet under: Video>Tools>'External tool arg1' and 'External tool arg2'
+- Menu label can be changed separator is | , e.g. AvsMeter|-gpu
+- The char > is a switch and replace the script name with the text before. 
+-- e.g. AvsMeter info|avsinfo>-lf (not the script name is passed but 'avsinfo' and arg -lf)
+- Or run another tool with two different parameters
+* Fixed: 64bit version doesn't load avisynth.dll from custom directory
+* Check for duplicate function names removed
+--------------------------
 Version 2.6.2.6 [2020-06-20] GPo
 --------------------------
 *'Save image' and 'Quick save image' revised:

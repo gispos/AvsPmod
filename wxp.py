@@ -1532,9 +1532,16 @@ class OptionsDialog(wx.Dialog):
         self.Bind(wx.EVT_BUTTON, self.OnButtonOK, okay)
         cancel = wx.Button(self, wx.ID_CANCEL, _('Cancel'))
         btns = wx.StdDialogButtonSizer()
+        self.starText = None # GPo disable the static text
         if starText:
-            self.starText = wx.StaticText(self, wx.ID_ANY, _('* Requires program restart for full effect'))
-            btns.Add(self.starText, 0, wx.ALIGN_CENTER_VERTICAL)
+            #~self.starText = wx.StaticText(self, wx.ID_ANY, _('* Requires program restart for full effect'))
+            #~btns.Add(self.starText, 0, wx.ALIGN_CENTER_VERTICAL)
+            # GPo 2020
+            ctrl = wx.CheckBox(self, wx.ID_ANY, _('* Requires program restart for full effect'), size=(-1,-1))
+            self.Bind(wx.EVT_CHECKBOX, self.OnCheckBoxRestart, ctrl)
+            ctrl.SetMinSize(ctrl.GetBestSize())
+            btns.Add(ctrl, 0, wx.ALIGN_CENTER_VERTICAL)
+
         btns.AddButton(okay)
         btns.AddButton(cancel)
         btns.Realize()
@@ -1552,21 +1559,25 @@ class OptionsDialog(wx.Dialog):
         dlgSizer.Layout()
         # Misc
         okay.SetDefault()
-        if starText:
+        if starText and self.starText is not None:
             if (notebook and self.nb.GetPage(0) not in self.starList) or (not notebook and not self.starList):
                 self.starText.Hide()
             if notebook: self.nb.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self.OnNotebookPageChanged)
 
     def OnNotebookPageChanged(self, event):
-        if self.nb.GetPage(event.GetSelection()) in self.starList:
-            self.starText.Show()
-        else:
-            self.starText.Hide()
+        if self.starText is not None: # GPo 2020
+            if self.nb.GetPage(event.GetSelection()) in self.starList:
+                self.starText.Show()
+            else:
+                self.starText.Hide()
         event.Skip()
 
     def OnButtonOK(self, event):
         if self.UpdateDict():
             event.Skip()
+
+    def OnCheckBoxRestart(self, event): # GPo 2020, 2=restart
+        self.options['exitstatus'] = 2 if event.IsChecked() else 1
 
     def OnButtonFont(self, event):
         button = event.GetEventObject()
@@ -1596,7 +1607,6 @@ class OptionsDialog(wx.Dialog):
         self.GetSizer().Fit(self)
         dlg2.Destroy()
         dlg.Destroy()
-
 
     def GetDict(self):
         return self.options

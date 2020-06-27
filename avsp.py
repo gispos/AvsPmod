@@ -5383,11 +5383,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.UpdateRecentFilesList()
         self.reloadList = []
         self.lastClosed = None
-        if self.options['exitstatus']:
+        if self.options['exitstatus'] == 1:
             self.IdleCall.append((wx.MessageBox, (_('A crash detected at the last running!'), \
                                    _('Warning'), wx.OK|wx.ICON_EXCLAMATION, self), {}))
         use_last_preview_placement = True
-        if ((self.options['exitstatus'] or self.options['startupsession'] and
+        if (self.options['exitstatus'] == 2) or ((self.options['exitstatus'] or self.options['startupsession'] and
                 (self.options['alwaysloadstartupsession'] or len(sys.argv) <= 1 or not self.options['promptexitsave']))
             and os.path.isfile(self.lastSessionFilename)):
                 if self.LoadSession(self.lastSessionFilename, saverecentdir=False, resize=False, backup=True, startup=True):
@@ -5397,7 +5397,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     shutil.copy2(self.lastSessionFilename, os.path.splitext(self.lastSessionFilename)[0] + '.BAD')
         if use_last_preview_placement and self.options['last_preview_placement'] != self.mainSplitter.GetSplitMode():
             self.TogglePreviewPlacement()
-        if not self.options['exitstatus']:
+        if self.options['exitstatus'] <> 0:
             self.options['exitstatus'] = 1
             f = open(self.optionsfilename, mode='wb')
             cPickle.dump(self.options, f, protocol=0)
@@ -5412,6 +5412,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         # Misc
         self.UpdateProgramTitle()
         self.SetIcon(AvsP_icon.getIcon())
+        self.SetExternalToolMenuLabel()
 
         if self.separatevideowindow:
             def OnActivate(event):
@@ -6017,6 +6018,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'plugindirregister': False, # GPo
             'externalplayer': '',
             'externalplayerargs': '',
+            'externaltool': '',         # GPo 2020
+            'externaltoolarg1': 'AvsMeter info|avsinfo>-lf',   # GPo 2020, predefined for AvsMeter
+            'externaltoolarg2': 'AvsMeter|',   # GPo 2020, predefined for AvsMeter
             'docsearchpaths': ';'.join(['%pluginsdir%',
                     os.path.join('%avisynthdir%' if os.name == 'nt'
                         else '/usr/local/share', 'docs', 'english', 'corefilters'),
@@ -6113,7 +6117,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'invertscrolling': False,
             'invertframescrolling': False,
             'dllnamewarning': True,
-            'doublefuncnamewarning': True,
+            #~'doublefuncnamewarning': True,
             # TOGGLE OPTIONS
             'alwaysontop': False,
             'previewalwaysontop': False,
@@ -6580,7 +6584,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.installed_plugins_filternames = set()
         self.installed_avsi_filternames = set()
         self.dllnameunderscored = set()
-        doublefuncList = [] # GPo
+        #doublefuncList = [] # GPo
 
         # get version info
         try:
@@ -6626,6 +6630,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             pluginfuncList = []
             baddllnameList = []
             short_name = None
+
             for name in pluginfunc.split():
                 if short_name is None:
                     short_name = name
@@ -6653,8 +6658,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     self.plugin_shortnames[short_name.lower()].append(long_name.lower())
 
                 # GPo, test multi func
-                if long_name.lower() in self.installed_plugins_filternames:
-                    doublefuncList.append(dllname + '.dll - ' + short_name)
+                #~if long_name.lower() in self.installed_plugins_filternames:
+                    #~doublefuncList.append(dllname + '.dll - ' + short_name)
                 #
                 self.installed_plugins_filternames.add(long_name.lower())
                 if dllname.count('_'):
@@ -6664,8 +6669,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 funclist += pluginfuncList
             if baddllnameList and self.options['dllnamewarning']:
                 self.IdleCall.append((self.ShowWarningOnBadNaming, (baddllnameList, ), {}))
-            if doublefuncList and self.options['doublefuncnamewarning']:
-                self.IdleCall.append((self.ShowWarningOnBadNaming, (doublefuncList, True), {}))
+            #~if doublefuncList and self.options['doublefuncnamewarning']:
+                #~self.IdleCall.append((self.ShowWarningOnBadNaming, (doublefuncList, True), {}))
 
         # autoloaded avsi files
         try:
@@ -6848,6 +6853,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 ((_('Working directory:'), wxp.OPT_ELEM_DIR, 'workdir', _('Specify an alternative working directory'), dict(buttonText='...', buttonWidth=30) ), ),
                 ((_('External player:'), wxp.OPT_ELEM_FILE, 'externalplayer', _('Location of external program for script playback'), dict(fileMask=(_('Executable files') + ' (*.exe)|*.exe|' if os.name == 'nt' else '') + _('All files') + ' (*.*)|*.*', buttonText='...', buttonWidth=30) ), ),
                 ((_('External player extra args:'), wxp.OPT_ELEM_STRING, 'externalplayerargs', _('Additional arguments when running the external player'), dict() ), ),
+                ((_('External tool:'), wxp.OPT_ELEM_FILE, 'externaltool', _('Location of external program, e.g. AvsMeter'), dict(fileMask=(_('Executable files') + ' (*.exe)|*.exe|' if os.name == 'nt' else '') + _('All files') + ' (*.*)|*.*', buttonText='...', buttonWidth=30) ), ),
+                ((_('External tool arg1:'), wxp.OPT_ELEM_STRING, 'externaltoolarg1', _('Arguments for external tool menu 1, e.g. Menu label|arg\nChar > replace the script name with the text bevor e.g. avsinfo>-lf' ), dict() ),
+                 (_('External tool arg2:'), wxp.OPT_ELEM_STRING, 'externaltoolarg2', _('Arguments for external tool menu 2, e.g. Menu label|arg\nChar > replace the script name with the text bevor e.g. avsinfo>-lf' ), dict() ), ),
                 ((_('Avisynth help file/url:'), wxp.OPT_ELEM_FILE_URL, 'avisynthhelpfile', _('Location of the avisynth help file or url'), dict(buttonText='...', buttonWidth=30) ), ),
                 ((_('Documentation search paths:'), wxp.OPT_ELEM_STRING, 'docsearchpaths', _('Specify which directories to search for docs when you click on a filter calltip'), dict() ), ),
                 ((_('Documentation search url:'), wxp.OPT_ELEM_STRING, 'docsearchurl', _("The web address to search if docs aren't found (the filter's name replaces %filtername%)"), dict() ), ),
@@ -6939,8 +6947,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 ((_('Tabs changing loads bookmarks from script'), wxp.OPT_ELEM_CHECK, 'tabsbookmarksfromscript', _('Automatically load bookmarks from script if tab changed'), dict() ), ),
                 ((_('Only allow a single instance of AvsPmod')+' *', wxp.OPT_ELEM_CHECK, 'singleinstance', _('Only allow a single instance of AvsPmod'), dict() ), ),
                 ((_('Show warning for bad plugin naming at startup'), wxp.OPT_ELEM_CHECK, 'dllnamewarning', _('Show warning at startup if there are dlls with bad naming in default plugin folder'), dict() ), ),
-                ((_('Show warning for double func naming at startup'), wxp.OPT_ELEM_CHECK, 'doublefuncnamewarning', _('Show warning at startup if there are more the one function with the same name'), dict() ), ),
-                ((_('Mouse browse buttons'), wxp.OPT_ELEM_LIST, 'mouseauxdown', _("Mouse browse buttons (forward/backward) on video and script window\nIf 'Tab change' and tab count less than 2, 'Bookmark jump' is used\nIf 'Tab change' press CTRL or left mouse and 'Bookmark jump' is used\nIf 'Bookmark jump', vice versa"),dict(choices=[(_('Tab change'),'tab change'),(_('Custom jump'),'custom jump'),(_('Bookmark jump'),'bookmark jump'),(_('Frame step'),'frame step')]) ),#), # GPo 2020
+                #~((_('Show warning for double func naming at startup'), wxp.OPT_ELEM_CHECK, 'doublefuncnamewarning', _('Show warning at startup if there are more the one function with the same name'), dict() ), ),
+                ((_('Mouse browse buttons'), wxp.OPT_ELEM_LIST, 'mouseauxdown', _("Mouse browse buttons (forward/backward) on video and script window\nIf 'Tab change' and tab count less than 2, 'Bookmark jump' is used\nIf 'Tab change' press CTRL or left mouse and 'Bookmark jump' is used\nIf 'Bookmark jump', vice versa"),dict(choices=[(_('Tab change'),'tab change'),(_('Custom jump'),'custom jump'),(_('Bookmark jump'),'bookmark jump'),(_('Frame step'),'frame step')]) ), # GPo 2020
                  (_('Middle mouse on script'), wxp.OPT_ELEM_LIST, 'middlemousefunc', _('Middle mouse button behavior on the script, if script empty open source is used'), dict(choices=[(_('Show video frame'), 'show video frame'), (_('Open source'), 'open source')]) ), ), # GPo 2020
                 ((_('Max number of recent filenames'), wxp.OPT_ELEM_SPIN, 'nrecentfiles', _('This number determines how many filenames to store in the recent files menu'), dict(min_val=0) ), ),
                 ((_('Custom jump size:'), wxp.OPT_ELEM_SPIN, 'customjump', _('Jump size used in video menu'), dict(min_val=0) ), ),
@@ -7381,6 +7389,14 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 (_('show title'), '', self.UpdateBookmarkMenu, _('Show bookmarks with title'), wx.ITEM_CHECK, True),
             )
         )
+        #self.videoToolsMenu = self.createMenu(
+            #(
+                #(_('Run analysis pass'), '', self.OnMenuVideoRunAnalysisPass, _('Request every video frame once (analysis pass for two-pass filters)')),
+                #(_('External player'), 'F6', self.OnMenuVideoExternalPlayer, _('Play the current script in an external program')),
+                #(_('External tool arg1'), '', self.OnMenuExternalToolArg1, _('Run the current script with an external program and arg1')),
+                #(_('External tool arg2'), '', self.OnMenuExternalToolArg2, _('Run the current script with an external program and arg2')),
+            #)
+        #)
         self.yuv2rgbDict = {
             _('Resolution-based'): 'auto',
             _('BT.709'): '709',
@@ -7679,12 +7695,19 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 (_('Refresh preview'), 'F5', self.OnMenuVideoRefresh, _('Force the script to reload and refresh the video frame')),
                 (_('Show/Hide the preview'), 'Shift+F5', self.OnMenuVideoToggle, _('Toggle the video preview')),
                 (_('Toggle preview placement'), '', self.OnMenuVideoTogglePlacement, _('When not using a separate window for the video preview, toggle between showing it at the bottom (default) or to the right')),
-                (_('Toggle extended left move'), '', self.OnMenuExtendedMove, _('Video window extended left move')),
+                (_('Toggle extended left move'), '', self.OnMenuExtendedMove, _('Expands the left shift area of the video window')),
                 (_('Release all videos from memory'), '', self.OnMenuVideoReleaseMemory, _('Release all open videos from memory')),
                 (_('Switch video/text focus'), 'Escape', self.OnMenuVideoSwitchMode, _('Switch focus between the video preview and the text editor')),
                 (_('Toggle the slider sidebar'), 'Alt+F5', self.OnMenuVideoToggleSliderWindow, _('Show/hide the slider sidebar (double-click the divider for the same effect)')),
-                (_('Run analysis pass'), '', self.OnMenuVideoRunAnalysisPass, _('Request every video frame once (analysis pass for two-pass filters)')),
-                (_('External player'), 'F6', self.OnMenuVideoExternalPlayer, _('Play the current script in an external program')),
+                #(_('Tools'), self.videoToolsMenu, -1),
+                (_('Tools'),
+                    (
+                    (_('Run analysis pass'), '', self.OnMenuVideoRunAnalysisPass, _('Request every video frame once (analysis pass for two-pass filters)')),
+                    (_('External player'), 'F6', self.OnMenuVideoExternalPlayer, _('Play the current script in an external program')),
+                    (_('External tool arg1'), '', self.OnMenuExternalToolArg1, _('Run the current script with an external program and arg1')),
+                    (_('External tool arg2'), '', self.OnMenuExternalToolArg2, _('Run the current script with an external program and arg2')),
+                    ),
+                ),
                 (''),
                 (_('Video information'), '', self.OnMenuVideoInfo, _('Show information about the video in a dialog box')),
             ),
@@ -8425,6 +8448,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     # Event functions
     def OnClose(self, event):
         self.ExitProgram()
+
+    def RestartApp(self): # GPo 2020, but doesn't open the last tabs
+        self.ExitProgram(restart=True)
+            #os.execl(sys.executable, '"{}"'.format(sys.executable), *sys.argv)
 
     def OnMenuBar(self, event):
         # tab groups
@@ -9815,6 +9842,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         frame_count = script.AVI.Framecount
         initial_time = previous_time = time.time()
         previous_frame = -1
+        frame_read = 0  # GPo 2020
         for frame in range(frame_count):
             script.AVI.clip.get_frame(frame)
             error = script.AVI.clip.get_error()
@@ -9825,16 +9853,22 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 return False
             now = time.time()
             delta = now - previous_time
-            if delta > 0.1:
+            elapsed_time = now - initial_time # GPo 2020
+            frame_read += 1
+            if delta >= 0.1: # then elapsed_time > 0, so no check is needed (if elapsed_time else 'INF')
                 fps = (frame - previous_frame) / delta
                 previous_time = now
                 previous_frame = frame
+                """
                 if not progress.Update(frame * 100/ frame_count,
                                        _('Frame %s/%s (%#.4g fps)') % (frame, frame_count, fps))[0]:
+                """
+                if not progress.Update(frame * 100/ frame_count, _('Average %#.4g fps\nFrame %s/%s (%#.4g fps)') %   # GPo 2020
+                                      (frame_read/ elapsed_time, frame, frame_count, fps))[0]:
                     progress.Destroy()
                     return False
         elapsed_time = time.time() - initial_time
-        progress.Update(100, _('Finished (%s fps average)') % (
+        progress.Update(100, _('Finished (%s fps average)\n*** live and let live ***') % (
                         '%#.4g' % (frame_count / elapsed_time) if elapsed_time else 'INF'))
         progress.Destroy()
         return True
@@ -9885,6 +9919,22 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     def OnMenuVideoExternalPlayer(self, event):
         self.RunExternalPlayer()
+
+    def OnMenuExternalToolArg1(self, event):
+        arg = self.options['externaltoolarg1']
+        if arg:
+            pos = arg.find('|')
+            if pos > 1:
+                arg = arg[pos+1:].strip()
+        self.RunExternalTool(arg)
+
+    def OnMenuExternalToolArg2(self, event):
+        arg = self.options['externaltoolarg2']
+        if arg:
+            pos = arg.find('|')
+            if pos > 1:
+                arg = arg[pos+1:].strip()
+        self.RunExternalTool(arg)
 
     def OnMenuVideoInfo(self, event):
         if self.currentScript.AVI is None:
@@ -10381,9 +10431,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         wx.MessageBox('Could not find avisynth help file!', _('Error'), style=wx.OK|wx.ICON_ERROR)
 
     def OnMenuHelpAvisynthPlugins(self, event):
-        plugindir = self.options['recentdirPlugins']
-        if not os.path.isdir(plugindir):
-            plugindir = self.ExpandVars(self.options['pluginsdir'])
+        plugindir = self.ExpandVars(self.options['pluginsdir'])
         if os.path.isdir(plugindir):
             startfile(plugindir)
         else:
@@ -12243,7 +12291,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.MacroExecuteMenuCommand(shortcut)
 
 # Utility functions
-    def ExitProgram(self):
+    def ExitProgram(self, restart=False):
         # Don't exit if saving an avi
         try:
             if self.dlgAvs2avi.IsShown():
@@ -12298,7 +12346,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         # Save the session
         if self.backupTimer.IsRunning():
             self.backupTimer.Stop()
-        if self.options['startupsession']:
+        if self.options['startupsession'] or restart:
             self.SaveSession(self.lastSessionFilename, saverecentdir=False,
                 frame=frame,
                 previewvisible=previewvisible,
@@ -12340,7 +12388,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         else:
             self.options['trimreversechoice'] = 0
         # Save the persistent options
-        self.options['exitstatus'] = 0
+        self.options['exitstatus'] = 0 if not restart else 2
         f = open(self.optionsfilename, mode='wb')
         cPickle.dump(self.options, f, protocol=0)
         f.close()
@@ -12357,6 +12405,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if self.boolSingleInstance:
             self.argsPosterThread.Stop()
         self.Destroy()
+        if restart:
+            os.execl(sys.executable, '"{}"'.format(sys.executable), *sys.argv)
 
     @AsyncCallWrapper
     def NewTab(self, copyselected=True, copytab=False, text='', select=True):
@@ -13829,10 +13879,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             else:
                 filefilter = (_('AvxSynth plugins') + ' (*.so)|*.so|' +
                               _('All files') + ' (*.*)|*.*')
+
             default_dir, default_base = (default, '') if os.path.isdir(default) else os.path.split(default)
             initial_dir = default_dir if os.path.isdir(default_dir) else self.options['recentdirPlugins']
             if not os.path.isdir(initial_dir):
                 initial_dir = self.ExpandVars(self.options['pluginsdir'])
+
             dlg = wx.FileDialog(self, _('Insert a plugin'), initial_dir, default_base,
                                 filefilter, wx.OPEN|wx.FILE_MUST_EXIST)
             ID = dlg.ShowModal()
@@ -16419,6 +16471,57 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.pid = wx.Execute('%s "%s" %s' % (path, previewname, args), wx.EXEC_ASYNC, process)
         return True
 
+    # GPo 2020
+    def RunExternalTool(self, args):
+        script = self.currentScript
+        if not script.filename or script.GetModify():
+            self.SaveScript(script.filename)
+            if not script.filename:
+                return
+
+        previewname = script.filename
+        path = self.options['externaltool']
+        if not os.path.isfile(path):
+            wx.MessageBox(_('Program not found. Must be specified to use this feature!'), _('Error'), style=wx.OK|wx.ICON_ERROR)
+            self.ShowOptions(0)
+            return
+        if args.find('>') > 1:
+            a = args.split('>')
+            if len(a) > 0:
+                previewname = a[0].strip()
+                if len(a) > 1:
+                    args = a[1].strip()
+        wx.Execute('%s "%s" %s' % (path, previewname, args))
+
+    def SetExternalToolMenuLabel(self):
+        txt1 = self.options['externaltoolarg1']
+        txt2 = self.options['externaltoolarg2']
+        if not txt1 and not txt2:
+            return
+        name1 = ''
+        name2 = ''
+        pos = txt1.find('|')
+        if pos > 1:
+            name1 = txt1[:pos]
+        pos = txt2.find('|')
+        if pos > 1:
+            name2 = txt2[:pos]
+
+        idx = 2  # start index for 1. External Tool menu
+        if name1 or name2:
+            vidmenus = [self.videoWindow.contextMenu, self.GetMenuBar().GetMenu(2)]
+            for vidmenu in vidmenus:
+                id = vidmenu.FindItem(_('Tools'))
+                menuTools = vidmenu.FindItemById(id).GetSubMenu()
+                if name1:
+                    menu = menuTools.FindItemByPosition(idx)
+                    if menu:
+                        menu.SetItemLabel(name1)
+                if name2:
+                    menu = menuTools.FindItemByPosition(idx+1)
+                    if menu:
+                        menu.SetItemLabel(name2)
+
     def re_replace(self, mo):
         items = mo.group().lstrip(self.sliderOpenString).rstrip(self.sliderCloseString).split(',')
         if len(items) == 4:
@@ -17775,6 +17878,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         dlg = wxp.OptionsDialog(self, self.optionsDlgInfo, self.options,
                                 startPageIndex=startPageIndex,
                                 invert_scroll=self.options['invertscrolling'])
+        self.options['exitstatus'] = 1  # GPo 2020, set default
         ID = dlg.ShowModal()
         # Set the data
         if ID == wx.ID_OK:
@@ -17832,7 +17936,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.options['use_customvideobackground'] and
                 old_custom_video_background != self.options['customvideobackground']):
                     self.OnEraseBackground()
-        dlg.Destroy()
+            self.SetExternalToolMenuLabel()
+            dlg.Destroy()
+            if self.options['exitstatus'] == 2:  # GPo 2020
+                self.ExitProgram(restart=True)
+        else:
+            dlg.Destroy()
 
     # GPo, changed
     def SetPluginsDirectory(self, oldpluginsdirectory):
