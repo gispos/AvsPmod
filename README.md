@@ -1,16 +1,26 @@
-Version 2.6.2.7 GPo
------------------
-
-- With pinterf (pfmod) modifications
-- Avisynth header version 6
-- For more see changelog
-
-AvsPmod needs write permissions in its own directory. So please do not unzip into a system program directory!
-----------------
-
-Releases GPo:
+# Version 2.6.2.8 GPo   
+- With pinterf (pfmod) modifications   
+- Avisynth header version 6   
+- For more see changelog   
+##### AvsPmod needs write permissions in its own directory. So please do not unzip into a system program directory!   
+-----   
+### Mouse button combinations (for the new users)   
+##### On video window.   
+- Press left and right click: changes zoom 100%, 200%   
+- Press left and use mouse wheel: changes the zoom   
+- Press Ctrl and double click on the video window increases the height a few pixels   
+   
+##### On script window:   
+- Press left and right click: The # character is removed or added at the beginning of the selected lines   
+   
+##### Furthermore   
+- On the video slider right click to add or remove a bookmark   
+- Standard functions for middle button, browse buttons and the wheel can be set under Options.   
+   
+##### Releases GPo:      
 <https://github.com/gispos/AvsPmod/releases>
-
+### 
+-----  
 
 What is AviSynth?
 -----------------

@@ -9,8 +9,9 @@ basename = ur''
 # Use always at least this number of digits for padding
 padding = 0
 
-
-# ------------------------------------------------------------------------------
+# GPo mod: 
+#   make dir if not exists, add options 'From first to last bookmark', 'Add Image Source to the script' 
+# -------------------------------------------------------------------------------------------------
 
 
 import os
@@ -22,15 +23,18 @@ import pyavs
 # run in thread
 
 self = avsp.GetWindow()
+tabIndex = avsp.GetCurrentTabIndex()
 
 # Get options
 frames = avsp.Options.get('frames', _('Bookmarks'))
-show_progress = avsp.Options.get('show_progress', False)
+show_progress = avsp.Options.get('show_progress', True)
 format = avsp.Options.get('format', _('Portable Network Graphics') + ' (*.png)')
 quality = self.options['jpegquality']
 depth = avsp.Options.get('depth', 8)
 use_dir = avsp.Options.get('use_dir', False)
 use_base = avsp.Options.get('use_base', False)
+insertSource = avsp.Options.get('insertSource', True)
+addNewTab = avsp.Options.get('addNewTab', False)
 if use_dir and not dirname:
     dirname = avsp.Options.get('dirname', '')
 if use_base and not basename:
@@ -52,28 +56,31 @@ while True:
                      [_('Quality (JPEG only)'), _('Depth (PNG only)'), _('Show saving progress')], 
                      _('Output directory and basename. A padded number is added as suffix'), 
                      [_('Use always this directory'), _('Use always this basename')],
-                     [_('Save ranges to subdirectories'), _('Add the frame number as the suffix')]],
-            default=[[(_('Bookmarks'), _('Range between bookmarks'), _('Trim editor selections'), 
+                     [_('Save ranges to subdirectories'), _('Add the frame number as the suffix')],
+                     [_('Add image source to the script  ->'), _('To new tab')]],         
+            default=[[(_('Bookmarks'), _('Range between bookmarks'), _('From first to last bookmark'), _('Trim editor selections'), 
                        _('All frames'), frames), sorted(format_dict.keys()) + [format]],
                      [(quality, 0, 100), (depth, 8, 16, 0, 8), show_progress], 
-                     filename, [use_dir, use_base], [use_subdirs, frame_suffix]],
+                     filename, [use_dir, use_base], [use_subdirs, frame_suffix], [insertSource, addNewTab]],
             types=[['list_read_only', 'list_read_only'], ['spin', 'spin', 'check'], 'file_save', 
-                   ['check', 'check'], ['check', 'check']],
+                   ['check', 'check'], ['check', 'check'], ['check', 'check']],
             )
     if not options: return
-    frames, format, quality, depth, show_progress, filename, use_dir, use_base, use_subdirs, frame_suffix = options
+    frames, format, quality, depth, show_progress, filename, use_dir, use_base, use_subdirs, frame_suffix, insertSource, addNewTab = options
     if not filename:
         avsp.MsgBox(_('Select an output directory and basename for the new images files'), _('Error'))
     else: break
 
 # Save options
-avsp.Options['frames'] = frames
+avsp.Options['frames'] = frames 
 avsp.Options['show_progress'] = show_progress
 avsp.Options['format'] = format
 self.options['jpegquality'] = quality
 avsp.Options['depth'] = depth
 avsp.Options['use_dir'] = use_dir
 avsp.Options['use_base'] = use_base
+avsp.Options['insertSource'] = insertSource
+avsp.Options['addNewTab'] = addNewTab
 dirname, basename = os.path.split(filename)
 if use_dir:
     avsp.Options['dirname'] = dirname
@@ -129,6 +136,22 @@ elif frames == _('Range between bookmarks'):
     else:
         avsp.MsgBox(_('There is not bookmarks'), _('Error'))
         return
+        
+elif frames == _('From first to last bookmark'):
+    use_subdirs = False
+    bookmarks = avsp.GetBookmarkList()
+    if bookmarks and len(bookmarks) > 1:
+        bookmarks = list(set(bookmarks))
+        bookmarks.sort() 
+        frames = []
+        if bookmarks[0] >= frame_count or bookmarks[len(bookmarks)-1] >= frame_count:
+            avsp.MsgBox(_('Bookmarks out of frame count'), _('Error'))
+            return
+        frames.append(range(bookmarks[0], bookmarks[len(bookmarks)-1]))
+    else:
+        avsp.MsgBox(_('At least 2 bookmarks are required'), _('Error'))
+        return
+ 
 elif frames == _('Trim editor selections'):
     selections = avsp.GetSelectionList()
     if selections:
@@ -139,6 +162,10 @@ elif frames == _('Trim editor selections'):
 elif frames == _('All frames'):
     use_subdirs = False
     frames = range(frame_count),
+else:
+    avsp.MsgBox(_('There is no process selection'), _('Error'))
+    return
+    
 scene_digits = len(str(len(frames)))
 total_frames = sum(len(i) for i in frames)
 
@@ -159,8 +186,14 @@ else:
                         if frame_suffix else len(str(total_frames))), ext)
         filename = os.path.join(dirname, basename)
 
+if not os.path.isdir(dirname): # GPo
+    os.mkdir(dirname)
+    
 # Save the images
 paths = []
+txt = ''
+clip_info = ', fps=' + str(avsp.GetVideoFramerate()) + ', info=False)'
+
 if show_progress:
     progress = avsp.ProgressBox(total_frames, '', _('Saving images...'))
 for i, frame_range in enumerate(frames):
@@ -177,17 +210,47 @@ for i, frame_range in enumerate(frames):
         frame_index = 1
     else:
         frame_index = len(paths) + 1
+        
+    first_nr = -1
+    last_nr = -1
     for j, frame in enumerate(frame_range):
         if show_progress and not avsp.SafeCall(progress.Update, len(paths), 
                                 str(len(paths)) + ' / ' + str(total_frames))[0]:
             break
+            
+        if first_nr == -1:
+            first_nr = frame if frame_suffix else frame_index + j 
+            
         ret = self.SaveImage(filename % (frame if frame_suffix else frame_index + j), 
                              frame=frame, avs_clip=AVS, quality=quality, depth=depth)
         if not ret:
             break
+        last_nr = frame if frame_suffix else frame_index + j
         paths.append(ret)
+        
+    if first_nr > -1 and last_nr > -1:
+        if txt: 
+            txt += '\n\+ '
+        else:
+            txt = '\nImg='
+        txt += 'ImageSource("' + filename + '", start=' + str(first_nr) + ', end=' + str(last_nr) + clip_info
+
 if show_progress:
     avsp.SafeCall(progress.Destroy)
 else:
     avsp.MsgBox(_('%d image files created.') % len(paths), _('Information'))
+
+if insertSource and txt:
+    self.StopPlayback()
+    txt += '\nImg.ConvertToYV12(matrix="rec709")'
+    if addNewTab: 
+        avsp.NewTab(copyselected=False)
+        tabIndex = avsp.GetTabCount()-1
+    else:
+        if tabIndex >= avsp.GetTabCount():
+            tabIndex = avsp.GetTabCount()-1
+    if avsp.GetCurrentTabIndex() != tabIndex:
+        avsp.SelectTab(index=tabIndex, inc=0)
+    avsp.InsertText(txt)
+
 return paths

@@ -12,6 +12,14 @@ GPo source: https://github.com/gispos/AvsPmod
 GPo releases: https://github.com/gispos/AvsPmod/releases
 
 --------------------------
+Version 2.6.2.8 [2020-07-04] GPo
+--------------------------
+- Macro 'Save Image Sequence.py' got a nice update (changelog in the macro), try it.
+- Fixed: After a crash AvsPmod doesn't load the last session automatically.
+- Fixed the Crop Editor, works also now nice one large zooming
+- other small fixes
+
+--------------------------
 Version 2.6.2.7 [2020-06-27] GPo
 --------------------------
 * 'Run analisys pass' revised. Dialog shows now average fps in real time.
@@ -26,6 +34,7 @@ Version 2.6.2.7 [2020-06-27] GPo
 - Or run another tool with two different parameters
 * Fixed: 64bit version doesn't load avisynth.dll from custom directory
 * Check for duplicate function names removed
+
 --------------------------
 Version 2.6.2.6 [2020-06-20] GPo
 --------------------------

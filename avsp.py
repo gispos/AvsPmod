@@ -5397,7 +5397,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     shutil.copy2(self.lastSessionFilename, os.path.splitext(self.lastSessionFilename)[0] + '.BAD')
         if use_last_preview_placement and self.options['last_preview_placement'] != self.mainSplitter.GetSplitMode():
             self.TogglePreviewPlacement()
-        if self.options['exitstatus'] <> 0:
+        if self.options['exitstatus'] != 1:
             self.options['exitstatus'] = 1
             f = open(self.optionsfilename, mode='wb')
             cPickle.dump(self.options, f, protocol=0)
@@ -9392,6 +9392,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             wx.MessageBox(_('Cannot use crop editor unless bit depth is set to 8'),
                           _('Error'), style=wx.OK|wx.ICON_ERROR)
             return False
+
         # Set the spin control ranges
         w = script.AVI.Width
         h = script.AVI.Height
@@ -10950,8 +10951,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if self.trimDialog.IsShown():
             wx.MessageBox(_('Cannot switch tabs while trim editor is open!'), _('Error'), style=wx.OK|wx.ICON_ERROR)
             event.Veto()
-        if self.playing_video:
-            self.PlayPauseVideo()
+        self.StopPlayback()
         if self.FindFocus() == self.videoWindow:
             self.boolVideoWindowFocused = True
         else:
@@ -11425,7 +11425,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.HidePreviewWindow()
 
     def OnLeftDownVideoWindow(self, event):
-        if self.cropDialog.IsShown() and not self.getPixelInfo:
+                                       # GPO, why pixelinfo ? if crop dialog whe don't need pixelinfo
+        if self.cropDialog.IsShown() : # and not self.getPixelInfo:
             # Set focus on video window if necessary
             # Set trim values if clicked within video frame
             script = self.currentScript
@@ -11665,17 +11666,29 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.cropDialog.ctrls['-right'].SetRange(0, w-self.options['cropminx']-self.cropValues['left'])
         self.cropDialog.ctrls['top'].SetRange(0, h-self.options['cropminy']-self.cropValues['-bottom'])
         self.cropDialog.ctrls['-bottom'].SetRange(0, h-self.options['cropminy']-self.cropValues['top'])
+
         # Paint the crop rectangles
-        dc = wx.ClientDC(self.videoWindow)
-        dc.SetDeviceOrigin(self.xo, self.yo)
-        if self.IsDoubleBuffered():
+        """
+        # GPo 2020, Some things go wrong here.
+        dc = wx.ClientDC(self.videoWindow)      # thats Ok
+        dc.SetDeviceOrigin(self.xo, self.yo)    # is set on PaintAVIFrame with var shift, useless to put it here
+        if self.IsDoubleBuffered():             # ? on wx.2.9 it's working, but DoubleBuffered is not set
             bdc = dc
         else:
+            # GPo 2020, that's wrong. With large zoom or AVI size GPU is running out of memory!
+            # The rectangles are drawn zoomed in 'PaintAviFrame', so w and h must be the same size as AVI.
             w = int(round(w * float(self.zoomfactor)))
             h = int(round(h * float(self.zoomfactor)))
-            bdc = wx.BufferedDC(dc, wx.Size(w,h))
-        shift = False if os.name == 'nt' else True # XXX
-        self.PaintAVIFrame(bdc, script, self.currentframenum, shift=shift)
+
+            bdc = wx.BufferedDC(dc, wx.Size(w,h))    # I think videoWindow client size would be right
+
+        shift = False if os.name == 'nt' else True # XXX   # must be true
+        """
+
+        # GPo 2020, that's enough
+        bdc = wx.ClientDC(self.videoWindow)
+
+        self.PaintAVIFrame(bdc, script, self.currentframenum, shift=True)
         self.PaintCropWarnings(spinCtrl)
         self.SetVideoStatusText()
 
@@ -12425,6 +12438,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             wx.MessageBox(_('Cannot create a new tab while trim editor is open!'),
                           _('Error'), style=wx.OK|wx.ICON_ERROR)
             return False
+
+        self.StopPlayback()
 
         if self.currentScript.GetClientSize()[self.mainSplitter.GetSplitMode() == wx.SPLIT_HORIZONTAL] < 6:
             self.SetMinimumScriptPaneSize()
