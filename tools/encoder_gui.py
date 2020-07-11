@@ -297,6 +297,7 @@ class CompressVideoDialog(wx.Dialog):
         self.options.setdefault('priority', 'belownormal')
         self.options.setdefault('credits_warning', 10)
         self.options.setdefault('append_comments', False)
+        self.options.setdefault('add_output_newtab', False)
         self.options.setdefault('exe_options', {})
 
     def SetDefaultValuesBitrateCalc(self):
@@ -658,18 +659,41 @@ class CompressVideoDialog(wx.Dialog):
                     line = line.encode(sys.getfilesystemencoding())
                 f.write(line)
             f.close()
+
+            # GPo 2020, make output dir if not exists
+            path = self.ctrlDict['video_output'].GetValue()
+            if commandline.find(path) > -1:
+                dirname = os.path.split(path)[0]
+                if dirname and not os.path.isdir(dirname):
+                    try:
+                        os.mkdir(dirname)
+                        recentdir = dirname
+                    except:
+                        pass
+            else:
+                dlg = wx.MessageDialog(self,'Output filename in commandline and edit field different\n' +\
+                                            'Cannot create the directory if it not exists', 'Information',\
+                                             wx.OK|wx.CANCEL)
+                ID = dlg.ShowModal()
+                dlg.Destroy()
+                if ID != wx.ID_OK:
+                   return
+
             if self.options['append_comments']:
                 avsname = self.ctrlDict['video_input'].GetValue()
                 if os.path.isfile(avsname) and os.path.splitext(avsname)[1] == '.avs':
-                    #~ f = open(avsname, 'a')
-                    #~ f.write('\n\n')
-                    #~ for line in lines:
-                        #~ f.write('#~ %s' % line)
-                    #~ f.close()
-                    avsp.InsertText('\n\n')
+                    s = '\n\n'
                     for line in lines:
-                        avsp.InsertText('#~ %s' % line)
-                    avsp.SaveScript(avsname)
+                        s += '#~ %s\n' % line
+                    avsp.InsertText(s)
+                    #~avsp.SaveScript(avsname)
+
+            if self.options['add_output_newtab']:
+                s = avsp.GetSourceStringFromFilename(self.ctrlDict['video_output'].GetValue())
+                if s:
+                   avsp.NewTab(copyselected=False)
+                   avsp.InsertText(s)
+
             #~ os.startfile(batchname)
             if os.name == 'nt':
                 os.system('start "AvsP encoding" "%s"' % batchname.encode(sys.getfilesystemencoding()))
@@ -754,9 +778,12 @@ class CompressVideoOptionsDialog(wx.Dialog):
         checkBox1.SetValue(self.options['auto_par_d2v'])
         checkBox2 = wx.CheckBox(tabPanel, wx.ID_ANY, _('Append batch commands to the avs script as comments'))
         checkBox2.SetValue(self.options['append_comments'])
+        checkBox3 = wx.CheckBox(tabPanel, wx.ID_ANY, _('Add output file to new tab'))
+        checkBox3.SetValue(self.options['add_output_newtab'])
         self.ctrlDict['auto_bitrate'] = checkBox0
         self.ctrlDict['auto_par_d2v'] = checkBox1
         self.ctrlDict['append_comments'] = checkBox2
+        self.ctrlDict['add_output_newtab'] = checkBox3
         gridSizer2 = wx.FlexGridSizer(cols=2, hgap=5, vgap=5)
         staticText = wx.StaticText(tabPanel, wx.ID_ANY, _('Encoder priority:'))
         textCtrl = wx.Choice(tabPanel, wx.ID_ANY, choices=('low', 'normal', 'high', 'realtime', 'abovenormal', 'belownormal'))
@@ -769,6 +796,7 @@ class CompressVideoOptionsDialog(wx.Dialog):
         tabSizer.Add(checkBox0, 0, wx.EXPAND|wx.ALL, 5)
         tabSizer.Add(checkBox1, 0, wx.EXPAND|wx.ALL, 5)
         tabSizer.Add(checkBox2, 0, wx.EXPAND|wx.ALL, 5)
+        tabSizer.Add(checkBox3, 0, wx.EXPAND|wx.ALL, 5)
         tabSizer.Add((-1,-1), 0, wx.EXPAND|wx.ALL, 5)
         tabSizer.Add(gridSizer, 0, wx.EXPAND|wx.ALL, 5)
         tabSizer.Add((-1,-1), 0, wx.EXPAND|wx.ALL, 5)
@@ -836,6 +864,7 @@ class CompressVideoOptionsDialog(wx.Dialog):
         self.options['auto_bitrate'] = self.ctrlDict['auto_bitrate'].GetValue()
         self.options['auto_par_d2v'] = self.ctrlDict['auto_par_d2v'].GetValue()
         self.options['append_comments'] = self.ctrlDict['append_comments'].GetValue()
+        self.options['add_output_newtab'] = self.ctrlDict['add_output_newtab'].GetValue()
         for key in self.options['exe_options'].keys():
             self.options['exe_options'][key]['path'] = self.ctrlDict[key][0].GetValue()
             self.options['exe_options'][key]['extra'] = self.ctrlDict[key][1].GetValue()

@@ -12,6 +12,30 @@ GPo source: https://github.com/gispos/AvsPmod
 GPo releases: https://github.com/gispos/AvsPmod/releases
 
 --------------------------
+Version 2.6.2.9 [2020-07-10] GPo
+--------------------------
+*Added to menu Video > Play video > 'Play loop'
+- Plays the trim editor selections from frame start to frame end in a loop
+- Press Home (Pos1) select the trims then select 'Copy to clipboard' and hit 'Ok', the selections are retained.
+*Added a clear button to 'Trim selection editor'. Clears all trim editor selections.
+*Also added to menu Video > Trim selection editor > 'Clear selections'. Clears all trim editor selections.
+*If you begin playback and the current frame is the last frame, playback starts at frame 0 or loop_start is 'Play loop' selected
+*Added: When the Trim editor is visible and the video slider is on a start or end mark, the color is highlighted. 
+- also added to frame text field context menu 'selection highlight color...' set the color for highlighting the selection mark
+*Changed: If the trim editor is visible, only the selections marks are selected with the buttons 'bookmark jump'.
+- if the trim editor is not visible, this can be done by holding down the control key.
+- the same behavior when the mouse pointer is in the slider area and ctrl is pressed and you use the mouse browse buttons.
+*Add or remove # with mouse left press and right click improved. Doesn't now change if # or ~ or * the next char, e.g. Style or Block comment.
+*If word boolean selected (True,False) press left and right click changes the boolean value. (left down, left up, left down and hold down, then right click)
+*Menu Tools > 'Script encoder (CLI)'
+- if you change the output path manually, the directory is now created if it does not exist
+- added option 'Output file name to new tab', insert in a new tab the output name depended of the source files templates
+- !! For the update you must delete 'tools\encoder_gui.pyo' if it exists.!!
+*Fix: With a mouse click on the video slider area the position was not changed if play back was active.
+***This stubborn error message 'MOUSE_CAPTURE_LOST' has been fixed. Error log should now remain empty ;)
+and some real improvements
+
+--------------------------
 Version 2.6.2.8 [2020-07-04] GPo
 --------------------------
 - Macro 'Save Image Sequence.py' got a nice update (changelog in the macro), try it.
