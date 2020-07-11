@@ -8491,7 +8491,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         sizer.Add(buttonSizer, 0, wx.ALIGN_CENTER|wx.ALL, 10)
         dlg.SetSizer(sizer)
         dlg.Fit()
-        self.SliderHilighting = False
         # Events
         dlg.Bind(wx.EVT_CLOSE, self.OnTrimDialogCancel)
         buttonApply.SetDefault()
@@ -11922,13 +11921,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         for slider in self.GetVideoSliderList():
             slider.ToggleSelectionMode(0)
         self.trimDialog.Hide()
-        self.videoSlider.SetBookmarkHilighting(self.trimDialog.SliderHilighting)
+        self.videoSlider.SetBookmarkHilighting(False)
         if insertMode == 2:
             self.ShowVideoFrame()
 
     def OnTrimDialogCancel(self, event):
         self.trimDialog.Hide()
-        self.videoSlider.SetBookmarkHilighting(self.trimDialog.SliderHilighting)
+        self.videoSlider.SetBookmarkHilighting(False)
         self.OnTrimDialogClear(event)
         if self.previewWindowVisible:
             self.ShowVideoFrame()
