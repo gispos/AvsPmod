@@ -12,6 +12,11 @@ GPo source: https://github.com/gispos/AvsPmod
 GPo releases: https://github.com/gispos/AvsPmod/releases
 
 --------------------------
+Version 2.6.3.0 [2020-07-11] GPo
+--------------------------
+- fixed error if playback on closing tab
+
+--------------------------
 Version 2.6.2.9 [2020-07-10] GPo
 --------------------------
 *Added to menu Video > Play video > 'Play loop'
