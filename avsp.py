@@ -12646,7 +12646,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             title = self.scriptNotebook.GetPageText(index)
             if title.lower().startswith(fname.lower()):
                 if select:
-                   self.SelectTab(index) # GPo, evtl. wx.CallAfter(self.SelectTab, index)
+                    self.StopPlayback()
+                    self.SelectTab(index) # GPo, evtl. wx.CallAfter(self.SelectTab, index)
                 return index
         return -1
 
@@ -12972,6 +12973,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         '''
         # Get the script and corresponding index
+        self.StopPlayback() # GPo 2020
         script, index = self.getScriptAtIndex(index)
         if script is None:
             return False
@@ -13012,6 +13014,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         return True
 
     def CloseAllTabs(self):
+        self.StopPlayback() # GPo 2020
         dlg = wx.MessageDialog(self, _('Save session before closing all tabs?'),
             _('Warning'), wx.YES_NO|wx.CANCEL)
         ID = dlg.ShowModal()
@@ -13035,6 +13038,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         the hard drive.
 
         '''
+        self.StopPlayback() # GPo 2020
         script, index = self.getScriptAtIndex(index)
         if script is None:
             return None
