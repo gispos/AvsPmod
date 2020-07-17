@@ -4761,34 +4761,21 @@ class SliderPlus(wx.Panel):
         return self.maxValue
 
     def SetBookmarkHilighting(self, enabled=False):  # GPo
-        self.hilightBookmarks = enabled
-        self._DefineBrushes()
-        """
-        if enabled:
-            if self.value in self.bookmarks:
-                self.isBookmark = True
-                if self.bookmarks[self.value] in (1,2): # selections
-                    self.brushWindowBackground = self.selectionsHilightColor
-                else: self.brushWindowBackground = self.bookmarksHilightColor
-            else:
-                self.isBookmark = False
-                self.brushWindowBackground = wx.Brush(self.colorBackground)
-        else:
-            self.isBookmark = False
-            self.brushWindowBackground = wx.Brush(self.colorBackground)
-        """
+        if self.hilightBookmarks != enabled:  # do not call _DefineBrushes() if it not needed
+            self.hilightBookmarks = enabled
+            if not enabled and not self.app.trimDialog.IsShown():
+                self.selmode = 0
+            self._DefineBrushes()
 
     def SetValue(self, value):
         self.value = max(min(value, self.maxValue), self.minValue)
         # GPo, hilight also selection marks, easier do find the start and end points
         if self.hilightBookmarks:
             if self.value in self.bookmarks:
-                #~self.isBookmark = True
-                if self.bookmarks[self.value] in (1,2): # selections
-                    self.brushWindowBackground = self.selectionsHilightColor
-                else: self.brushWindowBackground = self.bookmarksHilightColor
+                if self.bookmarks[self.value] == 0:
+                    self.brushWindowBackground = self.bookmarksHilightColor
+                else: self.brushWindowBackground = self.selectionsHilightColor
             else:
-                #~self.isBookmark = False
                 self.brushWindowBackground = wx.Brush(self.colorBackground)
         """
         # else: not here, speed up.
@@ -4805,7 +4792,7 @@ class SliderPlus(wx.Panel):
 
     def SetRange(self, minValue, maxValue, refresh=True):
         if minValue >= maxValue:
-            if minValue == 0 and (maxValue == -1 or maxValue ==0):
+            if minValue == 0 and (maxValue == -1 or maxValue == 0):
                 maxValue = 1
             else:
                 print>>sys.stderr, _('Error: minValue must be less than maxValue')
@@ -4831,7 +4818,14 @@ class SliderPlus(wx.Panel):
                 return False
         except:
             pass
-        self.bookmarks[value] = bmtype
+        # GPo 2020, convert bookmark to selection, make float type
+        if value in self.bookmarks:
+            if bmtype in (1,2) and self.bookmarks[value] == 0:
+                self.bookmarks[value] = float(bmtype)
+            else: self.bookmarks[value] = bmtype
+        else:
+             self.bookmarks[value] = bmtype
+
         self.SetBookmarkHilighting(self.hilightBookmarks)  # GPo
         if refresh:
             if self.bookmarks:
@@ -4848,7 +4842,21 @@ class SliderPlus(wx.Panel):
 
     def RemoveBookmark(self, value, bmtype=0, refresh=True):
         try:
-            del self.bookmarks[value]
+            # GPo 2020, convert selection back to bookmark if bmtype (1,2) float
+            if value in self.bookmarks:
+                if bmtype in (1,2):
+                    if isinstance(self.bookmarks[value], float):
+                        self.bookmarks[value] = 0
+                    else: del self.bookmarks[value]
+                else:
+                    if isinstance(self.bookmarks[value], float): # convert (1,2) float to normmal selection (1,2)
+                        bm = self.bookmarks[value]
+                        self.bookmarks[value] = 1 if bm == 1 else 2
+                    else:
+                        del self.bookmarks[value]
+            else:
+                return False
+
             self.SetBookmarkHilighting(self.hilightBookmarks)  # GPo
             if refresh:
                 if self.bookmarks:
@@ -11927,8 +11935,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     def OnTrimDialogCancel(self, event):
         self.trimDialog.Hide()
-        self.videoSlider.SetBookmarkHilighting(False)
         self.OnTrimDialogClear(event)
+        self.videoSlider.SetBookmarkHilighting(False)
         if self.previewWindowVisible:
             self.ShowVideoFrame()
 
@@ -14363,7 +14371,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 bookmarks = slider.GetBookmarks()
                 lastindex = len(bookmarks) - 1
                 bm = [(value, bmType) for (value, bmType) in bookmarks.items()
-                      if bmtype == bmType and (start is None or value >= start) and (end is None or value <= end)]
+                      if (bmtype == bmType or bmtype==0 and isinstance(bmType, float))\
+                        and (start is None or value >= start) and (end is None or value <= end)]
                 if not bm:
                     return
                 toggle_color = False
@@ -14908,6 +14917,16 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     def GetPixelInfo(self, event, string_=False):
         videoWindow = self.videoWindow
+
+        # GPo 2020, if call without mouse event then check if mouse in videoWindow
+        if event:
+            xpos, ypos = event.GetPosition()
+        else:
+            xpos, ypos = videoWindow.ScreenToClient(wx.GetMousePosition())
+            # if not in client then return, speed up
+            if not self.videoWindow.GetClientRect().Inside((xpos, ypos)):
+                return '' if string_ else (0, 0), None, None, None, None
+
         script = self.currentScript
         if script.AVI is None:
             #~self.UpdateScriptAVI(script, forceRefresh=True)           # GPo, we don't need do go in error while moving the mouse
@@ -14922,10 +14941,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         zoomfactor = self.zoomfactor
         if zoomfactor != 1:
             dc.SetUserScale(zoomfactor, zoomfactor)
-        if event:
-            xpos, ypos = event.GetPosition()
-        else:
-            xpos, ypos = videoWindow.ScreenToClient(wx.GetMousePosition())
+
         x = dc.DeviceToLogicalX(xpos)
         y = dc.DeviceToLogicalY(ypos)
 
@@ -15600,7 +15616,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 if focus or self.playing_video:
                     if focus:
                         self.videoWindow.SetFocus()
-                    # Update pixel info if cursor in preview windows or playing
+                    # Update pixel info if cursor in preview windows or playing  'GPo, why pixelinfo on playing? disabled
                     if self.playing_video:
                         self.SetVideoStatusText(framenum, primary=True, addon0=addon0)
                     else:
@@ -15816,7 +15832,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if self.playing_video == '':
             self.PlayPauseVideo()
 
-    def GotoNextBookmark(self, reverse=False, forceCursor=False, bmtype=[]):
+    def GotoNextBookmark(self, reverse=False, forceCursor=False, bmtype=[]): # GPo 2020 bmtype
         if self.playing_video:
             self.PlayPauseVideo()
             self.playing_video = ''
@@ -16331,13 +16347,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if 'fliphorizontal' in self.flip:
             left, mright = mright, left
         if top > 0:
-            dc.DrawRectangle(0, 0, w, top)
+            dc.DrawRectangle(0, -1, w, top+1)
         if mbottom > 0:
             dc.DrawRectangle(0, h - mbottom, w, h)
         if left > 0:
-            dc.DrawRectangle(0, top, left, h - mbottom - top)
+            dc.DrawRectangle(-1, top, left+1, h - mbottom - top)
         if mright > 0:
-            dc.DrawRectangle(w - mright, top, mright, h - mbottom - top)
+            dc.DrawRectangle(w - mright, top, w, h - mbottom - top)
         self.oldCropValues = self.cropValues
 
     def PaintCropWarnings(self, spinCtrl=None):
@@ -16407,20 +16423,24 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.play_button2.SetBitmapLabel(self.bmpPause)
                 self.play_button2.Refresh()
                 self.frameTextCtrl2.SetForegroundColour(wx.BLACK) # GPo, for fast func
+
+            """
             if self.play_speed_factor == 'max':
                 interval = 1.0 # use a timer anyway to avoid GUI refreshing issues
             else:
                 interval = 1000 / (script.AVI.Framerate * self.play_speed_factor)
-
-            """ testing
-            if self.play_speed_factor == 'max':
-                self.interval = 1.0 # use a timer anyway to avoid GUI refreshing issues
-                interval_fast = self.interval
-            else:
-                self.interval = 1000 / (script.AVI.Framerate * self.play_speed_factor)
-                interval_fast =  self.interval/2
-            self.lastFrameTime = time.time()
             """
+
+            #GPo testing, seems good.
+            if self.play_speed_factor == 'max':
+                interval = 1.0   # use a timer anyway to avoid GUI refreshing issues
+                self.interval = 0.0
+                interval_fast = 1.0
+            else:
+                interval = 1000 / (script.AVI.Framerate * self.play_speed_factor)
+                #self.interval = interval
+                self.interval = float(interval/1000)
+                interval_fast = self.interval/2 # double the interval, seems not needed,
 
             if os.name == 'nt': # default Windows resolution is ~10 ms
 
@@ -16428,16 +16448,18 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     """"Callback for a Windows Multimedia timer"""
                     if not self.playing_video:
                         return
-                    # testing
-                    #~startTime = time.time()
+
+                    # GPo 2020, for smoother playback
+                    startTime = time.time()
+
                     if debug_stats:
                         sfps = 'debug '
                         current_time = time.time()
                         debug_stats_str = str((current_time - self.previous_time) * 1000)
                         self.previous_time = current_time
-                    else:
-                       fps = float(self.currentframenum - self.play_initial_frame)  / (time.time() - self.play_initial_time)
-                       sfps = 'fps ' + '{:4.2f}'.format(fps) + ' '
+
+                    fps = float(self.currentframenum - self.play_initial_frame)  / (startTime - self.play_initial_time)
+                    sfps = 'fps ' + '{:4.2f}'.format(fps) + ' '
 
                     if self.play_drop and self.play_speed_factor != 'max':
                         frame = self.play_initial_frame
@@ -16486,9 +16508,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                             self.PlayPauseVideo()
                     else:
                         wx.Yield()
-                    # testing
-                    #~while time.time() < startTime + float(self.interval/1000):
-                        #~wx.Yield()
+
+                    # GPo 2020, plays smoother
+                    while time.time() < startTime + self.interval:
+                        wx.Yield()
 
 
                 def WindowsTimer(interval, callback, periodic=True):
@@ -16531,7 +16554,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         self.play_timer_resolution, self.callback_c, factor, periodic)
 
                 WindowsTimer(interval, playback_timer)
-                # testing
+                # testing, double interval
                 #~WindowsTimer(interval_fast, playback_timer)
 
             else: # wx.Timer on *nix.  There's some pending events issues
@@ -19408,8 +19431,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         any selection startpoints or endpoints which may exist. If 'title' is True,
         returns a list of tuple (frame, title).
 
-        '''
-        bookmarkList = [value for value, bmtype in self.GetBookmarkFrameList().items() if bmtype == 0]
+        '''                                                                          # GPo 2020 if bmtype (1,2) float, it is also a bookmark
+        bookmarkList = [value for value, bmtype in self.GetBookmarkFrameList().items() if bmtype == 0 or isinstance(bmtype, float)]
         if title:
             for i in range(len(bookmarkList)):
                 title = self.bookmarkDict.get(bookmarkList[i], '')

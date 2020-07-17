@@ -12,6 +12,17 @@ GPo source: https://github.com/gispos/AvsPmod
 GPo releases: https://github.com/gispos/AvsPmod/releases
 
 --------------------------
+Version 2.6.3.1 [2020-07-17] GPo
+--------------------------
+*Bookmarks now restored if a trim editor selection mark over a bookmark and the selection mark deleted  
+*Playback improved, smoother playback (If the 'fps' can be reached)
+*New macro 'Selected trims to selections'
+- Insert all selected avisynth trims as trim editor selections. Or deled the selection if it exist.
+- e.g. script selection is #Trim(10, 100) ++ Trim(120, 200).Reverse() , insert selection 10-100 and 120-200
+*Fixed: The video slider was highlighted after closing the trim editor and a bookmark was selected.
+*Fixed: Crop editor drawn the cropped area on large zoom not correctly +- 1pix ;)
+
+--------------------------
 Version 2.6.3.0 [2020-07-11] GPo
 --------------------------
 - fixed error if playback on closing tab
