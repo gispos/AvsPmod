@@ -12,6 +12,11 @@ GPo source: https://github.com/gispos/AvsPmod
 GPo releases: https://github.com/gispos/AvsPmod/releases
 
 --------------------------
+Version 2.6.3.2 [2020-07-19] GPo
+--------------------------
+Fixed:bookmark highlighting doesn't update immediately on set or remove
+
+--------------------------
 Version 2.6.3.1 [2020-07-17] GPo
 --------------------------
 *Bookmarks now restored if a trim editor selection mark over a bookmark and the selection mark deleted  

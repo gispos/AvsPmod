@@ -4761,11 +4761,11 @@ class SliderPlus(wx.Panel):
         return self.maxValue
 
     def SetBookmarkHilighting(self, enabled=False):  # GPo
-        if self.hilightBookmarks != enabled:  # do not call _DefineBrushes() if it not needed
-            self.hilightBookmarks = enabled
+        if self.hilightBookmarks != enabled:
             if not enabled and not self.app.trimDialog.IsShown():
                 self.selmode = 0
-            self._DefineBrushes()
+            self.hilightBookmarks = enabled
+        self._DefineBrushes()
 
     def SetValue(self, value):
         self.value = max(min(value, self.maxValue), self.minValue)
@@ -10003,7 +10003,25 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if self.playing_video:
             self.PlayPauseVideo(refreshFrame=False)
             self.PlayPauseVideo()
+    """
+    def OnMenuVideoPlayDecrement(self, event):
+        if self.play_speed_factor == 'max':
+            self.play_speed_factor = 0.8
+        else:
+            self.play_speed_factor /= 1.25
+        if self.playing_video:
+            self.PlayPauseVideo(refreshFrame=False)
+            self.PlayPauseVideo()
 
+    def OnMenuVideoPlayIncrement(self, event):
+        if self.play_speed_factor == 'max':
+            self.play_speed_factor = 1.2
+        else:
+            self.play_speed_factor *= 1.25
+        if self.playing_video:
+            self.PlayPauseVideo(refreshFrame=False)
+            self.PlayPauseVideo()
+    """
     def OnMenuVideoPlayNormal(self, event):
         self.play_speed_factor = 1.0
         if self.playing_video:
@@ -10698,6 +10716,24 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         wx.CallAfter(frameTextCtrl.SetSelection, -1, -1)
         # GPo 2020, if skip forced, OnButtonTextKillFocus Skip is also needed, but then wx.Bell is called automatically (fixed)
         event.Skip()
+
+    # GPo 2020, for macro uses
+    def GetClipboardText(self):
+        txt = ''
+        if not wx.TheClipboard.IsOpened():
+            wx.TheClipboard.Open()
+            text = wx.TextDataObject('')
+            if wx.TheClipboard.GetData(text):
+                txt = text.GetText()
+            wx.TheClipboard.Close()
+        return txt
+
+        # GPo 2020, for macro uses
+    def SetClipboardText(self, text):
+        if text and not wx.TheClipboard.IsOpened():
+            wx.TheClipboard.Open()
+            wx.TheClipboard.SetData(wx.TextDataObject(text))
+            wx.TheClipboard.Close()
 
     def OnButtonTextKillFocus(self, event):
         frameTextCtrl = event.GetEventObject()
