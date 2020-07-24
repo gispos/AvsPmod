@@ -5676,6 +5676,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         elif ide == 5:  # find only the tab
             s = ctypes.wstring_at(pCDS.contents.lpData)
             return self.FindTabByName(s, False)
+        elif ide == 6:  # find bookmark and show frame if found
+            nr = ctypes.c_int(pCDS.contents.lpData)
+            bookmarks = self.slider.GetBookmarks()
+            if bookmarks and nr in bookmarks:
+                wx.CallAfter(self.ShowVideoFrame, nr)
+            else: return -1
 
         elif ide > 100:  # Addr of sender data, return it to sender
             s = ctypes.wstring_at(pCDS.contents.lpData)
@@ -13038,12 +13044,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         # Save last state
         self.lastClosed = self.GetTabInfo(index)
         # Delete the tab from the notebook
-        script.AVI = None #self.scriptNotebook.GetPage(index).AVI = None # clear memory
+        script.AVI = None
+        script.lastFramenum = None # GPo, disable OnPageChanged
         # If only 1 tab, make another
         if self.scriptNotebook.GetPageCount() == 1:
+            self.HidePreviewWindow()
             self.NewTab(copyselected=False)
             self.SetScriptTabname(self.NewFileName, index=1)
-            self.HidePreviewWindow()
         if self.options['multilinetab']:
             rows = self.scriptNotebook.GetRowCount()
         self.scriptNotebook.DeletePage(index)
@@ -13069,6 +13076,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if not self.SaveSession():
                 return
         self.HidePreviewWindow()  # GPo 2020
+        self.scriptNotebook.SetSelection(self.scriptNotebook.GetPageCount()-1) # GPo 2020, TODO: error not found on close all tab's
         for index in xrange(self.scriptNotebook.GetPageCount()):
             self.CloseTab(0)
 
@@ -14479,7 +14487,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.menuBookmark.DestroyItem(self.menuBookmark.FindItemByPosition(0))
         pos = 0
         bookmarkList = list(self.GetBookmarkFrameList().items())
-        if len(bookmarkList) > 1500: return
+        if len(bookmarkList) > 3000: return # GPo
         sortItem = self.menuBookmark.FindItemByPosition(1)
         timecodeItem = self.menuBookmark.FindItemByPosition(2)
         titleItem = self.menuBookmark.FindItemByPosition(3)
@@ -14488,7 +14496,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         width = len(str(max(bookmarkList)[0])) if bookmarkList else 0
         fmt = '%%%dd ' % width
         for bookmark, bmtype in bookmarkList:
-            if bmtype == 0:
+            if bmtype == 0 or isinstance(bmtype, float):
                 label = fmt % bookmark
                 if timecodeItem.IsChecked():
                     if self.currentScript.AVI:
@@ -14503,6 +14511,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 menuItem = self.menuBookmark.Insert(pos, wx.ID_ANY, label, _('Jump to specified bookmark'))
                 self.Bind(wx.EVT_MENU, self.OnMenuVideoGotoFrameNumber, menuItem)
                 pos += 1
+                if pos > 1500: # GPo
+                    break
 
     def SetSelectionEndPoint(self, bmtype):
         if bmtype not in (1,2):

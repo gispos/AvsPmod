@@ -12,9 +12,14 @@ GPo source: https://github.com/gispos/AvsPmod
 GPo releases: https://github.com/gispos/AvsPmod/releases
 
 --------------------------
+Version 2.6.3.3 [2020-07-24] GPo
+--------------------------
+- fixed close all tabs error
+
+--------------------------
 Version 2.6.3.2 [2020-07-19] GPo
 --------------------------
-Fixed:bookmark highlighting doesn't update immediately on set or remove
+- fixed bookmark highlighting doesn't update immediately on set or remove
 
 --------------------------
 Version 2.6.3.1 [2020-07-17] GPo
