@@ -4730,7 +4730,7 @@ class SliderPlus(wx.Panel):
         if len(selectionmarks) == 0:
             return None
         if selectionmarks[0][1] == 2:
-            start =self.minValue
+            start = self.minValue
         for value, bmtype in selectionmarks:
             if start is None:
                 if bmtype == 1:
@@ -4739,7 +4739,7 @@ class SliderPlus(wx.Panel):
                 if bmtype == 2:
                     stop = value
                     selectionList.append((start, stop))
-                    start = stop =None
+                    start = stop = None
         if start is not None:
             stop = self.maxValue
             selectionList.append((start, stop))
@@ -6153,6 +6153,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'mouseauxdown': 'tab change',            # GPo 2020
             'playfastfunc': True,                    # GPo 2020
             'playloop': False,                       # GPo 2020
+            'bookmarktotrim': False,                 # GPo 2020
+            'restorebookmarksontrim': False,         # GPo 2020
             'bookmarkshilightcolor': wx.Colour(233,122,122),   # GPo
             'selectionshilightcolor': wx.Colour(110,110,204),  # GPo 2020
             'savemarkedavs': True,
@@ -7669,6 +7671,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     (_('Move selections before the current frame'), 'Ctrl+Alt+V', self.OnMenuVideoMoveSelectionsBeforeCurrentFrame, _('The current selections are cut from the timeline and inserted before the current frame. Bookmarks are shifted accordingly.'), wx.ITEM_NORMAL, None, self.videoWindow),
                     (_('Move selections after the current frame'), 'Ctrl+V', self.OnMenuVideoMoveSelectionsAfterCurrentFrame, _('The current selections are cut from the timeline and inserted after the current frame. Bookmarks are shifted accordingly.'), wx.ITEM_NORMAL, None, self.videoWindow),
                     (''),
+                    (_('Mark trim points'), '', self.OnSetBookmarkToTrims, _('Add bookmark to trim intersections'), wx.ITEM_CHECK, self.options['bookmarktotrim']),
+                    (_('Restore bookmarks'), '', self.OnSetRestoreBookmarks, _('Restore the bookmark if it was a bookmark before selection'), wx.ITEM_CHECK, self.options['restorebookmarksontrim']),
+                    (''),
                     (_('Clear selections'), '', self.OnTrimDialogCancel, _('Clear all trim editor selections (hide the trim editor if visible)')),
                     ),
                 ),
@@ -8958,13 +8963,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 script.ReplaceSelection('[<separator>]')
         dlg.Destroy()
 
-    def _x_OnMenuEditInsertBookmarkTrims(self, event):
+    def _x_OnMenuEditInsertBookmarkTrims(self, event): # GPo, not used, old one?
         self.InsertBookmarkTrims()
 
-    def _x_OnMenuEditInsertTrimSelectedOut(self, event):
+    def _x_OnMenuEditInsertTrimSelectedOut(self, event): # GPo, not used, old one?
         self.InsertSelectionTrims(cutSelected=True)
 
-    def _x_OnMenuEditInsertTrimUnSelectedOut(self, event):
+    def _x_OnMenuEditInsertTrimUnSelectedOut(self, event): # GPo, not used, old one?
         self.InsertSelectionTrims(cutSelected=False)
 
     def OnMenuEditToggleTagSelection(self, event):
@@ -9352,16 +9357,20 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.PlayPauseVideo()
 
     def OnMenuVideoGotoNextBookmark(self, event):
+        """ this breaks the goto bookmark if the trim dialog is shown, my idea is disadvantageous for some users
         if self.trimDialog.IsShown() or wx.GetKeyState(wx.WXK_CONTROL):
             self.GotoNextBookmark(forceCursor=True, bmtype=[1,2])
         else:
-            self.GotoNextBookmark(forceCursor=True)
+        """
+        self.GotoNextBookmark(forceCursor=True)
 
     def OnMenuVideoGotoPreviousBookmark(self, event):
+        """
         if self.trimDialog.IsShown() or wx.GetKeyState(wx.WXK_CONTROL):
             self.GotoNextBookmark(reverse=True, forceCursor=True, bmtype=[1,2])
         else:
-            self.GotoNextBookmark(reverse=True, forceCursor=True)
+        """
+        self.GotoNextBookmark(reverse=True, forceCursor=True)
 
     def OnMenuVideoGotoClearAll(self, event):
         self.DeleteAllFrameBookmarks(bmtype=0)
@@ -9546,6 +9555,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         selections = self.GetSliderSelections(self.invertSelection)
         if selections:
             self.MoveFrameRanges(selections, paste_before=False)
+
+    def OnSetBookmarkToTrims(self, event):
+        self.options['bookmarktotrim'] = event.IsChecked()
+
+    def OnSetRestoreBookmarks(self, event):
+        self.options['restorebookmarksontrim'] = event.IsChecked()
 
     def OnMenuVideoZoom(self, event=None, menuItem=None, zoomfactor=None, show=True, scroll=None):
         if zoomfactor is None:
@@ -13051,6 +13066,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.HidePreviewWindow()
             self.NewTab(copyselected=False)
             self.SetScriptTabname(self.NewFileName, index=1)
+            self.DeleteFrameBookmark(None, refreshVideo=False, refreshProgram=True) # GPo, clear the bookmarks
+
         if self.options['multilinetab']:
             rows = self.scriptNotebook.GetRowCount()
         self.scriptNotebook.DeletePage(index)
@@ -13075,8 +13092,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if ID == wx.ID_YES:
             if not self.SaveSession():
                 return
-        self.HidePreviewWindow()  # GPo 2020
-        self.scriptNotebook.SetSelection(self.scriptNotebook.GetPageCount()-1) # GPo 2020, TODO: error not found on close all tab's
+        # GPo 2020, TODO: error not found on close all tab's
+        # if last tab selected no error occurs
+        self.HidePreviewWindow()
+        self.scriptNotebook.SetSelection(self.scriptNotebook.GetPageCount()-1)
+        # end try to fix
         for index in xrange(self.scriptNotebook.GetPageCount()):
             self.CloseTab(0)
 
@@ -14154,7 +14174,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if insertMode in (0,1):
             self.refreshAVI = True
             # Kill all bookmarks (rebuild non-selection bookmarks...)
-            bookmarks = [value for value, bmtype in self.GetBookmarkFrameList().items() if bmtype == 0]
+            if self.options['restorebookmarksontrim']:
+                bookmarks = [value for value, bmtype in self.GetBookmarkFrameList().items() if bmtype == 0 or isinstance(bmtype, float)]
+            else:
+                bookmarks = [value for value, bmtype in self.GetBookmarkFrameList().items() if bmtype == 0]
             newbookmarks = bookmarks[:]
             self.DeleteAllFrameBookmarks(refreshVideo=False)
             gapframes = 0
@@ -14172,7 +14195,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     c, d = selections[i]
                     gapframes += (c - b - 1)
                 # Create the bookmark marking the removed section
-                if i != nSelections - 1:
+                if self.options['bookmarktotrim'] and i != nSelections - 1:
                     self.AddFrameBookmark(d-gapframes, toggle=False, refreshVideo=False)
                 # Update the video slider handle position
                 if framenum <= d and framenum > b:
@@ -14187,7 +14210,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         newframenum = 0
                 # Update the old bookmarks
                 for j in xrange(len(bookmarks)):
-                    if bookmarks[j] <= d and bookmarks[j] > b:
+                    if i == 0:                          # GPo, fix for first selection
+                        if bookmarks[j] <= b and bookmarks[j] >= a:
+                            newbookmarks[j] -= gapframes
+                    elif bookmarks[j] <= d and bookmarks[j] > b:
                         if bookmarks[j] >= c:
                             newbookmarks[j] -= gapframes
                         else:
@@ -14248,7 +14274,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 return selections[0]
         return None,None
 
-    def _x_InsertBookmarkTrims(self):
+    def _x_InsertBookmarkTrims(self): # GPo, not used, old one?
         script = self.currentScript
         # Get the bookmarks
         bookmarks = list(self.GetBookmarkFrameList().items())
@@ -14256,11 +14282,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if nBookmarks <= 0:
             wx.MessageBox(_('No bookmarks defined!'), _('Error'), style=wx.OK|wx.ICON_ERROR)
             return
-        # Sort and make the bookmarks unique (not required?)
-        bookmarks.sort()
         if nBookmarks == 1:
             wx.MessageBox(_('There must be more than one unique bookmark to use this feature!'), _('Error'), style=wx.OK|wx.ICON_ERROR)
             return
+        bookmarks.sort()
         # Create the Trim commands with pairs of bookmarks
         nPairs = nBookmarks/2
         lastframe = script.AVI.Framecount - 1

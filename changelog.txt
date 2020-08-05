@@ -12,6 +12,14 @@ GPo source: https://github.com/gispos/AvsPmod
 GPo releases: https://github.com/gispos/AvsPmod/releases
 
 --------------------------
+Version 2.6.3.4 [2020-08-05] GPo
+--------------------------
+- Changed: If trim dialog is shown you can again jump to any bookmark. (@in4u) 
+- When you close all tabs or the last tab, all bookmarks now deleted.
+- Two new options 'Video > Trim Editor > 'Mark trim points' and 'Restore bookmarks' for more info read the tooltips (statusbar)
+- fixed: trim editor doesn't move the bookmarks on the first selection.
+
+--------------------------
 Version 2.6.3.3 [2020-07-24] GPo
 --------------------------
 - fixed close all tabs error
