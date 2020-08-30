@@ -13556,7 +13556,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                               eol=item.get('eol'), workdir=item['workdir'], scripttext=item['text'],
                               setSavePoint=setSavePoint, splits=item['splits'],
                               framenum=item['current_frame'], last_length=item.get('last_length'),
-                              group=item.get('group', -1), group_frame=item.get('group_frame'), bookmarks=item['bookmarks'])
+                              group=item.get('group', -1), group_frame=item.get('group_frame'), bookmarks=item['bookmarks'] if 'bookmarks' in item else None)
         if reload and index is not None:
             # index is None -> the script was already loaded, different to this other version
             # but the user chose not to replace it.  If that's the case, don't prompt again

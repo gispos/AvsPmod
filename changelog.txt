@@ -12,6 +12,11 @@ GPo source: https://github.com/gispos/AvsPmod
 GPo releases: https://github.com/gispos/AvsPmod/releases
 
 --------------------------
+Version 2.6.3.6 [2020-08-30] GPo
+--------------------------
+fixed the new version cannot load the old session files
+
+--------------------------
 Version 2.6.3.5 [2020-08-29] GPo
 --------------------------
 *When changing tabs and 'Tab change loads bookmarks' is enabled:
