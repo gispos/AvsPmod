@@ -12,6 +12,19 @@ GPo source: https://github.com/gispos/AvsPmod
 GPo releases: https://github.com/gispos/AvsPmod/releases
 
 --------------------------
+Version 2.6.3.5 [2020-08-29] GPo
+--------------------------
+*When changing tabs and 'Tab change loads bookmarks' is enabled:
+- if the tab has no bookmarks, bookmarks now cleared
+- the current tab bookmarks are saved and restored even if they were not previously written into the script
+- if bookmarks reading from script and bookmarks from tab different a message appears (can be disabled under options)
+-- useful: if you add bookmarks and change the tab but you forgot to save the bookmarks to the script, you can now restore the bookmarks
+*Save Session, Load Session saves and loads the bookmarks for each script.
+*Fixed the selection marks bug on tab change and on restore bookmark from selections mark
+*New macro 'Open Image Sequence.py' read the information inside the macro
+*A bit of cosmetics in the text field context menu
+
+--------------------------
 Version 2.6.3.4 [2020-08-05] GPo
 --------------------------
 - Changed: If trim dialog is shown you can again jump to any bookmark. (@in4u) 

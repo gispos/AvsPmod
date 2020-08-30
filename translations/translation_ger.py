@@ -16,7 +16,7 @@
 
 # Übersetzt von Henrik . AvsP 2.0.1  Danke für die Hilfe, besonders LigH ,doxville,Brother John, Selur und Rippraff !
 
-version = "2.6.1.9"
+version = "2.6.1.5"
 
 messages = {
     "AviSynth script" : u"", # New in v2.3.0
@@ -265,7 +265,7 @@ messages = {
     "Shared timeline" : u"", # New in v2.2.1
     "Only on tabs of the same characteristics" : u"", # New in v2.5.0
     "Only share timeline for clips with the same resolution and frame count" : u"", # New in v2.5.0
-    "Determines which mouse wheel function is used, see below tabs.Tab change also possible under Misc -> Mouse browse buttons" : u"", # New in v2.6.1.9
+    "Determines which mouse wheel function is used, see below tabs" : u"", # New in v2.5.1.09
     "Frames step" : u"Frames Schritt",
     "Mouse Wheel Function" : u"Mausrad Funktion",
     "Tabs scrolling" : u"Tabs wechseln",
@@ -368,18 +368,8 @@ messages = {
     "Only allow a single instance of AvsPmod" : u"Nur eine Programminstanz erlauben",
     "Show warning at startup if there are dlls with bad naming in default plugin folder" : u"", # New in v2.2.1
     "Show warning for bad plugin naming at startup" : u"", # New in v2.2.1
-    "Show warning at startup if there are more the one function with the same name" : u"", # New in v2.6.1.8
-    "Show warning for double func naming at startup" : u"", # New in v2.6.1.8
-    "Bookmark jump" : u"", # New in v2.6.1.8
-    "Custom jump" : u"", # New in v2.6.1.8
-    "Frame step" : u"", # New in v2.3.0
-    "Mouse browse buttons" : u"", # New in v2.6.1.9
-    "Mouse browse buttons (forward/backward) on video and script window\nIf 'Tab change' and tab count less than 2, 'Bookmark jump' is used\nIf 'Tab change' press CTRL or left mouse and 'Bookmark jump' is used\nIf 'Bookmark jump', vice versa" : u"", # New in v2.6.1.9
-    "Tab change" : u"", # New in v2.6.1.8
-    "Middle mouse button behavior on the script, if script empty open source is used" : u"", # New in v2.6.1.8
-    "Middle mouse on script" : u"", # New in v2.6.1.8
-    "Open source" : u"", # New in v2.6.1.8
-    "Show video frame" : u"", # New in v2.6.1.8
+    "Middle mouse button behavior on the script" : u"", # New in v2.6.1.5
+    "Middle mouse on script (0 open source, 1 show video frame)" : u"", # New in v2.6.1.5
     "Max number of recent filenames" : u"Max.Anzahl neuer Dateinamen",
     "This number determines how many filenames to store in the recent files menu" : u"Diese Zahl stellt fest wieviele Dateinamen im FileMenue gespeichert werden", 
     "Custom jump size:" : u"Eigene Sprungweite ",
@@ -728,8 +718,8 @@ messages = {
     "Toggle the video preview" : u"Umschalten Video Vorschaufunktion",
     "Toggle preview placement" : u"", # New in v2.5.1
     "When not using a separate window for the video preview, toggle between showing it at the bottom (default) or to the right" : u"", # New in v2.5.1
-    "Toggle extended left move" : u"Umschalten erweiteter linker Bereich",
-    "Video window extended left move" : u"Umschalten erweiteter Video Fensterbereich",
+    "Toggle extended left move" : u"Umschalten erweiteter linker Bereich", # New in v2.5.1.06
+    "Video window extended left move" : u"Umschalten erweiteter Video Fensterbereich", # New in v2.5.1.06
     "Release all open videos from memory" : u"Freigabe aller offenen Videos im Speicher", 
     "Release all videos from memory" : u"Freigabe aller Videos im Speicher", 
     "Switch focus between the video preview and the text editor" : u"Schalten des Fokus zwischen der Video-Vorschaufunktion und dem Texteditor",
@@ -798,15 +788,15 @@ messages = {
     "Open the macros folder" : u"", # New in v2.2.1
     "&Macros" : u"", # New in v2.2.1
     "Close" : u"Schließen",
-    "Close all the other" : u"Schließe alle anderen",
+    "Close all the other" : u"Schließe alle anderen", # New in v2.6.1.5
     "Rename" : u"Umbenennen",
     "Group" : u"", # New in v2.5.0
     "Save" : u"Speichern",
     "Save as..." : u"Speichere als...",
     "Reload" : u"Neu laden",
     "Open directory" : u"Öffne Verzeichnis",
-    "Release video memory" : u"Video Speicher freigeben",
-    "Release all other video memory" : u"Video Speicher aller anderen Tabs freigeben",
+    "Release video memory" : u"Video Speicher freigeben", # New in v2.6.1.5
+    "Release all other video memory" : u"Video Speicher aller anderen Tabs freigeben", # New in v2.6.1.5
     "Tab change loads bookmarks" : u"", # New in v2.6.1.5
     "Copy to new tab" : u"Zu einem neuen Tab kopieren",
     "Reposition to" : u"", # New in v2.2.1
@@ -1068,7 +1058,7 @@ messages = {
     "Left-click to select a color, right click to reset to default" : u"Links-click um eine Farbe zu wählen, Rechts-click setzt auf Standard zurück.",
     "Toggle \"%(label)s\" section" : u"Umschalten \"%(label)s\" Abschnitt",
     "Above plugin names contain undesirable symbols.\nRename them to only use alphanumeric or underscores,\nor make sure to use them in short name style only." : u"", # New in v2.3.0
-    "This function is beta!\nFound more then one function with the same name.\nYou should clean up your plugins." : u"", # New in v2.6.1.8
+    "Found more then one function with the same name.\nYou should clean up your plugins." : u"", # New in v2.6.1.5
     "Don't show me this again" : u"", # New in v2.2.1
     "Changing the plugins directory writes to the Windows registry.\n" : u"", # New in v2.6.1.5
     "Writing to: HKLM\\Software\\Avisynth\\plugindir2_5\n" : u"", # New in v2.6.1.5
@@ -1279,6 +1269,7 @@ messages = {
 
     #--- Macro: Bookmarks at Intervals ---#
     "Choose a frame step or a number of intervals" : u"", # New in v2.3.0
+    "Frame step" : u"", # New in v2.3.0
     "Number of intervals" : u"", # New in v2.3.0
     "End frame" : u"", # New in v2.4.2
     "Start frame" : u"", # New in v2.4.2
