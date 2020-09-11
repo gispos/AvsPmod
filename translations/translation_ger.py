@@ -16,7 +16,7 @@
 
 # Übersetzt von Henrik . AvsP 2.0.1  Danke für die Hilfe, besonders LigH ,doxville,Brother John, Selur und Rippraff !
 
-version = "2.6.1.5"
+version = "2.6.3.6"
 
 messages = {
     "AviSynth script" : u"", # New in v2.3.0
@@ -194,6 +194,12 @@ messages = {
     "Executable files" : u"", # New in v2.3.0
     "Additional arguments when running the external player" : u"Zusätzliche Parameter zum Abspielen im externen Player ",
     "External player extra args:" : u"Zusätzliche Parameter ext.Player",
+    "External tool:" : u"", # New in v2.6.3.5
+    "Location of external program, e.g. AvsMeter" : u"", # New in v2.6.3.5
+    "Arguments for external tool menu 1, e.g. Menu label|arg\nChar > replace the script name with the text bevor e.g. avsinfo>-lf" : u"", # New in v2.6.3.5
+    "External tool arg1:" : u"", # New in v2.6.3.5
+    "Arguments for external tool menu 2, e.g. Menu label|arg\nChar > replace the script name with the text bevor e.g. avsinfo>-lf" : u"", # New in v2.6.3.5
+    "External tool arg2:" : u"", # New in v2.6.3.5
     "Avisynth help file/url:" : u"Avisynth-Hilfedatei/url",
     "Location of the avisynth help file or url" : u"Avisynthverzeichnis der Hilfedatei oder url",
     "Documentation search paths:" : u"Suchpfad für Dokumentation",
@@ -265,10 +271,11 @@ messages = {
     "Shared timeline" : u"", # New in v2.2.1
     "Only on tabs of the same characteristics" : u"", # New in v2.5.0
     "Only share timeline for clips with the same resolution and frame count" : u"", # New in v2.5.0
-    "Determines which mouse wheel function is used, see below tabs" : u"", # New in v2.5.1.09
-    "Frames step" : u"Frames Schritt",
-    "Mouse Wheel Function" : u"Mausrad Funktion",
-    "Tabs scrolling" : u"Tabs wechseln",
+    "Determines which mouse wheel function is used, see below tabs.Tab change also possible under Misc -> Mouse browse buttons" : u"", # New in v2.6.3.5
+    "Mouse wheel function" : u"", # New in v2.6.3.5
+    "Tab change or scroll" : u"", # New in v2.6.3.5
+    "Frame step" : u"", # New in v2.3.0
+    "Tab change" : u"", # New in v2.6.3.5
     "Enable scroll wheel through similar tabs" : u"", # New in v2.2.1
     "Mouse scroll wheel cycles through tabs with similar videos" : u"", # New in v2.0.1
     "Enable scroll wheel through tabs on the same group" : u"", # New in v2.5.0
@@ -365,11 +372,19 @@ messages = {
     "On first script load bookmarks from script" : u"", # New in v2.5.1.18
     "Automatically load bookmarks from script if tab changed" : u"Beim Tab wechsel Bookmarks vom Skript laden",
     "Tabs changing loads bookmarks from script" : u"", # New in v2.6.1.5
+    "Warn if last bookmarks and from script reading bookmarks different." : u"", # New in v2.6.3.5
+    "Warning last bookmarks differnt" : u"", # New in v2.6.3.5
     "Only allow a single instance of AvsPmod" : u"Nur eine Programminstanz erlauben",
     "Show warning at startup if there are dlls with bad naming in default plugin folder" : u"", # New in v2.2.1
     "Show warning for bad plugin naming at startup" : u"", # New in v2.2.1
-    "Middle mouse button behavior on the script" : u"", # New in v2.6.1.5
-    "Middle mouse on script (0 open source, 1 show video frame)" : u"", # New in v2.6.1.5
+    "Bookmark jump" : u"", # New in v2.6.3.5
+    "Custom jump" : u"", # New in v2.6.3.5
+    "Mouse browse buttons" : u"", # New in v2.6.3.5
+    "Mouse browse buttons (forward/backward) on video and script window\nIf 'Tab change' and tab count less than 2, 'Bookmark jump' is used\nIf 'Tab change' press CTRL or left mouse and 'Bookmark jump' is used\nIf 'Bookmark jump', vice versa" : u"", # New in v2.6.3.5
+    "Middle mouse button behavior on the script, if script empty open source is used" : u"", # New in v2.6.3.5
+    "Middle mouse on script" : u"", # New in v2.6.3.5
+    "Open source" : u"", # New in v2.6.3.5
+    "Show video frame" : u"", # New in v2.6.3.5
     "Max number of recent filenames" : u"Max.Anzahl neuer Dateinamen",
     "This number determines how many filenames to store in the recent files menu" : u"Diese Zahl stellt fest wieviele Dateinamen im FileMenue gespeichert werden", 
     "Custom jump size:" : u"Eigene Sprungweite ",
@@ -588,6 +603,7 @@ messages = {
     "Add/Remove bookmark" : u"", # New in v2.2.1
     "Mark the current frame on the frame slider" : u"Markiere das aktuelle Einzelbild am Eizeldbild-Schieberegler",
     "Clear all bookmarks" : u"Lösche alle Lesezeichen",
+    "Clear all bookmarks, clears also script backup bookmarks" : u"", # New in v2.6.3.5
     "Titled &bookmarks" : u"", # New in v2.2.1
     "Move the nearest titled bookmark to the current position. A historic title will be restored if it matches the condition." : u"", # New in v2.2.1
     "Move titled bookmark" : u"", # New in v2.2.1
@@ -647,21 +663,31 @@ messages = {
     "Set the playback speed to the script frame rate" : u"Setze Geschwindigkeit auf die Skript Framerate",
     "Maximum speed" : u"", # New in v2.4.0
     "Play the video as fast as possible without dropping frames" : u"", # New in v2.4.0
+    "Play loop" : u"", # New in v2.6.3.5
+    "Play loop between trim editor first selection start and end frame" : u"", # New in v2.6.3.5
     "Drop frames" : u"", # New in v2.4.0
     "Maintain correct video speed by skipping frames" : u"", # New in v2.4.0
-    "Crop editor..." : u"Crop-Editor...",
-    "Show the crop editor dialog" : u"Zeige den Crop-Editor-Dialog",
-    "&Trim selection editor" : u"&Trim-Auswahl-Editor",
-    "Show the trim selection editor dialog" : u"Zeige den Auswahldialog des Trim-Editors",
-    "Show trim selection editor" : u"Zeige den Trim-Auswahl-Editor ",
-    "Set a selection startpoint (shows the trim editor if not visible)" : u"Auswahl eines Startpunkts (Angezeigt im Trim-Editor,falls nicht sichtbar)",
+    "0 % to 38 % faster playback, depending on CPU load" : u"", # New in v2.6.3.5
+    "Use faster playback routine" : u"", # New in v2.6.3.5
+    "Crop editor..." : u"Crop Editor...",
+    "Show the crop editor dialog" : u"Zeige den Crop Editor Dialog",
+    "&Trim selection editor" : u"&Trim Auswahl Editor",
+    "Show the trim selection editor dialog" : u"Zeige den Auswahldialog des Trim Editors",
+    "Show trim selection editor" : u"Zeige den Trim Auswahl Editor ",
+    "Set a selection startpoint (shows the trim editor if not visible)" : u"Auswahl eines Startpunkts (Angezeigt im Trim Editor,falls nicht sichtbar)",
     "Set selection startpoint" : u"Auswahl Startpunkt",
-    "Set a selection endpoint (shows the trim editor if not visible)" : u"Auswahl eines Endpunkts (Angezeigt im Trim-Editor,falls nicht sichtbar)",
+    "Set a selection endpoint (shows the trim editor if not visible)" : u"Auswahl eines Endpunkts (Angezeigt im Trim Editor,falls nicht sichtbar)",
     "Set selection endpoint" : u"Auswahl Endpunkt",
     "Move selections before the current frame" : u"", # New in v2.5.1 r452
     "The current selections are cut from the timeline and inserted before the current frame. Bookmarks are shifted accordingly." : u"", # New in v2.5.1 r452
     "Move selections after the current frame" : u"", # New in v2.5.1 r452
     "The current selections are cut from the timeline and inserted after the current frame. Bookmarks are shifted accordingly." : u"", # New in v2.5.1 r452
+    "Add bookmark to trim intersections" : u"", # New in v2.6.3.5
+    "Mark trim points" : u"", # New in v2.6.3.5
+    "Restore bookmarks" : u"", # New in v2.6.3.5
+    "Restore the bookmark if it was a bookmark before selection" : u"", # New in v2.6.3.5
+    "Clear all trim editor selections (hide the trim editor if visible)" : u"", # New in v2.6.3.5
+    "Clear selections" : u"", # New in v2.6.3.5
     "Zoom video preview to 25%" : u"Zoom Video-Vorschaufunktion auf 25%",
     "Zoom video preview to 50%" : u"Zoom Video-Vorschaufunktion auf 50%",
     "Zoom video preview to 100% (normal)" : u"Zoom Video-Vorschaufunktion auf 100%",
@@ -707,9 +733,9 @@ messages = {
     "Save last view position and zoom on tab change" : u"", # New in v2.5.1.18
     "Save view pos on tab change" : u"", # New in v2.5.1.18
     "Save image as..." : u"Speichere Bild als...",
-    "Save the current frame as a bitmap" : u"Speicher das aktuelle Einzelbild als Bitmap-Datei",
+    "Save the current frame as image file. If you not change the frame number, Quick save image uses the name." : u"", # New in v2.6.3.5
     "Quick save image" : u"", # New in v2.5.0
-    "Save the current frame as a bitmap with a default filename, overwriting the file if already exists" : u"", # New in v2.5.0
+    "Save the current frame with a default filename, overwriting the file if already exists. Press CTRL to reset the default name formatting" : u"", # New in v2.6.3.5
     "Copy image to clipboard" : u"", # New in v2.4.2
     "Copy the current frame to the clipboard as a bitmap" : u"", # New in v2.4.2
     "Force the script to reload and refresh the video frame" : u"Erzwinge durch Skript, erneutes laden und erneuern des Videoeinzelbilds",
@@ -718,18 +744,23 @@ messages = {
     "Toggle the video preview" : u"Umschalten Video Vorschaufunktion",
     "Toggle preview placement" : u"", # New in v2.5.1
     "When not using a separate window for the video preview, toggle between showing it at the bottom (default) or to the right" : u"", # New in v2.5.1
-    "Toggle extended left move" : u"Umschalten erweiteter linker Bereich", # New in v2.5.1.06
-    "Video window extended left move" : u"Umschalten erweiteter Video Fensterbereich", # New in v2.5.1.06
+    "Expands the left shift area of the video window" : u"", # New in v2.6.3.5
+    "Toggle extended left move" : u"Umschalten erweiteter linker Bereich",
     "Release all open videos from memory" : u"Freigabe aller offenen Videos im Speicher", 
     "Release all videos from memory" : u"Freigabe aller Videos im Speicher", 
     "Switch focus between the video preview and the text editor" : u"Schalten des Fokus zwischen der Video-Vorschaufunktion und dem Texteditor",
     "Switch video/text focus" : u"Schalte Video/Textfocus",
     "Show/hide the slider sidebar (double-click the divider for the same effect)" : u"",
     "Toggle the slider sidebar" : u"Umschalten der Schieberegler Sidebar ", 
+    "Tools" : u"", # New in v2.6.3.5
     "Request every video frame once (analysis pass for two-pass filters)" : u"", # New in v2.3.0
     "Run analysis pass" : u"", # New in v2.3.0
     "External player" : u"Externer Player",
     "Play the current script in an external program" : u"Wiedergabe des aktuellen Skripts in einem externen Programm",
+    "External tool arg1" : u"", # New in v2.6.3.5
+    "Run the current script with an external program and arg1" : u"", # New in v2.6.3.5
+    "External tool arg2" : u"", # New in v2.6.3.5
+    "Run the current script with an external program and arg2" : u"", # New in v2.6.3.5
     "Show information about the video in a dialog box" : u"Zeige Informationen über das Video in der Dialogbox.",
     "Video information" : u"Videoinformation",
     "&Options" : u"&Optionen",
@@ -788,15 +819,15 @@ messages = {
     "Open the macros folder" : u"", # New in v2.2.1
     "&Macros" : u"", # New in v2.2.1
     "Close" : u"Schließen",
-    "Close all the other" : u"Schließe alle anderen", # New in v2.6.1.5
+    "Close all the other" : u"Schließe alle anderen",
     "Rename" : u"Umbenennen",
     "Group" : u"", # New in v2.5.0
     "Save" : u"Speichern",
     "Save as..." : u"Speichere als...",
     "Reload" : u"Neu laden",
     "Open directory" : u"Öffne Verzeichnis",
-    "Release video memory" : u"Video Speicher freigeben", # New in v2.6.1.5
-    "Release all other video memory" : u"Video Speicher aller anderen Tabs freigeben", # New in v2.6.1.5
+    "Release video memory" : u"Video Speicher freigeben",
+    "Release all other video memory" : u"Video Speicher aller anderen Tabs freigeben",
     "Tab change loads bookmarks" : u"", # New in v2.6.1.5
     "Copy to new tab" : u"Zu einem neuen Tab kopieren",
     "Reposition to" : u"", # New in v2.2.1
@@ -821,8 +852,8 @@ messages = {
     "Insert Dissolve(trim,) commands: " : u"", # New in v2.5.1.18
     "Insert Dissolve(clips,) commands: " : u"", # New in v2.5.1.18
     "Use the buttons which appear on the video slider handle to create the frame selections to trim." : u"Video-Schieberegler für die Bildauswahl zum trimmen benutzen ",
+    "Clear" : u"Löschen",
     "The script's directory doesn't exist anymore!" : u"Das Skript Verzeichnis exestiert nicht mehr",
-    "%d Bookmarks imported" : u"", # New in v2.5.1.18
     "Print Preview" : u"", # New in v2.3.1
     "Failed to create print preview" : u"", # New in v2.3.1
     "Print Error" : u"", # New in v2.3.1
@@ -850,8 +881,8 @@ messages = {
     "Interleaved RGB48" : u"", # New in v2.5.1 r452
     "Error loading the script" : u"Fehlerhaft geladenes Skript",
     "Starting analysis pass..." : u"", # New in v2.3.0
-    "Frame %s/%s (%#.4g fps)" : u"", # New in v2.4.2
-    "Finished (%s fps average)" : u"", # New in v2.5.0
+    "Average %#.4g fps\nFrame %s/%s (%#.4g fps)" : u"", # New in v2.6.3.5
+    "Finished (%s fps average)\n*** live and let live ***" : u"", # New in v2.6.3.5
     "Frame size:" : u"Einzelbildgröße",
     "Length:" : u"Länge",
     "Frame rate:" : u"Wiederholungsrate der Einzelbilder",
@@ -940,7 +971,8 @@ messages = {
     "Input a frame number or time (hr:min:sec) and hit Enter. Right-click to retrieve from history." : u"", # New in v2.2.1
     "bell at bookmarks" : u"", # New in v2.5.1.18
     "highlight bookmarks" : u"", # New in v2.5.1.18
-    "set highlight color..." : u"", # New in v2.5.1.18
+    "bookmark highlight color..." : u"", # New in v2.6.3.5
+    "selection highlight color..." : u"", # New in v2.6.3.5
     "copy as time" : u"", # New in v2.2.1
     "copy" : u"", # New in v2.2.1
     "paste" : u"", # New in v2.2.1
@@ -991,6 +1023,7 @@ messages = {
     "Source files" : u"", # New in v2.3.0
     "Open a script or source" : u"Öffne ein Skript oder Source",
     "Reload the file and lose the current changes?" : u"Die Datei neu laden und die gegenwärtigen Änderungen verlieren?",
+    "%d Bookmarks imported" : u"", # New in v2.5.1.18
     "Open this file" : u"Öffne die Datei",
     "Save session before closing all tabs?" : u"Session speichern bevor,alle Tags geschlossen werden?",
     "Save current script" : u"Speichere aktuelles Skript",
@@ -1011,8 +1044,6 @@ messages = {
     "Script import" : u"", # New in v2.5.1.18
     "AvxSynth plugins" : u"", # New in v2.4.0
     "Insert a plugin" : u"Eingabe Plugin",
-    "No bookmarks defined!" : u"Keine Lesezeichen definiert",
-    "There must be more than one unique bookmark to use this feature!" : u"Es muß mehr als ein eindeutiges Lesezeichen geben, um diese Funktion zu nutzen",
     "Jump to specified bookmark" : u"Springe zu bestimmten Lesezeichen",
     "Line: %(line)i  Col: %(col)i" : u"Zeile: %(line)i  Col: %(col)i",
     "Frame Based" : u"Einzelbild basierend",
@@ -1025,20 +1056,12 @@ messages = {
     "Float" : u"",
     "pos" : u"",
     "*hex" : u"", # New in v2.6.1.5
-    "Edit AviSynth function information" : u"Bearbeite Information der Avisynthfunktionen ",
-    "  Function name" : u"Funktiosname",
-    "Function arguments" : u"Funktionsargumente", 
-    "Open filter customization file" : u"Öffnen Fileranpassungsdatei",
-    "Filter customization file" : u"", # New in v2.3.0
-    "Calltip-only text file" : u"", # New in v2.3.0
-    "Invalid filter customization file!" : u"Falsche Fileranpassungsdatei",
-    "Save filter customization file" : u"Speichern Fileranpassungsdatei",
-    "Invalid argument!" : u"Falsches Argument",
     "Error: can not save the Session" : u"", # New in v2.6.1.5
     "Question" : u"Frage",
     "Save changes before previewing?" : u"Speichern der Änderungen vor der Vorschau",
     "Select an external player" : u"Wähle einen externen Player",
     "A program must be specified to use this feature!" : u"Ein Programm muss angegeben werden um dieses Eigenschaften zu nutzen",
+    "Program not found. Must be specified to use this feature!" : u"", # New in v2.6.3.5
     "General settings..." : u"Allgemeine Einstellungen...",
     "Invalid slider text: min > max" : u"Ungültiger Schiebereglertext: min > max",
     "Invalid slider text: value not in bounds" : u"Ungültiger Schiebereglertext: Wert nicht in Grenzen",
@@ -1058,7 +1081,7 @@ messages = {
     "Left-click to select a color, right click to reset to default" : u"Links-click um eine Farbe zu wählen, Rechts-click setzt auf Standard zurück.",
     "Toggle \"%(label)s\" section" : u"Umschalten \"%(label)s\" Abschnitt",
     "Above plugin names contain undesirable symbols.\nRename them to only use alphanumeric or underscores,\nor make sure to use them in short name style only." : u"", # New in v2.3.0
-    "Found more then one function with the same name.\nYou should clean up your plugins." : u"", # New in v2.6.1.5
+    "This function is beta!\nFound more then one function with the same name.\nYou should clean up your plugins." : u"", # New in v2.6.3.5
     "Don't show me this again" : u"", # New in v2.2.1
     "Changing the plugins directory writes to the Windows registry.\n" : u"", # New in v2.6.1.5
     "Writing to: HKLM\\Software\\Avisynth\\plugindir2_5\n" : u"", # New in v2.6.1.5
@@ -1112,7 +1135,6 @@ messages = {
     "Action" : u"", # New in v2.2.1
     "Edit the keyboard shortcut" : u"Bearbeite Tastatur Kurzbefehl",
     "Key:" : u"",
-    "Clear" : u"Löschen",
     "%(keyString)s not found in key string list" : u"%(keyString)s konnte nicht in der key Sring Liste gefunden werden",
     "This shortcut is being used by:" : u"Diese Kurzbefehl wird benutzt von",
     "Insert" : u"Eingabe",
@@ -1176,6 +1198,7 @@ messages = {
     "Automatically compute bitrate value on startup" : u"Den Bitraten Wert automatisch berechnen beim Start",
     "Automatically compute pixel aspect ratio from d2v on startup" : u"Pixel-Längenverhältnis von d2v beim Start automatisch berechnen",
     "Append batch commands to the avs script as comments" : u"Batch-Kommandos zum avs Index als Anmerkungen anfügen",
+    "Add output file to new tab" : u"", # New in v2.6.3.5
     "Encoder priority:" : u"Encoderpriorität:",
     "Path to %(name)s:" : u"Pfad zu %(name)s:",
     "Extra arguments:" : u"Extra Argumente:",
@@ -1241,13 +1264,16 @@ messages = {
     #--- Macros ---#
     "Bookmarks at Intervals" : u"", # New in v2.3.0
     "Bookmarks to Chapter" : u"", # New in v2.3.0
+    "Bookmarks to Trims" : u"", # New in v2.6.3.5
     "ConditionalReader file from bookmarks" : u"", # New in v2.3.0
     "DeleteFrame" : u"", # New in v2.3.0
     "DuplicateFrame" : u"", # New in v2.3.0
     "Import bookmarks from file" : u"", # New in v2.3.1
+    "Open Image Sequence" : u"", # New in v2.6.3.5
     "Preview from current point" : u"", # New in v2.3.0
     "Random Clip Order" : u"", # New in v2.3.0
     "Save Image Sequence" : u"", # New in v2.3.0
+    "Selected trims to selections" : u"", # New in v2.6.3.5
     "Shift Bookmarks by frames" : u"", # New in v2.3.0
     "Example (Resize)" : u"", # New in v2.3.0
     "Examples" : u"", # New in v2.3.0
@@ -1269,7 +1295,6 @@ messages = {
 
     #--- Macro: Bookmarks at Intervals ---#
     "Choose a frame step or a number of intervals" : u"", # New in v2.3.0
-    "Frame step" : u"", # New in v2.3.0
     "Number of intervals" : u"", # New in v2.3.0
     "End frame" : u"", # New in v2.4.2
     "Start frame" : u"", # New in v2.4.2
@@ -1278,6 +1303,9 @@ messages = {
     #--- Macro: Bookmarks to Chapter ---#
     "Save chapter file as..." : u"", # New in v2.4.0
     "Text files" : u"", # New in v2.3.0
+
+    #--- Macro: Bookmarks to Trims ---#
+    "No bookmarks defined." : u"", # New in v2.6.3.5
 
     #--- Macro: ConditionalReader file from bookmarks ---#
     "There is not bookmarks" : u"", # New in v2.3.0
@@ -1321,6 +1349,11 @@ messages = {
     "[COMBED FRAMES] section could not be parsed" : u"", # New in v2.3.1
     "Bookmark file unrecognized!" : u"", # New in v2.3.0
 
+    #--- Macro: Open Image Sequence ---#
+    "Select the Image" : u"", # New in v2.6.3.5
+    "Images (bmp, jpg, png, tiff)" : u"", # New in v2.6.3.5
+    "All files (*.*)" : u"", # New in v2.6.3.5
+
     #--- Macro: Preview from current point ---#
     "Failed to run the external player!\n\nOpen the macro file in the \"Macros\" subdirectory\nwith a text editor and edit the executable\ndirectory appropriately!" : u"", # New in v2.3.0
 
@@ -1336,11 +1369,17 @@ messages = {
     "Use always this directory" : u"", # New in v2.4.0
     "Add the frame number as the suffix" : u"", # New in v2.5.0
     "Save ranges to subdirectories" : u"", # New in v2.5.0
+    "Add image source to the script  ->" : u"", # New in v2.6.3.5
+    "To new tab" : u"", # New in v2.6.3.5
     "Range between bookmarks" : u"", # New in v2.4.0
+    "From first to last bookmark" : u"", # New in v2.6.3.5
     "Trim editor selections" : u"", # New in v2.4.0
     "All frames" : u"", # New in v2.4.0
     "Select an output directory and basename for the new images files" : u"", # New in v2.4.0
+    "Bookmarks out of frame count" : u"", # New in v2.6.3.5
+    "At least 2 bookmarks are required" : u"", # New in v2.6.3.5
     "There is not Trim editor selections" : u"", # New in v2.4.0
+    "There is no process selection" : u"", # New in v2.6.3.5
     "Saving images..." : u"", # New in v2.3.0
     "scene_{0:0{1}}" : u"", # New in v2.5.0
     "%d image files created." : u"", # New in v2.3.0

@@ -863,7 +863,7 @@ if os.name == 'nt':
         """
 
         # GPo, I see visual no differenze is pitch greater then row_size
-        def DrawFrame(self, frame, dc=None, offset=(0,0), size=None):
+        def DrawFrame(self, frame, dc=None, offset=(0,0), size=None, srcXY=(0,0)):
             if not self._GetFrame(frame):
                 return
             if dc:
@@ -874,7 +874,7 @@ if os.name == 'nt':
                 else:
                     w, h = size
                 DrawDibDraw(handleDib[0], hdc, offset[0], offset[1], w, h,
-                            self.pInfo, self.pBits, 0, 0, w, h, 0)
+                            self.pInfo, self.pBits, srcXY[0], srcXY[1], w, h, 0)
                 return True
 
 

@@ -12,6 +12,22 @@ GPo source: https://github.com/gispos/AvsPmod
 GPo releases: https://github.com/gispos/AvsPmod/releases
 
 --------------------------
+Version 2.6.3.7 [2020-09-11] GPo
+--------------------------
+*New function called Split View (Check it out)
+- Splits the video window in two views and draws (optional) the next or previous tab in the same View.
+- Both videos must have the same width and height.
+- When you select video > 'Split View on/off' and Split View is disabled:
+--- if tab count 1, the tab is copied and Split View is enabled
+--- if tab count 2, Split View selects the correct tab automatically and splits the view
+--- if under options Video > 'Use next tab for Split View' selected: the next tab is the second view otherwise the previous tab
+- if a tab is changed, Split View is always deactivated
+- always the left view is the source for zoom and positions calculations
+- To avoid confusion, remember: if 'use next tab' (default) the left view is the selected tab, otherwise the right view is the selected tab
+- Choose your option, the default value 'next tab' was only used because it is more manageable at first.
+* The menus in the video menu has ben repositioned
+
+--------------------------
 Version 2.6.3.6 [2020-08-30] GPo
 --------------------------
 fixed the new version cannot load the old session files

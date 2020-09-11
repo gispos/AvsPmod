@@ -5285,7 +5285,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.scriptDropTarget = ScriptDropTarget
 
         # Create all the program's controls and dialogs
-        self.blockStatusbar = False
+        self.blockStatusbar = False  # GPo 2020
         self.NewFileName = _('New File')
         self.scrapWindow = ScrapWindow(self)
         self.bookmarkDict = {}
@@ -5310,8 +5310,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.zoomwindowfit = False
         self.zoomwindowfill = False
         self.extended_move = False   # GPo
+        self.splitView = False       # GPo
+        self.splitView_next = self.options['splitview_next']   # GPo select seconde tab for splitView default next tab or -1 prevouse tab
+        self.extended_width = 0      # GPo 2020 used for extended_move and splitView
         self.bellAtBookmark = False  # GPo
-        #self.options['lastscriptid'] = None # GPo, clear last saved image filename
         self.lastcrop = ""
         self.oldWidth = 0
         self.oldHeight = 0
@@ -6068,6 +6070,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'enableframepertab_same': True,
             'applygroupoffsets': True,
             'offsetbookmarks': False,
+            'splitview_next' : True,
             # AUTOSLIDER OPTIONS
             'keepsliderwindowhidden': False,
             'autoslideron': True,
@@ -6111,7 +6114,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'invertscrolling': False,
             'invertframescrolling': False,
             'dllnamewarning': True,
-            #~'doublefuncnamewarning': True,
             # TOGGLE OPTIONS
             'alwaysontop': False,
             'previewalwaysontop': False,
@@ -6883,6 +6885,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 ((_('Enable line-by-line update'), wxp.OPT_ELEM_CHECK, 'autoupdatevideo', _('Enable the line-by-line video update mode (update every time the cursor changes line position)'), dict() ), ),
                 ((_('Focus the video preview upon refresh'), wxp.OPT_ELEM_CHECK, 'focusonrefresh', _('Switch focus to the video preview window when using the refresh command'), dict() ), ),
                 ((_('Refresh preview automatically'), wxp.OPT_ELEM_CHECK, 'refreshpreview', _('Refresh preview when switch focus on video window or change a value in slider window'), dict() ), ),
+                ((_('Use next tab for Split View'), wxp.OPT_ELEM_CHECK, 'splitview_next', _('Use next or previous tab as second script.\nZoom scroll calculations always on the left view.'), dict() ), ),
                 ((_('Shared timeline'), wxp.OPT_ELEM_CHECK, 'enableframepertab', _('Seeking to a certain frame will seek to that frame on all tabs'), dict() ), ),
                 ((_('Only on tabs of the same characteristics'), wxp.OPT_ELEM_CHECK, 'enableframepertab_same', _('Only share timeline for clips with the same resolution and frame count'), dict(ident=20) ), ),
                 ((_('Mouse wheel function'), wxp.OPT_ELEM_LIST, 'mousewheelfunc', _('Determines which mouse wheel function is used, see below tabs.Tab change also possible under Misc -> Mouse browse buttons'), dict(choices=[(_('Frame step'), 'frame_step'), (_('Tab change'), 'tab_change'), (_('Tab change or scroll'), 'tab_change_or_scroll'),]) ), ), # GPo 2020
@@ -7101,6 +7104,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.mainSplitter.Bind(wx.EVT_LEFT_DOWN, OnMainSplitterLeftDown)
         self.mainSplitter.Bind(wx.EVT_MOUSE_CAPTURE_LOST, self.OnMouseCaptureLost) # GPo 2020
 
+        # splitter for script and videoWindow
         def OnMainSplitterPosChanged(event):
             """ # GPo 2020, removed not needed for wx 2.93
             if self.clicked_on_divider:
@@ -7108,7 +7112,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             """
             self.SaveLastSplitVideoPos()
             if self.zoomwindow:
-                self.ShowVideoFrame(focus=False)
+                self.ShowVideoFrame(forceLayout=True, focus=False)
             # end old self.clicked_on_divider
             event.Skip()
         self.mainSplitter.Bind(wx.EVT_LEFT_UP, OnMainSplitterPosChanged)
@@ -7124,7 +7128,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.currentScript.sliderWindowShown = False
             self.SaveLastSplitVideoPos()
             if self.zoomwindow:
-                self.ShowVideoFrame(focus=False)
+                self.ShowVideoFrame(forceLayout=True,focus=False)
             event.Skip()
         self.videoSplitter.Bind(wx.EVT_LEFT_UP, OnVideoSplitterPosChanged)
         #~ self.videoSplitter.Bind(wx.EVT_SPLITTER_SASH_POS_CHANGED, OnVideoSplitterPosChanged)
@@ -7683,20 +7687,23 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     (_('Select custom color'), '', self.OnMenuVideoSetCustomBackgroundColor, _("Choose the color used if 'custom' is selected")),
                     ),
                 ),
-                (_('Keep variables on refreshing'), '', self.OnMenuVideoReuseEnvironment, _('Create the new AviSynth clip on the same environment. Useful for tweaking parameters'), wx.ITEM_CHECK, False),
-                (_('Save view pos on tab change'), '', self.OnMenuSaveViewPos, _('Save last view position and zoom on tab change'), wx.ITEM_CHECK, False),
                 (''),
                 (_('Save image as...'), '', self.OnMenuVideoSaveImage, _('Save the current frame as image file. If you not change the frame number, ''Quick save image'' uses the name.')),
                 (_('Quick save image'), '', self.OnMenuVideoQuickSaveImage, _('Save the current frame with a default filename, overwriting the file if already exists. Press CTRL to reset the default name formatting')),
                 (_('Copy image to clipboard'), '', self.OnMenuVideoCopyImageClipboard, _('Copy the current frame to the clipboard as a bitmap')),
                 (''),
                 (_('Refresh preview'), 'F5', self.OnMenuVideoRefresh, _('Force the script to reload and refresh the video frame')),
-                (_('Show/Hide the preview'), 'Shift+F5', self.OnMenuVideoToggle, _('Toggle the video preview')),
-                (_('Toggle preview placement'), '', self.OnMenuVideoTogglePlacement, _('When not using a separate window for the video preview, toggle between showing it at the bottom (default) or to the right')),
-                (_('Toggle extended left move'), '', self.OnMenuExtendedMove, _('Expands the left shift area of the video window')),
+                (_('Keep variables on refreshing'), '', self.OnMenuVideoReuseEnvironment, _('Create the new AviSynth clip on the same environment. Useful for tweaking parameters'), wx.ITEM_CHECK, False),
                 (_('Release all videos from memory'), '', self.OnMenuVideoReleaseMemory, _('Release all open videos from memory')),
+                (''),
+                (_('Split View on/off'), '', self.OnMenuSplitView, _('Shows the selected and optional the next or previous tab in one view (video width and height must be the same)')),
+                (_('Toggle extended left move'), '', self.OnMenuExtendedMove, _('Expands the left shift area of the video window')),
+                (_('Save view pos on tab change'), '', self.OnMenuSaveViewPos, _('Save/Restore last view position and zoom factor on tab change'), wx.ITEM_CHECK, False),
+                (''),
+                (_('Show/Hide the preview'), 'Shift+F5', self.OnMenuVideoToggle, _('Toggle the video preview')),
                 (_('Switch video/text focus'), 'Escape', self.OnMenuVideoSwitchMode, _('Switch focus between the video preview and the text editor')),
                 (_('Toggle the slider sidebar'), 'Alt+F5', self.OnMenuVideoToggleSliderWindow, _('Show/hide the slider sidebar (double-click the divider for the same effect)')),
+                (_('Toggle preview placement'), '', self.OnMenuVideoTogglePlacement, _('When not using a separate window for the video preview, toggle between showing it at the bottom (default) or to the right')),
                 #(_('Tools'), self.videoToolsMenu, -1),
                 (_('Tools'),
                     (
@@ -7714,7 +7721,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 (_('Video preview always on top'), '', self.OnMenuOptionsPreviewAlwaysOnTop, _('If the video preview is detached, keep it always on top of other windows'), wx.ITEM_CHECK, self.options['previewalwaysontop']),
                 (_('Disable video preview'), '', self.OnMenuOptionsDisablePreview, _('If checked, the video preview will not be shown under any circumstances'), wx.ITEM_CHECK, self.options['disablepreview']),
                 (''),
-                (_('Associate .avs files with AvsP'), '', self.OnMenuOptionsAssociate, _('Configure this computer to open .avs files with AvsP when double-clicked. Run again to disassociate')),
+                (_('Associate .avs files with AvsPmod'), '', self.OnMenuOptionsAssociate, _('Configure this computer to open .avs files with AvsP when double-clicked. Run again to disassociate')),
                 (''),
                 (_('Fonts and colors...'), '', self.OnMenuOptionsFontsAndColors, _('Edit the various AviSynth script fonts and colors')),
                 (_('Make fonts and colors backup'), '', self.OnMenuOptionsFontsAndColorsWriteBackup, _('Make script fonts and colors backup')),
@@ -9462,6 +9469,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             return
         # GPo 2018
         self.extended_move = False
+        self.splitView = False
         # Show the video preview
         if not self.ShowVideoFrame(forceLayout=True):
             return False
@@ -9491,9 +9499,34 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         # Set the crop status text
         self.SetVideoStatusText()
 
-        # GPo 2018
+    # GPo 2018
     def OnMenuExtendedMove(self, event):
         self.extended_move = not self.extended_move
+        self.ShowVideoFrame(forceLayout=True)
+
+    # GPo 2020
+    def OnMenuSplitView(self, event):
+        self.splitView = not self.splitView
+        if self.splitView:
+            sel = 1 if self.splitView_next else 0
+            if self.scriptNotebook.GetPageCount() == 1:
+                self.splitView = False
+                if not self.previewWindowVisible:
+                    if not self.ShowVideoFrame(forceLayout=True):
+                        return
+                self.NewTab(copytab=True)
+                if self.splitView_next:
+                    self.SelectTab(0)
+                self.splitView = True
+            elif self.scriptNotebook.GetPageCount() == 2 and self.scriptNotebook.GetSelection() == sel:
+                self.splitView = False
+                if not self.previewWindowVisible:
+                    if not self.ShowVideoFrame(forceLayout=True):
+                        return
+                if self.splitView_next:
+                    self.SelectTab(0)
+                else: self.SelectTab(1)
+                self.splitView = True
         self.ShowVideoFrame(forceLayout=True)
 
     def SetDialogPositionNextToVideo(self, dlg):
@@ -9756,6 +9789,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         vidmenus = [self.videoWindow.contextMenu, self.GetMenuBar().GetMenu(2)]
         id = event.GetId()
         for vidmenu in vidmenus:
+            #menu = vidmenu.FindItemById(vidmenu.FindItem(_('Display options'))).GetSubMenu()
+            #menu = menu.FindItemById(menu.FindItem(_('Bit &depth'))).GetSubMenu()
             menu = vidmenu.FindItemById(vidmenu.FindItem(_('Bit &depth'))).GetSubMenu()
             menuItem = menu.FindItemById(id)
             if menuItem:
@@ -11129,6 +11164,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             event.Veto()
 
         self.StopPlayback()
+        self.splitView = False
         if self.FindFocus() == self.videoWindow:
             self.boolVideoWindowFocused = True
         else:
@@ -11825,6 +11861,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             except:
                 pass
             self.videoWindow.SetCursor(wx.StockCursor(wx.CURSOR_DEFAULT))
+        if wx.GetKeyState(wx.WXK_CONTROL) and wx.GetKeyState(wx.WXK_ALT):
+            self.splitView = not self.splitView
+            self.ShowVideoFrame()
         event.Skip()
 
     def OnCropDialogSpinTextChange(self, event=None):
@@ -12369,10 +12408,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         #event.Skip()
 
     def OnPaintVideoWindow(self, event):
-        dc = wx.PaintDC(self.videoWindow)
         if self.previewWindowVisible:
-            script = self.currentScript
-            self.PaintAVIFrame(dc, script, self.currentframenum, isPaintEvent=True)
+            if self.splitView:
+                dc = wx.ClientDC(self.videoWindow)
+            else:
+                dc = wx.PaintDC(self.videoWindow) # faster but doesn't update the whole area
+            self.PaintAVIFrame(dc, self.currentScript, self.currentframenum, isPaintEvent=True)
 
     def OnEraseBackground(self, event=None):
         if event is not None:
@@ -12409,10 +12450,15 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     dc.Clear()
                     dc.DestroyClippingRegion()
                 if w_dc == w_scrolled:
-                    right = w_dc - int(script.AVI.DisplayWidth * self.zoomfactor) - self.xo
+                    if self.splitView:
+                        right = w_dc - int(self.extended_width * self.zoomfactor)
+                    else:
+                        right = w_dc - int(script.AVI.DisplayWidth * self.zoomfactor) - self.xo
                 else:
                     # GPo 2018  added wd  (for move moore to left)
-                    if self.extended_move:
+                    if self.splitView:
+                        wd = max(w_scrolled - round(self.extended_width * self.zoomfactor), zfa) - self.xo
+                    elif self.extended_move:
                         wd = max((w_scrolled - int(script.AVI.DisplayWidth * self.zoomfactor))-4, zfa)
                     else:
                         wd = zfa
@@ -13468,6 +13514,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             #~ for scriptname, boolSelected, scripttext in session['scripts']:
             mapping = session['scripts'] and isinstance(session['scripts'][0], collections.Mapping)
             for item in session['scripts']:
+                if not 'bookmarks' in item:
+                    item['bookmarks'] = None # old sessions
                 index = self.LoadTab(item, compat=not mapping)
                 if mapping:
                     boolSelected = item['selected']
@@ -13556,7 +13604,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                               eol=item.get('eol'), workdir=item['workdir'], scripttext=item['text'],
                               setSavePoint=setSavePoint, splits=item['splits'],
                               framenum=item['current_frame'], last_length=item.get('last_length'),
-                              group=item.get('group', -1), group_frame=item.get('group_frame'), bookmarks=item['bookmarks'] if 'bookmarks' in item else None)
+                              group=item.get('group', -1), group_frame=item.get('group_frame'),
+                              bookmarks=item['bookmarks'] if 'bookmarks' in item else None) # None for old sessions
         if reload and index is not None:
             # index is None -> the script was already loaded, different to this other version
             # but the user chose not to replace it.  If that's the case, don't prompt again
@@ -15426,18 +15475,20 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             oldSize = self.videoWindow.GetVirtualSize()
             videoWidth = w = int(script.AVI.DisplayWidth * self.zoomfactor)
             videoHeight = h = int(script.AVI.DisplayHeight * self.zoomfactor)
-            if self.zoomwindowfit:
+            if self.zoomwindowfit and not self.splitView:
                 self.videoWindow.SetVirtualSize((0,0))
             if doLayout:
                 if forceLayout or not self.previewWindowVisible or (videoWidth != self.oldWidth) or (videoHeight != self.oldHeight):
                     #wx.Bell()  # for testing
                     # GPo 2018, 2020
-                    zfa = 3 if self.zoomfactor <= 2 else 4  # GPo, make the free space larger over 2.0 zoom, must also change OnEraseBackground()
-                    if self.extended_move and not self.zoomwindow and not self.separatevideowindow:
-                        wA, hA = self.GetClientSize()
-                        self.videoWindow.SetVirtualSize((w + self.xo + zfa + int(wA/2), h + self.yo + zfa))
-                    elif not self.zoomwindowfit:
-                        self.videoWindow.SetVirtualSize((w + self.xo + zfa, h + self.yo + zfa))
+                    if not self.splitView:
+                        zfa = 3 if self.zoomfactor <= 2 else 4  # GPo, make the free space larger over 2.0 zoom, must also change OnEraseBackground()
+                        if self.extended_move and not self.zoomwindow and not self.separatevideowindow:
+                            wA, hA = self.videoWindow.GetClientSize()
+                            self.videoWindow.SetVirtualSize((w + self.xo + zfa + int(wA/2), h + self.yo + zfa))
+                            #self.videoWindow.SetVirtualSize((w + self.xo + zfa + min(wA,w), h + self.yo + zfa))
+                        elif not self.zoomwindowfit:
+                            self.videoWindow.SetVirtualSize((w + self.xo + zfa, h + self.yo + zfa))
                     if resize is None:
                         if self.currentScript.lastSplitVideoPos is not None:
                             resize = False
@@ -15462,15 +15513,23 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if newSize != oldSize or newVideoSize != oldVideoSize or not self.previewWindowVisible:
                 #wx.Bell()  # for testing
                 self.previewWindowVisible = True
-                # GPo 2020, if zoomwindow zoom must calc new, if preview wasn't visible
-                # also must new set the video size values (self.zoomfactor is changed)
+                #if not self.splitView:
+                    # GPo 2020, if zoomwindow zoom must calc new, if preview wasn't visible
+                    # also must new set the video size values (self.zoomfactor is changed)
                 if self.zoomwindow:
                     self.CalculateZoomFitFill(self.currentScript)
                     videoWidth = w = int(script.AVI.DisplayWidth * self.zoomfactor)
                     videoHeight = h = int(script.AVI.DisplayHeight * self.zoomfactor)
                     newVideoSize = (videoWidth, videoHeight)
-                # end new set
-                self.videoWindow.Refresh()
+                    # end new set
+
+                if self.splitView:
+                    dc = wx.ClientDC(self.videoWindow)
+                    self.PaintAVIFrame(dc, script, self.currentframenum)
+                    self.OnEraseBackground()
+                else:
+                    self.videoWindow.Refresh()
+
                 if self.customHandler > 0:
                     self.PostMessage(self.customHandler, self.AVSP_VID_SIZE, videoWidth, videoHeight)
             else:
@@ -16150,7 +16209,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     self.videoWindow.DoPrepareDC(inputdc)
                 except:
                     self.videoWindow.PrepareDC(inputdc)
+
                 inputdc.Blit(0, 0, w, h, dc, 0, 0)
+
+            elif self.splitView:
+                if not self.PaintSplitView(inputdc, frame, isPaintEvent):
+                    return
             else:
                 dc = inputdc
                 try: # DoPrepareDC causes NameError in wx2.9.1 and fixed in wx2.9.2
@@ -16160,6 +16224,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 if not script.AVI.DrawFrame(frame, dc):
                     self.ErrorMessage_GetFrame(script, frame)  # GPo
                     return
+        elif self.splitView:
+            if not self.PaintSplitView(inputdc, frame, isPaintEvent):
+                return
         else:
             dc = wx.MemoryDC()
             w = script.AVI.DisplayWidth
@@ -16190,7 +16257,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.videoWindow.PrepareDC(inputdc)
             inputdc.SetUserScale(self.zoomfactor, self.zoomfactor)
             inputdc.Blit(0, 0, w, h, dc, 0, 0)
-            if isPaintEvent and self.zoomwindowfill and self.firstToggled:  # GPo, TODO check it if needed
+            if isPaintEvent and self.zoomwindow and self.firstToggled:  # GPo, TODO check it if needed
                 wx.CallAfter(self.ShowVideoFrame)
                 self.firstToggled = False
         self.paintedframe = frame
@@ -16232,6 +16299,153 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             dc.DrawRectangle(w - mright, top, w, h - mbottom - top)
         self.oldCropValues = self.cropValues
 
+    # GPo 2020
+    def PaintSplitView(self, inputdc, frame, isPaintEvent):
+        def Error():
+            self.splitView = False
+            self.videoWindow.Refresh()
+            wx.Bell()
+
+        if self.splitView_next:           # next script as seconde script
+            script = self.currentScript
+            if script.AVI is None:
+                Error()
+                return
+
+            script2, index = self.getScriptAtIndex(self.scriptNotebook.GetSelection() + 1)
+            if script2 is None or script2.AVI is None:
+                Error()
+                return
+        else:                             # prevouse script as seconde script
+            script2 = self.currentScript
+            if script2.AVI is None:
+                Error()
+                return
+
+            script, index = self.getScriptAtIndex(self.scriptNotebook.GetSelection() - 1)
+            if script is None or script.AVI is None:
+                Error()
+                return
+
+        # Check same size (height can be differ, but not a nice view)
+        w = script.AVI.DisplayWidth
+        h = script.AVI.DisplayHeight
+        if script2.AVI.DisplayWidth != w or script2.AVI.DisplayHeight != h:
+            Error()
+            wx.MessageBox('Both videos must have the same width and height.','Split View Error',parent=self)
+            return
+
+        cx,cy = self.videoWindow.GetClientSize()
+        xx,yy = self.videoWindow.GetViewStart()         # source x start point, must recalc on zoom
+        if not xx:
+            xx = ax = 0
+        else:
+            ax = xx = xx - self.xo                      # recalc GetViewStart for proper source x
+            xx = round(xx/self.zoomfactor)
+
+        #xxx = min(xx + int(cx/2), w)                   # target offset (display split point) only for zoom 1.0
+        xxx = min(int((ax + cx/2)/self.zoomfactor),w)   # recalc the target offset when zoom != 1.0
+
+        # bitmap width for both script's
+        self.extended_width = (w*2)-3 if w*2*self.zoomfactor <= cx else w + int((cx/2)/self.zoomfactor)-3
+
+        # draw the first script bitmap
+        dc = wx.MemoryDC()
+        dc.Clear()
+        bmp = wx.EmptyBitmap(self.extended_width, h)
+        dc.SelectObject(bmp)
+        if not script.AVI.DrawFrame(frame, dc):
+            self.splitView = False
+            self.ErrorMessage_GetFrame(script, frame)
+            return
+
+        # draw with offset the second script over the first bitmap
+        if not script2.AVI.DrawFrame(frame, dc, offset=wx.Point(xxx,0), srcXY=wx.Point(xx, 0)):
+            self.splitView = False
+            self.ErrorMessage_GetFrame(script2, frame)
+            return
+
+        # now set zoom and virtual size and blit the output
+        try:
+            self.videoWindow.DoPrepareDC(inputdc)
+        except:
+            self.videoWindow.PrepareDC(inputdc)
+
+        if self.zoomwindow or self.zoomfactor != 1:
+            vsx = int(self.extended_width*self.zoomfactor) + self.xo + 3
+            if self.videoWindow.GetVirtualSize()[0] != vsx:
+                self.videoWindow.SetVirtualSize((vsx, int(h*self.zoomfactor) + self.yo + 3))
+            inputdc.SetUserScale(self.zoomfactor, self.zoomfactor)
+        else:
+            vsx = self.extended_width + self.xo + 3
+            if self.videoWindow.GetVirtualSize()[0] != vsx:
+                self.videoWindow.SetVirtualSize((vsx, h + self.yo + 3))
+
+        inputdc.Blit(0,0,self.extended_width,h,dc,0,0)
+        return True
+
+    """
+    def PaintSplitView_Alpha(self, inputdc, frame, isPaintEvent):
+        if not self.splitView:
+            return
+        script = self.currentScript
+        if script.AVI is None:
+            self.splitView = False
+            return
+        index = self.scriptNotebook.GetSelection()
+        script2, index = self.getScriptAtIndex(index + 1)
+        if script2 is None or script2.AVI is None:
+            self.splitView = False
+            return
+
+        cx,cy = self.videoWindow.GetClientSize()
+
+        # First script
+        w = script.AVI.DisplayWidth
+        h = script.AVI.DisplayHeight
+        sw = w*2 if cx > w else w + round(w/2)
+
+        dc = wx.MemoryDC()
+        bmp = wx.EmptyBitmap(sw, h)
+        dc.SelectObject(bmp)
+        if not script.AVI.DrawFrame(frame, dc):
+            self.ErrorMessage_GetFrame(script, frame)  # GPo
+            return
+
+        # Seconde script
+        w = script2.AVI.DisplayWidth
+        h = script2.AVI.DisplayHeight
+        dc2 = wx.MemoryDC()
+        bmp2 = wx.EmptyBitmap(w,h)
+        dc2.SelectObject(bmp2)
+        if not script2.AVI.DrawFrame(frame, dc2):
+            self.ErrorMessage_GetFrame(script2, frame)  # GPo
+            return
+
+        # draw second frame over first frame
+        xx,yy = self.videoWindow.GetViewStart()
+        if not xx:
+            xx = 0
+        else:
+            xx -= self.xo
+        xxx = min(xx + int(cx/2), w)
+
+        dc.Blit(xxx,0,w-xx,h,dc2,xx,0)
+        del dc2
+
+        # blit output
+        try:
+            self.videoWindow.DoPrepareDC(inputdc)
+        except:
+            self.videoWindow.PrepareDC(inputdc)
+
+        #if self.zoomwindow or self.zoomfactor != 1:
+            #inputdc.SetUserScale(self.zoomfactor, self.zoomfactor)
+
+        #self.videoWindow.SetVirtualSize((sw + self.xo + 3,h+ self.yo + 3))# test for size
+        inputdc.Blit(0,0,sw,h,dc,0,0)
+        del dc
+    """
     def PaintCropWarnings(self, spinCtrl=None):
         script = self.currentScript
         keys = ('left', 'top', '-right', '-bottom')
@@ -18004,6 +18218,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                 invert_scroll=self.options['invertscrolling'])
         self.options['exitstatus'] = 1  # GPo 2020, set default
         ID = dlg.ShowModal()
+
         # Set the data
         if ID == wx.ID_OK:
             old_plugins_directory = self.ExpandVars(self.options['pluginsdir'])
@@ -18062,6 +18277,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     self.OnEraseBackground()
             self.SetExternalToolMenuLabel()
             dlg.Destroy()
+
+            if self.options['splitview_next'] != self.splitView_next:
+                self.splitView_next = self.options['splitview_next'] # GPo 2020 use variable for this option (faster as read from options dict)
+                if self.splitView and self.options['exitstatus'] != 2:
+                    self.splitView = False
+                    self.ShowVideoFrame(forceLayout=True)
+
             if self.options['exitstatus'] == 2:  # GPo 2020
                 self.ExitProgram(restart=True)
         else:
