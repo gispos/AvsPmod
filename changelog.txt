@@ -12,6 +12,16 @@ GPo source: https://github.com/gispos/AvsPmod
 GPo releases: https://github.com/gispos/AvsPmod/releases
 
 --------------------------
+Version 2.6.3.8 [2020-09-13] GPo
+--------------------------
+* Split View rewritten
+- no selection of next or previous tab, the next tab is always the second view
+- if the last tab is selected when Split View is activated, the previous tab is used as the first view
+- the split view tabs can now be switched back and forth and split view remains activated. 
+---- e.g.: activate Split View on tab 1, you can switch between tab 1 and tab 2 and Split View remains switched on.
+- script update and error handling improved
+
+--------------------------
 Version 2.6.3.7 [2020-09-11] GPo
 --------------------------
 *New function called Split View (Check it out)
