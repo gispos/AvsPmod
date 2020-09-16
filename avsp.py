@@ -6010,8 +6010,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'externalplayer': '',
             'externalplayerargs': '',
             'externaltool': '',         # GPo 2020
-            'externaltoolarg1': 'AvsMeter info|avsinfo>-lf',   # GPo 2020, predefined for AvsMeter
-            'externaltoolarg2': 'AvsMeter|',   # GPo 2020, predefined for AvsMeter
+            'externaltoolarg1': 'AvsMeter info|-avsinfo',   # GPo 2020, predefined for AvsMeter
+            'externaltoolarg2': 'AvsMeter|%fn',   # GPo 2020, predefined for AvsMeter
             'docsearchpaths': ';'.join(['%pluginsdir%',
                     os.path.join('%avisynthdir%' if os.name == 'nt'
                         else '/usr/local/share', 'docs', 'english', 'corefilters'),
@@ -6847,8 +6847,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 ((_('External player:'), wxp.OPT_ELEM_FILE, 'externalplayer', _('Location of external program for script playback'), dict(fileMask=(_('Executable files') + ' (*.exe)|*.exe|' if os.name == 'nt' else '') + _('All files') + ' (*.*)|*.*', buttonText='...', buttonWidth=30) ), ),
                 ((_('External player extra args:'), wxp.OPT_ELEM_STRING, 'externalplayerargs', _('Additional arguments when running the external player'), dict() ), ),
                 ((_('External tool:'), wxp.OPT_ELEM_FILE, 'externaltool', _('Location of external program, e.g. AvsMeter'), dict(fileMask=(_('Executable files') + ' (*.exe)|*.exe|' if os.name == 'nt' else '') + _('All files') + ' (*.*)|*.*', buttonText='...', buttonWidth=30) ), ),
-                ((_('External tool arg1:'), wxp.OPT_ELEM_STRING, 'externaltoolarg1', _('Arguments for external tool menu 1, e.g. Menu label|arg\nChar > replace the script name with the text bevor e.g. avsinfo>-lf' ), dict() ),
-                 (_('External tool arg2:'), wxp.OPT_ELEM_STRING, 'externaltoolarg2', _('Arguments for external tool menu 2, e.g. Menu label|arg\nChar > replace the script name with the text bevor e.g. avsinfo>-lf' ), dict() ), ),
+                ((_('External tool arg1:'), wxp.OPT_ELEM_STRING, 'externaltoolarg1', _('Arguments for external tool menu 1, e.g. Menu label|arguments\nUse %fn to pass the script file name with the arguments.' ), dict() ),
+                 (_('External tool arg2:'), wxp.OPT_ELEM_STRING, 'externaltoolarg2', _('Arguments for external tool menu 2, e.g. Menu label|arguments\nUse %fn to pass the script file name with the arguments.' ), dict() ), ),
                 ((_('Avisynth help file/url:'), wxp.OPT_ELEM_FILE_URL, 'avisynthhelpfile', _('Location of the avisynth help file or url'), dict(buttonText='...', buttonWidth=30) ), ),
                 ((_('Documentation search paths:'), wxp.OPT_ELEM_STRING, 'docsearchpaths', _('Specify which directories to search for docs when you click on a filter calltip'), dict() ), ),
                 ((_('Documentation search url:'), wxp.OPT_ELEM_STRING, 'docsearchurl', _("The web address to search if docs aren't found (the filter's name replaces %filtername%)"), dict() ), ),
@@ -9505,34 +9505,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.ShowVideoFrame(forceLayout=True)
 
     # GPo 2020
-    """
-    def OnMenuSplitView(self, event):
-        self.splitView = not self.splitView
-        if self.splitView:
-            self.splitView_next = self.options['splitview_next']
-            sel = 1 if self.splitView_next else 0
-            if self.scriptNotebook.GetPageCount() == 1:
-                self.splitView = False
-                if not self.previewWindowVisible:
-                    if not self.ShowVideoFrame(forceLayout=True):
-                        return
-                self.NewTab(copytab=True)
-                if self.splitView_next:
-                    self.SelectTab(0)
-                self.splitView = True
-            elif self.scriptNotebook.GetPageCount() == 2 and self.scriptNotebook.GetSelection() == sel:
-                self.splitView = False
-                if not self.previewWindowVisible:
-                    if not self.ShowVideoFrame(forceLayout=True):
-                        return
-                if self.splitView_next:
-                    self.SelectTab(0)
-                else: self.SelectTab(1)
-                self.splitView = True
-        self.ShowVideoFrame(forceLayout=True)
-    """
-
-    # GPo 2020
     def OnMenuSplitView(self, event):
         self.splitView = not self.splitView
 
@@ -9541,6 +9513,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.splitView = False
 
             if not self.previewWindowVisible:
+                self.refreshAVI = True
                 if not self.ShowVideoFrame(forceLayout=True):
                     return
 
@@ -9567,9 +9540,14 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 else: script,i = self.getScriptAtIndex(index - 1)
 
             if script is not None:
+                w = self.currentScript.AVI.DisplayWidth
+                h = self.currentScript.AVI.DisplayHeight
                 self.refreshAVI = True
                 if self.UpdateScriptAVI(script=script, forceRefresh=False, prompt=False) is not None:
                     if not script.AVI.IsErrorClip() and script.AVI.error_message is None:
+                        if script.AVI.DisplayWidth != w or script.AVI.DisplayHeight != h:
+                            wx.MessageBox('Both videos must have the same width and height.','Split View Error',parent=self)
+                            return
                         wx.BeginBusyCursor()
                         try:
                             script.AVI.display_clip.get_frame(self.currentframenum)
@@ -15928,8 +15906,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 fitWidth, fitHeight = self.GetFitWindowSize()
                 if fitWidth == None:
                     return
-                zoomfactorWidth = float(fitWidth) / script.AVI.DisplayWidth
-                zoomfactorHeight = float(fitHeight) / script.AVI.DisplayHeight
+                if self.splitView and self.zoomwindowfit:
+                    zoomfactorWidth = float(fitWidth) / script.AVI.DisplayWidth / 2
+                    zoomfactorHeight = float(fitHeight) / script.AVI.DisplayHeight
+                else:
+                    zoomfactorWidth = float(fitWidth) / script.AVI.DisplayWidth
+                    zoomfactorHeight = float(fitHeight) / script.AVI.DisplayHeight
                 if self.zoomwindowfill:
                     self.zoomfactor = zoomfactorHeight if self.mainSplitter.GetSplitMode() == \
                                         wx.SPLIT_HORIZONTAL else zoomfactorWidth
@@ -15941,13 +15923,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     def UpdateScriptAVI(self, script=None, forceRefresh=False, keep_env=None,
                         prompt=True, showCursor=True):
-
         cursor = False
         try:
             if not script:
                 script = self.currentScript
                 index = self.scriptNotebook.GetSelection()
-
             else:
                 index = 0
                 for index in xrange(self.scriptNotebook.GetPageCount()):
@@ -16356,7 +16336,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.videoWindow.PrepareDC(inputdc)
             inputdc.SetUserScale(self.zoomfactor, self.zoomfactor)
             inputdc.Blit(0, 0, w, h, dc, 0, 0)
-            if isPaintEvent and self.zoomwindow and self.firstToggled:  # GPo, TODO check it if needed
+            if isPaintEvent and self.firstToggled and self.zoomwindow:  # GPo, TODO check it if needed, GPo, yes its needed
                 wx.CallAfter(self.ShowVideoFrame)
                 self.firstToggled = False
         self.paintedframe = frame
@@ -16409,9 +16389,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     def PaintSplitView(self, inputdc, frame, isPaintEvent):
         def Error():
             self.splitView = False
+            self.refreshAVI = True
             self.ShowVideoFrame(forceLayout=True)
 
-        if self.splitView_next:           # next script as seconde script
+        if self.splitView_next:           # next script as second script
             script = self.currentScript   # self.currentscript should have no errors, no check needed
             if script.AVI is None:
                 Error()
@@ -16422,7 +16403,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 Error()
                 return
             nextScript = script2
-        else:                             # prevouse script as seconde script
+        else:                             # prevouse script as second script
             script2 = self.currentScript
             if script2.AVI is None:
                 Error()
@@ -16434,7 +16415,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 return
             nextScript = script
 
-        # Check same size (height can be differ, but not a nice view)
         w = script.AVI.DisplayWidth
         h = script.AVI.DisplayHeight
 
@@ -16447,10 +16427,15 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 if nextScript.AVI.IsErrorClip() or nextScript.AVI.error_message is not None:
                     Error()
                     return
+            else:
+                Error()
+                return
+            # Check same size (height can be differ, but not a nice view)
             if script2.AVI.DisplayWidth != w or script2.AVI.DisplayHeight != h:
                 wx.MessageBox('Both videos must have the same width and height.','Split View Error',parent=self)
                 Error()
                 return
+            self.refreshAVI = False
 
         cx,cy = self.videoWindow.GetClientSize()
         xx,yy = self.videoWindow.GetViewStart()         # source x start point, must recalc on zoom
@@ -16473,12 +16458,14 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         dc.SelectObject(bmp)
         if not script.AVI.DrawFrame(frame, dc):
             self.splitView = False
+            self.HidePreviewWindow()
             self.ErrorMessage_GetFrame(script, frame)
             return
 
         # draw with offset the second script over the first bitmap
         if not script2.AVI.DrawFrame(frame, dc, offset=wx.Point(xxx,0), srcXY=wx.Point(xx, 0)):
             self.splitView = False
+            self.HidePreviewWindow()
             self.ErrorMessage_GetFrame(script2, frame)
             return
 
@@ -16869,25 +16856,21 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     # GPo 2020
     def RunExternalTool(self, args):
-        script = self.currentScript
-        if not script.filename or script.GetModify():
-            self.SaveScript(script.filename)
-            if not script.filename:
-                return
-
-        previewname = script.filename
         path = self.options['externaltool']
         if not os.path.isfile(path):
             wx.MessageBox(_('Program not found. Must be specified to use this feature!'), _('Error'), style=wx.OK|wx.ICON_ERROR)
             self.ShowOptions(0)
             return
-        if args.find('>') > 1:
-            a = args.split('>')
-            if len(a) > 0:
-                previewname = a[0].strip()
-                if len(a) > 1:
-                    args = a[1].strip()
-        wx.Execute('%s "%s" %s' % (path, previewname, args))
+
+        script = self.currentScript
+        if args.find('%fn') > -1:
+            if not script.filename or script.GetModify():
+                self.SaveScript(script.filename)
+                if not script.filename:
+                    return
+            args = args.replace('%fn', '"' + script.filename + '"')
+
+        wx.Execute('%s %s' % (path, args))
 
     def SetExternalToolMenuLabel(self):
         txt1 = self.options['externaltoolarg1']

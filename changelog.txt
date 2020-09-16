@@ -12,6 +12,20 @@ GPo source: https://github.com/gispos/AvsPmod
 GPo releases: https://github.com/gispos/AvsPmod/releases
 
 --------------------------
+Version 2.6.3.9 [2020-09-16] GPo
+--------------------------
+* Split View small changes (zoom, error handling)
+* AvsMeter.exe 3040 args has changed, you must change the args under otions > paths > 'external tool' 
+-- arg1 use  AvsMeter info|-avsinfo
+-- arg2 use  AvsMeter|%fn   ( %fn is now needed to pass the script file name )
+* New AvsPmod.exe file with high res app icon. Many thanks to user 'color' from the Doom9 forum
+-- for all Win10 Tile Fritzen, in German it sounds better (Für alle Win10 Kachel Fritzen) ;)
+-- and for those who use large desktop icons. 
+-- use it, delete it, sell it, do what you want with it
+-- if you use it, you have to replace the AvsPmod.exe in the root directory with this high res version.
+-- the file is in the folder 'AvsPmod_high_res_ico_version'
+
+--------------------------
 Version 2.6.3.8 [2020-09-13] GPo
 --------------------------
 * Split View rewritten
