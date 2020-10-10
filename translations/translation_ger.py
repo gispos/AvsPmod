@@ -16,7 +16,7 @@
 
 # Übersetzt von Henrik . AvsP 2.0.1  Danke für die Hilfe, besonders LigH ,doxville,Brother John, Selur und Rippraff !
 
-version = "2.6.3.6"
+version = "2.6.3.9"
 
 messages = {
     "AviSynth script" : u"", # New in v2.3.0
@@ -728,10 +728,6 @@ messages = {
     "Custom" : u"", # New in v2.5.1 r452
     "Choose the color used if 'custom' is selected" : u"", # New in v2.5.1 r452
     "Select custom color" : u"", # New in v2.5.1 r452
-    "Create the new AviSynth clip on the same environment. Useful for tweaking parameters" : u"", # New in v2.4.0
-    "Keep variables on refreshing" : u"", # New in v2.4.0
-    "Save last view position and zoom on tab change" : u"", # New in v2.5.1.18
-    "Save view pos on tab change" : u"", # New in v2.5.1.18
     "Save image as..." : u"Speichere Bild als...",
     "Save the current frame as image file. If you not change the frame number, Quick save image uses the name." : u"", # New in v2.6.3.5
     "Quick save image" : u"", # New in v2.5.0
@@ -740,18 +736,24 @@ messages = {
     "Copy the current frame to the clipboard as a bitmap" : u"", # New in v2.4.2
     "Force the script to reload and refresh the video frame" : u"Erzwinge durch Skript, erneutes laden und erneuern des Videoeinzelbilds",
     "Refresh preview" : u"Erneuere Vorschaufunktion",
-    "Show/Hide the preview" : u"", # New in v2.2.1
-    "Toggle the video preview" : u"Umschalten Video Vorschaufunktion",
-    "Toggle preview placement" : u"", # New in v2.5.1
-    "When not using a separate window for the video preview, toggle between showing it at the bottom (default) or to the right" : u"", # New in v2.5.1
-    "Expands the left shift area of the video window" : u"", # New in v2.6.3.5
-    "Toggle extended left move" : u"Umschalten erweiteter linker Bereich",
+    "Create the new AviSynth clip on the same environment. Useful for tweaking parameters" : u"", # New in v2.4.0
+    "Keep variables on refreshing" : u"", # New in v2.4.0
     "Release all open videos from memory" : u"Freigabe aller offenen Videos im Speicher", 
     "Release all videos from memory" : u"Freigabe aller Videos im Speicher", 
+    "Shows the selected and optional the next or previous tab in one view (video width and height must be the same)" : u"", # New in v2.6.3.7
+    "Split View on/off" : u"", # New in v2.6.3.7
+    "Expands the left shift area of the video window" : u"", # New in v2.6.3.5
+    "Toggle extended left move" : u"Umschalten erweiteter linker Bereich",
+    "Save/Restore last view position and zoom factor on tab change" : u"", # New in v2.6.3.7
+    "Save view pos on tab change" : u"", # New in v2.5.1.18
+    "Show/Hide the preview" : u"", # New in v2.2.1
+    "Toggle the video preview" : u"Umschalten Video Vorschaufunktion",
     "Switch focus between the video preview and the text editor" : u"Schalten des Fokus zwischen der Video-Vorschaufunktion und dem Texteditor",
     "Switch video/text focus" : u"Schalte Video/Textfocus",
     "Show/hide the slider sidebar (double-click the divider for the same effect)" : u"",
     "Toggle the slider sidebar" : u"Umschalten der Schieberegler Sidebar ", 
+    "Toggle preview placement" : u"", # New in v2.5.1
+    "When not using a separate window for the video preview, toggle between showing it at the bottom (default) or to the right" : u"", # New in v2.5.1
     "Tools" : u"", # New in v2.6.3.5
     "Request every video frame once (analysis pass for two-pass filters)" : u"", # New in v2.3.0
     "Run analysis pass" : u"", # New in v2.3.0
@@ -770,7 +772,7 @@ messages = {
     "Video preview always on top" : u"", # New in v2.3.1
     "Disable video preview" : u"Abschalten der Video-Vorschaufunktion",
     "If checked, the video preview will not be shown under any circumstances" : u"Wenn angehakt, wird unter keinen Umständen die Video-Vorschaufunktion gezeigt werden",
-    "Associate .avs files with AvsP" : u"Assoziiere .avs-Dateien mit AvsP",
+    "Associate .avs files with AvsPmod" : u"", # New in v2.6.3.7
     "Configure this computer to open .avs files with AvsP when double-clicked. Run again to disassociate" : u"", # New in v2.4.0
     "Edit the various AviSynth script fonts and colors" : u"Bearbeite die verschiedenen Schriftarten und Farben im Avisynth-Skript",
     "Fonts and colors..." : u"Schriftarten und Farben...",
@@ -830,6 +832,7 @@ messages = {
     "Release all other video memory" : u"Video Speicher aller anderen Tabs freigeben",
     "Tab change loads bookmarks" : u"", # New in v2.6.1.5
     "Copy to new tab" : u"Zu einem neuen Tab kopieren",
+    "Copy to new tab next" : u"Zu einem neuen Tab daneben kopieren",
     "Reposition to" : u"", # New in v2.2.1
     "Crop editor" : u"Cropeditor",
     "You can drag the crop regions with the left mouse button when this dialog is visible, cropping the edge closest to the initial mouse click." : u"Bei diesem Dialog ,kann die Cropfunktion auch mittels linker Maustaste im Bild ausgeführt werden.",
@@ -865,7 +868,7 @@ messages = {
     "Create a separator label" : u"Erstellen einer gesonderten Bezeichnung (label)",
     "Enter separator label" : u"Eingabe einer gesonderten Bezeichnung (label)",
     "Enter tag name:" : u"Eingabe tag Name", 
-    "Tag definition" : u"Tag-Definition",
+    "Tag definition" : u"Tag Definition",
     "Chapter" : u"", # New in v2.2.1
     "Set title for bookmarks" : u"", # New in v2.2.1
     "Title" : u"Titel",

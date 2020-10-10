@@ -12,6 +12,14 @@ GPo source: https://github.com/gispos/AvsPmod
 GPo releases: https://github.com/gispos/AvsPmod/releases
 
 --------------------------
+Version 2.6.4.0 [2020-10-10] GPo
+--------------------------
+* Added to tab context menu 'Split View insert tab'
+-- inserts a copy of the current tab next to the current tab and activates Split View.
+* High Res icon now as default app symbol icon (again thanks to Doom9 user 'color')
+* Small other changes
+
+--------------------------
 Version 2.6.3.9 [2020-09-16] GPo
 --------------------------
 * Split View small changes (zoom, error handling)

@@ -6011,7 +6011,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'externalplayerargs': '',
             'externaltool': '',         # GPo 2020
             'externaltoolarg1': 'AvsMeter info|-avsinfo',   # GPo 2020, predefined for AvsMeter
-            'externaltoolarg2': 'AvsMeter|%fn',   # GPo 2020, predefined for AvsMeter
+            'externaltoolarg2': 'AvsMeter|%fn',             # GPo 2020, predefined for AvsMeter
             'docsearchpaths': ';'.join(['%pluginsdir%',
                     os.path.join('%avisynthdir%' if os.name == 'nt'
                         else '/usr/local/share', 'docs', 'english', 'corefilters'),
@@ -7991,6 +7991,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             (_('Select all'), '', self.OnMenuEditSelectAll),
             (''),
             (_('Copy to new tab'), '', self.OnMenuEditCopyToNewTab),
+            (_('Split View insert tab'), '', self.OnMenuCopyToNewTabNext),
             (_('Reposition to'),                                       # index must be the last or you must change the ContextMenu
                 (
                 (''),
@@ -8525,6 +8526,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.UndoCloseTab()
 
     def OnMenuFileClose(self, event):
+        if self.previewWindowVisible:
+            index = self.scriptNotebook.GetSelection()
+            if index + 1 < self.scriptNotebook.GetPageCount(): # hide the prview if next AVI is None
+                script,idx = self.getScriptAtIndex(index+1)
+                if not script or script.AVI is None:
+                    self.HidePreviewWindow()
         self.CloseTab(prompt=True)
 
     def OnMenuOtherFilesClose(self, event):
@@ -9102,6 +9109,22 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     def OnMenuEditCopyToNewTab(self, event):
         self.NewTab(copytab=True)
+
+    # copy and insert tab next to current and enable split view
+    def OnMenuCopyToNewTabNext(self, event):
+        if self.splitView:
+            self.OnMenuSplitView(event=None)
+            wx.Yield()
+        re = self.NewTab(copytab=True, select=False, insertnext=True)
+        if re == False:  # crop dlg or trim dlg shown
+            return
+        wx.Yield()
+        self.OnMenuSplitView(event=None)
+        if isinstance(re, int):
+            try:
+                self.scriptNotebook.SetSelection(re)
+            except:
+                pass
 
     def OnMenuCopyUnmarkedScript(self, event):
         txt = self.getCleanText(self.currentScript.GetText()).replace('\n', '\r\n')
@@ -9959,6 +9982,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             script.AVI = None
 
     def OnMenuScriptReleaseMemory(self, event): # GPo
+        self.splitView = False
         shown = self.previewWindowVisible
         self.Freeze()
         try:
@@ -9977,6 +10001,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
            self.Thaw()
 
     def OnMenuOtherScriptReleaseMemory(self, event): # GPo
+        self.splitView = False
         idx = self.scriptNotebook.GetSelection()
         for index in xrange(self.scriptNotebook.GetPageCount()):
             if idx != index:
@@ -10074,25 +10099,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if self.playing_video:
             self.PlayPauseVideo(refreshFrame=False)
             self.PlayPauseVideo()
-    """
-    def OnMenuVideoPlayDecrement(self, event):
-        if self.play_speed_factor == 'max':
-            self.play_speed_factor = 0.8
-        else:
-            self.play_speed_factor /= 1.25
-        if self.playing_video:
-            self.PlayPauseVideo(refreshFrame=False)
-            self.PlayPauseVideo()
 
-    def OnMenuVideoPlayIncrement(self, event):
-        if self.play_speed_factor == 'max':
-            self.play_speed_factor = 1.2
-        else:
-            self.play_speed_factor *= 1.25
-        if self.playing_video:
-            self.PlayPauseVideo(refreshFrame=False)
-            self.PlayPauseVideo()
-    """
     def OnMenuVideoPlayNormal(self, event):
         self.play_speed_factor = 1.0
         if self.playing_video:
@@ -12696,7 +12703,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             os.execl(sys.executable, '"{}"'.format(sys.executable), *sys.argv)
 
     @AsyncCallWrapper
-    def NewTab(self, copyselected=True, copytab=False, text='', select=True):
+    def NewTab(self, copyselected=True, copytab=False, text='', select=True, insertnext=False):
         r'''NewTab(copyselected=True)
 
         Creates a new tab (automatically named "New File (x)", where x is an appropriate
@@ -12723,6 +12730,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if self.options['multilinetab']:
             rows = self.scriptNotebook.GetRowCount()
         iMax = 0
+        curIndex = -1
         # Python 3 has no ur'...' raw unicode string syntax. Use r'...' instead:
         # To create 2.7/3.x-Python compatible code, use conditional code that'll decode the byte string
         # produced by r'...' to a unicode object only on Python 2. Use module six to help with that:
@@ -12736,6 +12744,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 iNewFile = int(match.group(1))
                 if iNewFile > iMax:
                     iMax = iNewFile
+            if insertnext and self.currentScript == self.scriptNotebook.GetPage(i):
+                curIndex = i
         # Create a new script window instance
         scriptWindow = self.createScriptWindow()
         # Get text and set some script variables
@@ -12764,15 +12774,27 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         scriptWindow.lastSplitSliderPos = self.currentScript.lastSplitSliderPos # GPo 2020
 
             scriptWindow.ParseFunctions(text)
-            self.scriptNotebook.AddPage(scriptWindow,'%s (%s)' % (self.NewFileName, iMax+1), select=False)
+            if curIndex > -1:
+                curIndex += 1
+                self.scriptNotebook.InsertPage(curIndex, scriptWindow,'%s (%s)' % (self.NewFileName, iMax+1), select=False)
+                curIndex = min(curIndex, self.scriptNotebook.GetPageCount()-1)
+            else:
+                self.scriptNotebook.AddPage(scriptWindow,'%s (%s)' % (self.NewFileName, iMax+1), select=False)
+                curIndex = self.scriptNotebook.GetPageCount()-1
+
             scriptWindow.SetText(text)
             if select:
                 self.refreshAVI = True
-                self.scriptNotebook.SetSelection(self.scriptNotebook.GetPageCount()-1)
+                self.scriptNotebook.SetSelection(curIndex)
         else:
             if select:
                 self.HidePreviewWindow()
-            self.scriptNotebook.AddPage(scriptWindow,'%s (%s)' % (self.NewFileName, iMax+1), select=select)
+            if curIndex > -1:
+                curIndex += 1
+                self.scriptNotebook.InsertPage(curIndex, scriptWindow,'%s (%s)' % (self.NewFileName, iMax+1), select=select)
+            else:
+                self.scriptNotebook.AddPage(scriptWindow,'%s (%s)' % (self.NewFileName, iMax+1), select=select)
+                curIndex = self.scriptNotebook.GetPageCount()-1
 
         if select:
             self.currentScript = scriptWindow
@@ -12788,7 +12810,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 w, h = self.scriptNotebook.GetSize()
                 self.scriptNotebook.SetSize((w, h-1))
                 self.scriptNotebook.SetSize((w, h))
-        #self.Thaw() # GPo 2020, wx 2.93 don't like it on the last positon, flickers
+
+        return curIndex
 
     # GPo
     def FindTabByName(self, fname, select=True):
@@ -13183,9 +13206,17 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.NewTab(copyselected=False)
             self.SetScriptTabname(self.NewFileName, index=1)
             self.DeleteFrameBookmark(None, refreshVideo=False, refreshProgram=True) # GPo, clear the bookmarks
+        """
+        elif self.previewWindowVisible:
+            if index + 1 < self.scriptNotebook.GetPageCount(): # GPo hide the prview if next AVI is None
+                script2,idx = self.getScriptAtIndex(index+1)
+                if not script2 or script2.AVI is None:
+                    self.HidePreviewWindow()
+        """
 
         if self.options['multilinetab']:
             rows = self.scriptNotebook.GetRowCount()
+
         self.scriptNotebook.DeletePage(index)
         self.currentScript = self.scriptNotebook.GetPage(self.scriptNotebook.GetSelection())
         #self.options['lastscriptid'] = None # GPo, clear last saved image filename
@@ -16273,9 +16304,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         else:
             inputdc.SetDeviceOrigin(0, 0)
         if self.zoomfactor == 1 and not self.flip and not self.zoomwindow:
-            w = script.AVI.DisplayWidth
-            h = script.AVI.DisplayHeight
             if self.cropDialog.IsShown() or self.trimDialog.IsShown():
+                w = script.AVI.DisplayWidth
+                h = script.AVI.DisplayHeight
                 dc = wx.MemoryDC()
                 bmp = wx.EmptyBitmap(w,h)
                 dc.SelectObject(bmp)
