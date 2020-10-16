@@ -12,6 +12,15 @@ GPo source: https://github.com/gispos/AvsPmod
 GPo releases: https://github.com/gispos/AvsPmod/releases
 
 --------------------------
+Version 2.6.4.1 [2020-10-16] GPo
+--------------------------
+* New item in Bookmarks menu 'Clear tab bookmarks' clears only the current tab bookmarks (idea by real.finder)
+-- is disabled if tab context menu option 'Tab change loads bookmarks' is disabled
+* 'Clear all bookmarks' renamed to 'Clear all bookmarks Globally'
+* Fixed zoom option 'fill window'
+* Fixed current tab bookmarks not always saved in session file
+
+--------------------------
 Version 2.6.4.0 [2020-10-10] GPo
 --------------------------
 * Added to tab context menu 'Split View insert tab'
