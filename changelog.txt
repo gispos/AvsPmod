@@ -12,6 +12,19 @@ GPo source: https://github.com/gispos/AvsPmod
 GPo releases: https://github.com/gispos/AvsPmod/releases
 
 --------------------------
+Version 2.6.4.2 [2020-10-31] GPo
+--------------------------
+* New Menu 'Video > Snapshot': Intended for resource-saving comparison of simple settings (sharpness, color, etc.)
+-- 'Take snapshot' stores a bitmap from the current frame (tab related)
+-- 'Show/hide snapshot',  if the snapshot frame number and current frame number different, you must hit again 'Show/hide snapshot'.
+-- At the top left the video window shows which snapshot is displayed.
+-- Use shortcuts so that you can easily take, show or hide the snapshot.
+-- Snapshot hides only automatically if the frame number changed or crop editor is shown (at the moment)
+-- Further menus: Clear tab snapshot, Clear all snapshots Globally, New tab (script) from snapshot
+* Tab bookmarks now saves the bookmark titles
+* Added 'Bookmarks > Titled bookmarks > Remove all title', removes all titles from the current tab bookmarks
+ 
+--------------------------
 Version 2.6.4.1 [2020-10-16] GPo
 --------------------------
 * New item in Bookmarks menu 'Clear tab bookmarks' clears only the current tab bookmarks (idea by real.finder)

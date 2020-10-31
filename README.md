@@ -1,4 +1,4 @@
-# Version 2.6.4.1 GPo   
+# Version 2.6.4.2 GPo   
 - With pinterf (pfmod) modifications   
 - Avisynth header version 6   
 - For more see changelog   
@@ -8,8 +8,9 @@
 ##### On video window.   
 - Press left and right click: changes zoom 100%, 200%   
 - Press left and use mouse wheel: changes the zoom   
-- Press Ctrl and double click on the video window increases the height a few pixels   
-- Press Ctrl and click on button 'bookmark  jump' only trim editor marks would be selected   
+- Press Ctrl and double click on the video window increases the height a few pixels
+- If tab change for mouse browse buttons selected, press Ctrl or move the mouse on the slider area and bookmark jump is used.   
+- When the mouse pointer is in the video slider area. Press Ctrl and use mouse browse buttons only trim editor marks would be selected   
 
 ##### On script window:   
 - Press left and right click: The # character is removed or added at the beginning of the selected lines 

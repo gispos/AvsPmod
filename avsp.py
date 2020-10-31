@@ -5313,6 +5313,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.splitView = False       # GPo
         self.splitView_next = True   # GPo
         self.extended_width = 0      # GPo 2020 used for extended_move and splitView
+        self.snapShotIdx = 0            # GPo
         self.bellAtBookmark = False  # GPo
         self.lastcrop = ""
         self.oldWidth = 0
@@ -7548,6 +7549,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         (_('Clear historic titles'), '', self.OnMenuVideoBookmarkClearHistory, _('Clear all historic titles')),
                         (_('Set title (auto)'), '', self.OnMenuVideoBookmarkAutoTitle, _("Generate titles for untitled bookmarks by the pattern - 'Chapter %02d'")),
                         (_('Set title (manual)'), '', self.OnMenuVideoBookmarkSetTitle, _('Edit title for bookmarks in a list table')),
+                        (''),
+                        (_('Remove all title'), '', self.OnMenuVideoBookmarkRemoveAllTitle, _('Remove all title from the bookmarks')),
                         ),
                     ),
                     ),
@@ -7701,6 +7704,20 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 (_('Keep variables on refreshing'), '', self.OnMenuVideoReuseEnvironment, _('Create the new AviSynth clip on the same environment. Useful for tweaking parameters'), wx.ITEM_CHECK, False),
                 (_('Release all videos from memory'), '', self.OnMenuVideoReleaseMemory, _('Release all open videos from memory')),
                 (''),
+                (_('Snapshot'),
+                    (
+                    (_('Take snapshot 1'), '', self.OnMenuTakeSnapShot1, _('Make bitmap and script snapshot')),
+                    (_('Take snapshot 2'), '', self.OnMenuTakeSnapShot2, _('Make bitmap and script snapshot')),
+                    (_('Show/hide snapshot 1'), '', self.OnMenuShowSnapShot1, _('Show or hide snapshot 1')),
+                    (_('Show/hide snapshot 2'), '', self.OnMenuShowSnapShot2, _('Show or hide snapshot 2')),
+                    (''),
+                    (_('New tab from snapshot 1'), '', self.OnMenuNewTabFromSnapShot1, _('Copy snap shot 1 to new tab')),
+                    (_('New tab from snapshot 2'), '', self.OnMenuNewTabFromSnapShot2, _('Copy snap shot 2 to new tab')),
+                    (''),
+                    (_('Clear tab snapshots'), '', self.OnMenuClearTabSnapShot, _('Clears the current tab snapshots')),
+                    (_('Clear all snapshots Globally'), '', self.OnMenuClearAllSnapShots, _('Clears all snapshots Globally')),
+                    ),
+                ),
                 (_('Split View on/off'), '', self.OnMenuSplitView, _('Shows the selected and optional the next or previous tab in one view (video width and height must be the same)')),
                 (_('Toggle extended left move'), '', self.OnMenuExtendedMove, _('Expands the left shift area of the video window')),
                 (_('Save view pos on tab change'), '', self.OnMenuSaveViewPos, _('Save/Restore last view position and zoom factor on tab change'), wx.ITEM_CHECK, False),
@@ -7709,7 +7726,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 (_('Switch video/text focus'), 'Escape', self.OnMenuVideoSwitchMode, _('Switch focus between the video preview and the text editor')),
                 (_('Toggle the slider sidebar'), 'Alt+F5', self.OnMenuVideoToggleSliderWindow, _('Show/hide the slider sidebar (double-click the divider for the same effect)')),
                 (_('Toggle preview placement'), '', self.OnMenuVideoTogglePlacement, _('When not using a separate window for the video preview, toggle between showing it at the bottom (default) or to the right')),
-                #(_('Tools'), self.videoToolsMenu, -1),
                 (_('Tools'),
                     (
                     (_('Run analysis pass'), '', self.OnMenuVideoRunAnalysisPass, _('Request every video frame once (analysis pass for two-pass filters)')),
@@ -8085,6 +8101,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         scriptWindow.videoXY = None     # GPo
         scriptWindow.videoZoom = None   # GPo
         scriptWindow.bookmarks = {}     # GPo
+        scriptWindow.snapShots = {
+            'shot1': [-1, None, ""], # GPo: FrameNr, Bitmap, script
+            'shot2': [-1, None, ""]
+            }
         try:
             scriptWindow.contextMenu = self.menuBackups[0] if self.menuBackups else self.GetMenuBar().GetMenu(1)
         except AttributeError:
@@ -8651,7 +8671,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 ID = dlg.ShowModal()
                 dlg.Destroy()
                 if ID == wx.ID_YES:
-                    self.SetBookmarkFrameList_2(script.bookmarks.items())
+                    #self.SetBookmarkFrameList_2(script.bookmarks.items())
+                    self.DeleteAllFrameBookmarks(bmtype=0)
+                    self.MacroSetBookmark(script.bookmarks.items())
                     return False
             return True
 
@@ -8688,7 +8710,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.MacroSetBookmark(bookmarkDict.items())
             if compareBookmarks(script):
                 script.bookmarks = None
-                script.bookmarks = self.GetBookmarkFrameList(copy=True)
+                script.bookmarks = self.GetBookmarkDict()#self.GetBookmarkFrameList(copy=True)
             if event != None:  # On Menu click start statusbar timer
                 self.StatusbarTimer_Start(txt='%d Bookmarks imported' % len(bookmarkDict))
 
@@ -9365,6 +9387,15 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     self.videoSlider2.Refresh()
         dlg.Destroy()
 
+    def OnMenuVideoBookmarkRemoveAllTitle(self, event):
+        self.bookmarkDict.clear()
+        self.currentScript.bookmarks = None
+        self.currentScript.bookmarks = self.GetBookmarkDict()
+        self.UpdateBookmarkMenu()
+        self.videoSlider.Refresh()
+        if self.separatevideowindow:
+            self.videoSlider2.Refresh()
+
     def OnMenuVideoGroupApplyOffsets(self, event):
         self.OnGroupApplyOffsets(event)
 
@@ -9609,6 +9640,182 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             else: wx.Bell()
 
         self.ShowVideoFrame(forceLayout=True)
+
+    def OnMenuTakeSnapShot1(self, event):
+        script = self.currentScript
+        self.snapShotIdx = 0
+        if not self.ShowVideoFrame(forceLayout=True):
+            return
+        bmp = wx.EmptyBitmap(script.AVI.DisplayWidth, script.AVI.DisplayHeight)
+        dc = wx.MemoryDC()
+        dc.SelectObject(bmp)
+        if not script.AVI.DrawFrame(self.currentframenum, dc):
+            self.ErrorMessage_GetFrame(script, self.currentframenum)
+            return
+        txt = self.currentScript.GetText()
+        script.snapShots['shot1'][1] = None
+        script.snapShots['shot1'] = [self.currentframenum, bmp, txt]
+
+    def OnMenuTakeSnapShot2(self, event):
+        script = self.currentScript
+        self.snapShotIdx = 0
+        if not self.ShowVideoFrame(forceLayout=True):
+            return
+        bmp = wx.EmptyBitmap(script.AVI.DisplayWidth, script.AVI.DisplayHeight)
+        dc = wx.MemoryDC()
+        dc.SelectObject(bmp)
+        if not script.AVI.DrawFrame(self.currentframenum, dc):
+            self.ErrorMessage_GetFrame(script, self.currentframenum)
+            return
+        txt = self.currentScript.GetText()
+        script.snapShots['shot2'][1] = None
+        script.snapShots['shot2'] = [self.currentframenum, bmp, txt]
+
+    def OnMenuShowSnapShot1(self, event):
+        script = self.currentScript
+        nr, bmp, txt = script.snapShots['shot1']
+        if txt:
+            if (self.currentframenum != nr) or not self.previewWindowVisible:
+                self.ShowVideoFrame(nr, forceLayout=True, forceCursor=True)
+            else:
+                if bmp:
+                    self.snapShotIdx = 1 if self.snapShotIdx in [0,2] else 0
+                    self.videoWindow.Refresh()
+                else:
+                    self.snapShotIdx = 0
+                    dlg = wx.MessageDialog(self, _('No Bitmap available, but you can restore the script from snapshot.'+
+                                                   ' New tab from snapshot?'), _('Snapshot 1'), wx.YES_NO)
+                    ID = dlg.ShowModal()
+                    dlg.Destroy()
+                    if ID != wx.ID_YES:
+                        return
+                    self.OnMenuNewTabFromSnapShot1(None)
+        else:
+            wx.Bell()
+        """
+        if bmp:
+            self.snapShotIdx = 1 if self.snapShotIdx in [0,2] else 0
+            if (self.currentframenum != nr) or not self.previewWindowVisible:
+                self.ShowVideoFrame(nr, forceLayout=True)
+            else:
+                self.videoWindow.Refresh()
+        elif txt:
+            self.snapShotIdx = 0
+            if (self.currentframenum != nr) or not self.previewWindowVisible:
+                self.ShowVideoFrame(nr, forceLayout=True)
+            else:
+                dlg = wx.MessageDialog(self, _('No Bitmap available, but you can restore the script from snapshot.'+
+                                               ' New tab from snapshot?'), _('Snapshot 1'), wx.YES_NO)
+                ID = dlg.ShowModal()
+                dlg.Destroy()
+                if ID != wx.ID_YES:
+                    return
+                self.OnMenuNewTabFromSnapShot1(None)
+        else:
+            wx.Bell()
+        """
+
+    def OnMenuShowSnapShot2(self, event):
+        script = self.currentScript
+        nr, bmp, txt = script.snapShots['shot2']
+        if txt:
+            if (self.currentframenum != nr) or not self.previewWindowVisible:
+                self.ShowVideoFrame(nr, forceLayout=True, forceCursor=True)
+            else:
+                if bmp:
+                    self.snapShotIdx = 2 if self.snapShotIdx in [0,1] else 0
+                    self.videoWindow.Refresh()
+                else:
+                    self.snapShotIdx = 0
+                    dlg = wx.MessageDialog(self, _('No Bitmap available, but you can restore the script from snapshot.'+
+                                                   ' New tab from snapshot?'), _('Snapshot 2'), wx.YES_NO)
+                    ID = dlg.ShowModal()
+                    dlg.Destroy()
+                    if ID != wx.ID_YES:
+                        return
+                    self.OnMenuNewTabFromSnapShot2(None)
+        else:
+            wx.Bell()
+
+    def OnMenuNewTabFromSnapShot1(self, event):
+        txt = self.currentScript.snapShots['shot1'][2] # [2] = script text
+        if not txt:
+            wx.MessageBox(_('Empty script'),'Error snap shot 1')
+            return
+        self.HidePreviewWindow()
+        self.NewTab(copyselected=False,text=txt,insertnext=True)
+
+    def OnMenuNewTabFromSnapShot2(self, event):
+        txt = self.currentScript.snapShots['shot2'][2]
+        if not txt:
+            wx.MessageBox(_('Empty script'),'Error snap shot 2')
+            return
+        self.HidePreviewWindow()
+        self.NewTab(copyselected=False,text=txt,insertnext=True)
+
+    def OnMenuClearTabSnapShot(self, event):
+        self.snapShotIdx = 0
+        script = self.currentScript
+        for key in script.snapShots.keys():
+            script.snapShots[key] = [-1, None, ""]
+        self.videoWindow.Refresh()
+
+    def OnMenuClearAllSnapShots(self, event):
+        self.snapShotIdx = 0
+        for index in xrange(self.scriptNotebook.GetPageCount()):
+            script = self.scriptNotebook.GetPage(index)
+            for key in script.snapShots.keys():
+                script.snapShots[key] = [-1, None, ""]
+        self.videoWindow.Refresh()
+
+    def GetScriptSnapshotDict(self, script):
+        """
+        saveImage = False # Bitmap convertet to image and again to bitmap is not the same, so it's makes no sense
+        saveJpg = False
+        shots = {}
+        for key in script.snapShots.keys():
+            if script.snapShots[key][1] and saveImage:
+                temp = StringIO()
+                img = wx.ImageFromBitmap(script.snapShots[key][1])
+                if saveJpg:
+                    img.SetOption(wx.IMAGE_OPTION_QUALITY, '95')
+                    img.SaveStream(temp, wx.BITMAP_TYPE_JPEG)
+                else:
+                    img.SaveStream(temp, wx.BITMAP_TYPE_PNG)
+                temp.seek(0)
+            else:
+                temp = None
+            shots[key] = [script.snapShots[key][0], temp, script.snapShots[key][2]]
+
+        """
+        shots = {}
+        for key in script.snapShots.keys():
+            shots[key] = [script.snapShots[key][0], None, script.snapShots[key][2]]
+        return shots
+
+    def GetSnapShotFromSession(self, script, snapshots):
+        for key in script.snapShots.keys():
+            if key in snapshots.keys():
+                nr, temp, txt = snapshots[key]
+                if temp is not None:  # default None, not None only for testing, see GetScriptSnapshotDict
+                    img = None
+                    try:
+                        img = wx.ImageFromStream(temp)
+                        if img:
+                            try:
+                                bmp = wx.BitmapFromImage(img)
+                                script.snapShots[key] = [nr, bmp, txt]
+                            except:
+                                script.snapShots[key] = [nr, None, txt]
+                        else:
+                            script.snapShots[key] = [nr, None, txt]
+                    except:
+                        script.snapShots[key] = [nr, None, txt]
+                else:
+                    script.snapShots[key] = [nr, None, txt]
+            else:
+                script.snapShots[key] = [-1, None, ""]
+
 
     def SetDialogPositionNextToVideo(self, dlg):
         parent = dlg.GetParent()
@@ -10021,24 +10228,30 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.SetVideoStatusText()
         for index in xrange(self.scriptNotebook.GetPageCount()):
             script = self.scriptNotebook.GetPage(index)
+            for key in script.snapShots.keys():
+                script.snapShots[key][1] = None # Releas only the bitmap ?
             script.AVI = None
 
     def OnMenuScriptReleaseMemory(self, event): # GPo
         self.splitView = False
+        self.snapShotIdx = 0
+        script = self.currentScript
         shown = self.previewWindowVisible
         self.Freeze()
         try:
-          self.HidePreviewWindow()
-          self.SetVideoStatusText()
-          self.currentScript.AVI = None
-          if shown:
-              # now pick the first script that is initialized
-              for index in xrange(self.scriptNotebook.GetPageCount()):
-                  script = self.scriptNotebook.GetPage(index)
-                  if (script != None) and (script.AVI != None) and not script.display_clip_refresh_needed:
-                      self.SelectTab(index)
-                      self.ShowVideoFrame(script=script)
-                      break
+            self.HidePreviewWindow()
+            self.SetVideoStatusText()
+            for key in script.snapShots.keys():
+                script.snapShots[key][1] = None # Releas only the bitmap ?
+            script.AVI = None
+            if shown:
+                # now pick the first script that is initialized
+                for index in xrange(self.scriptNotebook.GetPageCount()):
+                    script = self.scriptNotebook.GetPage(index)
+                    if (script != None) and (script.AVI != None) and not script.display_clip_refresh_needed:
+                        self.SelectTab(index)
+                        self.ShowVideoFrame(script=script)
+                        break
         finally:
            self.Thaw()
 
@@ -10047,8 +10260,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         idx = self.scriptNotebook.GetSelection()
         for index in xrange(self.scriptNotebook.GetPageCount()):
             if idx != index:
-              script = self.scriptNotebook.GetPage(index)
-              script.AVI = None
+                script = self.scriptNotebook.GetPage(index)
+                for key in script.snapShots.keys():
+                    script.snapShots[key][1] = None
+                script.AVI = None
 
     def OnMenuVideoToggle(self, event):
         if self.previewWindowVisible:
@@ -11120,7 +11335,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 c = self.OnMenuBookmarksFromScript(event=None, beep=False, difWarn=self.options['warnscriptbookmarksdif'])
                 if c == 0:
                     if self.currentScript.bookmarks:
-                        self.SetBookmarkFrameList_2(self.currentScript.bookmarks.items())
+                        #~self.SetBookmarkFrameList_2(self.currentScript.bookmarks.items())
+                        self.DeleteAllFrameBookmarks(bmtype=0)
+                        self.MacroSetBookmark(self.currentScript.bookmarks.items())
                     else:
                         self.DeleteAllFrameBookmarks(bmtype=0)
             return True
@@ -11141,32 +11358,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     if currIndex == oldIndex - 1:
                         self.splitView_next = True
                     else: self.splitView = False
-                """
-                if self.splitView:
-                    oldScript = self.scriptNotebook.GetPage(oldIndex)
-                    self.refreshAVI = True
-                    changed = self.ScriptChanged(oldScript)
-                    if self.UpdateScriptAVI(oldScript, forceRefresh=False, prompt=False) is not None:
-                        if changed:
-                            wx.BeginBusyCursor()
-                        try:
-                            oldScript.AVI.display_clip.get_frame(self.currentframenum)
-                            if oldScript.AVI.display_clip.get_error() is not None:
-                                self.splitView = False
-                                wx.Bell()
-                        finally:
-                            if changed:
-                                wx.EndBusyCursor()
-                    else:
-                        self.splitView = False
-                        wx.Bell()
-                """
             else:
                 self.splitView = False
 
         # Set some related key variables (affects other functions)
         self.currentScript = script
         self.refreshAVI = True
+        self.snapShotIdx = 0
         bmSet = False # bookmarks not set, its nicer to set bookmarks after show frame
 
         oldSliderWindow = self.currentSliderWindow
@@ -11299,7 +11497,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.currentScript.videoZoom = None   # GPo
         if self.tabChangeLoadBookmarks:
             self.currentScript.bookmarks = None   # GPo 2020
-            self.currentScript.bookmarks = self.GetBookmarkFrameList(copy=True) # GPo 2020
+            self.currentScript.bookmarks = self.GetBookmarkDict() #self.GetBookmarkFrameList(copy=True) # GPo 2020
 
         if self.previewWindowVisible:
             if oldSelectionIndex >= 0:
@@ -12523,7 +12721,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     def OnPaintVideoWindow(self, event):
         if self.previewWindowVisible:
-            if self.splitView:
+            if self.splitView or self.snapShotIdx > 0:
                 dc = wx.ClientDC(self.videoWindow)
             else:
                 dc = wx.PaintDC(self.videoWindow) # faster but doesn't update the whole area
@@ -12883,7 +13081,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     @AsyncCallWrapper
     def OpenFile(self, filename='', default='', f_encoding=None, eol=-1, workdir=None,
                  scripttext=None, setSavePoint=True, splits=None, framenum=None,
-                 last_length=None, group=-1, group_frame=None, bookmarks=None):
+                 last_length=None, group=-1, group_frame=None, bookmarks=None, snapshots=None):
         r'''OpenFile(filename='', default='')
 
         If the string 'filename' is a path to an Avisynth script, this function opens
@@ -13018,6 +13216,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     script.SetSavePoint()
                 if bookmarks is not None:
                     script.bookmarks = dict(bookmarks)
+                if snapshots is not None:
+                    self.GetSnapShotFromSession(script, snapshots)
+                    #script.snapShots['shot1'] = [['shot1'][0], None, snapshots['shot1'][2]]
+                    #script.snapShots['shot2'] = [snapshots['shot2'][0], None, snapshots['shot2'][2]]
                 #else:
                     #script.bookmarks.clear()
                 self.scriptNotebook.SetSelection(index)
@@ -13039,9 +13241,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     if count > 0:
                         wx.CallAfter(self.GetStatusBar().SetStatusText, _('%d Bookmarks imported') % count)
                     elif len(script.bookmarks) > 0:
-                        self.SetBookmarkFrameList(script.bookmarks.items(), bmtype=0)
+                        #self.SetBookmarkFrameList(script.bookmarks.items(), bmtype=None)
+                        self.DeleteAllFrameBookmarks(bmtype=0)
+                        self.MacroSetBookmark(script.bookmarks.items())
                 elif len(script.bookmarks) > 0 and idx == indexCur:
-                    self.SetBookmarkFrameList(script.bookmarks.items(), bmtype=0)
+                    #self.SetBookmarkFrameList(script.bookmarks.items(), bmtype=None)
+                    self.DeleteAllFrameBookmarks(bmtype=0)
+                    self.MacroSetBookmark(script.bookmarks.items())
 
                 return index
 
@@ -13238,6 +13444,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         # Save last state
         self.lastClosed = self.GetTabInfo(index)
         # Delete the tab from the notebook
+        self.snapShotIdx = 0
+        for key in script.snapShots.keys():
+            script.snapShots[key] = [-1, None, ""]
         script.AVI = None
         script.lastFramenum = None # GPo, disable OnPageChanged
         # If only 1 tab, make another
@@ -13660,6 +13869,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             for item in session['scripts']:
                 if not 'bookmarks' in item:
                     item['bookmarks'] = None # old sessions
+                if not 'snapshots' in item:
+                    item['snapshots'] = None # old sessions
                 index = self.LoadTab(item, compat=not mapping)
                 if mapping:
                     boolSelected = item['selected']
@@ -13718,7 +13929,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if compat:
             nItems = len(item)
             defaults = (None, None, None, None, None, 0, 'latin1', '', {})
-            name, selected, text, hash, splits, current_frame, f_encoding, workdir, bookmarks = item + defaults[nItems:]
+            name, selected, text, hash, splits, current_frame, f_encoding, workdir, bookmarks, snapshots = item + defaults[nItems:]
             item = locals()
         scriptname = item['name']
         dirname, basename = os.path.split(scriptname)
@@ -13749,7 +13960,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                               setSavePoint=setSavePoint, splits=item['splits'],
                               framenum=item['current_frame'], last_length=item.get('last_length'),
                               group=item.get('group', -1), group_frame=item.get('group_frame'),
-                              bookmarks=item['bookmarks'] if 'bookmarks' in item else None) # None for old sessions
+                              bookmarks=item['bookmarks'] if 'bookmarks' in item else None,
+                              snapshots=item['snapshots'] if 'snapshots' in item else None) # None for old sessions
         if reload and index is not None:
             # index is None -> the script was already loaded, different to this other version
             # but the user chose not to replace it.  If that's the case, don't prompt again
@@ -13832,14 +14044,16 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             txt = self.GetTextFromFile(scriptname)[0]
             hash = md5(txt.encode('utf8')).hexdigest()
         if boolSelected: # get always the global bookmarks if the tab the current tap
-            bookmarks = self.GetBookmarkFrameList()
+            bookmarks = self.GetBookmarkDict() #self.GetBookmarkFrameList()
         else:
             bookmarks = script.bookmarks
         splits = (script.lastSplitVideoPos, script.lastSplitSliderPos, script.sliderWindowShown)
+        snapshots = self.GetScriptSnapshotDict(script)
         return dict(name=scriptname, selected=boolSelected, text=script.GetText(),
                     hash=hash, splits=splits, current_frame=script.lastFramenum,
                     last_length=script.lastLength, f_encoding=script.encoding, eol=script.eol,
-                    workdir=script.workdir, group=script.group, group_frame=script.group_frame, bookmarks=bookmarks)
+                    workdir=script.workdir, group=script.group, group_frame=script.group_frame,
+                    bookmarks=bookmarks, snapshots=snapshots)
 
     def SaveImage(self, filename='', frame=None, silent=False, index=None, avs_clip=None, default='', quality=None, depth=None, resetFormat=False):
         script, index = self.getScriptAtIndex(index)
@@ -14560,6 +14774,15 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     def GetBookmarkFrameList(self, copy=False):
         return self.videoSlider.GetBookmarks(copy)
+
+    def GetBookmarkDict(self): # for script.bookmarks
+        bDict = {}
+        bookmarks = self.videoSlider.GetBookmarks(False)
+        for i, item in enumerate(bookmarks.items()):
+            if item[1] == 0 or isinstance(item[1], float):
+                title = self.bookmarkDict.get(item[0], '')
+                bDict[item[0]] = title
+        return dict(bDict)
 
     """
     def SetBookmarkFrameList(self, bookmarks):
@@ -15543,6 +15766,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     framenum = 0
             if framenum >= script.AVI.Framecount:
                 framenum = script.AVI.Framecount-1
+            if self.currentframenum != framenum:
+                self.snapShotIdx = 0
             self.currentframenum = framenum
 
             # Update video slider
@@ -16368,6 +16593,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             elif self.splitView:
                 if not self.PaintSplitView(inputdc, frame, isPaintEvent):
                     return
+            elif self.snapShotIdx > 0:
+                self.PaintSnapShot(inputdc, script)
             else:
                 dc = inputdc
                 try: # DoPrepareDC causes NameError in wx2.9.1 and fixed in wx2.9.2
@@ -16380,6 +16607,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         elif self.splitView:
             if not self.PaintSplitView(inputdc, frame, isPaintEvent):
                 return
+        elif self.snapShotIdx > 0:
+            self.PaintSnapShot(inputdc, script)
         else:
             dc = wx.MemoryDC()
             w = script.AVI.DisplayWidth
@@ -16562,6 +16791,60 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         inputdc.Blit(0,0,self.extended_width,h,dc,0,0)
         return True
 
+    def PaintSnapShot(self, inputdc, script):
+        if self.snapShotIdx == 1: #~and script.snapShots['shot1'][1]:
+            bmp = script.snapShots['shot1'][1]
+        elif self.snapShotIdx == 2: #~and script.snapShots['shot2'][1]:
+            bmp = script.snapShots['shot2'][1]
+        else:
+            bmp = None
+        w = script.AVI.DisplayWidth
+        h = script.AVI.DisplayHeight
+        if not bmp or (bmp.GetWidth() != w or bmp.GetHeight() != h):
+            """ # do not delete the snap shots ? lets see...
+            if self.snapShotIdx == 1:
+                script.snapShots['shot1'] = [-1, None, ""]
+            else:
+                script.snapShots['shot2'] = [-1, None, ""]
+            """
+            self.snapShotIdx = 0
+            wx.Bell()
+            self.videoWindow.Refresh()
+            return
+        dc = wx.MemoryDC()
+        dc.SelectObject(bmp)
+
+        """
+        x,y = self.videoWindow.GetViewStart()
+        dc2 = wx.MemoryDC()
+        dc2.Clear()
+        b = wx.EmptyBitmap(w, h)
+        dc2.SelectObject(b)
+        dc2.Blit(0, 0, w, h, dc, 0, 0)
+        dc2.SetFont(wx.Font(pointSize=12, family=wx.FONTFAMILY_DEFAULT, style=wx.FONTSTYLE_NORMAL, weight=wx.FONTWEIGHT_BOLD))
+        dc2.SetTextForeground(wx.YELLOW)
+        dc2.DrawLabel("Snapshot " + str(self.snapShotIdx),(x+2,y+2,x+52,y+102))
+        """
+
+        #dc.SetBrush(wx.CYAN_BRUSH)
+        #dc.DrawPolygon([wx.Point(0,0), wx.Point(16,0), wx.Point(0,16)])
+        inputdc.SetFont(wx.Font(pointSize=12, family=wx.FONTFAMILY_DEFAULT, style=wx.FONTSTYLE_NORMAL, weight=wx.FONTWEIGHT_BOLD))
+        inputdc.SetTextForeground(wx.YELLOW)
+        try:
+            self.videoWindow.DoPrepareDC(inputdc)
+        except:
+            self.videoWindow.PrepareDC(inputdc)
+
+        x,y = self.videoWindow.GetViewStart()
+        if self.zoomfactor != 1 or self.zoomwindow:
+            inputdc.SetUserScale(self.zoomfactor, self.zoomfactor)
+            inputdc.Blit(0, 0, w, h, dc, 0, 0)
+            inputdc.SetUserScale(1, 1)
+            inputdc.DrawLabel("Snapshot " + str(self.snapShotIdx),(x+2,y+2,x+52,y+102))
+        else:
+            inputdc.Blit(0, 0, w, h, dc, 0, 0)
+            inputdc.DrawLabel("Snapshot " + str(self.snapShotIdx),(x+2,y+2,x+52,y+102))
+
     def PaintCropWarnings(self, spinCtrl=None):
         script = self.currentScript
         keys = ('left', 'top', '-right', '-bottom')
@@ -16585,12 +16868,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     def PlayPauseVideo(self, debug_stats=False, refreshFrame=True):
         """Play/pause the preview clip"""
         if self.playing_video:
+            self.playing_video = False  # set to false bevor self.ShowVideoFrameFast
             if os.name == 'nt':
                 self.timeKillEvent(self.play_timer_id)
                 self.timeEndPeriod(self.play_timer_resolution)
             else:
                 self.play_timer.Stop()
-            self.playing_video = False  # set to false bevor self.ShowVideoFrameFast
             if refreshFrame:
                 self.ShowVideoFrameFast(self.currentframenum)  # GPo 2020, leave it call fast, fast checks errors
             self.play_button.SetBitmapLabel(self.bmpPlay)
@@ -16641,12 +16924,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if self.play_speed_factor == 'max':
                 interval = 1.0   # use a timer anyway to avoid GUI refreshing issues
                 self.interval = 0.0
-                interval_fast = 1.0
+                #interval_fast = 1.0
             else:
                 interval = 1000 / (script.AVI.Framerate * self.play_speed_factor)
                 #self.interval = interval
                 self.interval = float(interval/1000)
-                interval_fast = self.interval/2 # double the interval, seems not needed,
+                #interval_fast = self.interval/2 # double the interval, seems not needed,
 
             if os.name == 'nt': # default Windows resolution is ~10 ms
 
@@ -16716,7 +16999,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         wx.Yield()
 
                     # GPo 2020, plays smoother
-                    while time.time() < startTime + self.interval:
+                    while self.playing_video and (time.time() < (startTime + self.interval)):
                         wx.Yield()
 
 
