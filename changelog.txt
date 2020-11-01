@@ -12,6 +12,14 @@ GPo source: https://github.com/gispos/AvsPmod
 GPo releases: https://github.com/gispos/AvsPmod/releases
 
 --------------------------
+Version 2.6.4.3 [2020-11-01] GPo
+--------------------------
+* 'New tab from snapshot' now sets the current frame number (if possible)
+* Get pixel info from avisynth now disabled if snapshot visible
+* Fixed 'Copy to new tab' not copying the tab bookmarks
+
+
+--------------------------
 Version 2.6.4.2 [2020-10-31] GPo
 --------------------------
 * New Menu 'Video > Snapshot': Intended for resource-saving comparison of simple settings (sharpness, color, etc.)

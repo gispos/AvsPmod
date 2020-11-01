@@ -9743,7 +9743,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             wx.MessageBox(_('Empty script'),'Error snap shot 1')
             return
         self.HidePreviewWindow()
-        self.NewTab(copyselected=False,text=txt,insertnext=True)
+        idx = self.NewTab(copyselected=False,text=txt,insertnext=True)
+        script, idx = self.getScriptAtIndex(idx)
+        if script:
+            if self.videoSlider.GetMax() >= self.currentframenum:
+                script.lastFramenum = self.currentframenum
+                self.videoSlider.SetValue(self.currentframenum)
 
     def OnMenuNewTabFromSnapShot2(self, event):
         txt = self.currentScript.snapShots['shot2'][2]
@@ -9751,7 +9756,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             wx.MessageBox(_('Empty script'),'Error snap shot 2')
             return
         self.HidePreviewWindow()
-        self.NewTab(copyselected=False,text=txt,insertnext=True)
+        idx = self.NewTab(copyselected=False,text=txt,insertnext=True)
+        script, idx = self.getScriptAtIndex(idx)
+        if script:
+            if self.videoSlider.GetMax() >= self.currentframenum:
+                script.lastFramenum = self.currentframenum
+                self.videoSlider.SetValue(self.currentframenum)
 
     def OnMenuClearTabSnapShot(self, event):
         self.snapShotIdx = 0
@@ -13006,7 +13016,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 scriptWindow.group_frame = self.currentScript.group_frame
                 scriptWindow.lastFramenum = self.currentScript.lastFramenum
                 scriptWindow.lastLength = self.currentScript.lastLength
-                scriptWindow.bookmarks = self.GetBookmarkFrameList(copy=True)
+                scriptWindow.bookmarks = self.GetBookmarkDict() #self.GetBookmarkFrameList(copy=True)
                 if select:
                     scriptWindow.lastSplitVideoPos = self.currentScript.lastSplitVideoPos  # GPo 2020, if copy keep the splitters
                     if self.currentScript.lastSplitSliderPos is not None:
@@ -15468,7 +15478,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if 'fliphorizontal' in self.flip:
                 x = script.AVI.DisplayWidth - 1 - x
             # Get color from AviSynth
-            if not self.bit_depth:
+            if not self.bit_depth and (self.snapShotIdx < 1): # disable avisynth if snapshot visible
                 try:
                     avsYUV = script.AVI.GetPixelYUV(x, y)
                     if avsYUV != (-1,-1,-1):
