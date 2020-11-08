@@ -10004,26 +10004,29 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         if show:
             self.zoom_antialias = False
-            try:
-                if self.ShowVideoFrame(scroll=scroll, forceLayout=True) and self.zoomwindow: # or scroll is None):
-                    """
-                    if scroll is None and not self.zoomwindowfit:
-                        zw = last_size[0] / last_scroll[0]
-                        zh = last_size[1] / last_scroll[1]
-                        self.videoWindow.GetVirtualSize()[0] / zw
-                        scroll = (int((last_scroll[0]/last_zoom)*self.zoomfactor), int((last_scroll[1]/last_zoom)*self.zoomfactor))
-                        #scroll = (int((last_scroll[0]/last_zoom)*self.zoomfactor), int((last_scroll[1]/last_zoom)*self.zoomfactor))
-                    """
+
+            if self.ShowVideoFrame(scroll=scroll, forceLayout=True):
+                if self.zoomwindow: # or scroll is None):
                     self.ShowVideoFrame(forceLayout=True)
-            finally:
-                if self.options['zoom_antialias']:
-                    wx.Yield()
-                    self.zoom_antialias = True
-                    if self.zoomfactor != 1:
-                        self.videoWindow.Refresh()
+
+            """
+            if scroll is None and not self.zoomwindowfit:
+                zw = last_size[0] / last_scroll[0]
+                zh = last_size[1] / last_scroll[1]
+                self.videoWindow.GetVirtualSize()[0] / zw
+                scroll = (int((last_scroll[0]/last_zoom)*self.zoomfactor), int((last_scroll[1]/last_zoom)*self.zoomfactor))
+                #scroll = (int((last_scroll[0]/last_zoom)*self.zoomfactor), int((last_scroll[1]/last_zoom)*self.zoomfactor))
+            """
+
+            self.OnEraseBackground() # GPo, ??? wx 2.93 does not update continuet
+            if self.options['zoom_antialias']:
+                wx.Yield()
+                self.zoom_antialias = True
+                if self.zoomfactor != 1 or self.zoomwindow:
+                    self.videoWindow.Refresh()
 
     def OnMenuVideoZoomAntialias(self, event):
-        self.options['zoom_antialias'] = event.IsChecked()
+        self.options['zoom_antialias'] = not self.options['zoom_antialias']
         self.zoom_antialias = self.options['zoom_antialias']
         vidmenus = [self.videoWindow.contextMenu, self.GetMenuBar().GetMenu(2)]
         for vidmenu in vidmenus:
@@ -10031,7 +10034,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             id = menu.FindItem('Antialiasing')
             menuItem = menu.FindItemById(id)
             if menuItem:
-                menuItem.Check(event.IsChecked())
+                menuItem.Check(self.zoom_antialias)
 
         if self.zoomfactor != 1 or self.zoomwindow:
             self.videoWindow.Refresh()
@@ -10349,7 +10352,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if self.options['zoom_antialias']:
                 wx.Yield()
                 self.zoom_antialias = True
-                if self.zoomfactor != 1:
+                if self.zoomfactor != 1 or self.zoomwindow:
                     self.videoWindow.Refresh()
 
     def OnMenuVideoSwitchMode(self, event):
@@ -10365,7 +10368,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if self.options['zoom_antialias']:
                 wx.Yield()
                 self.zoom_antialias = True
-                if self.zoomfactor != 1:
+                if self.zoomfactor != 1 or self.zoomwindow:
                     self.videoWindow.Refresh()
 
     def OnMenuVideoTogglePlacement(self, event):
@@ -11561,7 +11564,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             SetBookmarks()
 
         self.zoom_antialias = self.options['zoom_antialias']
-        if self.zoomfactor != 1 and self.zoom_antialias and self.previewWindowVisible:
+        if (self.zoomfactor != 1 or self.zoomwindow) and (self.zoom_antialias and self.previewWindowVisible):
             self.videoWindow.Refresh()
 
     def OnNotebookPageChanging(self, event):
@@ -11811,7 +11814,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 wx.Yield()
                 if self.options['zoom_antialias']:
                     self.zoom_antialias = True
-                    if self.zoomfactor != 1:
+                    if self.zoomfactor != 1 or self.zoomwindow:
                         self.videoWindow.Refresh()
             else:
                 self.InsertSource()
@@ -12119,7 +12122,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 if self.ShowVideoFrame(forceCursor=self.options['refreshpreview'] and self.ScriptChanged(self.currentScript)):
                     if self.zoomwindowfill:
                         self.ShowVideoFrame(forceLayout=True)
-                    if self.zoomfactor != 1 and self.zoom_antialias:
+                    if (self.zoomfactor != 1 or self.zoomwindow) and self.zoom_antialias:
                         wx.YieldIfNeeded()
 
             videoWindow = self.videoWindow
@@ -12294,7 +12297,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.videoWindow.SetCursor(wx.StockCursor(wx.CURSOR_DEFAULT))
         if not self.cropDialog.IsShown():
             self.zoom_antialias = self.options['zoom_antialias']
-            if self.zoomfactor != 1 and self.zoom_antialias:
+            if (self.zoomfactor != 1 or self.zoomwindow) and self.zoom_antialias:
                 self.videoWindow.Refresh()
         event.Skip()
 
@@ -16026,6 +16029,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     #self.videoWindow.Refresh() # Bad for zoom_antialias
                     dc = wx.ClientDC(self.videoWindow)
                     self.PaintAVIFrame(dc, script, self.currentframenum)
+                    #self.OnEraseBackground()
 
                 if self.customHandler > 0:
                     self.PostMessage(self.customHandler, self.AVSP_VID_SIZE, videoWidth, videoHeight)
@@ -16061,7 +16065,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         pass
             else:
                 # GPo, test antialias
-                if self.zoomfactor != 1 and self.zoom_antialias:
+                if (self.zoomfactor != 1 or self.zoomwindow) and self.zoom_antialias:
                     self.IdleCall.append((self.videoWindow.Refresh, tuple(), {}))
 
             if doFocusScript:
@@ -16770,17 +16774,20 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             # only if isPaintEvent and self.zoom_antialias not disabled
             # in ShowVideoFrame() IdleCall.append(videoWindow.Refresh) fires OnIdle the antialias refresh
             """
-            if self.zoomfactor != 1 and self.zoom_antialias and isPaintEvent:
+            if (self.zoomfactor != 1 or self.zoomwindow) and (self.zoom_antialias and isPaintEvent):
                 inputdc = wx.GCDC(inputdc)
             try: # DoPrepareDC causes NameError in wx2.9.1 and fixed in wx2.9.2
                 self.videoWindow.DoPrepareDC(inputdc)
             except:
                 self.videoWindow.PrepareDC(inputdc)
+
+
             inputdc.SetUserScale(self.zoomfactor, self.zoomfactor)
             inputdc.Blit(0, 0, w, h, dc, 0, 0)
             if self.firstToggled and isPaintEvent and self.zoomwindow:  # GPo, TODO check it if needed, GPo, yes its needed
                 self.firstToggled = False
                 wx.CallAfter(self.ShowVideoFrame, forceLayout=True)
+
         self.paintedframe = frame
         return True
 

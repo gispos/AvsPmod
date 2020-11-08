@@ -12,6 +12,12 @@ GPo source: https://github.com/gispos/AvsPmod
 GPo releases: https://github.com/gispos/AvsPmod/releases
 
 --------------------------
+Version 2.6.4.5 [2020-11-08] GPo
+--------------------------
+* Fixed zoom settings with keyboard
+* Fixed zoom setting 'Antialiasing' cannot be disabled with key shortcut
+
+--------------------------
 Version 2.6.4.4 [2020-11-08] GPo
 --------------------------
 ** If there are any problems, it's a test version, if not, it's a regular one ;)
