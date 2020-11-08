@@ -5309,11 +5309,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.zoomwindow = False
         self.zoomwindowfit = False
         self.zoomwindowfill = False
+        self.zoom_antialias = self.options['zoom_antialias']  # GPo
         self.extended_move = False   # GPo
         self.splitView = False       # GPo
         self.splitView_next = True   # GPo
         self.extended_width = 0      # GPo 2020 used for extended_move and splitView
-        self.snapShotIdx = 0            # GPo
+        self.snapShotIdx = 0         # GPo
         self.bellAtBookmark = False  # GPo
         self.lastcrop = ""
         self.oldWidth = 0
@@ -6051,6 +6052,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'autoloadedavsi': True,
             # VIDEO OPTIONS
             'mousewheelfunc': 'frame_step',    # GPo 2020
+            'startupwithlastzoom': False,      # GPo 2020
+            'zoom_antialias': False,           # GPo 2020
             'dragupdate': True,
             'focusonrefresh': True,
             'previewunsavedchanges': True,
@@ -6899,6 +6902,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 ((_('Allow AvsPmod to resize the window'), wxp.OPT_ELEM_CHECK, 'allowresize', _('Allow AvsPmod to resize and/or move the program window when updating the video preview'), dict() ), ),
                 ((_('Separate video preview window')+' *', wxp.OPT_ELEM_CHECK, 'separatevideowindow', _('Use a separate window for the video preview'), dict() ), ),
                 ((_('Keep it on top of the main window')+' *', wxp.OPT_ELEM_CHECK, 'previewontopofmain', _('Keep the video preview window always on top of the main one and link its visibility'), dict(ident=20) ), ),
+                ((_('Startup with last zoom settings'), wxp.OPT_ELEM_CHECK, 'startupwithlastzoom', _('Use last zoom settings at startup'), dict() ), ),
                 ((_('Min text lines on video preview'), wxp.OPT_ELEM_SPIN, 'mintextlines', _('Minimum number of lines to show when displaying the video preview'), dict(min_val=0) ), ),
                 ((_('Customize video status bar...'), wxp.OPT_ELEM_BUTTON, 'videostatusbarinfo', _('Customize the video information shown in the program status bar'), dict(handler=self.OnConfigureVideoStatusBarMessage) ), ),
                 ((_('Error message font...'), wxp.OPT_ELEM_BUTTON, 'errormessagefont', _('Set the font used for displaying the error if evaluating the script fails'), dict(handler=self.OnConfigureErrorFont) ), ),    # GPo, change to Button
@@ -7415,6 +7419,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             _('400%'): '400',
             _('Fill window'): 'fill',
             _('Fit inside window'): 'fit',
+           # _('Fit antialised'): 'fit_a',
         }
         reverseZoomLabelDict = dict([(v,k) for k,v in self.zoomLabelDict.items()])
         self.flipLabelDict = {
@@ -7649,6 +7654,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     (''),
                     (_('Zoom in'), 'Numpad +', self.OnZoomInOut, _("Enlarge preview image to next zoom level. Not work under 'Fill window' or 'Fit inside window'")),
                     (_('Zoom out'), 'Numpad -', self.OnZoomInOut, _("Shrink preview image to previous zoom level. Not work under 'Fill window' or 'Fit inside window'")),
+                    (''),
+                    (_('Antialiasing'), '', self.OnMenuVideoZoomAntialias, _("If zoom not 100 %, the preview is drawing antialiased"), wx.ITEM_CHECK, self.options['zoom_antialias']),
                     ),
                 ),
                 (_('&Flip'),
@@ -8587,6 +8594,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 script.EmptyUndoBuffer()
                 script.SetSavePoint()
                 script.GotoPos(pos)
+            else:                           # GPo
+                script.SetModified(False)
+                script.old_modified = False
+                self.UpdateScriptTabname(script=script)
+        else:
+            wx.Bell()  # GPo
 
     def OnMenuFileOpenScriptDirectory(self, event):
         dirname, basename = os.path.split(self.currentScript.filename)
@@ -9550,8 +9563,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         # GPo 2018
         self.extended_move = False
         self.splitView = False
+        self.zoom_antialias = False
         # Show the video preview
         if not self.ShowVideoFrame(forceLayout=True):
+            self.zoom_antialias = self.options['zoom_antialias']
             return False
         if script.AVI.DisplayWidth != script.AVI.Width or \
                 script.AVI.DisplayHeight != script.AVI.Height:
@@ -9798,6 +9813,18 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             shots[key] = [script.snapShots[key][0], temp, script.snapShots[key][2]]
 
         """
+        """
+        saveImage = True
+        shots = {}
+        for key in script.snapShots.keys():
+            if script.snapShots[key][1] and saveImage:
+                temp = StringIO()
+                script.snapShots[key][1].CopyToBuffer(temp, wx.BitmapBufferFormat_RGB32)
+            else:
+                temp = None
+            shots[key] = [script.snapShots[key][0], temp, script.snapShots[key][2]]
+        return shots
+        """
         shots = {}
         for key in script.snapShots.keys():
             shots[key] = [script.snapShots[key][0], None, script.snapShots[key][2]]
@@ -9825,7 +9852,22 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     script.snapShots[key] = [nr, None, txt]
             else:
                 script.snapShots[key] = [-1, None, ""]
-
+        """
+        for key in script.snapShots.keys():
+            if key in snapshots.keys():
+                nr, temp, txt = snapshots[key]
+                if temp is not None:  # default None, not None only for testing, see GetScriptSnapshotDict
+                    try:
+                        bmp = wx.EmptyBitmap(1920, 1080, wx.BitmapBufferFormat_RGB32)
+                        bmp.CopyFromBuffer(temp, wx.BitmapBufferFormat_RGB32)
+                        script.snapShots[key] = [nr, bmp, txt]
+                    except:
+                        script.snapShots[key] = [nr, None, txt]
+                else:
+                    script.snapShots[key] = [nr, None, txt]
+            else:
+                script.snapShots[key] = [-1, None, ""]
+        """
 
     def SetDialogPositionNextToVideo(self, dlg):
         parent = dlg.GetParent()
@@ -9961,16 +10003,38 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.zoomfactor = 1
 
         if show:
-            if self.ShowVideoFrame(scroll=scroll, forceLayout=True) and self.zoomwindow: # or scroll is None):
-                """
-                if scroll is None and not self.zoomwindowfit:
-                    zw = last_size[0] / last_scroll[0]
-                    zh = last_size[1] / last_scroll[1]
-                    self.videoWindow.GetVirtualSize()[0] / zw
-                    scroll = (int((last_scroll[0]/last_zoom)*self.zoomfactor), int((last_scroll[1]/last_zoom)*self.zoomfactor))
-                    #scroll = (int((last_scroll[0]/last_zoom)*self.zoomfactor), int((last_scroll[1]/last_zoom)*self.zoomfactor))
-                """
-                self.ShowVideoFrame(forceLayout=True)
+            self.zoom_antialias = False
+            try:
+                if self.ShowVideoFrame(scroll=scroll, forceLayout=True) and self.zoomwindow: # or scroll is None):
+                    """
+                    if scroll is None and not self.zoomwindowfit:
+                        zw = last_size[0] / last_scroll[0]
+                        zh = last_size[1] / last_scroll[1]
+                        self.videoWindow.GetVirtualSize()[0] / zw
+                        scroll = (int((last_scroll[0]/last_zoom)*self.zoomfactor), int((last_scroll[1]/last_zoom)*self.zoomfactor))
+                        #scroll = (int((last_scroll[0]/last_zoom)*self.zoomfactor), int((last_scroll[1]/last_zoom)*self.zoomfactor))
+                    """
+                    self.ShowVideoFrame(forceLayout=True)
+            finally:
+                if self.options['zoom_antialias']:
+                    wx.Yield()
+                    self.zoom_antialias = True
+                    if self.zoomfactor != 1:
+                        self.videoWindow.Refresh()
+
+    def OnMenuVideoZoomAntialias(self, event):
+        self.options['zoom_antialias'] = event.IsChecked()
+        self.zoom_antialias = self.options['zoom_antialias']
+        vidmenus = [self.videoWindow.contextMenu, self.GetMenuBar().GetMenu(2)]
+        for vidmenu in vidmenus:
+            menu = vidmenu.FindItemById(vidmenu.FindItem(_('&Zoom'))).GetSubMenu()
+            id = menu.FindItem('Antialiasing')
+            menuItem = menu.FindItemById(id)
+            if menuItem:
+                menuItem.Check(event.IsChecked())
+
+        if self.zoomfactor != 1 or self.zoomwindow:
+            self.videoWindow.Refresh()
 
     def OnMenuVideoFlip(self, event):
         id = event.GetId()
@@ -10280,7 +10344,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.HidePreviewWindow()
             self.SetStatusWidths([-1, 0])
         else:
+            self.zoom_antialias = False
             self.ShowVideoFrame(resize=True)
+            if self.options['zoom_antialias']:
+                wx.Yield()
+                self.zoom_antialias = True
+                if self.zoomfactor != 1:
+                    self.videoWindow.Refresh()
 
     def OnMenuVideoSwitchMode(self, event):
         if self.previewWindowVisible:
@@ -10290,7 +10360,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             else:
                 self.ShowVideoFrame()
         else:
+            self.zoom_antialias = False
             self.ShowVideoFrame()
+            if self.options['zoom_antialias']:
+                wx.Yield()
+                self.zoom_antialias = True
+                if self.zoomfactor != 1:
+                    self.videoWindow.Refresh()
 
     def OnMenuVideoTogglePlacement(self, event):
         self.TogglePreviewPlacement()
@@ -11423,12 +11499,15 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
             script.lastSplitVideoPos = self.oldLastSplitVideoPos  # GPo, keep it always
 
+            self.zoom_antialias = False
             if self.zoomwindow:
-                self.IdleCall.append((self.ShowVideoFrame, tuple(), {'focus': False, 'forceCursor': True}))
+                #self.IdleCall.append((self.ShowVideoFrame, tuple(), {'focus': False, 'forceCursor': True}))
+                self.ShowVideoFrame(forceLayout=True, focus=False, forceCursor=True)
             else:
                 if script.videoZoom != None:
                     self.zoomfactor = script.videoZoom
                 self.ShowVideoFrame(forceLayout=True, focus=False, scroll=script.videoXY, forceCursor=True)
+            wx.Yield()
 
             if not script.sliderWindowShown:
                 self.HideSliderWindow(script)
@@ -11480,6 +11559,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.oldlinenum = None
         if not bmSet:
             SetBookmarks()
+
+        self.zoom_antialias = self.options['zoom_antialias']
+        if self.zoomfactor != 1 and self.zoom_antialias and self.previewWindowVisible:
+            self.videoWindow.Refresh()
 
     def OnNotebookPageChanging(self, event):
         if self.cropDialog.IsShown():
@@ -11723,7 +11806,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if self.middleDownScript:
             self.middleDownScript = False
             if (self.options['middlemousefunc'] == 'show video frame') and (self.currentScript.GetTextLength() > 5):
+                self.zoom_antialias = False
                 self.ShowVideoFrame(forceCursor=self.ScriptChanged(self.currentScript))
+                wx.Yield()
+                if self.options['zoom_antialias']:
+                    self.zoom_antialias = True
+                    if self.zoomfactor != 1:
+                        self.videoWindow.Refresh()
             else:
                 self.InsertSource()
 
@@ -11892,6 +11981,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             event.Skip()
             return
         self.Freeze()
+        self.zoom_antialias = False
         try:
             if self.mainSplitter.GetSplitMode() == wx.SPLIT_HORIZONTAL:
                 if wx.GetKeyState(wx.WXK_CONTROL):   # set full size, set tabs 1 pixel visible
@@ -11919,7 +12009,17 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.SaveLastSplitVideoPos()
         finally:
             self.Thaw()
+            wx.Yield()
+            self.zoom_antialias = self.options['zoom_antialias']
             self.ShowVideoFrame(forceLayout=True)
+
+            """
+            if self.options['zoom_antialias']:
+                self.zoom_antialias = True
+                if self.zoomfactor != 1 or self.zoomwindow:
+                    #wx.Yield()
+                    self.videoWindow.Refresh()
+            """
             event.Skip()
 
     # GPo 2018
@@ -12016,9 +12116,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.OnCropDialogSpinTextChange()
         else:
             if self.refreshAVI:  # GPo, on double clicked (zoom full size), self.refreshAVI is after first mouse down False
-                # GPo 2018, 2020
-                if self.ShowVideoFrame(forceCursor=self.options['refreshpreview'] and self.ScriptChanged(self.currentScript)) and self.zoomwindowfill:
-                    self.ShowVideoFrame(forceLayout=True)
+                if self.ShowVideoFrame(forceCursor=self.options['refreshpreview'] and self.ScriptChanged(self.currentScript)):
+                    if self.zoomwindowfill:
+                        self.ShowVideoFrame(forceLayout=True)
+                    if self.zoomfactor != 1 and self.zoom_antialias:
+                        wx.YieldIfNeeded()
 
             videoWindow = self.videoWindow
             videoWindow.CaptureMouse()
@@ -12152,8 +12254,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     if ymax > 0 and newOriginY > ymax:
                         videoWindow.oldPoint[1] = ymax + newPoint[1] - videoWindow.oldOrigin[1]
                         newOriginY = ymax
+                    self.zoom_antialias = False
                     videoWindow.Scroll(newOriginX, newOriginY)
                 else:
+                    self.zoom_antialias = self.options['zoom_antialias']
                     if videoWindow.HasCapture():
                         try:
                             videoWindow.ReleaseMouse()
@@ -12177,6 +12281,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             except:
                 pass
             self.videoWindow.SetCursor(wx.StockCursor(wx.CURSOR_DEFAULT))
+        if not self.cropDialog.IsShown():
+            self.zoom_antialias = self.options['zoom_antialias']
         event.Skip()
 
     def OnLeftUpVideoWindow(self, event):
@@ -12186,6 +12292,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             except:
                 pass
             self.videoWindow.SetCursor(wx.StockCursor(wx.CURSOR_DEFAULT))
+        if not self.cropDialog.IsShown():
+            self.zoom_antialias = self.options['zoom_antialias']
+            if self.zoomfactor != 1 and self.zoom_antialias:
+                self.videoWindow.Refresh()
         event.Skip()
 
     def OnCropDialogSpinTextChange(self, event=None):
@@ -12212,7 +12322,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         # GPo 2020, that's enough
         dc = wx.ClientDC(self.videoWindow)
-
         self.PaintAVIFrame(dc, script, self.currentframenum, shift=True)
         self.PaintCropWarnings(spinCtrl)
         self.SetVideoStatusText()
@@ -12323,6 +12432,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.cropValues[key] = 0
         # Show the updated video frame
         self.refreshAVI = True
+        self.zoom_antialias = self.options['zoom_antialias']
         self.ShowVideoFrame()
 
     def OnCropDialogCancel(self, event):
@@ -12332,6 +12442,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         dc = wx.ClientDC(self.videoWindow)
         self.PaintAVIFrame(dc, script, self.currentframenum)
         self.cropDialog.Hide()
+        self.zoom_antialias = self.options['zoom_antialias']
+        if self.zoom_antialias and self.zoomfactor != 1:
+            self.videoWindow.Refresh()
 
     def OnTrimDialogSpinTextChange(self, event):
         spinCtrl = event.GetEventObject()
@@ -12904,7 +13017,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         menu = vidmenu.FindItemById(vidmenu.FindItem(_('&Zoom'))).GetSubMenu()
         for i, menuItem in enumerate(menu.GetMenuItems()):
             if menuItem.IsChecked():
-                if i in [6, 7]:         # GPo 2018 save only 100% and fit or fill
+                if self.options['startupwithlastzoom'] or i in [6, 7]:   # GPo 2018 save only 100% and fit or fill or all if option
                     self.options['zoomindex'] = i
                 else:
                     self.options['zoomindex'] = 2  # 100%
@@ -15910,7 +16023,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     self.PaintAVIFrame(dc, script, self.currentframenum)
                     self.OnEraseBackground()
                 else:
-                    self.videoWindow.Refresh()
+                    #self.videoWindow.Refresh() # Bad for zoom_antialias
+                    dc = wx.ClientDC(self.videoWindow)
+                    self.PaintAVIFrame(dc, script, self.currentframenum)
 
                 if self.customHandler > 0:
                     self.PostMessage(self.customHandler, self.AVSP_VID_SIZE, videoWidth, videoHeight)
@@ -15926,23 +16041,29 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
             # If error clip, highlight the line with the error
             errmsg = script.AVI.error_message
-            if errmsg is not None and not self.options['autoupdatevideo']:
-                lines = errmsg.lower().split('\n')
-                items = lines[-1].split()
-                try:
-                    index = items.index('line') + 1
-                    if index < len(items):
-                        try:
-                            linenum = int(items[index].strip('),')) - 1
-                            if linenum < script.GetLineCount():
-                                posA = script.PositionFromLine(linenum)
-                                posB = script.GetLineEndPosition(linenum)
-                                script.SetSelection(posA, posB)
-                                doFocusScript = True
-                        except ValueError:
-                            pass
-                except ValueError:
-                    pass
+            if errmsg is not None:
+                if not self.options['autoupdatevideo']:
+                    lines = errmsg.lower().split('\n')
+                    items = lines[-1].split()
+                    try:
+                        index = items.index('line') + 1
+                        if index < len(items):
+                            try:
+                                linenum = int(items[index].strip('),')) - 1
+                                if linenum < script.GetLineCount():
+                                    posA = script.PositionFromLine(linenum)
+                                    posB = script.GetLineEndPosition(linenum)
+                                    script.SetSelection(posA, posB)
+                                    doFocusScript = True
+                            except ValueError:
+                                pass
+                    except ValueError:
+                        pass
+            else:
+                # GPo, test antialias
+                if self.zoomfactor != 1 and self.zoom_antialias:
+                    self.IdleCall.append((self.videoWindow.Refresh, tuple(), {}))
+
             if doFocusScript:
                 script.SetFocus()
                 script.EnsureCaretVisible()
@@ -16641,15 +16762,23 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     dc.SelectObject(bmp)
                 self.PaintTrimSelectionMark(dc, script, frame)
                 if self.cropDialog.IsShown():
+                    self.zoom_antialias = False
                     self.PaintCropRectangles(dc, script)
                 self.bmpVideo = bmp
+            """
+            # GPo, do not antialias if playback or frame step or mouse move, or zoom settings changed
+            # only if isPaintEvent and self.zoom_antialias not disabled
+            # in ShowVideoFrame() IdleCall.append(videoWindow.Refresh) fires OnIdle the antialias refresh
+            """
+            if self.zoomfactor != 1 and self.zoom_antialias and isPaintEvent:
+                inputdc = wx.GCDC(inputdc)
             try: # DoPrepareDC causes NameError in wx2.9.1 and fixed in wx2.9.2
                 self.videoWindow.DoPrepareDC(inputdc)
             except:
                 self.videoWindow.PrepareDC(inputdc)
             inputdc.SetUserScale(self.zoomfactor, self.zoomfactor)
             inputdc.Blit(0, 0, w, h, dc, 0, 0)
-            if isPaintEvent and self.firstToggled and self.zoomwindow:  # GPo, TODO check it if needed, GPo, yes its needed
+            if self.firstToggled and isPaintEvent and self.zoomwindow:  # GPo, TODO check it if needed, GPo, yes its needed
                 self.firstToggled = False
                 wx.CallAfter(self.ShowVideoFrame, forceLayout=True)
         self.paintedframe = frame
@@ -16691,13 +16820,14 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             dc.DrawRectangle(w - mright, top, w, h - mbottom - top)
         self.oldCropValues = self.cropValues
 
+    """
     def PaintSplitView_Update(self): # not used
         if self.splitView:
             dc = wx.ClientDC(self.videoWindow)
             #~self.PaintAVIFrame(dc, self.currentScript, self.currentframenum)
             self.PaintSplitView(dc, self.currentframenum, False)
             #self.OnEraseBackground()
-
+    """
     # GPo 2020
     def PaintSplitView(self, inputdc, frame, isPaintEvent):
         def Error():
@@ -16788,10 +16918,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         except:
             self.videoWindow.PrepareDC(inputdc)
 
-        if self.zoomwindow or self.zoomfactor != 1:
+        if self.zoomfactor != 1 or self.zoomwindow:
             vsx = int(self.extended_width*self.zoomfactor) + self.xo + 3
             if self.videoWindow.GetVirtualSize()[0] != vsx:
                 self.videoWindow.SetVirtualSize((vsx, int(h*self.zoomfactor) + self.yo + 3))
+            if self.zoom_antialias and isPaintEvent:
+                inputdc = wx.GCDC(inputdc)
             inputdc.SetUserScale(self.zoomfactor, self.zoomfactor)
         else:
             vsx = self.extended_width + self.xo + 3
@@ -16824,18 +16956,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         dc = wx.MemoryDC()
         dc.SelectObject(bmp)
 
-        """
-        x,y = self.videoWindow.GetViewStart()
-        dc2 = wx.MemoryDC()
-        dc2.Clear()
-        b = wx.EmptyBitmap(w, h)
-        dc2.SelectObject(b)
-        dc2.Blit(0, 0, w, h, dc, 0, 0)
-        dc2.SetFont(wx.Font(pointSize=12, family=wx.FONTFAMILY_DEFAULT, style=wx.FONTSTYLE_NORMAL, weight=wx.FONTWEIGHT_BOLD))
-        dc2.SetTextForeground(wx.YELLOW)
-        dc2.DrawLabel("Snapshot " + str(self.snapShotIdx),(x+2,y+2,x+52,y+102))
-        """
-
         #dc.SetBrush(wx.CYAN_BRUSH)
         #dc.DrawPolygon([wx.Point(0,0), wx.Point(16,0), wx.Point(0,16)])
         inputdc.SetFont(wx.Font(pointSize=12, family=wx.FONTFAMILY_DEFAULT, style=wx.FONTSTYLE_NORMAL, weight=wx.FONTWEIGHT_BOLD))
@@ -16847,6 +16967,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         x,y = self.videoWindow.GetViewStart()
         if self.zoomfactor != 1 or self.zoomwindow:
+            if self.zoom_antialias:
+                inputdc = wx.GCDC(inputdc)
             inputdc.SetUserScale(self.zoomfactor, self.zoomfactor)
             inputdc.Blit(0, 0, w, h, dc, 0, 0)
             inputdc.SetUserScale(1, 1)
@@ -19019,7 +19141,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         return True
 
     @AsyncCallWrapper
-    def MacroWriteToScrap(self, txt, pos=-1):
+    def MacroWriteToScrap(self, txt, pos=-1, clear=False):
         r'''WriteToScrap(txt, pos=-1)
 
         This function is identical to InsertText, except that instead of writing to
@@ -19034,6 +19156,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 win = self.currentScript
             self.scrapWindow.Show()
             win.SetFocus()
+        if clear:
+            self.scrapWindow.textCtrl.ClearAll()
         if self.InsertText(txt, pos, index=-1):
             scrap = self.scrapWindow.textCtrl
             txtLength = len(txt)
