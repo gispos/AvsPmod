@@ -12011,14 +12011,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             wx.Yield()
             self.zoom_antialias = self.options['zoom_antialias']
             self.ShowVideoFrame(forceLayout=True)
-
-            """
-            if self.options['zoom_antialias']:
-                self.zoom_antialias = True
-                if self.zoomfactor != 1 or self.zoomwindow:
-                    #wx.Yield()
-                    self.videoWindow.Refresh()
-            """
             event.Skip()
 
     # GPo 2018
@@ -12115,9 +12107,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.OnCropDialogSpinTextChange()
         else:
             if self.refreshAVI:  # GPo, on double clicked (zoom full size), self.refreshAVI is after first mouse down False
-                if self.ShowVideoFrame(forceCursor=self.options['refreshpreview'] and self.ScriptChanged(self.currentScript)):
-                    if (self.zoomfactor != 1 or self.zoomwindow) and self.zoom_antialias:
-                        wx.YieldIfNeeded()
+                self.ShowVideoFrame(forceCursor=self.options['refreshpreview'] and self.ScriptChanged(self.currentScript))
+                    #GPo, very bad, do not update here
+                    #~if (self.zoomfactor != 1 or self.zoomwindow) and self.zoom_antialias:
+                        #~wx.YieldIfNeeded()
 
             videoWindow = self.videoWindow
             videoWindow.CaptureMouse()
@@ -12272,6 +12265,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     def OnMouseLeaveVideoWindow(self, event):
         if self.FindFocus() == self.currentScript:
             self.SetScriptStatusText()
+        if self.videoWindow.HasCapture():
+            try:
+                self.videoWindow.ReleaseMouse()
+            except:
+                pass
+            self.videoWindow.SetCursor(wx.StockCursor(wx.CURSOR_DEFAULT))
         if event.LeftIsDown() and not self.cropDialog.IsShown() and \
             (self.zoomfactor != 1 or self.zoomwindow) and self.options['zoom_antialias']:
                 self.zoom_antialias = True

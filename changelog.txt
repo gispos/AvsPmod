@@ -12,6 +12,11 @@ GPo source: https://github.com/gispos/AvsPmod
 GPo releases: https://github.com/gispos/AvsPmod/releases
 
 --------------------------
+Version 2.6.4.7 [2020-11-10] GPo
+--------------------------
+Again bug fixes caused by the new zoom function 'Antialiasing'
+
+--------------------------
 Version 2.6.4.6 [2020-11-10] GPo
 --------------------------
 Bug fixes caused by the new zoom function 'Antialiasing'.
