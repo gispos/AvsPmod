@@ -12,6 +12,14 @@ GPo source: https://github.com/gispos/AvsPmod
 GPo releases: https://github.com/gispos/AvsPmod/releases
 
 --------------------------
+Version 2.6.4.8 [2020-11-11] GPo
+--------------------------
+* Some improvments to zoom setting 'Antialiasing' and the program interface
+-- scroll bars movement as fast as without antialiasing
+-- revised zoom 'Window fill'
+-- a few other changes
+
+--------------------------
 Version 2.6.4.7 [2020-11-10] GPo
 --------------------------
 Again bug fixes caused by the new zoom function 'Antialiasing'

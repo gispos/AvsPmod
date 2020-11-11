@@ -5316,6 +5316,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.extended_width = 0      # GPo 2020 used for extended_move and splitView
         self.snapShotIdx = 0         # GPo
         self.bellAtBookmark = False  # GPo
+        self.KeyUpVideoWndow = True
         self.lastcrop = ""
         self.oldWidth = 0
         self.oldHeight = 0
@@ -5453,7 +5454,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if self.IdleCall:
                 func, args, kwargs = self.IdleCall.pop()
                 func(*args, **kwargs)
-
         self.Bind(wx.EVT_IDLE, OnIdle)
 
         # Print options
@@ -5561,7 +5561,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 #### GPo 2018 WndProc messages
 
     def custom_frame_nr(self, w_param, l_param):
-        if w_param > 0 and not self.zoomwindow:
+        if w_param > 0 and not self.zoomwindowfit:
           xy = (LOWORD(w_param), HIWORD(w_param))
         else:
             xy = None
@@ -5575,9 +5575,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     def custom_scroll(self, w_param, l_param):
         xy = (w_param, l_param)
         if self.previewWindowVisible:
-            if not self.zoomwindow:
-                self.videoWindow.Scroll(w_param, l_param)
-        elif not self.zoomwindow:
+            if not self.zoomwindowfit:
+                if self.zoom_antialias and (self.zoomfactor != 1 or self.zoomwindowfill):
+                    self.zoom_antialias = False
+                    self.IdleCall.append((self.OnAfterScrollVideoWindow, tuple(), {}))
+                self.videoWindow.Scroll(xy)
+        elif not self.zoomwindowfit:
             self.IdleCall.append((self.ShowVideoFrame, {'scroll': xy}, {}))
 
     # for posting x us positive w_param_zero value + youre x value
@@ -5587,11 +5590,14 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         y += l_param
 
         if self.previewWindowVisible:
-            if not self.zoomwindow:
+            if not self.zoomwindowfit:
+                if self.zoom_antialias and (self.zoomfactor != 1 or self.zoomwindowfill):
+                    self.zoom_antialias = False
+                    self.IdleCall.append((self.OnAfterScrollVideoWindow, tuple(), {}))
                 self.videoWindow.Scroll(x, y)
-        elif not self.zoomwindow:
-            wx.CallAfter(self.ShowVideoFrame)
-            wx.CallAfter(self.videoWindow.Scroll, x, y)
+        elif not self.zoomwindowfit:
+            wx.CallAfter(self.ShowVideoFrame, forceLayout=True, scroll=(x,y))
+            #wx.CallAfter(self.videoWindow.Scroll, x, y)
 
     def custom_copy_data(self, w_param, l_param):
         pCDS = ctypes.cast(l_param, PCOPYDATASTRUCT)
@@ -8167,16 +8173,18 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         videoWindow.Bind(wx.EVT_PAINT, self.OnPaintVideoWindow)
         videoWindow.Bind(wx.EVT_ERASE_BACKGROUND, self.OnEraseBackground)
         videoWindow.Bind(wx.EVT_KEY_DOWN, self.OnKeyDownVideoWindow)
+        videoWindow.Bind(wx.EVT_KEY_UP, self.OnKeyUpVideoWindow)
         videoWindow.Bind(wx.EVT_MOUSEWHEEL, self.OnMouseWheelVideoWindow)
         videoWindow.Bind(wx.EVT_MIDDLE_DOWN, self.OnMiddleDownVideoWindow)
         videoWindow.Bind(wx.EVT_LEFT_DOWN, self.OnLeftDownVideoWindow)
         videoWindow.Bind(wx.EVT_MOTION, self.OnMouseMotionVideoWindow)
         videoWindow.Bind(wx.EVT_LEAVE_WINDOW, self.OnMouseLeaveVideoWindow)
         videoWindow.Bind(wx.EVT_LEFT_UP, self.OnLeftUpVideoWindow)
-        videoWindow.Bind(wx.EVT_LEFT_DCLICK, self.OnLeftDClickVideoWindow)   # GPo 2018
-        videoWindow.Bind(wx.EVT_RIGHT_UP, self.OnRightUpVideoWindow)         # GPo 2018
+        videoWindow.Bind(wx.EVT_LEFT_DCLICK, self.OnLeftDClickVideoWindow)    # GPo 2018
+        videoWindow.Bind(wx.EVT_RIGHT_UP, self.OnRightUpVideoWindow)          # GPo 2018
         videoWindow.Bind(wx.EVT_MOUSE_CAPTURE_LOST, self.OnMouseCaptureLost)  # GPo 2020
-        self.BindObjMouseAux(videoWindow)                                    # GPo 2020
+        videoWindow.Bind(wx.EVT_SCROLLWIN, self.OnScrollVideoWindow)          # GPo 2020
+        self.BindObjMouseAux(videoWindow)                                     # GPo 2020
         return videoWindow
 
     def createVideoControls(self, parent, primary=True):
@@ -9171,11 +9179,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     def OnMenuCopyToNewTabNext(self, event):
         if self.splitView:
             self.OnMenuSplitView(event=None)
-            wx.Yield()
         re = self.NewTab(copytab=True, select=False, insertnext=True)
         if re == False:  # crop dlg or trim dlg shown
             return
-        wx.Yield()
+        wx.SafeYield(self.videoWindow, True)
         self.OnMenuSplitView(event=None)
         if isinstance(re, int):
             try:
@@ -9609,8 +9616,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
             if not self.previewWindowVisible:
                 self.refreshAVI = True
-                if not self.ShowVideoFrame(forceLayout=True):
+                self.zoom_antialias = False
+                if not self.ShowVideoFrame():
+                    self.ResetZoomAntialias(forceYield=False)
                     return
+                self.Refresh()
+                self.Update()
+                self.ResetZoomAntialias()
 
             pageCount = self.scriptNotebook.GetPageCount()
             index = self.scriptNotebook.GetSelection()
@@ -9653,8 +9665,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         else: wx.Bell()
                     else: wx.Bell()
             else: wx.Bell()
-
+        self.zoom_antialias = False
         self.ShowVideoFrame(forceLayout=True)
+        self.ResetZoomAntialias(forceYield=False)
 
     def OnMenuTakeSnapShot1(self, event):
         script = self.currentScript
@@ -9919,6 +9932,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.options['restorebookmarksontrim'] = event.IsChecked()
 
     def OnMenuVideoZoom(self, event=None, menuItem=None, zoomfactor=None, show=True, scroll=None):
+        if show and not self.KeyUpVideoWndow: # GPo, do not allow to fasted recrusive key events
+            return
+        self.KeyUpVideoWndow = False
         if zoomfactor is None:
             if True:#wx.VERSION > (2, 8):
                 vidmenus = [self.videoWindow.contextMenu, self.GetMenuBar().GetMenu(2)]
@@ -10005,7 +10021,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if show:
             self.zoom_antialias = False
             self.ShowVideoFrame(scroll=scroll, forceLayout=True)
-
             """
             if scroll is None and not self.zoomwindowfit:
                 zw = last_size[0] / last_scroll[0]
@@ -10014,12 +10029,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 scroll = (int((last_scroll[0]/last_zoom)*self.zoomfactor), int((last_scroll[1]/last_zoom)*self.zoomfactor))
                 #scroll = (int((last_scroll[0]/last_zoom)*self.zoomfactor), int((last_scroll[1]/last_zoom)*self.zoomfactor))
             """
-
-            if self.options['zoom_antialias']:
-                wx.YieldIfNeeded()
-                self.zoom_antialias = True
-                if self.zoomfactor != 1 or self.zoomwindow:
-                    self.videoWindow.Refresh()
+            self.ResetZoomAntialias()
+            wx.CallLater(400, self.OnKeyUpVideoWindow, None)
 
     def OnMenuVideoZoomAntialias(self, event):
         self.options['zoom_antialias'] = not self.options['zoom_antialias']
@@ -10031,9 +10042,27 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             menuItem = menu.FindItemById(id)
             if menuItem:
                 menuItem.Check(self.zoom_antialias)
-
         if self.zoomfactor != 1 or self.zoomwindow:
             self.videoWindow.Refresh()
+
+    def ResetZoomAntialias(self, forceYield=True, enabledWnd=None):
+        if self.options['zoom_antialias']:
+            if self.zoomfactor != 1 or self.zoomwindow:
+                if forceYield:
+                    try:
+                        self.Refresh()
+                        self.Update()
+                        #wx.SafeYield(enabledWnd, False)
+                    except:
+                        pass
+                self.zoom_antialias = True
+                self.videoWindow.Refresh()
+            else:
+                self.Refresh()
+                self.Update()
+                self.zoom_antialias = True
+        else:
+            self.zoom_antialias = False
 
     def OnMenuVideoFlip(self, event):
         id = event.GetId()
@@ -10345,11 +10374,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         else:
             self.zoom_antialias = False
             self.ShowVideoFrame(resize=True)
-            if self.options['zoom_antialias']:
-                wx.Yield()
-                self.zoom_antialias = True
-                if self.zoomfactor != 1 or self.zoomwindow:
-                    self.videoWindow.Refresh()
+            self.ResetZoomAntialias()
 
     def OnMenuVideoSwitchMode(self, event):
         if self.previewWindowVisible:
@@ -10361,11 +10386,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         else:
             self.zoom_antialias = False
             self.ShowVideoFrame()
-            if self.options['zoom_antialias']:
-                wx.Yield()
-                self.zoom_antialias = True
-                if self.zoomfactor != 1 or self.zoomwindow:
-                    self.videoWindow.Refresh()
+            self.ResetZoomAntialias()
 
     def OnMenuVideoTogglePlacement(self, event):
         self.TogglePreviewPlacement()
@@ -11559,9 +11580,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if not bmSet:
             SetBookmarks()
 
-        self.zoom_antialias = self.options['zoom_antialias']
-        if (self.zoomfactor != 1 or self.zoomwindow) and (self.zoom_antialias and self.previewWindowVisible):
-            self.videoWindow.Refresh()
+        if self.previewWindowVisible:
+            self.ResetZoomAntialias()
+        else:
+            self.zoom_antialias = self.options['zoom_antialias']
 
     def OnNotebookPageChanging(self, event):
         if self.cropDialog.IsShown():
@@ -11807,15 +11829,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if (self.options['middlemousefunc'] == 'show video frame') and (self.currentScript.GetTextLength() > 5):
                 self.zoom_antialias = False
                 self.ShowVideoFrame(forceCursor=self.ScriptChanged(self.currentScript))
-                wx.Yield()
-                if self.options['zoom_antialias']:
-                    self.zoom_antialias = True
-                    if self.zoomfactor != 1 or self.zoomwindow:
-                        self.videoWindow.Refresh()
+                self.ResetZoomAntialias(forceYield=True)
             else:
                 self.InsertSource()
 
     def OnKeyDownVideoWindow(self, event):
+        self.KeyUpVideoWndow = False
         key = event.GetKeyCode()
 
         if key in (wx.WXK_RETURN, wx.WXK_NUMPAD_ENTER):
@@ -11839,6 +11858,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             i = (key - ord('1') + 10) % 10
             self.SelectTab(index=i)
         else:
+            event.Skip()
+
+    # GPo
+    def OnKeyUpVideoWindow(self, event):
+        self.KeyUpVideoWndow = True
+        if event:
             event.Skip()
 
     # GPo 2018  reduce a bit the code size (moore then once used)
@@ -12261,6 +12286,18 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         self.SetVideoStatusText()
                     else:
                         self.SetVideoStatusText(addon=pixelInfo)#'%s%s, %s' % (' '*5,xystring, colorstring))
+
+    # GPo, use it for IdleCall e.g OnScrollVideoWindow
+    def OnAfterScrollVideoWindow(self):
+        self.zoom_antialias = self.options['zoom_antialias'] #True
+        self.videoWindow.Refresh()
+
+    # GPo, all scroll bar scroll events, but no videoWindow.Scroll event
+    def OnScrollVideoWindow(self, event):
+        if self.zoom_antialias and (self.zoomfactor != 1 or self.zoomwindowfill):
+            self.zoom_antialias = False
+            self.IdleCall.append((self.OnAfterScrollVideoWindow, tuple(), {}))
+        event.Skip()
 
     def OnMouseLeaveVideoWindow(self, event):
         if self.FindFocus() == self.currentScript:
@@ -12870,25 +12907,24 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     dc.Clear()
                     dc.DestroyClippingRegion()
                 if h_dc == h_scrolled:
-                    if self.zoomwindow and self.zoom_antialias: # elimenate flicker at bottom
-                        bottom = h_dc - round(script.AVI.DisplayHeight * self.zoomfactor) - self.yo
-                    else:
-                        bottom = h_dc - int(script.AVI.DisplayHeight * self.zoomfactor) - self.yo
+                    bottom = h_dc - int(script.AVI.DisplayHeight * self.zoomfactor) - self.yo
                 else:
-                    bottom = h_dc - (h_scrolled - y0) + zfa
+                    if self.splitView:
+                        bottom = h_dc - (h_scrolled - y0) + self.yo
+                    else:
+                        bottom = h_dc - (h_scrolled - y0) + zfa
                 if bottom > 0:
                     dc.SetClippingRegion(0, h_dc - bottom, w_dc, bottom)
                     dc.Clear()
                     dc.DestroyClippingRegion()
                 if w_dc == w_scrolled:
                     if self.splitView:
-                        right = w_dc - round(self.extended_width * self.zoomfactor) - (self.xo + 3)
+                        right = w_dc - int(self.extended_width * self.zoomfactor) - self.xo
                     else:
                         right = w_dc - int(script.AVI.DisplayWidth * self.zoomfactor) - self.xo
                 else:
-                    # GPo 2018  added wd  (for move moore to left)
                     if self.splitView:
-                        wd = max(w_scrolled - round(self.extended_width * self.zoomfactor), zfa) - self.xo
+                        wd = w_scrolled - int(self.extended_width * self.zoomfactor) - self.xo
                     elif self.extended_move:
                         wd = max((w_scrolled - int(script.AVI.DisplayWidth * self.zoomfactor))-4, zfa)
                     else:
@@ -16244,6 +16280,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.ShowVideoFrame(focus=False, doLayout=False)
 
     def ShowSliderWindow(self, script):
+        isShown = script.sliderWindowShown
+        if not isShown:
+            self.zoom_antialias = False
         button = self.toggleSliderWindowButton
         if self.currentScript.lastSplitSliderPos is None: # GPo 2020
             self.currentScript.lastSplitSliderPos = self.videoSplitter.GetSashPosition()
@@ -16259,8 +16298,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         script.sliderWindowShown = True
         button.SetBitmapLabel(button.bmpHide)
         button.Refresh()
+        if not isShown:
+            self.ResetZoomAntialias()
 
     def HideSliderWindow(self, script):
+        isShown = self.videoSplitter.IsSplit()
+        if isShown:
+            self.zoom_antialias = False
         button = self.toggleSliderWindowButton
         # Hide the sliders
         self.videoSplitter.Unsplit()
@@ -16268,6 +16312,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         script.sliderWindowShown = False
         button.SetBitmapLabel(button.bmpShow)
         button.Refresh()
+        if isShown:
+             self.ResetZoomAntialias()
 
     def ShowVideoOffset(self, offset=0, units='frames', focus=True):
         if self.playing_video:
@@ -16632,7 +16678,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 altdir_tried = True
             else:
                 return previewname
-
+    """
     def GetFitWindowSize(self):
         wA, hA = self.videoWindow.GetSize()
         w, h = wA - 2 * self.xo, hA - 2 * self.yo
@@ -16663,6 +16709,53 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             h = None
         if w < 4:
             w = None
+        return (w, h)
+    """
+
+    def GetFitWindowSize(self):
+        wA, hA = self.videoWindow.GetSize()
+        w, h = wA - 2 * self.xo, hA - 2 * self.yo
+
+        if not self.separatevideowindow:
+            if self.zoomwindow and not self.previewWindowVisible:
+                w = h = None
+            else:
+                if self.previewWindowVisible:
+                    if self.zoomwindowfill:
+                        if self.mainSplitter.GetSplitMode() == wx.SPLIT_HORIZONTAL:
+                            splitpos = (self.mainSplitter.GetSashPosition() - self.mainSplitter.GetClientSize()[1])
+                            h = abs(splitpos) - (2 * self.yo + 5 + self.mainSplitter.GetSashSize()/2)
+                            if not self.splitView and self.currentScript.AVI:
+                                factor = float(float(self.currentScript.AVI.DisplayHeight) / h)
+                                if self.currentScript.AVI.DisplayWidth / factor > w - \
+                                        (self.toggleSliderWindowButton.GetSize()[0] + wx.SystemSettings.GetMetric(wx.SYS_VSCROLL_X)):
+                                    h -= wx.SystemSettings.GetMetric(wx.SYS_VSCROLL_X) - 2
+                            else:
+                                h -= wx.SystemSettings.GetMetric(wx.SYS_VSCROLL_X) - 2
+                        else:
+                            h -= wx.SystemSettings.GetMetric(wx.SYS_VSCROLL_X) - 2
+                        if h < 4: h = None
+                        if w < 4: w = None
+                        return (w, h)
+                    else:
+                        splitpos = self.mainSplitter.GetSashPosition() - self.mainSplitter.GetClientSize() \
+                                   [self.mainSplitter.GetSplitMode() == wx.SPLIT_HORIZONTAL]
+
+                # can be wrong if not preview visible
+                elif self.currentScript.lastSplitVideoPos is not None:
+                    splitpos = self.currentScript.lastSplitVideoPos
+                elif self.oldLastSplitVideoPos is not None:
+                    splitpos = self.oldLastSplitVideoPos
+                else:
+                    splitpos = self.GetMainSplitterNegativePosition()
+
+                if self.mainSplitter.GetSplitMode() == wx.SPLIT_HORIZONTAL:
+                    h = abs(splitpos) - (2 * self.yo + 5 + self.mainSplitter.GetSashSize()/2)
+                else:
+                    w = abs(splitpos) - (2 * self.xo + 5 + self.mainSplitter.GetSashSize()/2 +
+                                         self.toggleSliderWindowButton.GetSize()[0])
+        if h < 4: h = None
+        if w < 4: w = None
         return (w, h)
 
     # GPo trying to cancel the process and freeing the memory
@@ -16897,10 +16990,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             xx = round(xx/self.zoomfactor)
 
         #xxx = min(xx + int(cx/2), w)                   # target offset (display split point) only for zoom 1.0
-        xxx = min(int((ax + cx/2)/self.zoomfactor),w)   # recalc the target offset when zoom != 1.0
+        xxx = min(int((float(ax + cx/2.0))/self.zoomfactor),w)   # recalc the target offset when zoom != 1.0
 
         # bitmap width for both script's
-        self.extended_width = (w*2)-3 if w*2*self.zoomfactor <= cx else w + int((cx/2)/self.zoomfactor)-3
+        self.extended_width = (w*2)-2 if w*2*self.zoomfactor <= cx else w + int((float(cx/2.0))/self.zoomfactor)-2
 
         # draw the first script bitmap
         dc = wx.MemoryDC()
@@ -16927,20 +17020,20 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.videoWindow.PrepareDC(inputdc)
 
         if self.zoomfactor != 1 or self.zoomwindow:
-            vsx = int(self.extended_width*self.zoomfactor) + self.xo + 3
+            vsx = int(self.extended_width*self.zoomfactor) + self.xo * 2
             if self.zoomwindowfit:
                 self.videoWindow.SetVirtualSize((0, 0))
             elif self.zoomwindowfill:
                 self.videoWindow.SetVirtualSize((vsx, 0))
             else:
-                self.videoWindow.SetVirtualSize((vsx, int(h*self.zoomfactor) + self.yo + 3))
+                self.videoWindow.SetVirtualSize((vsx, int(h*self.zoomfactor) + self.yo * 2))
             if self.zoom_antialias and isPaintEvent:
                 inputdc = wx.GCDC(inputdc)
             inputdc.SetUserScale(self.zoomfactor, self.zoomfactor)
         else:
-            vsx = self.extended_width + self.xo + 3
+            vsx = self.extended_width + self.xo * 2
             if self.videoWindow.GetVirtualSize()[0] != vsx:
-                self.videoWindow.SetVirtualSize((vsx, h + self.yo + 3))
+                self.videoWindow.SetVirtualSize((vsx, h + self.yo * 2))
 
         inputdc.Blit(0,0,self.extended_width,h,dc,0,0)
         return True
@@ -16970,8 +17063,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         #dc.SetBrush(wx.CYAN_BRUSH)
         #dc.DrawPolygon([wx.Point(0,0), wx.Point(16,0), wx.Point(0,16)])
-        inputdc.SetFont(wx.Font(pointSize=12, family=wx.FONTFAMILY_DEFAULT, style=wx.FONTSTYLE_NORMAL, weight=wx.FONTWEIGHT_BOLD))
-        inputdc.SetTextForeground(wx.YELLOW)
+
         try:
             self.videoWindow.DoPrepareDC(inputdc)
         except:
@@ -16984,8 +17076,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             inputdc.SetUserScale(self.zoomfactor, self.zoomfactor)
             inputdc.Blit(0, 0, w, h, dc, 0, 0)
             inputdc.SetUserScale(1, 1)
+            inputdc.SetFont(wx.Font(pointSize=12, family=wx.FONTFAMILY_DEFAULT, style=wx.FONTSTYLE_NORMAL, weight=wx.FONTWEIGHT_BOLD))
+            inputdc.SetTextForeground(wx.YELLOW)
             inputdc.DrawLabel("Snapshot " + str(self.snapShotIdx),(x+2,y+2,x+52,y+102))
         else:
+            inputdc.SetFont(wx.Font(pointSize=12, family=wx.FONTFAMILY_DEFAULT, style=wx.FONTSTYLE_NORMAL, weight=wx.FONTWEIGHT_BOLD))
+            inputdc.SetTextForeground(wx.YELLOW)
             inputdc.Blit(0, 0, w, h, dc, 0, 0)
             inputdc.DrawLabel("Snapshot " + str(self.snapShotIdx),(x+2,y+2,x+52,y+102))
 
