@@ -12,6 +12,19 @@ GPo source: https://github.com/gispos/AvsPmod
 GPo releases: https://github.com/gispos/AvsPmod/releases
 
 --------------------------
+Version 2.6.4.9 [2020-11-14] GPo
+--------------------------
+* The sliders window:
+-- If the key 'Control' is pressed while using the Increment and Decrement buttons next to the sliders, 
+-- the change in the value is 5 times slower (the key Control does not have to be held down).
+-- But it is almost superfluous. Noticed too late: with left Mous down on the slider and then mouse wheel you can do it in single steps
+* Some fixes.
+-- warning for different bookmarks (script, tab) was broken in 2.6.4.3
+-- zoom 'Window fit' resizes automatically if video height smaller then window height
+-- key shortcuts for 'Zoom' fires after program start not on the first event
+-- 'Split View' zoom 'Window fit' improved
+
+--------------------------
 Version 2.6.4.8 [2020-11-11] GPo
 --------------------------
 * Some improvments to zoom setting 'Antialiasing' and the program interface
