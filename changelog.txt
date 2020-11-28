@@ -12,6 +12,30 @@ GPo source: https://github.com/gispos/AvsPmod
 GPo releases: https://github.com/gispos/AvsPmod/releases
 
 --------------------------
+Version 2.6.5.0 [2020-11-27] GPo
+--------------------------
+* Added to tab context menu 'Save view pos on tab change'
+* Added to frame text field context menu 'Set bookmark title'
+-- the title of the current bookmark is set with the text in the frame text field
+* Added to menu Trim Editor 'Clear all selections Globally', clears all selections in all tabs, see below
+* Selections now tab related if 'Tab change loads bookmarks' selected
+* Session file saves and restores the selections for each script
+-- info: Selections are made when you select 'Copy to Clipboard' in the Trim Editor
+-- if selections visible and 'Play loop' enabled the playback plays then only the selections
+* New Mouse browse buttons and key events if 'tab change' or 'bookmark jump' for mouse browse buttons selected.
+-- CTRL on video window = bookmark jump (only needed if tab count greater 1)
+-- SHIFT = jump to selection marks (also works with video control buttons 'bookmark jump')
+-- ALT = jump only to titled bookmarks (also works with video control buttons 'bookmark jump')
+* Fixed the big error on File > 'Close all tabs'
+* Fixed on loading from session file bookmarks can be assigned to the wrong tab
+* A lot of code changes 
+
+*** Note for script writers: ***
+The AvsPmod bookmark list was changed, only type 0 bookmarks may be added to the bookmark list.
+Use 'MacroSetBookmark'  when adding your bookmarks type 0 or 'AddFrameBookmark' when adding a mark (type 0,1,2)
+There is now a 'SelectionsDict' in which the selections are saved (type 1,2).
+
+--------------------------
 Version 2.6.4.9 [2020-11-14] GPo
 --------------------------
 * The sliders window:

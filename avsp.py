@@ -4355,12 +4355,14 @@ class AvsFunctionExportImportDialog(wx.Dialog):
 
 # Custom slider
 class SliderPlus(wx.Panel):
-    def __init__(self, parent, app, id, value=0, minValue=0, maxValue=100, size=(-1, 28), big=False, bookmarkDict={}):
+    def __init__(self, parent, app, id, value=0, minValue=0, maxValue=100, size=(-1, 28), big=False, bookmarkDict={}, selectionsDict={}):
         self.big = big
         if self.big:
             size = size[0], size[1] + 16
         wx.Panel.__init__(self, parent, id, size=size, style=wx.WANTS_CHARS)
-        self.bookmarkDict = bookmarkDict
+        self.bookmarkDict = bookmarkDict # GPo TODO, remove it and store the titles in the bookmarks
+        self.selectionsDict = selectionsDict # GPo 2020, selections now seperate and bookmarks only contains bmtype 0
+        self.childSelectionsDict = None  # Update this dict on create selections
         self.parent = parent
         self.app = app
         self.minValue = minValue
@@ -4420,11 +4422,10 @@ class SliderPlus(wx.Panel):
         # GPo 2020
         self.penWindowBackground = wx.Pen(self.colorBackground)
         if self.hilightBookmarks or self.selmode == 1:
-            if self.value in self.bookmarks:
-                if self.bookmarks[self.value] in (1,2):
-                    self.brushWindowBackground = self.selectionsHilightColor
-                else:
-                    self.brushWindowBackground = self.bookmarksHilightColor
+            if self.value in self.selectionsDict:
+                self.brushWindowBackground = self.selectionsHilightColor
+            elif self.value in self.bookmarks:
+                self.brushWindowBackground = self.bookmarksHilightColor
             else:
                 self.brushWindowBackground = wx.Brush(self.colorBackground)
         else:
@@ -4556,11 +4557,9 @@ class SliderPlus(wx.Panel):
         self._PaintSlider(dc)
 
     def _OnPaint(self, event):
-        # Color info
-        #~self._DefineBrushes()  # GPo 2020, OnPaint why? on create is enougth! speed it up
         dc = wx.PaintDC(self)
         self._PaintSlider(dc)
-
+    """
     def _PaintSlider(self, dc):
         boolEnabled = self.IsEnabled()
         # Paint the bar
@@ -4575,6 +4574,7 @@ class SliderPlus(wx.Panel):
         dc.SetPen(self.penBackground)
         dc.SetBrush(self.brushBackground)
         dc.DrawRectangle(xB, yB, wB, hB)
+
         # Then paint the bookmark selections
         if self.selections is not None:
             if boolEnabled:
@@ -4590,6 +4590,7 @@ class SliderPlus(wx.Panel):
                 pixelstart = int(start * wB / float(self.maxValue - self.minValue)) + self.xo
                 pixelstop = int(stop * wB / float(self.maxValue - self.minValue)) + self.xo
                 dc.DrawRectangle(pixelstart, yB, pixelstop - pixelstart, hB)
+
         # Then draw the bookmark triangles
         dc.SetPen(self.penWindowBackground)
         if boolEnabled:
@@ -4632,6 +4633,7 @@ class SliderPlus(wx.Panel):
                 dc.SetPen(wx.BLACK_PEN)
                 dc.DrawLine(pixelpos, h-1, pixelpos-wT/4, h-1)
                 dc.SetPen(self.penWindowBackground)
+
         # Then paint the border
         dc.SetPen(self.penShadow)
         dc.DrawLine(xB, yB, xB+wB, yB)
@@ -4703,18 +4705,184 @@ class SliderPlus(wx.Panel):
                     dc.SetPen(self.penGrayText)
                     dc.SetBrush(self.brushGrayText)
                 dc.DrawPolygon((p1, p2, p3))
+    """
+    # GPo 2020, changed, I want do handle the selections seperataly (not in bookmarks stored)
+    def _PaintSlider(self, dc):
+        boolEnabled = self.IsEnabled()
+        # Paint the bar
+        x, y = (0, 0)
+        w, h = self.GetSize()
+        xB, yB, wB, hB = self.xo, self.yo, w-2*self.xo, h-self.yo-self.yo2
+        xH, yH, wH, hH = -1, self.yo-3, self.wH, hB+6
+        # First paint background
+        dc.SetPen(self.penWindowBackground)
+        dc.SetBrush(self.brushWindowBackground)
+        dc.DrawRectangle(0, 0, w, h)
+        dc.SetPen(self.penBackground)
+        dc.SetBrush(self.brushBackground)
+        dc.DrawRectangle(xB, yB, wB, hB)
 
+        # draw the bookmark triangles
+        dc.SetPen(self.penWindowBackground)
+        if boolEnabled:
+            dc.SetBrush(wx.BLACK_BRUSH)
+        else:
+            dc.SetBrush(self.brushGrayText)
+        wT = self.wT
+        #for value, bmtype in self.bookmarks.items():
+            #if (bmtype != 0) or (value > self.maxValue) or (value < self.minValue):
+                #continue
+        lastpixelpos = -1
+        for value in self.bookmarks.keys():
+            if (value > self.maxValue) or (value < self.minValue):
+                continue
+            pixelpos = int(value * wB / float(self.maxValue - self.minValue)) + self.xo
+            if pixelpos == lastpixelpos: # speed it up if next bookmark pixelpos the last one (rounding float int)
+                continue
+            if value in self.bookmarkDict:
+                dc.SetBrush(wx.BLUE_BRUSH)
+            else:
+                dc.SetBrush(wx.BLACK_BRUSH)
+            p1 = wx.Point(pixelpos, h-wT/2)
+            p2 = wx.Point(pixelpos-wT/4, h)
+            p3 = wx.Point(pixelpos+wT/4, h)
+            dc.DrawPolygon((p1, p2, p3))
+            lastpixelpos = pixelpos
 
+        # draw the selection marks
+        for value, bmtype in self.selectionsDict.items():
+            if (value > self.maxValue) or (value < self.minValue):
+                continue
+            pixelpos = int(value * wB / float(self.maxValue - self.minValue)) + self.xo
+            p1 = wx.Point(pixelpos, h-wT/2)
+            if bmtype == 1:
+                p2 = wx.Point(pixelpos-wT/2, h)
+                p3 = wx.Point(pixelpos, h)
+                dc.DrawPolygon((p1, p2, p3))
+                dc.SetPen(wx.BLACK_PEN)
+                dc.DrawLine(pixelpos, h-1, pixelpos+wT/4, h-1)
+                dc.SetPen(self.penWindowBackground)
+            elif bmtype == 2:
+                p2 = wx.Point(pixelpos, h)
+                p3 = wx.Point(pixelpos+wT/2, h)
+                dc.DrawPolygon((p1, p2, p3))
+                dc.SetPen(wx.BLACK_PEN)
+                dc.DrawLine(pixelpos, h-1, pixelpos-wT/4, h-1)
+                dc.SetPen(self.penWindowBackground)
+
+        # draw the selections
+        if self.selections is not None:
+            if boolEnabled:
+                dc.SetPen(wx.Pen(wx.BLUE))
+                dc.SetBrush(wx.BLUE_BRUSH)
+            else:
+                color = wx.Colour(200,200,230)
+                dc.SetPen(wx.Pen(color))
+                dc.SetBrush(wx.Brush(color))
+
+            for start, stop in self.selections:
+                start = min(max(start, self.minValue), self.maxValue)
+                stop = min(max(stop, self.minValue), self.maxValue)
+                if start == stop: # or remove it and show the marks on timeline end
+                    continue
+                pixelstart = int(start * wB / float(self.maxValue - self.minValue)) + self.xo
+                pixelstop = int(stop * wB / float(self.maxValue - self.minValue)) + self.xo
+                dc.DrawRectangle(pixelstart, yB, pixelstop - pixelstart, hB)
+
+        # Then paint the border
+        dc.SetPen(self.penShadow)
+        dc.DrawLine(xB, yB, xB+wB, yB)
+        dc.DrawLine(xB, yB, xB, yB+hB)
+        dc.SetPen(self.penDarkShadow)
+        dc.DrawLine(xB+1, yB+1, xB+wB, yB+1)
+        dc.DrawLine(xB+1, yB+1, xB+1, yB+hB)
+        dc.SetPen(self.penHighlight2)
+        dc.DrawLine(xB+wB, yB, xB+wB, yB+hB)
+        dc.DrawLine(xB, yB+hB, xB+wB+1, yB+hB)
+        dc.SetPen(self.penHighlight)
+        dc.DrawLine(xB+wB-1, yB+1, xB+wB-1, yB+hB)
+        dc.DrawLine(xB+1, yB+hB-1, xB+wB, yB+hB-1)
+        # Then paint the handle
+        pixelpos = int(self.value * wB / float(self.maxValue - self.minValue)) + self.xo
+        pixelpos0 = pixelpos - self.wH/2
+        if self.isclicked or not boolEnabled:
+            dc.SetPen(self.penHandle2)
+            dc.SetBrush(self.brushHandle2)
+        else:
+            dc.SetPen(self.penHandle)
+            dc.SetBrush(self.brushHandle)
+        dc.DrawRectangle(pixelpos0, yH, wH, hH)
+        dc.SetPen(self.penHighlight2)
+        dc.DrawLine(pixelpos0, yH, pixelpos0+wH, yH)
+        dc.DrawLine(pixelpos0, yH, pixelpos0, yH+hH)
+        dc.SetPen(self.penDarkShadow)
+        dc.DrawLine(pixelpos0+wH, yH, pixelpos0+wH, yH+hH)
+        dc.DrawLine(pixelpos0, yH+hH, pixelpos0+wH+1, yH+hH)
+        dc.SetPen(self.penShadow)
+        dc.DrawLine(pixelpos0+wH-1, yH+1, pixelpos0+wH-1, yH+hH)
+        dc.DrawLine(pixelpos0+1, yH+hH-1, pixelpos0+wH, yH+hH-1)
+        # if trim dlg is shown paint the slider buttons
+        if self.selmode == 1:
+            hH2 = hH/2
+            border = 3
+            yH2 = yB #yH + hH/4
+            for seltype in (1,2):
+                if seltype == 1:
+                    xpos = pixelpos0 - self.wH
+                    p1 = wx.Point(xpos+border, yH2+hH2-border)
+                    p2 = wx.Point(xpos+self.wH-border, yH2+hH2-border)
+                    p3 = wx.Point(xpos+self.wH-border, yH2+border)
+                else:
+                    xpos = pixelpos0 + self.wH #+ 1
+                    p1 = wx.Point(xpos+border, yH2+border)
+                    p2 = wx.Point(xpos+border, yH2+hH2-border)
+                    p3 = wx.Point(xpos+self.wH-border, yH2+hH2-border)
+                # Draw the button
+                dc.SetPen(self.penHandle)
+                dc.SetBrush(self.brushHandle)
+                dc.DrawRectangle(xpos, yH2, self.wH, hH2)
+                dc.SetPen(self.penHighlight2)
+                dc.DrawLine(xpos, yH2, xpos+wH, yH2)
+                dc.DrawLine(xpos, yH2, xpos, yH2+hH2)
+                dc.SetPen(self.penDarkShadow)
+                if seltype == 2:
+                    dc.DrawLine(xpos+wH, yH2, xpos+wH, yH2+hH2)
+                    dc.DrawLine(xpos, yH2+hH2, xpos+wH+1, yH2+hH2)
+                else:
+                    dc.DrawLine(xpos, yH2+hH2, xpos+wH, yH2+hH2)
+                dc.SetPen(self.penShadow)
+                dc.DrawLine(xpos+wH-1, yH2+1, xpos+wH-1, yH2+hH2)
+                dc.DrawLine(xpos+1, yH2+hH2-1, xpos+wH, yH2+hH2-1)
+                # Draw the button image
+                if boolEnabled:
+                    dc.SetPen(wx.BLACK_PEN)
+                    dc.SetBrush(wx.BLACK_BRUSH)
+                else:
+                    dc.SetPen(self.penGrayText)
+                    dc.SetBrush(self.brushGrayText)
+                dc.DrawPolygon((p1, p2, p3))
+
+    # GPo 2020 changed (childSelectionsDict = script selectionsDict)
     def _createSelections(self):
+        def updateChild():
+            if isinstance(self.childSelectionsDict, dict):
+                try:
+                    self.childSelectionsDict.clear()
+                    self.childSelectionsDict.update(self.selectionsDict)
+                except:
+                    pass
+
+        selectionmarks = [item for item in self.selectionsDict.items()]
+        if len(selectionmarks) == 0:
+            updateChild()
+            return None
+        selectionmarks.sort()
         selectionList = []
         start = stop = None
-        selectionmarks = [item for item in self.bookmarks.items() if item[1] != 0]
-        selectionmarks.sort()
-        if len(selectionmarks) == 0:
-            return None
         if selectionmarks[0][1] == 2:
             start = self.minValue
         for value, bmtype in selectionmarks:
+            #added = False
             if start is None:
                 if bmtype == 1:
                     start = value
@@ -4722,10 +4890,30 @@ class SliderPlus(wx.Panel):
                 if bmtype == 2:
                     stop = value
                     selectionList.append((start, stop))
+                    #added = True
                     start = stop = None
+
         if start is not None:
             stop = self.maxValue
             selectionList.append((start, stop))
+            #added = True
+        """
+        newList = []
+        for start1, stop1 in selectionList:
+            for start2, stop2 in selectionList:
+                if ((start1 == start2) and (stop1 == stop2)) or ((start2 > stop1) and (stop2 > stop1)):
+                    newList.append((start2, stop2))
+
+        # insert only valide selections
+        if added:
+            self.selectionsDict.clear()
+            for start, stop in newList:
+                self.selectionsDict[start] = 1
+                self.selectionsDict[stop] = 2
+            if not lastMark[0] in self.selectionsDict:
+                self.selectionsDict[lastMark[0]] = lastMark[1]
+        """
+        updateChild()
         return selectionList
 
     def _getRectHandle(self):
@@ -4744,10 +4932,16 @@ class SliderPlus(wx.Panel):
         return self.maxValue
 
     def RefreshBookmarks(self):
-        if self.bookmarks:
+        if self.selectionsDict:
             self.selections = self._createSelections()
         else:
+            try: # update only if needed
+                if self.selections is not None and isinstance(self.childSelectionsDict, dict):
+                    self.childSelectionsDict.clear()
+            except:
+                pass
             self.selections = None
+
         if self.IsDoubleBuffered():
             dc = wx.ClientDC(self)
         else:
@@ -4764,12 +4958,12 @@ class SliderPlus(wx.Panel):
 
     def SetValue(self, value):
         self.value = max(min(value, self.maxValue), self.minValue)
-        # GPo, hilight also selection marks, easier do find the start and end points
+        # GPo, higlight also selection marks, easier do find the start and end points
         if self.hilightBookmarks:
-            if self.value in self.bookmarks:
-                if self.bookmarks[self.value] == 0:
-                    self.brushWindowBackground = self.bookmarksHilightColor
-                else: self.brushWindowBackground = self.selectionsHilightColor
+            if self.selections and value in self.selectionsDict:
+                self.brushWindowBackground = self.selectionsHilightColor
+            elif self.value in self.bookmarks:
+                self.brushWindowBackground = self.bookmarksHilightColor
             else:
                 self.brushWindowBackground = wx.Brush(self.colorBackground)
 
@@ -4802,60 +4996,69 @@ class SliderPlus(wx.Panel):
 
     def SetBookmark(self, value, bmtype=0, refresh=True):
         # Type=0: bookmark, Type=1: selection start, Type=2: selection end
-        if bmtype not in (0,1,2):
+        if bmtype == 0:
+            if value in self.bookmarks:
+                return False
+            self.bookmarks[value] = bmtype
+        elif bmtype in (1,2):
+            if value in self.selectionsDict and (self.selectionsDict[value] == bmtype):
+                del self.selectionsDict[value]
+            else:
+                self.selectionsDict[value] = bmtype
+        else:
             return False
 
-        # GPo 2020, convert bookmark to selection, make float type
-        if value in self.bookmarks:
-            if self.bookmarks[value] == bmtype:
-                return False
-
-            if bmtype in (1,2):
-                if self.bookmarks[value] == 0 or isinstance(self.bookmarks[value], float):
-                    self.bookmarks[value] = float(bmtype)
-                else:
-                    self.bookmarks[value] = bmtype
-            else:
-                if self.bookmarks[value] in (1,2): # convert selection to float = bookmark
-                    self.bookmarks[value] = float(self.bookmarks[value])
-                else:
-                    self.bookmarks[value] = 0
-        else:
-             self.bookmarks[value] = bmtype
-
         if refresh:
-            self.SetBookmarkHilighting(self.hilightBookmarks)  # GPo
+            self.SetBookmarkHilighting(self.hilightBookmarks)
             self.RefreshBookmarks()
         return True
 
     def RemoveBookmark(self, value, bmtype=0, refresh=True):
         try:
-            # GPo 2020, convert selection back to bookmark if bmtype (1,2) float
-            if value in self.bookmarks:
-                if bmtype in (1,2):
-                    if isinstance(self.bookmarks[value], float):
-                        self.bookmarks[value] = 0
-                    else: del self.bookmarks[value]
+            if bmtype == 0:
+                if value in self.bookmarks:
+                    del self.bookmarks[value]
                 else:
-                    if isinstance(self.bookmarks[value], float): # convert (1,2) float to normmal selection (1,2)
-                        self.bookmarks[value] = int(self.bookmarks[value])
-                    else:
-                        del self.bookmarks[value]
+                    return False
+            elif bmtype in (1,2):
+                if value in self.selectionsDict:
+                    del self.selectionsDict[value]
+                else:
+                    return False
             else:
                 return False
 
             if refresh:
-                self.SetBookmarkHilighting(self.hilightBookmarks)  # GPo
+                self.SetBookmarkHilighting(self.hilightBookmarks)
                 self.RefreshBookmarks()
             return True
         except KeyError:
             return False
 
-    def RemoveAllBookmarks(self):
-        if self.bookmarks:
+    def RemoveAllSelections(self, refresh=True):
+        self.selectionsDict.clear()
+        self.selections = None
+        try:
+            if isinstance(self.childSelectionsDict, dict):
+                self.childSelectionsDict.clear()
+        except:
+            pass
+        if not refresh:
+            return
+        self.SetBookmarkHilighting(self.hilightBookmarks)
+        if self.IsDoubleBuffered():
+                dc = wx.ClientDC(self)
+        else:
+            dc = wx.BufferedDC(wx.ClientDC(self))
+        dc.Clear()
+        self._PaintSlider(dc)
+
+    def RemoveAllBookmarks(self, clearSelections=True):
+        if self.bookmarks or (self.selections and clearSelections):
+            if clearSelections:
+                self.RemoveAllSelections(False)
             self.bookmarks.clear()
-            self.selections = None
-            self.SetBookmarkHilighting(self.hilightBookmarks)  # GPo
+            self.SetBookmarkHilighting(self.hilightBookmarks)
             if self.IsDoubleBuffered():
                 dc = wx.ClientDC(self)
             else:
@@ -4893,20 +5096,28 @@ class SliderPlus(wx.Panel):
         rectHandle = self._getRectHandle()
         return rectHandle.Inside(mousepos)
 
+    # GPo changed
     def HitTestBookmark(self, mousepos):
         x, y, w, h = self.GetRect()
         hitlist = []
         wT = self.wT
-        for value, bmtype in self.bookmarks.items():
+        for value in self.bookmarks.keys():
             pixelpos = int(value * (w-2*self.xo) / float(self.maxValue - self.minValue)) + self.xo
-            if bmtype == 0:
-                rect = wx.Rect(pixelpos-wT/4, h-self.yo2, wT/2, wT/2)
-            elif bmtype == 1:
-                rect = wx.Rect(pixelpos-wT/2, h-self.yo2, wT/2+wT/4, wT/2)
-            elif bmtype == 2:
-                rect = wx.Rect(pixelpos-wT/4, h-self.yo2, wT/2+wT/4, wT/2)
+            rect = wx.Rect(pixelpos-wT/4, h-self.yo2, wT/2, wT/2)
             if rect.Inside(mousepos):
                 hitlist.append((value, pixelpos))
+                #~break # break also get the first bookmark
+        #~if not hitlist and self.selections:
+        if self.selections:
+            for value, bmtype in self.selectionsDict.items():
+                pixelpos = int(value * (w-2*self.xo) / float(self.maxValue - self.minValue)) + self.xo
+                if bmtype == 1:
+                    rect = wx.Rect(pixelpos-wT/2, h-self.yo2, wT/2+wT/4, wT/2)
+                elif bmtype == 2:
+                    rect = wx.Rect(pixelpos-wT/4, h-self.yo2, wT/2+wT/4, wT/2)
+                if rect.Inside(mousepos):
+                    hitlist.append((value, pixelpos))
+                    break
         if hitlist:
             if len(hitlist) == 1:
                 return hitlist[0][0]
@@ -5054,6 +5265,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             WM_CUSTOM_FRAME_NR = 32771
             WM_CUSTOM_SCROLL_STEP = 32772
             WM_CUSTOM_SCROLL = 32773
+            WM_CUSTOM_RESET_ANTIALIAS = 32774
             WM_COPYDATA = 0x4A    # do not change
             #~WM_XBUTTONDOWN = 0x020B  # browse buttons; high wparam first btn 0x0001 second btn 0x0002;
             # For PostMessages to customHandler
@@ -5063,6 +5275,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             WndProcHookMixin.add_msg_handler(self, WM_CUSTOM_FRAME_NR, self.custom_frame_nr)
             WndProcHookMixin.add_msg_handler(self, WM_CUSTOM_SCROLL_STEP, self.custom_scroll_step)
             WndProcHookMixin.add_msg_handler(self, WM_CUSTOM_SCROLL, self.custom_scroll)
+            WndProcHookMixin.add_msg_handler(self, WM_CUSTOM_RESET_ANTIALIAS, self.custom_reset_antialias)
             WndProcHookMixin.add_msg_handler(self, WM_COPYDATA, self.custom_copy_data)
             #~WndProcHookMixin.add_msg_handler(self, WM_XBUTTONDOWN, self.wm_xbuttondown) not working
             # enable custom WndProc
@@ -5291,6 +5504,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.NewFileName = _('New File')
         self.scrapWindow = ScrapWindow(self)
         self.bookmarkDict = {}
+        self.selectionsDict = {}
         self.recentframes = []
         self.bmpVideo = None
         self.createWindowElements()
@@ -5455,12 +5669,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         def OnIdle(event):
             if self.IdleCallDict: # GPo, fire from first to last entry
                 key = next(iter(self.IdleCallDict))
-                self.IdleCallDict.pop(key)()
-                """
-                for key in self.IdleCallDict.keys(): # fires all, without waiting
-                    self.IdleCallDict[key]()
-                self.IdleCallDict.clear()
-                """
+                f = self.IdleCallDict.pop(key)
+                if f:
+                    f()
+
             if self.IdleCall:
                 func, args, kwargs = self.IdleCall.pop() # GPo, fire from last to first entry
                 func(*args, **kwargs)
@@ -5505,6 +5717,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.ReloadModifiedScripts()
         self.scriptNotebook.SetSelection(index)
         self.currentScript.SetFocus()
+        # set the script selections
+        if self.tabChangeLoadBookmarks:
+            self.SetSelectionsDict(self.currentScript.selections)
 
         # GPo 2020, scrptWindow and videoWindow binds on create, videoControls also on create but to another func
         # exclude Statusbar, it's binding with videoControls, exclude all scriptNotebook children
@@ -5589,7 +5804,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if not self.zoomwindowfit:
                 if self.zoom_antialias and (self.zoomfactor != 1 or self.zoomwindowfill):
                     self.zoom_antialias = False
-                    self.IdleCall.append((self.OnAfterScrollVideoWindow, tuple(), {}))
+                    # for reset must call custom_reset_antialias
+                    #~wx.CallAfter(self.OnAfterScrollVideoWindow)
+                    #self.IdleCall.append((self.OnAfterScrollVideoWindow, tuple(), {}))
                 self.videoWindow.Scroll(xy)
         elif not self.zoomwindowfit:
             self.IdleCall.append((self.ShowVideoFrame, {'scroll': xy}, {}))
@@ -5604,11 +5821,19 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if not self.zoomwindowfit:
                 if self.zoom_antialias and (self.zoomfactor != 1 or self.zoomwindowfill):
                     self.zoom_antialias = False
-                    self.IdleCall.append((self.OnAfterScrollVideoWindow, tuple(), {}))
+                    # for reset must call custom_reset_antialias
+                    #~wx.CallAfter(self.OnAfterScrollVideoWindow)
                 self.videoWindow.Scroll(x, y)
         elif not self.zoomwindowfit:
             wx.CallAfter(self.ShowVideoFrame, forceLayout=True, scroll=(x,y))
-            #wx.CallAfter(self.videoWindow.Scroll, x, y)
+
+    def custom_reset_antialias(self, w_param, l_param):
+        if w_param == 0:
+          self.zoom_antialias = False
+          self.videoWindow.Refresh()
+          self.videoWindow.Update()
+        else:
+            self.IdleCall.append((self.OnAfterScrollVideoWindow, tuple(), {}))
 
     def custom_copy_data(self, w_param, l_param):
         pCDS = ctypes.cast(l_param, PCOPYDATASTRUCT)
@@ -6124,7 +6349,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'playfastfunc': True,                    # GPo 2020
             'playloop': False,                       # GPo 2020
             'bookmarktotrim': False,                 # GPo 2020
-            'restorebookmarksontrim': False,         # GPo 2020
             'bookmarkshilightcolor': wx.Colour(233,122,122),   # GPo
             'selectionshilightcolor': wx.Colour(110,110,204),  # GPo 2020
             'savemarkedavs': True,
@@ -6963,7 +7187,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 ((_('Show tabs in fixed width'), wxp.OPT_ELEM_CHECK, 'fixedwidthtab', _('All tabs will have same width'), dict() ), ),
                 ((_('Invert scroll wheel direction (Tabs, Zoom)'), wxp.OPT_ELEM_CHECK, 'invertscrolling', _('Scroll the mouse wheel up for changing tabs to the right'), dict() ), ),
                 ((_('Invert scroll wheel direction (Frame)'), wxp.OPT_ELEM_CHECK, 'invertframescrolling', _('Invert wheel direction for frames step'), dict() ), ),   # GPo 2018
-                ((_('On first script load bookmarks from script'), wxp.OPT_ELEM_CHECK, 'bookmarksfromscript', _('Automatically load bookmarks from script only if tab count 1'), dict() ), ),
+                ((_('On first script load bookmarks from script'), wxp.OPT_ELEM_CHECK, 'bookmarksfromscript', _('Automatically load bookmarks from script'), dict() ), ),
                 ((_('Tab change loads bookmarks from script or tab *'), wxp.OPT_ELEM_CHECK, 'tabsbookmarksfromscript', _('Automatically load bookmarks from script or tab if tab changed'), dict() ), ),
                 ((_('Warning tab bookmarks different'), wxp.OPT_ELEM_CHECK, 'warnscriptbookmarksdif', _('Warn if tab bookmarks and from script reading bookmarks different.'), dict(ident=20) ), ),
                 ((_('Only allow a single instance of AvsPmod')+' *', wxp.OPT_ELEM_CHECK, 'singleinstance', _('Only allow a single instance of AvsPmod'), dict() ), ),
@@ -7652,9 +7876,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     (_('Move selections after the current frame'), 'Ctrl+V', self.OnMenuVideoMoveSelectionsAfterCurrentFrame, _('The current selections are cut from the timeline and inserted after the current frame. Bookmarks are shifted accordingly.'), wx.ITEM_NORMAL, None, self.videoWindow),
                     (''),
                     (_('Mark trim points'), '', self.OnSetBookmarkToTrims, _('Add bookmark to trim intersections'), wx.ITEM_CHECK, self.options['bookmarktotrim']),
-                    (_('Restore bookmarks'), '', self.OnSetRestoreBookmarks, _('Restore the bookmark if it was a bookmark before selection'), wx.ITEM_CHECK, self.options['restorebookmarksontrim']),
                     (''),
-                    (_('Clear selections'), '', self.OnTrimDialogCancel, _('Clear all trim editor selections (hide the trim editor if visible)')),
+                    (_('Clear tab selections'), '', self.OnTrimDialogCancel, _('Clear tab trim editor selections (hide the trim editor if visible)')),
+                    (_('Clear all selections Globally'), '', self.OnClearSelectionsGlobally, _('Clear all the tab trim editor selections (hide the trim editor if visible)')),
                     ),
                 ),
                 (''),
@@ -7821,10 +8045,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         return (
             (self.bmpVidUp, self.OnMenuVideoToggle, _('Toggle the video preview')),
-            (bmpSkipLeft, self.OnMenuVideoGotoPreviousBookmark,_('Previous bookmark')),
+            (bmpSkipLeft, self.OnButtonVideoGotoPreviousBookmark,_('Previous bookmark')),
             (bmpLeft, self.OnMenuVideoPrevFrame, _('Previous frame')),
             (bmpRight, self.OnMenuVideoNextFrame, _('Next frame')),
-            (bmpSkipRight, self.OnMenuVideoGotoNextBookmark,_('Next bookmark')),
+            (bmpSkipRight, self.OnButtonVideoGotoNextBookmark,_('Next bookmark')),
             (self.bmpPlay, self.OnMenuVideoPlay, _('Play/pause video')),
             (bmpExternal, self.OnMenuVideoExternalPlayer, _('Run the script with an external program')),
         )
@@ -8032,6 +8256,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             (_('Release all other video memory'), '', self.OnMenuOtherScriptReleaseMemory), # GPo 2020
             (''),
             (_('Tab change loads bookmarks'), '', self.OnMenuTabChangeLoadBookmarks, '', wx.ITEM_CHECK, self.options['tabsbookmarksfromscript']), # GPo 2019
+            (_('Save view pos on tab change'), '', self.OnMenuSaveViewPos, _('Save/Restore last view position and zoom factor on tab change'), wx.ITEM_CHECK, False),
             (''),
             (_('Select all'), '', self.OnMenuEditSelectAll),
             (''),
@@ -8046,6 +8271,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         menu = self.createMenu(menuInfo)
         nb.contextMenu = menu
         nb.dragging = False
+
         if self.options['usetabimages']:
             color1 = wx.SystemSettings.GetColour(wx.SYS_COLOUR_SCROLLBAR)
             color2 = wx.SystemSettings.GetColour(wx.SYS_COLOUR_3DDKSHADOW)
@@ -8125,6 +8351,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         scriptWindow.videoXY = None     # GPo
         scriptWindow.videoZoom = None   # GPo
         scriptWindow.bookmarks = {}     # GPo
+        scriptWindow.selections = {}    # GPo
         scriptWindow.snapShots = {
             'shot1': [-1, None, ""], # GPo: FrameNr, Bitmap, script
             'shot2': [-1, None, ""]
@@ -8240,7 +8467,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.frameTextCtrl2 = frameTextCtrl
         # Create the video slider
         if primary:
-            self.videoSlider = SliderPlus(panel, self, wx.ID_ANY, 0, 0, 240-1, big=self.options['largeui'], bookmarkDict=self.bookmarkDict)
+            self.videoSlider = SliderPlus(panel, self, wx.ID_ANY, 0, 0, 240-1, big=self.options['largeui'],
+                                            bookmarkDict=self.bookmarkDict,selectionsDict=self.selectionsDict)
             self.videoSlider.Bind(wx.EVT_SCROLL_THUMBTRACK, self.OnSliderChanged)
             self.videoSlider.Bind(wx.EVT_SCROLL_ENDSCROLL, self.OnSliderReleased)
             self.videoSlider.Bind(wx.EVT_RIGHT_UP, self.OnSliderRightUp)
@@ -8252,7 +8480,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.videoSlider.bookmarksHilightColor = wx.Brush(self.options['bookmarkshilightcolor'])  # GPo
             self.videoSlider.selectionsHilightColor = wx.Brush(self.options['selectionshilightcolor'])  # GPo
         else:
-            self.videoSlider2 = SliderPlus(panel, self, wx.ID_ANY, 0, 0, 240-1, big=self.options['largeui'], bookmarkDict=self.bookmarkDict)
+            self.videoSlider2 = SliderPlus(panel, self, wx.ID_ANY, 0, 0, 240-1, big=self.options['largeui'],
+                                            bookmarkDict=self.bookmarkDict,selectionsDict=self.selectionsDict)
             self.videoSlider2.Bind(wx.EVT_SCROLL_THUMBTRACK, self.OnSliderChanged)
             self.videoSlider2.Bind(wx.EVT_SCROLL_ENDSCROLL, self.OnSliderReleased)
             self.videoSlider2.Bind(wx.EVT_RIGHT_UP, self.OnSliderRightUp)
@@ -8275,17 +8504,16 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         # Set the sizer and return the panel
         panel.SetSizer(sizer)
 
-        def OnMouseAux1Down(event):
-            if wx.GetKeyState(wx.WXK_CONTROL):
-                self.GotoNextBookmark(reverse=True, forceCursor=True, bmtype=[1,2])
+        def OnMouseAux1Down(event, isAux2=False):
+            if wx.GetKeyState(wx.WXK_SHIFT):
+                self.GotoNextBookmark(reverse=not isAux2, forceCursor=True, bmtype=[1,2])
+            elif wx.GetKeyState(wx.WXK_ALT):
+                self.GotoNextBookmark(reverse=not isAux2, forceCursor=True, bmtype=[3]) # titled bookmarks
             else:
-                self.GotoNextBookmark(reverse=True, forceCursor=True)
+                self.GotoNextBookmark(reverse=not isAux2, forceCursor=True)
 
         def OnMouseAux2Down(event):
-            if wx.GetKeyState(wx.WXK_CONTROL):
-                self.GotoNextBookmark(forceCursor=True, bmtype=[1,2])
-            else:
-                self.GotoNextBookmark(forceCursor=True)
+            OnMouseAux1Down(event, True)
 
         if wx.VERSION >= (2,9):   # GPo 2020, bind mouse brows buttons
             panel.Bind(wx.EVT_MOUSE_AUX1_DOWN, OnMouseAux1Down)
@@ -8579,15 +8807,18 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     def OnMenuFileClose(self, event):
         if self.previewWindowVisible:
             index = self.scriptNotebook.GetSelection()
-            if index + 1 < self.scriptNotebook.GetPageCount(): # hide the prview if next AVI is None
+            script = self.currentScript                         # assign the var
+            if index + 1 < self.scriptNotebook.GetPageCount():  # hide the prview if next AVI is None
                 script,idx = self.getScriptAtIndex(index+1)
-                if not script or script.AVI is None:
-                    self.HidePreviewWindow()
+            elif index > 0:                                     # the last one
+                script,idx = self.getScriptAtIndex(index-1)
+            if not script or script.AVI is None:
+                self.HidePreviewWindow()
         self.CloseTab(prompt=True)
 
     def OnMenuOtherFilesClose(self, event):
         idx = self.scriptNotebook.GetSelection()
-        count = self.scriptNotebook.GetPageCount()
+        count = self.scriptNotebook.GetPageCount()-1
         for index in xrange(count,-1,-1):
             if index != idx:
                 self.CloseTab(index, prompt=True)
@@ -8614,12 +8845,18 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 script.EmptyUndoBuffer()
                 script.SetSavePoint()
                 script.GotoPos(pos)
-            else:                           # GPo
+                self.DeleteAllSelections()
+            else: # GPo 2020
                 script.SetModified(False)
                 script.old_modified = False
                 self.UpdateScriptTabname(script=script)
+            # GPo 2020, on reload reset all
+            script.bookmarks = None
+            self.bookmarkDict.clear()
+            if self.options['bookmarksfromscript']:
+                self.OnMenuBookmarksFromScript(difWarn=False)
         else:
-            wx.Bell()  # GPo
+            wx.Bell()
 
     def OnMenuFileOpenScriptDirectory(self, event):
         dirname, basename = os.path.split(self.currentScript.filename)
@@ -8659,41 +8896,29 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         script.InsertText(0, sBookmarks + b)
 
     # GPo, 2018
-    def OnMenuBookmarksFromScript(self, event, beep=True, getOnlyCount=False, script=None, difWarn=False):
+    def OnMenuBookmarksFromScript(self, event=None, getOnlyCount=False, script=None, difWarn=None):
 
-        # fast
-        """
-        def compareBookmarks_fast(script):
+        def compareBookmarks(script, difWarn):
+            if difWarn is None:
+                difWarn = self.options['warnscriptbookmarksdif']
             if not difWarn or not script.bookmarks:
                 return True
-            if len(script.bookmarks) != len(self.GetBookmarkFrameList()):
-                c = 0
-                for i, item in enumerate(script.bookmarks.items()):
-                    if item[1] == 0 or isinstance(item[1], float):
-                        c += 1
-                if c != len(bookmarkDict):
-                    dlg = wx.MessageDialog(self, 'Bookmarks different. Set tab last bookmarks?',
-                                            _('Bookmarks'), wx.YES_NO)
-                    ID = dlg.ShowModal()
-                    dlg.Destroy()
-                    if ID == wx.ID_YES:
-                        self.SetBookmarkFrameList_2(script.bookmarks.items())
-                        return False
-            return True
-        """
-        # precise
-        def compareBookmarks(script):
-            if not difWarn or not script.bookmarks:
-                return True
+
             re = True
-            if len(script.bookmarks) >= len(self.GetBookmarkFrameList()):
+            if len(script.bookmarks) >= len(bookmarkDict):
                 for i, item in enumerate(script.bookmarks.items()):
                     if not item[0] in bookmarkDict:
+                        re = False
+                        break
+                    elif item[1] != bookmarkDict[item[0]]: # check the title
                         re = False
                         break
             else:
                 for i, item in enumerate(bookmarkDict.items()):
                     if not item[0] in script.bookmarks:
+                        re = False
+                        break
+                    elif item[1] != script.bookmarks[item[0]]: # check the title
                         re = False
                         break
             if not re:
@@ -8703,6 +8928,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 dlg.Destroy()
                 if ID == wx.ID_YES:
                     self.DeleteAllFrameBookmarks(bmtype=0)
+                    self.bookmarkDict.clear()
                     self.MacroSetBookmark(script.bookmarks.items())
                     return False
             return True
@@ -8717,8 +8943,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 sBookmarks = line.strip().strip(Book_Ident)
                 break
         if not sBookmarks:
-            if beep:
-                wx.Bell()
             return 0
         bookmarkDict = {}
         try:
@@ -8737,26 +8961,54 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             return 0
         if bookmarkDict and not getOnlyCount:
             self.DeleteAllFrameBookmarks(bmtype=0)
-            self.MacroSetBookmark(bookmarkDict.items())
-            if compareBookmarks(script):
+            self.bookmarkDict.clear()                   # it is the title dict (wrong named)
+            self.MacroSetBookmark(bookmarkDict.items()) # you can see the script bookmarks
+            if compareBookmarks(script, difWarn):
                 script.bookmarks = None
-                script.bookmarks = self.GetBookmarkDict()
-            if event != None:  # On Menu click start statusbar timer
+                script.bookmarks = dict(bookmarkDict)
+
+            """
+            if compareBookmarks(script): # you cannot see the script bookmarks
+                script.bookmarks = None
+                script.bookmarks = dict(bookmarkDict) # GPo new self.GetBookmarkDict()
+                self.MacroSetBookmark(bookmarkDict.items())
+            """
+            if event is not None:  # On Menu click start statusbar timer
                 self.StatusbarTimer_Start(txt='%d Bookmarks imported' % len(bookmarkDict))
 
         return len(bookmarkDict)
 
+    # GPo 2020, find menu item and sub item by name (multible used, so make one function)
+    def FindMenuItem(self, menuBarIdx, itemLabel, subLabel=''):
+        rmenus = []
+        if menuBarIdx == 2:
+            menus = [self.GetMenuBar().GetMenu(2), self.videoWindow.contextMenu]
+        else:
+            menus = [self.GetMenuBar().GetMenu(menuBarIdx)]
+        for menu in menus:
+            id = menu.FindItem(_(itemLabel))
+            if id == wx.NOT_FOUND:
+                return rmenus
+            if subLabel:
+                rmenu = menu.FindItemById(id).GetSubMenu()
+                if rmenu:
+                    rmenu = rmenu.FindItemById(rmenu.FindItem(_(subLabel)))
+            else:
+                rmenu = menu.FindItemById(id)
+            if rmenu:
+                rmenus.append(rmenu)
+        return rmenus # return list of found menus (menubar, context menu)
+
     def OnMenuTabChangeLoadBookmarks(self, event):
         if event:
             self.tabChangeLoadBookmarks = event.IsChecked()
-
-        vidmenus = [self.videoWindow.contextMenu, self.GetMenuBar().GetMenu(2)]
-        for vidmenu in vidmenus:
-            id = vidmenu.FindItem(_('Bookmarks'))
-            menuBookmarks = vidmenu.FindItemById(id).GetSubMenu()
-            idx = menuBookmarks.FindItem('Clear tab bookmarks')
-            menu = menuBookmarks.FindItemById(idx)
-            if menu:
+            if self.tabChangeLoadBookmarks:
+                self.SetSelectionsDict(self.currentScript.selections)
+                if self.options['bookmarksfromscript']:
+                    self.OnMenuBookmarksFromScript()
+        menus = self.FindMenuItem(2, 'Bookmarks', 'Clear tab bookmarks')
+        if menus:
+            for menu in menus:
                 menu.Enable(self.tabChangeLoadBookmarks)
 
     def OnMenuFileRenameTab(self, index, pos=None):
@@ -9458,20 +9710,34 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if self.playing_video == '':
             self.PlayPauseVideo()
 
-    def OnMenuVideoGotoNextBookmark(self, event):
+    def OnMenuVideoGotoNextBookmark(self, event, previous=False):
         self.GotoNextBookmark(forceCursor=True)
 
     def OnMenuVideoGotoPreviousBookmark(self, event):
         self.GotoNextBookmark(reverse=True, forceCursor=True)
 
+     # GPo 2020, for button extra function, for Shift, Alt
+    def OnButtonVideoGotoNextBookmark(self, event, reverse=False):
+        if wx.GetKeyState(wx.WXK_SHIFT):
+            self.GotoNextBookmark(reverse=reverse, forceCursor=True, bmtype=[1,2])
+        elif wx.GetKeyState(wx.WXK_ALT):
+            self.GotoNextBookmark(reverse=reverse, forceCursor=True, bmtype=[3]) # only titled bookmarks
+        else:
+            self.GotoNextBookmark(reverse=reverse, forceCursor=True)
+
+    def OnButtonVideoGotoPreviousBookmark(self, event):
+        self.OnButtonVideoGotoNextBookmark(event, True)
+
     def OnMenuVideoGotoClearAll(self, event):
         self.DeleteAllFrameBookmarks(bmtype=0)
+        self.bookmarkDict.clear()
         # GPo clear all script bookmarks
         for index in xrange(self.scriptNotebook.GetPageCount()):
             self.scriptNotebook.GetPage(index).bookmarks.clear()
 
     def OnMenuVideoClearTabBookmarks(self, event):
         self.DeleteAllFrameBookmarks(bmtype=0)
+        self.bookmarkDict.clear()
         self.currentScript.bookmarks.clear()
 
     def OnMenuVideoGoto(self, event):
@@ -9733,28 +9999,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     self.OnMenuNewTabFromSnapShot1(None)
         else:
             wx.Bell()
-        """
-        if bmp:
-            self.snapShotIdx = 1 if self.snapShotIdx in [0,2] else 0
-            if (self.currentframenum != nr) or not self.previewWindowVisible:
-                self.ShowVideoFrame(nr, forceLayout=True)
-            else:
-                self.videoWindow.Refresh()
-        elif txt:
-            self.snapShotIdx = 0
-            if (self.currentframenum != nr) or not self.previewWindowVisible:
-                self.ShowVideoFrame(nr, forceLayout=True)
-            else:
-                dlg = wx.MessageDialog(self, _('No Bitmap available, but you can restore the script from snapshot.'+
-                                               ' New tab from snapshot?'), _('Snapshot 1'), wx.YES_NO)
-                ID = dlg.ShowModal()
-                dlg.Destroy()
-                if ID != wx.ID_YES:
-                    return
-                self.OnMenuNewTabFromSnapShot1(None)
-        else:
-            wx.Bell()
-        """
 
     def OnMenuShowSnapShot2(self, event):
         script = self.currentScript
@@ -9941,9 +10185,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     def OnSetBookmarkToTrims(self, event):
         self.options['bookmarktotrim'] = event.IsChecked()
 
-    def OnSetRestoreBookmarks(self, event):
-        self.options['restorebookmarksontrim'] = event.IsChecked()
-
     def OnMenuVideoZoom(self, event=None, menuItem=None, zoomfactor=None, show=True, scroll=None):
         if show:
             if not self.KeyUpVideoWndow: # GPo, do not allow to fasted key events (key shortcuts fires onKeyPress ! not good for some functions)
@@ -9971,6 +10212,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         print>>sys.stderr, _('Error'), 'OnMenuVideoZoom(): cannot find menu item by id'
                         return
                     menuItem.Check()
+
                 else:
                     menuItem.Check()
                     label = menuItem.GetLabel()
@@ -10050,13 +10292,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     def OnMenuVideoZoomAntialias(self, event):
         self.options['zoom_antialias'] = not self.options['zoom_antialias']
         self.zoom_antialias = self.options['zoom_antialias']
-        vidmenus = [self.videoWindow.contextMenu, self.GetMenuBar().GetMenu(2)]
-        for vidmenu in vidmenus:
-            menu = vidmenu.FindItemById(vidmenu.FindItem(_('&Zoom'))).GetSubMenu()
-            id = menu.FindItem('Antialiasing')
-            menuItem = menu.FindItemById(id)
-            if menuItem:
-                menuItem.Check(self.zoom_antialias)
+        menus = self.FindMenuItem(2, 'Zoom', 'Antialiasing')
+        if menus:
+            for menu in menus:
+                menu.Check(self.zoom_antialias)
+
         if self.zoomfactor != 1 or self.zoomwindow:
             self.videoWindow.Refresh()
 
@@ -11159,7 +11399,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         dlg.Destroy()
 
     def OnButtonTextSetFocus(self, event):
-        self.SetStatusText(_('Input a frame number or time (hr:min:sec) and hit Enter. Right-click to retrieve from history.'))
+        self.SetStatusText(_('Input a frame number or time (hr:min:sec) and hit Enter. Right-click to retrieve from history. ' +
+                             'Or input a text and set the bookmark title.'))
         frameTextCtrl = event.GetEventObject()
         frameTextCtrl.SetForegroundColour(wx.BLACK)
 
@@ -11194,7 +11435,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         frameTextCtrl = event.GetEventObject()
         txt = frameTextCtrl.GetLineText(0)
         if txt and txt not in self.recentframes:
-            self.recentframes.append(txt)
+            if txt.isdigit() or len(txt.split(':')) > 1: # GPo 2020, ~ frame or time
+                self.recentframes.append(txt)
         """
         # GPo, alternative to SetSelection without Skip change the back color
         color = wx.SystemSettings.GetColour(wx.SYS_COLOUR_WINDOW)
@@ -11316,6 +11558,27 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.videoSlider.SetBookmarkHilighting(False)
                 self.videoSlider.Refresh()
 
+        def OnContextMenuBookmarkTitle(event):
+            bookmarks = self.GetBookmarkDict()
+            frame = self.currentframenum
+            if frame  in bookmarks:
+                s = textCtrl.GetLineText(0)
+                if s:
+                    self.bookmarkDict[frame] = s
+                elif frame in self.bookmarkDict:
+                    del self.bookmarkDict[frame]
+                self.currentScript.bookmarks = None
+                self.currentScript.bookmarks = self.GetBookmarkDict()
+                self.UpdateBookmarkMenu()
+                self.frameTextCtrl.SetForegroundColour(wx.RED)
+                if self.separatevideowindow:
+                    self.frameTextCtrl2.SetForegroundColour(wx.RED)
+
+            self.frameTextCtrl.Replace(0, -1, str(frame))
+            if self.separatevideowindow:
+                self.frameTextCtrl2.Replace(0, -1, str(frame))
+            self.videoSlider.Refresh()
+
         for text in self.recentframes:
             id = wx.NewId()
             self.Bind(wx.EVT_MENU, OnContextMenuItem, id=id)
@@ -11323,15 +11586,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         # GPo
         if menu.GetMenuItemCount() > 0:
             menu.AppendSeparator()
-        id = wx.NewId()
-        self.Bind(wx.EVT_MENU, OnContextMenuBell, id=id)
-        menu.Append(id, _('bell at bookmarks'), kind=wx.ITEM_CHECK)
-        menu.Check(id, self.bellAtBookmark)
-        id = wx.NewId()
-        self.Bind(wx.EVT_MENU, OnContextMenuHilight, id=id)
-        menu.Append(id, _('highlight bookmarks'), kind=wx.ITEM_CHECK)
-        menu.Check(id, self.videoSlider.hilightBookmarks)
-        menu.AppendSeparator()
+        # color submenus
         colorMenu = wx.Menu()
         id = wx.NewId()
         self.Bind(wx.EVT_MENU, self.OnMenuVideoSetBookmarkHiligthColor, id=id)
@@ -11340,6 +11595,20 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.Bind(wx.EVT_MENU, self.OnMenuVideoSetSelectionHiligthColor, id=id)
         colorMenu.Append(id, _('selection highlight color...'))
         menu.AppendMenu(wx.ID_ANY, 'set colors', colorMenu)
+        menu.AppendSeparator()
+        #
+        id = wx.NewId()
+        self.Bind(wx.EVT_MENU, OnContextMenuBell, id=id)
+        menu.Append(id, _('bell at bookmarks'), kind=wx.ITEM_CHECK)
+        menu.Check(id, self.bellAtBookmark)
+        id = wx.NewId()
+        self.Bind(wx.EVT_MENU, OnContextMenuHilight, id=id)
+        menu.Append(id, _('highlight bookmarks'), kind=wx.ITEM_CHECK)
+        menu.Check(id, self.videoSlider.hilightBookmarks)
+        #menu.AppendSeparator()
+        id = wx.NewId()
+        self.Bind(wx.EVT_MENU, OnContextMenuBookmarkTitle, id=id)
+        menu.Append(id, _('Set bookmark title'))
         menu.AppendSeparator()
         #
         id = wx.NewId()
@@ -11452,14 +11721,14 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         def SetBookmarks():
             if self.tabChangeLoadBookmarks:
-                c = self.OnMenuBookmarksFromScript(event=None, beep=False, difWarn=self.options['warnscriptbookmarksdif'])
+                c = self.OnMenuBookmarksFromScript()
                 if c == 0:
+                    self.DeleteAllFrameBookmarks(bmtype=0)
+                    self.bookmarkDict.clear()
                     if self.currentScript.bookmarks:
-                        #~self.SetBookmarkFrameList_2(self.currentScript.bookmarks.items())
-                        self.DeleteAllFrameBookmarks(bmtype=0)
                         self.MacroSetBookmark(self.currentScript.bookmarks.items())
-                    else:
-                        self.DeleteAllFrameBookmarks(bmtype=0)
+
+                self.SetSelectionsDict(self.currentScript.selections)
             return True
 
         # Get the newly selected script
@@ -11498,6 +11767,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
             if self.UpdateScriptAVI(script, forceRefresh=forceRefresh, prompt=True) is None:
                 self.HidePreviewWindow()
+                SetBookmarks()
                 self.splitView = False
                 return False
 
@@ -11534,6 +11804,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             script.lastSplitVideoPos = self.oldLastSplitVideoPos  # GPo, keep it always
 
             self.zoom_antialias = False
+            if not bmSet:
+                bmSet = SetBookmarks()
             if self.zoomwindow:
                 self.ShowVideoFrame(forceLayout=True, focus=False, forceCursor=True)
             else:
@@ -11595,8 +11867,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             script.SetFocus()
         self.UpdateProgramTitle()
         self.oldlinenum = None
-        if not bmSet:
-            SetBookmarks()
 
         if self.previewWindowVisible:
             self.ResetZoomAntialias()
@@ -11604,6 +11874,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.zoom_antialias = self.options['zoom_antialias']
 
     def OnNotebookPageChanging(self, event):
+        def resetViewPos():
+            self.currentScript.videoXY = None
+            self.currentScript.videoZoom = None
+
         if self.cropDialog.IsShown():
             wx.MessageBox(_('Cannot switch tabs while crop editor is open!'), _('Error'), style=wx.OK|wx.ICON_ERROR)
             event.Veto()
@@ -11625,11 +11899,17 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.oldGroup = oldScript.group
             self.oldGroupFrame = oldScript.group_frame
 
-        self.currentScript.videoXY = None     # GPo
-        self.currentScript.videoZoom = None   # GPo
         if self.tabChangeLoadBookmarks:
             self.currentScript.bookmarks = None   # GPo 2020
-            self.currentScript.bookmarks = self.GetBookmarkDict() #self.GetBookmarkFrameList(copy=True) # GPo 2020
+            self.currentScript.bookmarks = self.GetBookmarkDict()  # GPo 2020
+            """
+            if self.videoSlider.selections:
+                self.currentScript.selections = list(self.videoSlider.selections)
+            else:
+                self.currentScript.selections = []
+        else:
+            self.videoSlider.customSelections = []
+            """
 
         if self.previewWindowVisible:
             if oldSelectionIndex >= 0:
@@ -11651,7 +11931,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if not self.zoomwindow:
                 self.currentScript.videoXY = self.videoWindow.GetViewStart()
                 self.currentScript.videoZoom = self.zoomfactor
-
+        elif oldSelectionIndex >= 0:
+            if oldScript.AVI and not self.splitView:
+                if (self.oldWidth != int(oldScript.AVI.DisplayWidth * self.zoomfactor)) or \
+                   (self.oldHeight != int(oldScript.AVI.DisplayHeight * self.zoomfactor)):
+                    resetViewPos()
+            else: resetViewPos()
+        else: resetViewPos()
 
     def OnMiddleDownNotebook(self, event):
         ipage = self.scriptNotebook.HitTest(event.GetPosition())[0]
@@ -11725,6 +12011,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         self.Bind(wx.EVT_MENU, self.RepositionTab, menuItem)
                     else:
                         menuItem.Enable(False)
+                # GPo
+                item = menu.FindItemById(menu.FindItem(_('Save view pos on tab change')))
+                if item:
+                    item.Check(self.saveViewPos)
 
                 win.PopupMenu(win.contextMenu, pos)
             except AttributeError:
@@ -12051,8 +12341,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.SaveLastSplitVideoPos()
         finally:
             self.Thaw()
-            wx.Yield()
-            self.zoom_antialias = self.options['zoom_antialias']
+            self.ResetZoomAntialias()
             self.ShowVideoFrame(forceLayout=True)
             event.Skip()
 
@@ -12168,49 +12457,40 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.getPixelInfo = False
         event.Skip()
 
-    # mouse backward button, bind with script and video window VK_CONTROL = 17
-    def OnMouseAux1Down(self, event):
-        CTRL = True if (os.name == 'nt') and (ctypes.windll.user32.GetAsyncKeyState(0x11) > 100) else False
-        if self.options['mouseauxdown'] == 'tab change':
-            if (self.scriptNotebook.GetPageCount() > 1) and not event.LeftIsDown() and not CTRL:
-                if not self.previewWindowVisible or not self.ScrollSimilarTabsOrTabGroups(-1):
-                    self.SelectTab(None, -1)
+    # mouse browse backward button, bind with script and video window
+    def OnMouseAux1Down(self, event, isAux2=False):
+        def x_GotoBookmark(reverse):
+            if SHIFT:
+                self.GotoNextBookmark(reverse=reverse, forceCursor=True, bmtype=[1,2])
+            elif ALT:
+                self.GotoNextBookmark(reverse=reverse, forceCursor=True, bmtype=[3])
             else:
-                self.GotoNextBookmark(reverse=True, forceCursor=True)
+                self.GotoNextBookmark(reverse=reverse, forceCursor=True)
+
+        CTRL = wx.GetKeyState(wx.WXK_CONTROL)
+        SHIFT = wx.GetKeyState(wx.WXK_SHIFT)
+        ALT = wx.GetKeyState(wx.WXK_ALT)
+        val = 1 if isAux2 else -1
+
+        if self.options['mouseauxdown'] == 'tab change':
+            if (self.scriptNotebook.GetPageCount() > 1) and not event.LeftIsDown() and not CTRL and not SHIFT and not ALT:
+                if not self.previewWindowVisible or not self.ScrollSimilarTabsOrTabGroups(val):
+                    self.SelectTab(None, val)
+            else:
+                x_GotoBookmark(not isAux2)
+
         elif self.options['mouseauxdown'] == 'custom jump':
             self.OnMenuVideoPrevCustomUnit(None)
         elif self.options['mouseauxdown'] == 'frame step':
-            self.ShowVideoFrame(self.videoSlider.GetValue() - 1, wrap=False)
+            self.ShowVideoFrame(self.videoSlider.GetValue() + val, wrap=False)
         elif self.options['mouseauxdown'] == 'bookmark jump':
-            if (self.scriptNotebook.GetPageCount() > 1) and (event.LeftIsDown() or CTRL):
-                if not self.previewWindowVisible or not self.ScrollSimilarTabsOrTabGroups(-1):
-                    self.SelectTab(None, -1)
-            else:
-                self.GotoNextBookmark(reverse=True, forceCursor=True)
+            x_GotoBookmark(not isAux2)
         else:
             event.Veto()
 
-    # mouse forward button, bind with script and video window
+    # mouse browse forward button, bind with script and video window
     def OnMouseAux2Down(self, event):
-        CTRL = True if (os.name == 'nt') and (ctypes.windll.user32.GetAsyncKeyState(0x11) > 100) else False
-        if self.options['mouseauxdown'] == 'tab change':
-            if (self.scriptNotebook.GetPageCount() > 1) and not event.LeftIsDown() and not CTRL:
-                if not self.previewWindowVisible or not self.ScrollSimilarTabsOrTabGroups(1):
-                    self.SelectTab(None, 1)
-            else:
-                self.GotoNextBookmark(forceCursor=True)
-        elif self.options['mouseauxdown'] == 'custom jump':
-            self.OnMenuVideoNextCustomUnit(None)
-        elif self.options['mouseauxdown'] == 'frame step':
-            self.ShowVideoFrame(self.videoSlider.GetValue() + 1)
-        elif self.options['mouseauxdown'] == 'bookmark jump':
-            if (self.scriptNotebook.GetPageCount() > 1) and (event.LeftIsDown() or CTRL):
-                if not self.previewWindowVisible or not self.ScrollSimilarTabsOrTabGroups(1):
-                    self.SelectTab(None, 1)
-            else:
-                self.GotoNextBookmark(forceCursor=True)
-        else:
-            event.Veto()
+        self.OnMouseAux1Down(event, isAux2=True)
 
     def OnMouseMotionVideoWindow(self, event=None):
         if self.cropDialog.IsShown() and event and event.LeftIsDown():
@@ -12527,13 +12807,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.ShowVideoFrame()
 
     def OnTrimDialogClear(self, event):
-        # Convert selection bookmarks to regular bookmarks
-        for value, bmtype in self.GetBookmarkFrameList().items():
-            if bmtype != 0:
-                if False:
-                    self.AddFrameBookmark(value, bmtype=0, toggle=False)
-                else:
-                    self.DeleteFrameBookmark(value, bmtype)
+        self.DeleteAllSelections()
         for slider in self.GetVideoSliderList():
             if self.trimDialog.IsShown():
                 mode = 1
@@ -12542,6 +12816,20 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 mode = 0
                 slider.selmode = 0
             slider.ToggleSelectionMode(mode, True)
+
+    def OnClearSelectionsGlobally(self, event):
+        self.trimDialog.Hide()
+        for slider in self.GetVideoSliderList():
+            slider.SetBookmarkHilighting(False)
+            mode = 0
+            slider.selmode = 0
+            slider.ToggleSelectionMode(mode, True)
+
+        for index in xrange(self.scriptNotebook.GetPageCount()):
+            script = self.scriptNotebook.GetPage(index)
+            script.selections.clear()
+        self.SetSelectionsDict(self.currentScript.selections)
+        self.videoWindow.Refresh()
 
     # the following 2 func called from wxp.OptionsDialog, not MainFrame
     def x_OnCustomizeAutoCompList(self, event):
@@ -13178,7 +13466,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 scriptWindow.group_frame = self.currentScript.group_frame
                 scriptWindow.lastFramenum = self.currentScript.lastFramenum
                 scriptWindow.lastLength = self.currentScript.lastLength
-                scriptWindow.bookmarks = self.GetBookmarkDict() #self.GetBookmarkFrameList(copy=True)
+                #~scriptWindow.bookmarks.update(self.currentScript.bookmarks)
+                scriptWindow.bookmarks = self.GetBookmarkDict()
+                scriptWindow.selections.update(self.currentScript.selections)
                 if select:
                     scriptWindow.lastSplitVideoPos = self.currentScript.lastSplitVideoPos  # GPo 2020, if copy keep the splitters
                     if self.currentScript.lastSplitSliderPos is not None:
@@ -13209,6 +13499,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         if select:
             self.currentScript = scriptWindow
+            self.SetSelectionsDict(scriptWindow.selections)
 
         self.UpdateTabImages()
         self.SetMinimumScriptPaneSize()
@@ -13253,7 +13544,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     @AsyncCallWrapper
     def OpenFile(self, filename='', default='', f_encoding=None, eol=-1, workdir=None,
                  scripttext=None, setSavePoint=True, splits=None, framenum=None,
-                 last_length=None, group=-1, group_frame=None, bookmarks=None, snapshots=None):
+                 last_length=None, group=-1, group_frame=None, bookmarks=None, snapshots=None,
+                 selections=None,
+                 hidePreview=False, loadBookmarks=True):
         r'''OpenFile(filename='', default='')
 
         If the string 'filename' is a path to an Avisynth script, this function opens
@@ -13263,6 +13556,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         If 'filename' is not supplied, the user is prompted with an Open File dialog
         box with 'default' as the default filename; it can be just a directory or
         basename.
+
+        On loading a session file loadBookmarks is False and hidePreview is True
+        bookmarks loading is then handled on LoadSession
 
         '''
         self.StopPlayback()
@@ -13294,7 +13590,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             dlg.Destroy()
         # Open script if filename exists (user could cancel dialog box...)
         if filename:
-            #Freezed = False  # GPo
             # Process the filename
             dirname, basename = os.path.split(filename)
             root, ext = os.path.splitext(basename)
@@ -13318,17 +13613,23 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     if txt or not title.startswith(self.NewFileName):
                         self.NewTab(copyselected=False)
                     self.InsertSource(filename)
-                    if self.previewWindowVisible:
+                    if not hidePreview and self.previewWindowVisible:
                         self.ShowVideoFrame()
+                    elif self.previewWindowVisible:
+                        self.HidePreviewWindow()
             else: # Treat the file as an avisynth script
                 if scripttext is None:
                     scripttext, f_encoding, eol = self.GetMarkedScriptFromFile(filename)
                 indexCur = self.scriptNotebook.GetSelection()
-                # If script already exists in a tab, select it
-                for index in xrange(self.scriptNotebook.GetPageCount()):
-                    script = self.scriptNotebook.GetPage(index)
+                # If script already exists in a tab, select it (GPo, do not select it)
+                for idx in xrange(self.scriptNotebook.GetPageCount()): # GPo, old one was wrong (for index) do not use 'result index' for loop var
+                    script = self.scriptNotebook.GetPage(idx)
                     if filename == script.filename:
-                        self.SelectTab(index)
+                        index = idx
+                        tbc = self.tabChangeLoadBookmarks
+                        self.tabChangeLoadBookmarks = False
+                        self.SelectTab(idx)
+                        self.tabChangeLoadBookmarks = tbc
                         if scripttext != script.GetText():
                             dlg = wx.MessageDialog(self, _('Reload the file and lose the current changes?'),
                                                    os.path.basename(filename), wx.YES_NO)
@@ -13342,10 +13643,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                             script.GotoPos(pos)
                         break
                 else:
-                    #self.Freeze()   # GPo 2020, wx 2.93 don't like it
-                    #Freezed = True
                     # Make a new tab if current one is not empty
-                    indexCur = self.scriptNotebook.GetSelection()
                     txt = self.scriptNotebook.GetPage(indexCur).GetText()
                     title = self.scriptNotebook.GetPageText(indexCur)
                     if txt == "" and title.startswith(self.NewFileName):
@@ -13386,15 +13684,47 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 if setSavePoint:
                     script.EmptyUndoBuffer()
                     script.SetSavePoint()
-                if bookmarks is not None:
-                    script.bookmarks = dict(bookmarks)
                 if snapshots is not None:
                     self.GetSnapShotFromSession(script, snapshots)
-                self.scriptNotebook.SetSelection(index)
+
+                if hidePreview and self.previewWindowVisible:
+                    self.HidePreviewWindow()
+
+                bCount = 0
+                if loadBookmarks: # only on loading session False
+                    if bookmarks: # only on reopen closed tab
+                        tbc = self.tabChangeLoadBookmarks
+                        self.tabChangeLoadBookmarks = False
+                        try:
+                            self.scriptNotebook.SetSelection(index)
+                        finally:
+                            bCount = len(bookmarks)
+                            script.bookmarks = None
+                            script.bookmarks = dict(bookmarks)
+                            self.tabChangeLoadBookmarks = tbc
+                            self.DeleteAllFrameBookmarks(bmtype=0)
+                            self.bookmarkDict.clear()
+                            self.MacroSetBookmark(script.bookmarks.items())
+                    else:
+                        self.scriptNotebook.SetSelection(index)
+                        if index == indexCur:
+                            if self.tabChangeLoadBookmarks:
+                                self.DeleteAllFrameBookmarks(bmtype=0)
+                                self.bookmarkDict.clear()
+                                if ext.lower() == '.avs' and self.options['bookmarksfromscript']:
+                                    bCount = self.OnMenuBookmarksFromScript(difWarn=False)
+                        elif self.options['bookmarksfromscript']:
+                            script = self.scriptNotebook.GetPage(self.scriptNotebook.GetSelection())
+                            bCount = len(script.bookmarks)
+                    if selections is not None: # only on session or reopen closed tab
+                        script.selections.clear()
+                        script.selections.update(selections)
+                        self.SetSelectionsDict(script.selections)
+                else:
+                    self.scriptNotebook.SetSelection(index) # only on load session
+
                 self.refreshAVI = True
-                #if Freezed:
-                    #self.Thaw()  # GPo 2020, wx 2.93 don't like it
-                if self.previewWindowVisible:
+                if self.previewWindowVisible: # on load session not visible
                     if self.zoomwindow:
                         self.ShowVideoFrame(forceCursor=True)  # GPo 2020, keep extended move and reset XY
                     else:
@@ -13402,18 +13732,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 else:
                     self.extended_move = False  # reset only if not visible
 
-                # GPo 2020, if tab not changed, bookmarks also not loaded so set the bookmarks here
-                idx = self.scriptNotebook.GetSelection()
-                if ext.lower() == '.avs' and self.options['bookmarksfromscript'] and idx == indexCur:
-                    count = self.OnMenuBookmarksFromScript(None, False)
-                    if count > 0:
-                        wx.CallAfter(self.GetStatusBar().SetStatusText, _('%d Bookmarks imported') % count)
-                    elif len(script.bookmarks) > 0:
-                        self.DeleteAllFrameBookmarks(bmtype=0)
-                        self.MacroSetBookmark(script.bookmarks.items())
-                elif len(script.bookmarks) > 0 and idx == indexCur:
-                    self.DeleteAllFrameBookmarks(bmtype=0)
-                    self.MacroSetBookmark(script.bookmarks.items())
+                if loadBookmarks and (ext.lower() == '.avs'):
+                    wx.CallAfter(self.GetStatusBar().SetStatusText, _('%d Bookmarks imported') % bCount)
 
                 return index
 
@@ -13585,6 +13905,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         '''
         # Get the script and corresponding index
         self.StopPlayback() # GPo 2020
+
         script, index = self.getScriptAtIndex(index)
         if script is None:
             return False
@@ -13607,6 +13928,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     return False
             elif script.filename:
                 self.SaveScript(script.filename, index)
+
         # Save last state
         self.lastClosed = self.GetTabInfo(index)
         # Delete the tab from the notebook
@@ -13615,20 +13937,16 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             script.snapShots[key] = [-1, None, ""]
         script.AVI = None
         script.lastFramenum = None # GPo, disable OnPageChanged
+
         # If only 1 tab, make another
         if self.scriptNotebook.GetPageCount() == 1:
-            self.HidePreviewWindow()
+            if self.previewWindowVisible:
+                self.HidePreviewWindow()
             self.splitView = False
+            self.DeleteFrameBookmark(None, refreshVideo=False, refreshProgram=True) # GPo, clear the bookmarks
             self.NewTab(copyselected=False)
             self.SetScriptTabname(self.NewFileName, index=1)
-            self.DeleteFrameBookmark(None, refreshVideo=False, refreshProgram=True) # GPo, clear the bookmarks
-        """
-        elif self.previewWindowVisible:
-            if index + 1 < self.scriptNotebook.GetPageCount(): # GPo hide the prview if next AVI is None
-                script2,idx = self.getScriptAtIndex(index+1)
-                if not script2 or script2.AVI is None:
-                    self.HidePreviewWindow()
-        """
+            #wx.Yield()
 
         if self.options['multilinetab']:
             rows = self.scriptNotebook.GetRowCount()
@@ -13644,27 +13962,29 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.scriptNotebook.SetSize((w, h))
         return True
 
+     # GPo 2020, changed
     def CloseAllTabs(self):
-        self.StopPlayback() # GPo 2020
-        dlg = wx.MessageDialog(self, _('Save session before closing all tabs?'),
-            _('Warning'), wx.YES_NO|wx.CANCEL)
-        ID = dlg.ShowModal()
-        dlg.Destroy()
-        if ID == wx.ID_CANCEL:
-            return
-        if ID == wx.ID_YES:
-            if not self.SaveSession():
+        self.StopPlayback()
+        needDlg = True
+        if self.scriptNotebook.GetPageCount() == 1:
+            needDlg = self.scriptNotebook.GetPage(0).GetText() != ''
+        if needDlg:
+            dlg = wx.MessageDialog(self, _('Save session before closing all tabs?'),
+                _('Warning'), wx.YES_NO|wx.CANCEL)
+            ID = dlg.ShowModal()
+            dlg.Destroy()
+            if ID == wx.ID_CANCEL:
                 return
-        # GPo 2020, TODO: error not found on close all tab's
-        # if last tab selected no error occurs
-        self.currentScript.SetFocus()
-        self.HidePreviewWindow()
-        self.Refresh()
-        self.Update()
-        self.scriptNotebook.SetSelection(self.scriptNotebook.GetPageCount()-1)
-        # end try to fix
-        for index in xrange(self.scriptNotebook.GetPageCount()):
-            self.CloseTab(0)
+            if ID == wx.ID_YES:
+                if not self.SaveSession():
+                    return
+        # GPo, error when closing all tabs at once, so close last tab separately
+        idx = self.scriptNotebook.GetSelection()
+        count = self.scriptNotebook.GetPageCount()-1
+        for index in xrange(count,-1,-1):
+            if index != idx:
+                self.CloseTab(index)
+        self.CloseTab(0)
 
     @AsyncCallWrapper
     def SaveScript(self, filename='', index=None, default=''):
@@ -14033,26 +14353,72 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             # Load the text into the tabs
             selectedIndex = None
             self.SelectTab(self.scriptNotebook.GetPageCount() - 1)
-            #~ for scriptname, boolSelected, scripttext in session['scripts']:
-            mapping = session['scripts'] and isinstance(session['scripts'][0], collections.Mapping)
-            for item in session['scripts']:
-                if not 'bookmarks' in item:
-                    item['bookmarks'] = None # old sessions
-                if not 'snapshots' in item:
-                    item['snapshots'] = None # old sessions
-                index = self.LoadTab(item, compat=not mapping)
-                if mapping:
-                    boolSelected = item['selected']
-                else:
-                    boolSelected = (item + (None, None)[len(item):])[1]
-                if boolSelected:
-                    selectedIndex = self.scriptNotebook.GetSelection()
+            loadList = []
+            tbc = self.tabChangeLoadBookmarks
+            self.tabChangeLoadBookmarks = False
+            try:
+                mapping = session['scripts'] and isinstance(session['scripts'][0], collections.Mapping)
+                for item in session['scripts']:
+                    if not 'bookmarks' in item:
+                        item['bookmarks'] = None # old sessions
+                    if not 'snapshots' in item:
+                        item['snapshots'] = None # old sessions
+                    if not 'selections' in item:
+                        item['selections'] = None
+                    index = self.LoadTab(item, compat=not mapping, hidePreview=True, loadBookmarks=False) # GPo, hidePreview, loadBookmarks
+                    # GPo, set script bookmarks, selections
+                    if isinstance(index, int):
+                        loadList.append(index)
+                        script = self.scriptNotebook.GetPage(index)
+                        if item['bookmarks'] is not None:
+                            script.bookmarks = None
+                            script.bookmarks = dict(item['bookmarks'])
+                        if item['selections'] is not None: # only on session or reopen closed tab
+                            script.selections.clear()
+                            script.selections.update(item['selections'])
+                    # script bookmarks, selections end
+                    if mapping:
+                        boolSelected = item['selected']
+                    else:
+                        boolSelected = (item + (None, None)[len(item):])[1]
+                    if boolSelected:
+                        selectedIndex = self.scriptNotebook.GetSelection()
+            finally:
+                self.tabChangeLoadBookmarks = tbc
+
             # Prompt to reload modified files
             if not startup:
                 self.ReloadModifiedScripts()
-            # Select the last selected script
-            if selectedIndex is not None:
+            # GPo, load script bookmarks into the time line
+            bCount = -1
+            index = self.scriptNotebook.GetSelection()
+            script = self.scriptNotebook.GetPage(index)
+            if (selectedIndex is not None) and (selectedIndex != index):
+                # must save and restore the bookmarks before tab change
+                saveBM = dict(script.bookmarks)
                 self.scriptNotebook.SetSelection(selectedIndex)
+                script.bookmarks = None
+                script.bookmarks = dict(saveBM)
+                saveBM = None
+                if selectedIndex in loadList:
+                    bm = self.GetBookmarkDict()
+                    bCount = len(bm)
+                    bm = None
+            elif index in loadList:
+                if self.options['bookmarksfromscript']:
+                    bCount = self.OnMenuBookmarksFromScript()
+                if bCount <= 0:
+                    self.bookmarkDict.clear()
+                    self.DeleteAllFrameBookmarks(bmtype=0)
+                    bCount = len(script.bookmarks)
+                    if bCount > 0:
+                        self.MacroSetBookmark(script.bookmarks.items())
+                self.SetSelectionsDict(script.selections)
+
+            if bCount > -1:
+                wx.CallAfter(self.GetStatusBar().SetStatusText, _('%d Bookmarks imported') % bCount)
+            # script bookmarks end
+
             # Change preview placement if needed
             if session.get('preview_placement', wx.SPLIT_HORIZONTAL) != self.mainSplitter.GetSplitMode():
                 self.TogglePreviewPlacement()
@@ -14069,11 +14435,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if session.get('lastclosed'): # backward compatibility
                 self.lastClosed = session['lastclosed']
 
-            # Set the bookmarks
-            if self.currentScript.bookmarks and self.tabChangeLoadBookmarks:
+            if session.get('saveViewPos'):
+                self.saveViewPos = session['saveViewPos']
+
+            # Set the bookmarks, GPo, disabled, on session load always the script bookmarks
+            """
+            if script.bookmarks and self.tabChangeLoadBookmarks:
                 pass
-                #self.SetBookmarkFrameList(self.currentScript.bookmarks)
-                #self.bookmarkDict.update(self.currentScript.bookmarks.items())
             else:
                 if 'bookmarks' in session:
                     if startup:
@@ -14083,6 +14451,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         self.SetBookmarkFrameList(session['bookmarks'])
                     if 'bookmarkDict' in session:
                         self.bookmarkDict.update(session['bookmarkDict'].items())
+            """
             # Save the recent dir
             if saverecentdir:
                 dirname = os.path.dirname(filename)
@@ -14090,7 +14459,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     self.options['recentdirSession'] = dirname
         return True
 
-    def LoadTab(self, item, compat=False):
+    def LoadTab(self, item, compat=False, hidePreview=False, loadBookmarks=True):
         '''Open/reload a tab from info returned from GetTabInfo
 
         compat? tuple : dict
@@ -14098,7 +14467,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if compat:
             nItems = len(item)
             defaults = (None, None, None, None, None, 0, 'latin1', '', {})
-            name, selected, text, hash, splits, current_frame, f_encoding, workdir, bookmarks, snapshots = item + defaults[nItems:]
+            name, selected, text, hash, splits, current_frame, f_encoding, workdir, bookmarks, snapshots, selections= item + defaults[nItems:]
             item = locals()
         scriptname = item['name']
         dirname, basename = os.path.split(scriptname)
@@ -14129,13 +14498,15 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                               setSavePoint=setSavePoint, splits=item['splits'],
                               framenum=item['current_frame'], last_length=item.get('last_length'),
                               group=item.get('group', -1), group_frame=item.get('group_frame'),
-                              bookmarks=item['bookmarks'] if 'bookmarks' in item else None,
-                              snapshots=item['snapshots'] if 'snapshots' in item else None) # None for old sessions
+                              bookmarks=item.get('bookmarks'), snapshots=item.get('snapshots'),
+                              selections=item.get('selections'),
+                              hidePreview=hidePreview, loadBookmarks=loadBookmarks)
         if reload and index is not None:
             # index is None -> the script was already loaded, different to this other version
             # but the user chose not to replace it.  If that's the case, don't prompt again
             # for discarding the current script state.
             self.reloadList.append((index, scriptname, txt))
+
         return index
 
     def ReloadModifiedScripts(self):
@@ -14150,6 +14521,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     script = self.currentScript
                     script.SetText(text)
                     script.SetSavePoint()
+                    script.bookmarks.clear()
+                    if self.options['bookmarksfromscript']:
+                        self.OnMenuBookmarksFromScript(difWarn=False)
             self.reloadList = []
 
     def SaveSession(self, filename=None, saverecentdir=True, frame=None, previewvisible=None):
@@ -14183,6 +14557,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             session['preview_placement'] = self.mainSplitter.GetSplitMode()
             session['scripts'] = scripts
             session['lastclosed'] = self.lastClosed
+            session['saveViewPos'] = self.saveViewPos # GPo
             session['bookmarks'] = list(self.GetBookmarkFrameList().items())
             session['bookmarkDict'] = self.bookmarkDict
             # Save info to filename
@@ -14218,11 +14593,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             bookmarks = script.bookmarks
         splits = (script.lastSplitVideoPos, script.lastSplitSliderPos, script.sliderWindowShown)
         snapshots = self.GetScriptSnapshotDict(script)
+        selections = script.selections
         return dict(name=scriptname, selected=boolSelected, text=script.GetText(),
                     hash=hash, splits=splits, current_frame=script.lastFramenum,
                     last_length=script.lastLength, f_encoding=script.encoding, eol=script.eol,
                     workdir=script.workdir, group=script.group, group_frame=script.group_frame,
-                    bookmarks=bookmarks, snapshots=snapshots)
+                    bookmarks=bookmarks, snapshots=snapshots, selections=selections)
 
     def SaveImage(self, filename='', frame=None, silent=False, index=None, avs_clip=None, default='', quality=None, depth=None, resetFormat=False):
         script, index = self.getScriptAtIndex(index)
@@ -14759,11 +15135,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if insertMode in (0,1):
             self.refreshAVI = True
             # Kill all bookmarks (rebuild non-selection bookmarks...)
-            if self.options['restorebookmarksontrim']:
-                bookmarks = [value for value, bmtype in self.GetBookmarkFrameList().items() if bmtype == 0 or isinstance(bmtype, float)]
-            else:
-                bookmarks = [value for value, bmtype in self.GetBookmarkFrameList().items() if bmtype == 0]
+            bookmarks = [value for value, bmtype in self.GetBookmarkFrameList().items() if bmtype == 0]
             newbookmarks = bookmarks[:]
+            newTitleDict = {}
             self.DeleteAllFrameBookmarks(refreshVideo=False)
             gapframes = 0
             framenum = self.GetFrameNumber()
@@ -14803,8 +15177,14 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                             newbookmarks[j] -= gapframes
                         else:
                             newbookmarks[j] = (c-gapframes)
+                    if bookmarks[j] in self.bookmarkDict:  # GPo, update titles
+                        newTitleDict[newbookmarks[j]] = self.bookmarkDict[bookmarks[j]]
+
             for newbookmark in newbookmarks:
                 self.AddFrameBookmark(newbookmark, toggle=False, refreshVideo=False)
+            if insertMode in (0,1):
+                self.bookmarkDict.clear()
+                self.bookmarkDict.update(newTitleDict)
             self.ShowVideoFrame(newframenum)
         return True
 
@@ -14948,9 +15328,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         bDict = {}
         bookmarks = self.videoSlider.GetBookmarks(False)
         for i, item in enumerate(bookmarks.items()):
-            if item[1] == 0 or isinstance(item[1], float):
-                title = self.bookmarkDict.get(item[0], '')
-                bDict[item[0]] = title
+            if item[1] == 0:
+                bDict[item[0]] = self.bookmarkDict.get(item[0], '')
         return dict(bDict)
 
     """
@@ -14987,25 +15366,25 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if self.trimDialog.IsShown():
             self.ShowVideoFrame()
 
-    def SetBookmarkFrameList_2(self, bookmarks, bmtype=0, floatToBookmark=True):
-        self.DeleteAllFrameBookmarks(bmtype)
-        for i, item in enumerate(bookmarks):
-            try:
-                value, bmType = item
-                if floatToBookmark and isinstance(bmType, float):
-                    bmType = 0
-            except TypeError:
-                value = item
-                bmType = 0
-            if bmtype is None or bmType == bmtype:
-                self.AddFrameBookmark(value, bmType, refreshProgram=False)
-        # now refresh
+    def SetSelectionsDict(self, selDict):
+        self.selectionsDict.clear()
+        if selDict:
+            self.selectionsDict.update(selDict)
         sliderList = self.GetVideoSliderList()
         for slider in sliderList:
+            slider.childSelectionsDict = selDict # set tab selectionsDict as children
             slider.RefreshBookmarks()
-        self.UpdateBookmarkMenu()
-        if self.trimDialog.IsShown():
-            self.ShowVideoFrame()
+    """
+    def SetTimelineMarkers(self, bookmarksDict, selectionsDict, clearTitles=False):
+        if clearTitles:
+            self.bookmarkDict.clear()
+        if bookmarksDict is not None:
+            self.DeleteAllFrameBookmarks(bmtype=0)
+            if len(bookmarksDict) > 0:
+                self.MacroSetBookmark(bookmarks)
+        if selectionsDict is not None:
+            self.SetSelectionsDict(selectionsDict)
+    """
 
     def DeleteFrameBookmark(self, value, bmtype=0, refreshVideo=True, refreshProgram=True):
         sliderList = [self.videoSlider]
@@ -15036,8 +15415,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             for slider in sliderList:
                 bookmarks = slider.GetBookmarks()
                 lastindex = len(bookmarks) - 1
-                bm = [(value, bmType) for (value, bmType) in bookmarks.items()
-                      if (bmtype == bmType or (bmtype==0 and isinstance(bmType, float)))\
+                bm = [(value, bmType) for (value, bmType) in bookmarks.items() if (bmtype == bmType)\
                         and (start is None or value >= start) and (end is None or value <= end)]
                 if not bm:
                     return
@@ -15057,16 +15435,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     def AddFrameBookmark(self, value, bmtype=0, toggle=True, refreshVideo=True, refreshProgram=True):
         sliderList = self.GetVideoSliderList()
-        # test
-        """
-        if scriptBm:
-            if value in self.currentScript.bookmarks:
-                del self.currentScript.bookmarks[value]
-            else: self.currentScript.bookmarks[value] = 0
-        """
         if not toggle:
             for slider in sliderList:
                 slider.SetBookmark(value, bmtype)
+        elif bmtype in (1,2):
+            for slider in sliderList:
+                slider.SetBookmark(value, bmtype, refresh=refreshProgram)
+            return
         else:
             # Check if bookmark already exists
             bookmarks = self.GetBookmarkFrameList()
@@ -15105,6 +15480,18 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.DeleteAllFrameBookmarks(bmtype=0)
         self.MacroSetBookmark(frame for frame in bookmarkList if frame >= 0)
 
+    def DeleteAllSelections(self, refresh=True):
+        sliderList = self.GetVideoSliderList()
+        for slider in sliderList:
+                slider.RemoveAllSelections(refresh=refresh)
+        """
+        sliderList = self.GetVideoSliderList()
+        self.selectionsDict.clear()
+        for slider in sliderList:
+            slider.selections = None
+            slider.Refresh()
+        """
+
     def GetVideoSliderList(self):
         sliderList = [self.videoSlider]
         if self.separatevideowindow:
@@ -15125,7 +15512,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         width = len(str(max(bookmarkList)[0])) if bookmarkList else 0
         fmt = '%%%dd ' % width
         for bookmark, bmtype in bookmarkList:
-            if bmtype == 0 or isinstance(bmtype, float):
+            if bmtype == 0 :
                 label = fmt % bookmark
                 if timecodeItem.IsChecked():
                     if self.currentScript.AVI:
@@ -16356,26 +16743,33 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if self.playing_video == '':
             self.PlayPauseVideo()
 
-    def GotoNextBookmark(self, reverse=False, forceCursor=False, bmtype=[]): # GPo 2020 bmtype
+    # GPo 2020 bmtype 0,1,2 or 3 (3 = only bookmarks with title)
+    def GotoNextBookmark(self, reverse=False, forceCursor=False, bmtype=[]):
         if self.playing_video:
             self.PlayPauseVideo()
             self.playing_video = ''
         current_frame = self.GetFrameNumber()
         clip = self.currentScript.AVI
+        bmDict = self.GetBookmarkFrameList(copy=True) # !! copy=True otherwise you change the bookmarks !!
+        bmDict.update(self.selectionsDict)  # add selections
         if clip is not None:
             if not bmtype:
-                bookmarkValues = [value for value in self.GetBookmarkFrameList().keys()
+                bookmarkValues = [value for value in bmDict.keys()  # goto all
                                   if value < clip.Framecount]
-            else:
-                bookmarkValues = [value for value, btype in self.GetBookmarkFrameList().items()
+            elif not 3 in bmtype:                                   # goto bmtype (0,1,2)
+                bookmarkValues = [value for value, btype in bmDict.items()
                                     if btype in bmtype and value < clip.Framecount]
-
+            else:
+                bookmarkValues = [value for value, btype in self.GetBookmarkFrameList().items() # go only to titled bookmarks
+                                    if value in self.bookmarkDict and value < clip.Framecount]
         else:
             if not bmtype:
-                bookmarkValues = [value for value in self.GetBookmarkFrameList().keys()]
+                bookmarkValues = [value for value in bmDict.keys()]
+            elif not 3 in bmtype:
+                bookmarkValues = [value for value, btype in bmDict if btype in bmtype]
             else:
                 bookmarkValues = [value for value, btype in self.GetBookmarkFrameList().items()
-                                    if btype in bmtype]
+                                    if value in self.bookmarkDict]
 
         if len(bookmarkValues) == 0:
             return
@@ -20189,8 +20583,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         any selection startpoints or endpoints which may exist. If 'title' is True,
         returns a list of tuple (frame, title).
 
-        '''                                                                          # GPo 2020 if bmtype (1,2) float, it is also a bookmark
-        bookmarkList = [value for value, bmtype in self.GetBookmarkFrameList().items() if bmtype == 0 or isinstance(bmtype, float)]
+        '''
+        bookmarkList = [value for value, bmtype in self.GetBookmarkFrameList().items() if bmtype == 0]
         if title:
             for i in range(len(bookmarkList)):
                 title = self.bookmarkDict.get(bookmarkList[i], '')
@@ -20637,6 +21031,23 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         os.rename(macrofilename, newname)
                     except OSError:
                         pass
+
+##### Test ####
+"""
+    def getWidgets(self, parent):
+        '''
+        Return a list of all the child widgets
+        '''
+        items = [parent]
+        for item in parent.GetChildren():
+            items.append(item)
+            if hasattr(item, "GetChildren"):
+                for child in item.GetChildren():
+                    items.append(child)
+        return items
+"""
+###############
+
 
 class MainApp(wxp.App):
     def OnInit(self):
