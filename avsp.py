@@ -4750,6 +4750,7 @@ class SliderPlus(wx.Panel):
             lastpixelpos = pixelpos
 
         # draw the selection marks
+        dc.SetBrush(wx.BLACK_BRUSH)
         for value, bmtype in self.selectionsDict.items():
             if (value > self.maxValue) or (value < self.minValue):
                 continue
@@ -7187,7 +7188,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 ((_('Show tabs in fixed width'), wxp.OPT_ELEM_CHECK, 'fixedwidthtab', _('All tabs will have same width'), dict() ), ),
                 ((_('Invert scroll wheel direction (Tabs, Zoom)'), wxp.OPT_ELEM_CHECK, 'invertscrolling', _('Scroll the mouse wheel up for changing tabs to the right'), dict() ), ),
                 ((_('Invert scroll wheel direction (Frame)'), wxp.OPT_ELEM_CHECK, 'invertframescrolling', _('Invert wheel direction for frames step'), dict() ), ),   # GPo 2018
-                ((_('On first script load bookmarks from script'), wxp.OPT_ELEM_CHECK, 'bookmarksfromscript', _('Automatically load bookmarks from script'), dict() ), ),
+                ((_('Load bookmarks from script'), wxp.OPT_ELEM_CHECK, 'bookmarksfromscript', _('Automatically load bookmarks from script'), dict() ), ),
                 ((_('Tab change loads bookmarks from script or tab *'), wxp.OPT_ELEM_CHECK, 'tabsbookmarksfromscript', _('Automatically load bookmarks from script or tab if tab changed'), dict() ), ),
                 ((_('Warning tab bookmarks different'), wxp.OPT_ELEM_CHECK, 'warnscriptbookmarksdif', _('Warn if tab bookmarks and from script reading bookmarks different.'), dict(ident=20) ), ),
                 ((_('Only allow a single instance of AvsPmod')+' *', wxp.OPT_ELEM_CHECK, 'singleinstance', _('Only allow a single instance of AvsPmod'), dict() ), ),
@@ -7876,6 +7877,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     (_('Move selections after the current frame'), 'Ctrl+V', self.OnMenuVideoMoveSelectionsAfterCurrentFrame, _('The current selections are cut from the timeline and inserted after the current frame. Bookmarks are shifted accordingly.'), wx.ITEM_NORMAL, None, self.videoWindow),
                     (''),
                     (_('Mark trim points'), '', self.OnSetBookmarkToTrims, _('Add bookmark to trim intersections'), wx.ITEM_CHECK, self.options['bookmarktotrim']),
+                    (''),
+                    (_('Selections to script'), '', self.OnSelectionsToScript, _('Save the selections into the script')),
+                    (_('Selections from script'), '', self.OnSelectionsFromScript, _('Read the selections from the script')),
                     (''),
                     (_('Clear tab selections'), '', self.OnTrimDialogCancel, _('Clear tab trim editor selections (hide the trim editor if visible)')),
                     (_('Clear all selections Globally'), '', self.OnClearSelectionsGlobally, _('Clear all the tab trim editor selections (hide the trim editor if visible)')),
@@ -8898,7 +8902,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     # GPo, 2018
     def OnMenuBookmarksFromScript(self, event=None, getOnlyCount=False, script=None, difWarn=None):
 
-        def compareBookmarks(script, difWarn):
+        def compareBookmarks(script, bookmarkDict, difWarn):
             if difWarn is None:
                 difWarn = self.options['warnscriptbookmarksdif']
             if not difWarn or not script.bookmarks:
@@ -8963,20 +8967,92 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.DeleteAllFrameBookmarks(bmtype=0)
             self.bookmarkDict.clear()                   # it is the title dict (wrong named)
             self.MacroSetBookmark(bookmarkDict.items()) # you can see the script bookmarks
-            if compareBookmarks(script, difWarn):
+            if event is not None: # no difWarn on menu itself (event)
+                difWarn = False
+            if compareBookmarks(script, bookmarkDict, difWarn):
                 script.bookmarks = None
-                script.bookmarks = dict(bookmarkDict)
-
-            """
-            if compareBookmarks(script): # you cannot see the script bookmarks
-                script.bookmarks = None
-                script.bookmarks = dict(bookmarkDict) # GPo new self.GetBookmarkDict()
-                self.MacroSetBookmark(bookmarkDict.items())
-            """
+                script.bookmarks = self.GetBookmarkDict()# dict(bookmarkDict)
             if event is not None:  # On Menu click start statusbar timer
                 self.StatusbarTimer_Start(txt='%d Bookmarks imported' % len(bookmarkDict))
 
         return len(bookmarkDict)
+
+    def OnSelectionsToScript(self, event):
+        selections = self.videoSlider.selections
+        if not selections:
+            wx.Bell()
+            return
+        Sel_Ident = '#Selections:'
+        sSelections = '#Selections: '
+        Book_Ident = '#Bookmarks:'
+        script = self.currentScript
+        bmLine = -1
+        try:
+            for start, end in selections:
+                sSelections += u'{0}-{1},'.format(start, end)
+            lines = script.GetText().split('\n')
+            for x, line in enumerate(lines):
+                if line.strip().startswith(Sel_Ident):
+                    if line != sSelections:
+                        script.SetTargetStart(script.PositionFromLine(x))
+                        script.SetTargetEnd(script.GetLineEndPosition(x))
+                        script.ReplaceTarget(sSelections)
+                    return
+                elif (bmLine < 0) and line.strip().startswith(Book_Ident):
+                    bmLine = x + 1
+
+            if bmLine < 0:
+                for x, line in enumerate(lines):
+                    if line.strip().startswith(Book_Ident):
+                        bmLine = x + 1
+                        break
+        except AttributeError:
+            wx.Bell()
+            return
+
+        if bmLine > -1:
+            script.InsertText(script.PositionFromLine(bmLine), sSelections + '\n')
+        else:
+            b = ''
+            if len(lines) > 1:
+                if lines[1].strip() != '':
+                    b = '\n'
+                if lines[0].strip() != '':
+                    b = '\n\n'
+            script.InsertText(0, sSelections + b)
+
+    def OnSelectionsFromScript(self, event):
+        Sel_Ident = '#Selections:'
+        script = self.currentScript
+        lines = script.GetText().split('\n')
+        sSelections = ''
+        for line in lines:
+            if line.strip().startswith(Sel_Ident):
+                sSelections = line.strip().strip(Sel_Ident)
+                break
+        if not sSelections:
+            return 0
+        selDict = {}
+        try:
+            for index in sSelections.split(','):
+                s = index.strip()
+                if s != '':
+                    nb = {}
+                    nb = s.split('-')
+                    if len(nb) > 1:
+                        start = nb[0].strip()
+                        end = nb[1].strip()
+                        if (start.isdigit() and end.isdigit()) and (int(start) < int(end)):
+                            selDict[int(start)] = 1
+                            selDict[int(end)] = 2
+            if selDict:
+                self.currentScript.selections = None
+                self.currentScript.selections = selDict
+                self.SetSelectionsDict(selDict)
+        except AttributeError:
+            wx.Bell()
+            return 0
+
 
     # GPo 2020, find menu item and sub item by name (multible used, so make one function)
     def FindMenuItem(self, menuBarIdx, itemLabel, subLabel=''):
@@ -11728,7 +11804,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     if self.currentScript.bookmarks:
                         self.MacroSetBookmark(self.currentScript.bookmarks.items())
 
-                self.SetSelectionsDict(self.currentScript.selections)
+                self.SetSelectionsDict(self.currentScript.selections) # set selections
             return True
 
         # Get the newly selected script
@@ -11755,6 +11831,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.refreshAVI = True
         self.snapShotIdx = 0
         bmSet = False # bookmarks not set, its nicer to set bookmarks after show frame
+        forcePlaying = False # GPo new
 
         oldSliderWindow = self.currentSliderWindow
         newSliderWindow = script.sliderWindow
@@ -11785,6 +11862,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if script.group is not None and script.group == self.oldGroup:
                 script.videoXY = None
                 script.videoZoom = None
+                forcePlaying = True
                 if self.options['applygroupoffsets']:
                     offset = script.group_frame - self.oldGroupFrame
                     script.lastFramenum = max(0, self.oldLastFramenum + offset)
@@ -11800,20 +11878,20 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if script.lastFramenum == None or self.zoomwindow or not self.saveViewPos:
                 script.videoXY = None
                 script.videoZoom = None
-
+            # GPo new, keep playing if group or framepertab the same
+            forcePlaying = (forcePlaying or script.lastFramenum == None) and (self.playing_video == '')
             script.lastSplitVideoPos = self.oldLastSplitVideoPos  # GPo, keep it always
-
             self.zoom_antialias = False
+
             if not bmSet:
                 bmSet = SetBookmarks()
             if self.zoomwindow:
-                self.ShowVideoFrame(forceLayout=True, focus=False, forceCursor=True)
+                forcePlaying = self.ShowVideoFrame(forceLayout=True, focus=False, forceCursor=True) and forcePlaying
             else:
                 if script.videoZoom != None:
                     self.zoomfactor = script.videoZoom
-                self.ShowVideoFrame(forceLayout=True, focus=False, scroll=script.videoXY, forceCursor=True)
+                forcePlaying = self.ShowVideoFrame(forceLayout=True, focus=False, scroll=script.videoXY, forceCursor=True) and forcePlaying
             try:
-                #wx.Yield()
                 self.Refresh()
                 self.Update()
             except:
@@ -11868,10 +11946,16 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.UpdateProgramTitle()
         self.oldlinenum = None
 
+        if forcePlaying:
+            wx.CallAfter(self.PlayPauseVideo)
+        else:
+            self.playing_video = False
+
         if self.previewWindowVisible:
             self.ResetZoomAntialias()
         else:
             self.zoom_antialias = self.options['zoom_antialias']
+
 
     def OnNotebookPageChanging(self, event):
         def resetViewPos():
@@ -11885,7 +11969,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             wx.MessageBox(_('Cannot switch tabs while trim editor is open!'), _('Error'), style=wx.OK|wx.ICON_ERROR)
             event.Veto()
 
-        self.StopPlayback()
+        #~self.StopPlayback() # GPo new
+        if self.playing_video:
+            self.PlayPauseVideo(refreshFrame=False)
+            self.playing_video = ''
+
         if self.FindFocus() == self.videoWindow:
             self.boolVideoWindowFocused = True
         else:
@@ -11902,14 +11990,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if self.tabChangeLoadBookmarks:
             self.currentScript.bookmarks = None   # GPo 2020
             self.currentScript.bookmarks = self.GetBookmarkDict()  # GPo 2020
-            """
-            if self.videoSlider.selections:
-                self.currentScript.selections = list(self.videoSlider.selections)
-            else:
-                self.currentScript.selections = []
-        else:
-            self.videoSlider.customSelections = []
-            """
 
         if self.previewWindowVisible:
             if oldSelectionIndex >= 0:
@@ -13621,15 +13701,21 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 if scripttext is None:
                     scripttext, f_encoding, eol = self.GetMarkedScriptFromFile(filename)
                 indexCur = self.scriptNotebook.GetSelection()
-                # If script already exists in a tab, select it (GPo, do not select it)
-                for idx in xrange(self.scriptNotebook.GetPageCount()): # GPo, old one was wrong (for index) do not use 'result index' for loop var
+
+                forceSetBookmarks = False
+                # If script already exists in a tab, select it
+                for idx in xrange(self.scriptNotebook.GetPageCount()):
                     script = self.scriptNotebook.GetPage(idx)
                     if filename == script.filename:
                         index = idx
-                        tbc = self.tabChangeLoadBookmarks
-                        self.tabChangeLoadBookmarks = False
-                        self.SelectTab(idx)
-                        self.tabChangeLoadBookmarks = tbc
+                        # handle script bookmarks
+                        forceSetBookmarks = idx != indexCur
+                        if forceSetBookmarks:
+                            newScript = self.scriptNotebook.GetPage(idx)
+                            last_bookmarks = dict(newScript.bookmarks)
+                            newScript.bookmarks = {} # disable difWarn
+                            self.SelectTab(idx)
+                            newScript.bookmarks = last_bookmarks
                         if scripttext != script.GetText():
                             dlg = wx.MessageDialog(self, _('Reload the file and lose the current changes?'),
                                                    os.path.basename(filename), wx.YES_NO)
@@ -13637,6 +13723,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                             dlg.Destroy()
                             if ID != wx.ID_YES:
                                 return
+                            forceSetBookmarks = True # clear and load bookmarks from script
                             script.ParseFunctions(scripttext)
                             pos = script.GetCurrentPos()
                             script.SetText(scripttext)
@@ -13690,14 +13777,16 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 if hidePreview and self.previewWindowVisible:
                     self.HidePreviewWindow()
 
+                # handle the script bookmarks
                 bCount = 0
                 if loadBookmarks: # only on loading session False
-                    if bookmarks: # only on reopen closed tab
+                    if bookmarks: # only on reopen closed tab, but normaly bookmarks {}
                         tbc = self.tabChangeLoadBookmarks
                         self.tabChangeLoadBookmarks = False
                         try:
                             self.scriptNotebook.SetSelection(index)
                         finally:
+                            script = self.scriptNotebook.GetPage(index)
                             bCount = len(bookmarks)
                             script.bookmarks = None
                             script.bookmarks = dict(bookmarks)
@@ -13707,14 +13796,14 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                             self.MacroSetBookmark(script.bookmarks.items())
                     else:
                         self.scriptNotebook.SetSelection(index)
-                        if index == indexCur:
+                        script = self.scriptNotebook.GetPage(index)
+                        if forceSetBookmarks or (index == indexCur): # then bookmarks must set
                             if self.tabChangeLoadBookmarks:
                                 self.DeleteAllFrameBookmarks(bmtype=0)
                                 self.bookmarkDict.clear()
                                 if ext.lower() == '.avs' and self.options['bookmarksfromscript']:
                                     bCount = self.OnMenuBookmarksFromScript(difWarn=False)
-                        elif self.options['bookmarksfromscript']:
-                            script = self.scriptNotebook.GetPage(self.scriptNotebook.GetSelection())
+                        elif (ext.lower() == '.avs') and self.options['bookmarksfromscript']:
                             bCount = len(script.bookmarks)
                     if selections is not None: # only on session or reopen closed tab
                         script.selections.clear()
@@ -14398,12 +14487,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 saveBM = dict(script.bookmarks)
                 self.scriptNotebook.SetSelection(selectedIndex)
                 script.bookmarks = None
-                script.bookmarks = dict(saveBM)
-                saveBM = None
+                script.bookmarks = saveBM
                 if selectedIndex in loadList:
-                    bm = self.GetBookmarkDict()
-                    bCount = len(bm)
-                    bm = None
+                    bCount = len(self.GetBookmarkDict())
             elif index in loadList:
                 if self.options['bookmarksfromscript']:
                     bCount = self.OnMenuBookmarksFromScript()
@@ -15330,7 +15416,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         for i, item in enumerate(bookmarks.items()):
             if item[1] == 0:
                 bDict[item[0]] = self.bookmarkDict.get(item[0], '')
-        return dict(bDict)
+        return bDict
 
     """
     def SetBookmarkFrameList(self, bookmarks):
@@ -17649,7 +17735,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                             and (self.loop_end <= script.AVI.Framecount-1): #continue, new lop_start is in the next run set
                             wx.Yield()
                         else:
-                            self.PlayPauseVideo()
+                            if self.options['playloop'] and (self.videoSlider.maxValue - self.videoSlider.minValue > 1): # play also loop
+                                self.PlayPauseVideo()
+                                if self.ShowVideoFrame(self.videoSlider.minValue):
+                                    wx.CallAfter(self.PlayPauseVideo)
+                            else:
+                                self.PlayPauseVideo()
+                                return
                     else:
                         wx.Yield()
 

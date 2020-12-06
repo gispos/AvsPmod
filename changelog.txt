@@ -12,6 +12,16 @@ GPo source: https://github.com/gispos/AvsPmod
 GPo releases: https://github.com/gispos/AvsPmod/releases
 
 --------------------------
+Version 2.6.5.1 [2020-12-06] GPo
+--------------------------
+* Set tab bookmarks from session file slightly revised. 
+* 'Play loop' repeats playback at the end of the clip even without selections.
+* Playback continue after tab change if the new clip in the same group or it is a similar clip (frame count and dimensions-size).
+* Added to menu Trim editor > 'Selections to script'  and 'Selections from script', does what the title says.
+-- even if I repeat myself: Selections are made when 'Copy to clipboard' is selected in the Trim Editor.
+* Small other changes
+
+--------------------------
 Version 2.6.5.0 [2020-11-27] GPo
 --------------------------
 * Added to tab context menu 'Save view pos on tab change'
