@@ -135,13 +135,31 @@ import wx
 from wx import stc
 import wx.lib.buttons as wxButtons
 import wx.lib.colourselect as colourselect
+#import colourselect_dpi as colourselect
 import wxp
+import dpi
 
 from icons import AvsP_icon, next_icon, play_icon, pause_icon, external_icon, \
                   skip_icon, spin_icon, ok_icon, smile_icon, question_icon, \
                   rectangle_icon, dragdrop_cursor
 
+# GPo, PPI (DPI) scaling
+ppi_factor = 1.0
 
+def intPPI(i):
+    return int(ppi_factor * i)
+
+def floatPPI(f):
+    return float(ppi_factor * f)
+
+def tuplePPI(n1,n2):
+    return ((int(ppi_factor * n1), int(ppi_factor * n2)))
+
+def SetFontPPI(obj):
+    if ppi_factor > 1:
+        font = obj.GetFont()
+        font.SetPointSize(intPPI(font.GetPointSize()))
+        obj.SetFont(font)
 
 # Filter database for each tab
 class AvsFilterDict(collections.MutableMapping):
@@ -379,7 +397,6 @@ class AvsStyledTextCtrl(stc.StyledTextCtrl):
     def SetTextStyles(self, textstyles, monospaced=False):
         self.SetLexer(stc.STC_LEX_CONTAINER)
         default = 'font:Arial, size:10, fore:#000000, back:#FFFFFF'
-
         # Global default styles for all languages
         self.StyleSetSpec(stc.STC_STYLE_DEFAULT, textstyles.get('default', default))
         if monospaced:
@@ -2279,19 +2296,23 @@ class AvsStyleDialog(wx.Dialog):
         self.controls2 = {}
         self.notebook = wxp.Notebook(self, wx.ID_ANY, style=wx.NO_BORDER,
                                      invert_scroll=self.GetParent().options['invertscrolling'])
+        if ppi_factor > 1:
+            self.notebook.SetTabSize((-1, intPPI(23)))
+            SetFontPPI(self.notebook)
         def OnNotebookPageChanged(event):
             event.GetEventObject().GetCurrentPage().SetFocus()
             event.Skip()
         for tabLabel, tabInfo in dlgInfo:
             tabPanel = wx.Panel(self.notebook, wx.ID_ANY)
             self.notebook.AddPage(tabPanel, tabLabel)
-            sizer = wx.FlexGridSizer(cols=4, hgap=20, vgap=5)
+            sizer = wx.FlexGridSizer(cols=4, hgap=intPPI(20), vgap=intPPI(5))
             sizer.Add((0,0), 0)
             for label in ( _('Font'), _('Text color'), _('Background')):
                 staticText = wx.StaticText(tabPanel, wx.ID_ANY, label)
                 font = staticText.GetFont()
                 font.SetUnderlined(True)
                 font.SetWeight(wx.FONTWEIGHT_BOLD)
+                font.SetPointSize(intPPI(font.GetPointSize()))
                 staticText.SetFont(font)
                 sizer.Add(staticText, flag=wx.ALIGN_CENTER)
             for label, key in tabInfo:
@@ -2305,11 +2326,13 @@ class AvsStyleDialog(wx.Dialog):
                 if type(label) is tuple:
                     label, optKey, tip = label
                     staticText = checkbox = wx.CheckBox(tabPanel, wx.ID_ANY, label)
+                    SetFontPPI(staticText)
                     checkbox.SetValue(parent.options[optKey])
                     checkbox.SetToolTipString(tip)
                     self.controls2[optKey] = checkbox
                 else:
                     staticText = wx.StaticText(tabPanel, wx.ID_ANY, label)
+                    SetFontPPI(staticText)
                 if font is not None:
                     fontLabel = '%s, %d' % (fontFace, fontSize)
                     fontButton = wxButtons.GenButton(tabPanel, wx.ID_ANY, label=fontLabel)
@@ -2319,11 +2342,11 @@ class AvsStyleDialog(wx.Dialog):
                 else:
                     fontButton = None
                 if fontFore is not None:
-                    foreButton = wxp.ColourSelect(tabPanel, wx.ID_ANY, colour=wx.Colour(*fontFore), size=(50,23), colour_data=self.colour_data)
+                    foreButton = wxp.ColourSelect(tabPanel, wx.ID_ANY, colour=wx.Colour(*fontFore), size=tuplePPI(50,23), colour_data=self.colour_data)
                 else:
                     foreButton = None
                 if fontBack is not None:
-                    backButton = wxp.ColourSelect(tabPanel, wx.ID_ANY, colour=wx.Colour(*fontBack), size=(50,23), colour_data=self.colour_data)
+                    backButton = wxp.ColourSelect(tabPanel, wx.ID_ANY, colour=wx.Colour(*fontBack), size=tuplePPI(50,23), colour_data=self.colour_data)
                 else:
                     backButton = None
                 sizer.Add(staticText, flag=wx.ALIGN_CENTER)
@@ -2341,7 +2364,7 @@ class AvsStyleDialog(wx.Dialog):
                     sizer.Add((0,0), flag=wx.ALIGN_CENTER)
                 self.controls[key] = (fontButton, foreButton, backButton)
             tabSizer = wx.BoxSizer(wx.VERTICAL)
-            tabSizer.Add(sizer, 0, wx.ALL, 10)
+            tabSizer.Add(sizer, 0, wx.ALL, intPPI(10))
             tabPanel.SetSizerAndFit(tabSizer)
         self.notebook.SetSelection(0)
         # Standard (and not standard) buttons
@@ -2353,26 +2376,29 @@ class AvsStyleDialog(wx.Dialog):
         only_colors_checkbox.SetValue(parent.options['theme_set_only_colors'])
         only_colors_checkbox.SetToolTipString(_("When selecting a theme, don't change current fonts"))
         self.controls2['theme_set_only_colors'] = only_colors_checkbox
-        okay  = wx.Button(self, wx.ID_OK, _('OK'))
+        okay = wx.Button(self, wx.ID_OK, _('OK'))
+        SetFontPPI(okay)
         self.Bind(wx.EVT_BUTTON, self.OnButtonOK, okay)
         cancel = wx.Button(self, wx.ID_CANCEL, _('Cancel'))
+        SetFontPPI(cancel)
         btns = wx.StdDialogButtonSizer()
         if extra: # single CheckBox
             label, optKey, tip = extra
             checkbox = wx.CheckBox(self, wx.ID_ANY, label)
+            SetFontPPI(checkbox)
             checkbox.SetValue(parent.options[optKey])
             checkbox.SetToolTipString(tip)
             self.controls2[optKey] = checkbox
-            btns.Add(checkbox, 0, wx.LEFT | wx.RIGHT | wx.ALIGN_CENTER_VERTICAL, 3)
-        btns.Add(theme_choice, 0, wx.LEFT | wx.RIGHT, 3)
-        btns.Add(only_colors_checkbox, 0, wx.LEFT | wx.RIGHT | wx.ALIGN_CENTER_VERTICAL, 3)
+            btns.Add(checkbox, 0, wx.LEFT | wx.RIGHT | wx.ALIGN_CENTER_VERTICAL, intPPI(3))
+        btns.Add(theme_choice, 0, wx.LEFT | wx.RIGHT, intPPI(3))
+        btns.Add(only_colors_checkbox, 0, wx.LEFT | wx.RIGHT | wx.ALIGN_CENTER_VERTICAL, intPPI(3))
         btns.AddButton(okay)
         btns.AddButton(cancel)
         btns.Realize()
         # Size the elements
         dlgSizer = wx.BoxSizer(wx.VERTICAL)
-        dlgSizer.Add(self.notebook, 0, wx.EXPAND|wx.ALL, 5)
-        dlgSizer.Add(btns, 0, wx.EXPAND|wx.ALL, 10)
+        dlgSizer.Add(self.notebook, 0, wx.EXPAND|wx.ALL, intPPI(5))
+        dlgSizer.Add(btns, 0, wx.EXPAND|wx.ALL, intPPI(10))
         self.SetSizer(dlgSizer)
         dlgSizer.Fit(self)
         self.sizer = dlgSizer
@@ -2384,7 +2410,7 @@ class AvsStyleDialog(wx.Dialog):
     def ParseStyleInfo(styleInfo):
         # Get the style info (face, size, bold/italic/underline, color, background)
         (fontSize, fontStyle, fontWeight, fontUnderline,
-        fontFace, fontFore, fontBack) = (10, wx.FONTSTYLE_NORMAL,
+        fontFace, fontFore, fontBack) = (intPPI(10), wx.FONTSTYLE_NORMAL,
         wx.FONTWEIGHT_NORMAL, False, None, None, None)
         for info in styleInfo:
             infolower = info.lower().strip()
@@ -2680,7 +2706,7 @@ class STCPrintout(wx.Printout):
         pg_lbl_w, pg_lbl_h = dc.GetTextExtent(page_lbl)
         dc.DrawText(page_lbl, rect[2] - pg_lbl_w, rect[1])
 
-    def setHeaderFont(self, point_size=10, family=wx.FONTFAMILY_SWISS,
+    def setHeaderFont(self, point_size=intPPI(10), family=wx.FONTFAMILY_SWISS,
                       style=wx.FONTSTYLE_NORMAL, weight=wx.FONTWEIGHT_NORMAL):
         """Set the font to be used as the header font
 
@@ -2723,8 +2749,8 @@ class STCPrintout(wx.Printout):
         dc.DrawRectangleRect(self.GetLogicalPageMarginsRect(self.page_setup_data))
 
 # Dialog for scrap window
-class ScrapWindow(wx.Dialog):
-    def __init__(self, parent, title=_('Scrap Window'), pos=wx.DefaultPosition, size=(250,250)):
+class ScrapWindow(wx.Dialog): # PPI Font Size set under Font and Colors
+    def __init__(self, parent, title=_('Scrap Window'), pos=wx.DefaultPosition, size=tuplePPI(250,250)):
         style = wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER
         wx.Dialog.__init__(self, parent, wx.ID_ANY, title, pos, size, style=style)
         self.parent = parent
@@ -2742,7 +2768,7 @@ class ScrapWindow(wx.Dialog):
         self.textCtrl.EnsureCaretVisible()
         self.textCtrl.EmptyUndoBuffer()
         # Set the width for the horizontal scrollbar
-        maxWidth = 50
+        maxWidth = intPPI(50)
         if wx.VERSION > (2, 9):
             self.textCtrl.SetScrollWidth(maxWidth)
             self.textCtrl.SetScrollWidthTracking(True)
@@ -2761,7 +2787,7 @@ class ScrapWindow(wx.Dialog):
         self.neverShown = True
 
     def createTextCtrl(self):
-        textCtrl = stc.StyledTextCtrl(self, wx.ID_ANY, size=(250,250), style=wx.SIMPLE_BORDER)
+        textCtrl = stc.StyledTextCtrl(self, wx.ID_ANY, size=tuplePPI(250,250), style=wx.SIMPLE_BORDER)
         # Define the context menu
         textCtrl.UsePopUp(0)
         self.idInsertFrame = wx.NewId()
@@ -3082,12 +3108,14 @@ class UserSliderDialog(wx.Dialog):
         wx.Dialog.__init__(self, None, wx.ID_ANY, _('Define user slider'))
         self.parent = parent
         # Entry fields
-        gridSizer = wx.FlexGridSizer(cols=2, hgap=10, vgap=5)
+        gridSizer = wx.FlexGridSizer(cols=2, hgap=intPPI(10), vgap=intPPI(5))
         gridSizer.AddGrowableCol(1)
         self.ctrlDict = {}
         for eachKey, eachLabel in self.fieldInfo():
             textCtrl = wx.TextCtrl(self, validator=UserSliderValidator(self.ctrlDict, labels))
+            SetFontPPI(textCtrl)
             staticText = wx.StaticText(self, wx.ID_ANY, eachLabel)
+            SetFontPPI(staticText)
             gridSizer.Add(staticText, 0, wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL)
             gridSizer.Add(textCtrl, 0, wx.EXPAND)
             self.ctrlDict[eachKey] = textCtrl
@@ -3095,16 +3123,18 @@ class UserSliderDialog(wx.Dialog):
             self.ctrlDict['val'].SetValue(initialValueText)
         # Standard buttons
         okay  = wx.Button(self, wx.ID_OK, _('OK'))
+        SetFontPPI(okay)
         okay.SetDefault()
         cancel = wx.Button(self, wx.ID_CANCEL, _('Cancel'))
+        SetFontPPI(cancel)
         btns = wx.StdDialogButtonSizer()
         btns.AddButton(okay)
         btns.AddButton(cancel)
         btns.Realize()
         # Set the sizer
         sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(gridSizer, 0, wx.EXPAND|wx.ALL, 20)
-        sizer.Add(btns, 0, wx.EXPAND|wx.ALL, 5)
+        sizer.Add(gridSizer, 0, wx.EXPAND|wx.ALL, intPPI(20))
+        sizer.Add(btns, 0, wx.EXPAND|wx.ALL, intPPI(5))
         self.SetSizer(sizer)
         sizer.Fit(self)
 
@@ -3123,7 +3153,7 @@ class UserSliderDialog(wx.Dialog):
         return '%(open)s"%(label)s", %(min)s, %(max)s, %(val)s%(close)s' % textDict
 
 # Dialog for AviSynth filter information
-class AvsFunctionDialog(wx.Dialog):
+class AvsFunctionDialog(wx.Dialog): # PPI set
     def __init__(self, parent, filterDict, overrideDict, avsfilterdict,
                        presetDict, removedSet, pluginDict, shortnamesDict,
                        installed_plugins_filternames,
@@ -3133,7 +3163,7 @@ class AvsFunctionDialog(wx.Dialog):
         wx.Dialog.__init__(
             self, parent, wx.ID_ANY,
             _('Add or override AviSynth functions in the database'),
-            size=(500, 300), style=wx.DEFAULT_DIALOG_STYLE|wx.RESIZE_BORDER
+            size=tuplePPI(500, 300), style=wx.DEFAULT_DIALOG_STYLE|wx.RESIZE_BORDER
         )
         self.parent = parent
         self.filterDict = filterDict.copy()
@@ -3173,6 +3203,9 @@ class AvsFunctionDialog(wx.Dialog):
     def CreateWindowElements(self):
         self.notebook = wxp.Notebook(self, wx.ID_ANY, style=wx.NO_BORDER,
                                      invert_scroll=self.GetParent().options['invertscrolling'])
+        if ppi_factor > 1:
+            self.notebook.SetTabSize((-1, intPPI(23)))
+            SetFontPPI(self.notebook)
 
         class CheckListBox(wx.CheckListBox):
             def __init__(self, *args, **kwargs):
@@ -3218,11 +3251,17 @@ class AvsFunctionDialog(wx.Dialog):
                 extra += '~'
             pageDict[ftype].append(name + extra)
         for title, index in pageInfo:
-            panel = wx.Panel(self.notebook, wx.ID_ANY, size=(700,-1))
+            panel = wx.Panel(self.notebook, wx.ID_ANY, size=(intPPI(700),-1))
             self.notebook.AddPage(panel, title)
 
             choices = pageDict[index]
-            listbox = CheckListBox(panel, wx.ID_ANY, choices=choices, size=(-1,300), style=wx.LB_SORT)
+            listbox = CheckListBox(panel, wx.ID_ANY, choices=choices, size=(-1,intPPI(300)), style=wx.LB_SORT)
+            if dpi.ppi_factor > 1:
+                font = listbox.GetFont()
+                font.SetPointSize(10)
+                listbox.SetFont(font)
+            #self.parent.SendMessage(listbox.GetHandle(), 61856, -1, 100)
+
             if choices:
                 listbox.SetSelection(0)
             listbox.Bind(wx.EVT_LISTBOX_DCLICK, lambda event: self.EditFunctionInfo())
@@ -3243,22 +3282,22 @@ class AvsFunctionDialog(wx.Dialog):
             panel.Bind(wx.EVT_BUTTON, lambda event: self.CheckAllFunctions(True), buttoncheckall)
             panel.Bind(wx.EVT_BUTTON, lambda event: self.CheckAllFunctions(False), buttonuncheckall)
             buttonSizer = wx.BoxSizer(wx.VERTICAL)
-            buttonSizer.Add(buttonadd, 0, wx.EXPAND|wx.TOP|wx.BOTTOM, 5)
-            buttonSizer.Add(buttonedit, 0, wx.EXPAND|wx.BOTTOM, 5)
-            buttonSizer.Add(buttondelete, 0, wx.EXPAND|wx.BOTTOM, 5)
-            buttonSizer.Add(wx.StaticLine(panel, wx.ID_ANY, style=wx.HORIZONTAL), 0, wx.EXPAND|wx.TOP|wx.BOTTOM, 5)
-            buttonSizer.Add(buttonuncheckall, 0, wx.EXPAND|wx.TOP|wx.BOTTOM, 5)
-            buttonSizer.Add(buttoncheckall, 0, wx.EXPAND|wx.BOTTOM, 5)
+            buttonSizer.Add(buttonadd, 0, wx.EXPAND|wx.TOP|wx.BOTTOM, intPPI(5))
+            buttonSizer.Add(buttonedit, 0, wx.EXPAND|wx.BOTTOM, intPPI(5))
+            buttonSizer.Add(buttondelete, 0, wx.EXPAND|wx.BOTTOM, intPPI(5))
+            buttonSizer.Add(wx.StaticLine(panel, wx.ID_ANY, style=wx.HORIZONTAL), 0, wx.EXPAND|wx.TOP|wx.BOTTOM, intPPI(5))
+            buttonSizer.Add(buttonuncheckall, 0, wx.EXPAND|wx.TOP|wx.BOTTOM, intPPI(5))
+            buttonSizer.Add(buttoncheckall, 0, wx.EXPAND|wx.BOTTOM, intPPI(5))
             if index in (2, 3):
                 buttonselectinstalled = wx.Button(panel, wx.ID_ANY, _('Select installed'))
                 panel.Bind(wx.EVT_BUTTON, lambda event: self.SelectInstalledFilters(), buttonselectinstalled)
-                buttonSizer.Add(buttonselectinstalled, 0, wx.EXPAND|wx.BOTTOM, 5)
+                buttonSizer.Add(buttonselectinstalled, 0, wx.EXPAND|wx.BOTTOM, intPPI(5))
             # Size the elements in the panel
             listboxSizer = wx.BoxSizer(wx.HORIZONTAL)
-            listboxSizer.Add(listbox, 1, wx.EXPAND|wx.RIGHT, 15)
-            listboxSizer.Add(buttonSizer, 0, wx.EXPAND|wx.RIGHT, 5)
+            listboxSizer.Add(listbox, 1, wx.EXPAND|wx.RIGHT, intPPI(10))
+            listboxSizer.Add(buttonSizer, 0, wx.EXPAND|wx.RIGHT, intPPI(5))
             panelSizer = wx.BoxSizer(wx.VERTICAL)
-            panelSizer.Add(listboxSizer, 1, wx.EXPAND|wx.ALL, 5)
+            panelSizer.Add(listboxSizer, 1, wx.EXPAND|wx.ALL, intPPI(5))
             panel.SetSizer(panelSizer)
             panelSizer.Layout()
             # Bind items to the panel itself
@@ -3267,6 +3306,7 @@ class AvsFunctionDialog(wx.Dialog):
         self.CreatePluginsContextMenu()
         # Buttons
         button0 = wx.Button(self, wx.ID_ANY, _('Import'))
+        SetFontPPI(button0)
         menu0 = wx.Menu()
         menuItem = menu0.Append(wx.ID_ANY, _('Import from files'))
         self.Bind(wx.EVT_MENU, lambda event: self.ImportFromFiles(), menuItem)
@@ -3275,21 +3315,27 @@ class AvsFunctionDialog(wx.Dialog):
         self.Bind(wx.EVT_BUTTON, lambda event: button0.PopupMenu(
                     menu0, (1, button0.GetSizeTuple()[1])), button0)
         button1 = wx.Button(self, wx.ID_ANY, _('Export customizations'))
+        SetFontPPI(button1)
         self.Bind(wx.EVT_BUTTON, lambda event: self.ExportCustomizations(), button1)
         button2 = wx.Button(self, wx.ID_ANY, _('Clear customizations'))
+        SetFontPPI(button2)
         self.Bind(wx.EVT_BUTTON, lambda event: self.ClearCustomizations(), button2)
         button3 = wx.Button(self, wx.ID_ANY, _('Clear manual presets'))
+        SetFontPPI(button3)
         self.Bind(wx.EVT_BUTTON, lambda event: self.ClearPresets(), button3)
         buttonSizer = wx.BoxSizer(wx.HORIZONTAL)
-        buttonSizer.Add(button0, 0, wx.RIGHT, 5)
-        buttonSizer.Add(button1, 0, wx.RIGHT, 5)
-        buttonSizer.Add(button2, 0, wx.RIGHT, 5)
-        buttonSizer.Add(button3, 0, wx.RIGHT, 5)
+        buttonSizer.Add(button0, 0, wx.RIGHT, intPPI(5))
+        buttonSizer.Add(button1, 0, wx.RIGHT, intPPI(5))
+        buttonSizer.Add(button2, 0, wx.RIGHT, intPPI(5))
+        buttonSizer.Add(button3, 0, wx.RIGHT, intPPI(5))
         self.checkBox = wx.CheckBox(self, wx.ID_ANY, _("When importing, don't show the choice dialog"))
+        SetFontPPI(self.checkBox)
         # Standard buttons
         okay  = wx.Button(self, wx.ID_OK, _('OK'))
+        SetFontPPI(okay)
         #~ self.Bind(wx.EVT_BUTTON, self.OnButtonOK, okay)
         cancel = wx.Button(self, wx.ID_CANCEL, _('Cancel'))
+        SetFontPPI(cancel)
         sdtbtns = wx.StdDialogButtonSizer()
         sdtbtns.Add(self.checkBox)
         sdtbtns.AddButton(okay)
@@ -3297,10 +3343,10 @@ class AvsFunctionDialog(wx.Dialog):
         sdtbtns.Realize()
         # Size the elements
         dlgSizer = wx.BoxSizer(wx.VERTICAL)
-        dlgSizer.Add(self.notebook, 1, wx.EXPAND|wx.ALL, 5)
-        dlgSizer.Add(buttonSizer, 0, wx.LEFT, 5)
-        dlgSizer.Add(wx.StaticLine(self, style=wx.HORIZONTAL), 0, wx.EXPAND|wx.TOP|wx.BOTTOM, 5)
-        dlgSizer.Add(sdtbtns, 0, wx.EXPAND|wx.ALL, 5)
+        dlgSizer.Add(self.notebook, 1, wx.EXPAND|wx.ALL, intPPI(5))
+        dlgSizer.Add(buttonSizer, 0, wx.LEFT, intPPI(5))
+        dlgSizer.Add(wx.StaticLine(self, style=wx.HORIZONTAL), 0, wx.EXPAND|wx.TOP|wx.BOTTOM, intPPI(5))
+        dlgSizer.Add(sdtbtns, 0, wx.EXPAND|wx.ALL, intPPI(5))
         self.SetSizer(dlgSizer)
         dlgSizer.SetSizeHints(self)
         dlgSizer.Layout()
@@ -3314,8 +3360,9 @@ class AvsFunctionDialog(wx.Dialog):
 
     def CreateFilterInfoDialog(self, resetargsbutton=True):
         dlg = wx.Dialog(self, wx.ID_ANY, _('Edit function information'))
+        SetFontPPI(dlg)
         staticText0 = wx.StaticText(dlg, wx.ID_ANY, _('Name:'))
-        textCtrl0 = wx.TextCtrl(dlg, wx.ID_ANY, size=(200,-1))
+        textCtrl0 = wx.TextCtrl(dlg, wx.ID_ANY, size=(intPPI(200),-1))
         staticText1 = wx.StaticText(dlg, wx.ID_ANY, _('Type:'))
         choices = [_('core filter'), _('clip property'), _('plugin'), _('user function'), _('script function')]
         choiceBox1 = wx.Choice(dlg, wx.ID_ANY, choices=choices)
@@ -3331,6 +3378,7 @@ class AvsFunctionDialog(wx.Dialog):
         def OnArgsEditSliders(event):
             name = textCtrl0.GetValue()
             dlg2 = AvsFilterAutoSliderInfo(dlg, self.GetParent(), name, textCtrl2.GetValue(), title=_('Slider information'))
+            SetFontPPI(dlg2)
             ID = dlg2.ShowModal()
             if ID == wx.ID_OK:
                 textCtrl2.SetValue(dlg2.GetNewFilterInfo())
@@ -3340,7 +3388,7 @@ class AvsFunctionDialog(wx.Dialog):
             textCtrl0.SetValue(dlg.defaultName)
             textCtrl2.SetValue(dlg.defaultArgs)
         staticText2_5.Bind(wx.EVT_LEFT_DOWN, OnClickSetToDefault)
-        textCtrl2 = wxp.TextCtrl(dlg, wx.ID_ANY, size=(200,200), style=wx.TE_MULTILINE|wx.HSCROLL)
+        textCtrl2 = wxp.TextCtrl(dlg, wx.ID_ANY, size=tuplePPI(200,200), style=wx.TE_MULTILINE|wx.HSCROLL)
         def OnArgsChange(event):
             if checkBox3.IsChecked():
                 name = textCtrl0.GetValue() #dlg.defaultName
@@ -3361,7 +3409,7 @@ class AvsFunctionDialog(wx.Dialog):
                 textCtrl3.SetEditable(True)
                 textCtrl3.SetBackgroundColour(wx.WHITE)
         checkBox3.Bind(wx.EVT_CHECKBOX, OnCheck)
-        textCtrl3 = wxp.TextCtrl(dlg, wx.ID_ANY, size=(-1,50), style=wx.TE_MULTILINE|wx.HSCROLL)
+        textCtrl3 = wxp.TextCtrl(dlg, wx.ID_ANY, size=(-1,intPPI(50)), style=wx.TE_MULTILINE|wx.HSCROLL)
         # Standard buttons
         okay  = wx.Button(dlg, wx.ID_OK, _('OK'))
         def OnFilterInfoDialogButtonOK(event):
@@ -3394,29 +3442,29 @@ class AvsFunctionDialog(wx.Dialog):
         btns.AddButton(cancel)
         btns.Realize()
         # Size the elements
-        sizer01 = wx.FlexGridSizer(cols=4, hgap=5, vgap=5)
+        sizer01 = wx.FlexGridSizer(cols=4, hgap=intPPI(5), vgap=intPPI(5))
         sizer01.Add(staticText0, 0, wx.ALIGN_CENTER_VERTICAL)
-        sizer01.Add(textCtrl0, 0, wx.EXPAND|wx.RIGHT, 10)
+        sizer01.Add(textCtrl0, 0, wx.EXPAND|wx.RIGHT, intPPI(10))
         sizer01.Add(staticText1, 0, wx.ALIGN_CENTER_VERTICAL)
         sizer01.Add(choiceBox1, 0, wx.EXPAND)
         sizer2 = wx.BoxSizer(wx.HORIZONTAL)
         sizer2.Add(staticText2, 0, wx.ALL, 0)
         sizer2.Add((-1,-1), 1, wx.EXPAND|wx.ALL, 0)
-        sizer2.Add(staticText2_5, 0, wx.RIGHT, 10)
-        sizer2.Add(staticText2_4, 0, wx.LEFT|wx.RIGHT, 10)
+        sizer2.Add(staticText2_5, 0, wx.RIGHT, intPPI(10))
+        sizer2.Add(staticText2_4, 0, wx.LEFT|wx.RIGHT, intPPI(10))
         sizer3 = wx.BoxSizer(wx.HORIZONTAL)
         sizer3.Add(staticText3, 0, wx.ALL, 0)
         sizer3.Add((-1,-1), 1, wx.EXPAND|wx.ALL, 0)
-        sizer3.Add(checkBox3, 0, wx.RIGHT, 10)
+        sizer3.Add(checkBox3, 0, wx.RIGHT, intPPI(10))
         dlgSizer = wx.BoxSizer(wx.VERTICAL)
         dlgSizer.Add((-1,5), 0, wx.EXPAND|wx.ALL, 0)
-        dlgSizer.Add(sizer01, 0, wx.EXPAND|wx.ALL, 5)
-        dlgSizer.Add(wx.StaticLine(dlg, style=wx.HORIZONTAL), 0, wx.EXPAND|wx.TOP|wx.BOTTOM, 5)
-        dlgSizer.Add(sizer2, 0, wx.EXPAND|wx.TOP|wx.LEFT, 5)
-        dlgSizer.Add(textCtrl2, 1, wx.EXPAND|wx.ALL, 5)
-        dlgSizer.Add(sizer3, 0, wx.EXPAND|wx.TOP|wx.LEFT, 5)
-        dlgSizer.Add(textCtrl3, 0, wx.EXPAND|wx.ALL, 5)
-        dlgSizer.Add(btns, 0, wx.EXPAND|wx.ALL, 5)
+        dlgSizer.Add(sizer01, 0, wx.EXPAND|wx.ALL, intPPI(5))
+        dlgSizer.Add(wx.StaticLine(dlg, style=wx.HORIZONTAL), 0, wx.EXPAND|wx.TOP|wx.BOTTOM, intPPI(5))
+        dlgSizer.Add(sizer2, 0, wx.EXPAND|wx.TOP|wx.LEFT, intPPI(5))
+        dlgSizer.Add(textCtrl2, 1, wx.EXPAND|wx.ALL, intPPI(5))
+        dlgSizer.Add(sizer3, 0, wx.EXPAND|wx.TOP|wx.LEFT, intPPI(5))
+        dlgSizer.Add(textCtrl3, 0, wx.EXPAND|wx.ALL, intPPI(5))
+        dlgSizer.Add(btns, 0, wx.EXPAND|wx.ALL, intPPI(5))
         dlg.SetSizer(dlgSizer)
         if not resetargsbutton:
             staticText2_5.Hide()
@@ -3445,6 +3493,7 @@ class AvsFunctionDialog(wx.Dialog):
         dlg.defaultName = ''
         dlg.enteredName = ''
         self.FilterInfoDialog = dlg
+
 
     def CreatePluginsContextMenu(self):
         """Chose between long and short names"""
@@ -3582,6 +3631,7 @@ class AvsFunctionDialog(wx.Dialog):
             choices.append(os.path.basename(filename) + ' -> ' + filtername)
         dlg = wx.Dialog(self, wx.ID_ANY, _('Select the functions to import'),
                         style=wx.DEFAULT_DIALOG_STYLE|wx.RESIZE_BORDER)
+        SetFontPPI(dlg)
         listbox = wx.CheckListBox(dlg, wx.ID_ANY, choices=choices, style=wx.LB_EXTENDED)
         customized, not_customized = [], []
         for i in range(len(choices)):
@@ -4031,13 +4081,14 @@ class AvsFilterAutoSliderInfo(wx.Dialog):
         # Filter name label
         filterLabel = wx.StaticText(self, wx.ID_ANY, filterName)
         font = filterLabel.GetFont()
-        font.SetPointSize(10)
+        font.SetPointSize(intPPI(10))
         font.SetWeight(wx.FONTWEIGHT_BOLD)
         filterLabel.SetFont(font)
         # Arguments
         argWindow = wx.ScrolledWindow(self, wx.ID_ANY, style=wx.TAB_TRAVERSAL)
+        SetFontPPI(argWindow)
         argWindow.SetScrollRate(10, 10)
-        argSizer = wx.GridBagSizer(hgap=0, vgap=10)
+        argSizer = wx.GridBagSizer(hgap=0, vgap=intPPI(10))
         row = 0
         growable = False
         self.argctrls = []
@@ -4089,11 +4140,11 @@ class AvsFilterAutoSliderInfo(wx.Dialog):
                     hsizer = wx.BoxSizer(wx.HORIZONTAL)
                     for itemValue, itemName in itemData:
                         itemLabel = wx.StaticText(argWindow, wx.ID_ANY, itemName)
-                        itemTextCtrl = wx.TextCtrl(argWindow, wx.ID_ANY, itemValue,size=(75,-1))
+                        itemTextCtrl = wx.TextCtrl(argWindow, wx.ID_ANY, itemValue,size=(intPPI(75),-1))
                         vsizer = wx.BoxSizer(wx.VERTICAL)
-                        vsizer.Add(itemLabel, 0, wx.LEFT, 2)
+                        vsizer.Add(itemLabel, 0, wx.LEFT, intPPI(2))
                         vsizer.Add(itemTextCtrl, 0, wx.ALL, 0)
-                        hsizer.Add(vsizer, 0, wx.EXPAND|wx.RIGHT,5)
+                        hsizer.Add(vsizer, 0, wx.EXPAND|wx.RIGHT,intPPI(5))
                         argLabel.controls.append(itemTextCtrl)
                     argSizer.Add(hsizer, (row,1), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, 0)
                 elif argtype == 'bool':
@@ -4104,9 +4155,9 @@ class AvsFilterAutoSliderInfo(wx.Dialog):
                         if defaultValue.lower() == 'false':
                             strDefaultValue = 'False'
                     itemLabel = wx.StaticText(argWindow, wx.ID_ANY, _('Default'))
-                    itemTextCtrl = wx.ComboBox(argWindow, wx.ID_ANY, strDefaultValue, choices=['True', 'False'], style=wx.CB_DROPDOWN, size=(75,-1))
+                    itemTextCtrl = wx.ComboBox(argWindow, wx.ID_ANY, strDefaultValue, choices=['True', 'False'], style=wx.CB_DROPDOWN, size=(intPPI(75),-1))
                     vsizer = wx.BoxSizer(wx.VERTICAL)
-                    vsizer.Add(itemLabel, 0, wx.LEFT, 2)
+                    vsizer.Add(itemLabel, 0, wx.LEFT, intPPI(2))
                     vsizer.Add(itemTextCtrl, 0, wx.ALL, 0)
                     argLabel.controls.append(itemTextCtrl)
                     argSizer.Add(vsizer, (row,1), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, 0)
@@ -4123,20 +4174,20 @@ class AvsFilterAutoSliderInfo(wx.Dialog):
                     hsizer = wx.BoxSizer(wx.HORIZONTAL)
                     # Default control
                     itemLabel = wx.StaticText(argWindow, wx.ID_ANY, _('Default'))
-                    itemTextCtrl = wx.TextCtrl(argWindow, wx.ID_ANY, strDefaultValue, size=(75,-1))
+                    itemTextCtrl = wx.TextCtrl(argWindow, wx.ID_ANY, strDefaultValue, size=(intPPI(75),-1))
                     vsizer = wx.BoxSizer(wx.VERTICAL)
-                    vsizer.Add(itemLabel, 0, wx.LEFT, 2)
+                    vsizer.Add(itemLabel, 0, wx.LEFT, intPPI(2))
                     vsizer.Add(itemTextCtrl, 0, wx.ALL, 0)
                     argLabel.controls.append(itemTextCtrl)
-                    hsizer.Add(vsizer, 0, wx.EXPAND|wx.RIGHT,5)
+                    hsizer.Add(vsizer, 0, wx.EXPAND|wx.RIGHT,intPPI(5))
                     # Values control
                     itemLabel = wx.StaticText(argWindow, wx.ID_ANY, _('Value list (comma separated)'))
-                    itemTextCtrl = wx.TextCtrl(argWindow, wx.ID_ANY, strValuesList, size=(200,-1))
+                    itemTextCtrl = wx.TextCtrl(argWindow, wx.ID_ANY, strValuesList, size=(intPPI(200),-1))
                     vsizer = wx.BoxSizer(wx.VERTICAL)
-                    vsizer.Add(itemLabel, 0, wx.LEFT, 2)
+                    vsizer.Add(itemLabel, 0, wx.LEFT, intPPI(2))
                     vsizer.Add(itemTextCtrl, 1, wx.EXPAND|wx.ALL, 0)
                     argLabel.controls.append(itemTextCtrl)
-                    hsizer.Add(vsizer, 1, wx.EXPAND|wx.RIGHT,5)
+                    hsizer.Add(vsizer, 1, wx.EXPAND|wx.RIGHT,intPPI(5))
 
                     argSizer.Add(hsizer, (row,1), wx.DefaultSpan, wx.EXPAND|wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, 0)
                     if wx.VERSION > (2, 9):
@@ -4151,28 +4202,30 @@ class AvsFilterAutoSliderInfo(wx.Dialog):
         argWindow.SetSizer(argSizer)
         # Standard buttons
         okay  = wx.Button(self, wx.ID_OK, _('OK'))
+        SetFontPPI(okay)
         self.Bind(wx.EVT_BUTTON, self.OnButtonOK, okay)
         okay.SetDefault()
         cancel = wx.Button(self, wx.ID_CANCEL, _('Cancel'))
+        SetFontPPI(cancel)
         btns = wx.StdDialogButtonSizer()
         btns.AddButton(okay)
         btns.AddButton(cancel)
         btns.Realize()
         # Set the sizer
         sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add((-1,-1), 0, wx.TOP, 10)
-        sizer.Add(filterLabel, 0, wx.EXPAND|wx.ALL, 5)
-        sizer.Add(wx.StaticLine(self, wx.ID_ANY), 0, wx.EXPAND|wx.LEFT|wx.RIGHT, 5)
-        sizer.Add(argWindow, 1, wx.EXPAND|wx.ALL, 5)
-        sizer.Add(wx.StaticLine(self, wx.ID_ANY), 0, wx.EXPAND|wx.LEFT|wx.RIGHT, 5)
+        sizer.Add((-1,-1), 0, wx.TOP, intPPI(10))
+        sizer.Add(filterLabel, 0, wx.EXPAND|wx.ALL, intPPI(5))
+        sizer.Add(wx.StaticLine(self, wx.ID_ANY), 0, wx.EXPAND|wx.LEFT|wx.RIGHT, intPPI(5))
+        sizer.Add(argWindow, 1, wx.EXPAND|wx.ALL, intPPI(5))
+        sizer.Add(wx.StaticLine(self, wx.ID_ANY), 0, wx.EXPAND|wx.LEFT|wx.RIGHT, intPPI(5))
         #~ sizer.Add(wx.StaticText(self,wx.ID_ANY, _('* optional value')), 0, wx.EXPAND|wx.ALL, 10)
-        sizer.Add(btns, 0, wx.EXPAND|wx.ALL, 5)
+        sizer.Add(btns, 0, wx.EXPAND|wx.ALL, intPPI(5))
         self.SetSizer(sizer)
         sizer.Layout()
         argWindow.FitInside()
         w, h = argSizer.GetMinSize()
-        w = max(w + 10, 400)
-        h = min(h + 100, 700)
+        w = max(intPPI(w + 10), intPPI(400))
+        h = min(intPPI(h + 100), intPPI(700))
         self.SetSize(self.ClientToWindowSize((w, h)))
         if argWindow.HasScrollbar(wx.HORIZONTAL):
             scrollbar_w = wx.SystemSettings_GetMetric(wx.SYS_VSCROLL_X)
@@ -4268,7 +4321,8 @@ class AvsFunctionExportImportDialog(wx.Dialog):
             title = _('Export filter customizations')
         else:
             title = _('Import filter customizations')
-        wx.Dialog.__init__(self, parent, wx.ID_ANY, title, size=(500, 300), style=wx.DEFAULT_DIALOG_STYLE|wx.RESIZE_BORDER)
+        wx.Dialog.__init__(self, parent, wx.ID_ANY, title, size=tuplePPI(500,300), style=wx.DEFAULT_DIALOG_STYLE|wx.RESIZE_BORDER)
+        SetFontPPI(self)
         self.calltipDict = infoDict[0]
         self.presetDict = infoDict[1]
         self.docpathDict = infoDict[2]
@@ -4294,7 +4348,7 @@ class AvsFunctionExportImportDialog(wx.Dialog):
 
         if export:
             staticText = wx.StaticText(self, wx.ID_ANY, _('Select filters to export:'))
-            extraItem = (-1, 20)
+            extraItem = (-1, intPPI(20))
         else:
             staticText = wx.StaticText(self, wx.ID_ANY, _('Select filters to import from the file:'))
             # Import dialog, check all names by default
@@ -4303,12 +4357,14 @@ class AvsFunctionExportImportDialog(wx.Dialog):
             self.checkBoxOverwriteAll = wx.CheckBox(self, wx.ID_ANY, _('Overwrite all data'))
             self.checkBoxOverwriteAll.SetValue(True)
             extraItem = wx.BoxSizer(wx.VERTICAL)
-            extraItem.Add(self.checkBoxOverwriteAll, 0, wx.LEFT|wx.BOTTOM, 5)
+            extraItem.Add(self.checkBoxOverwriteAll, 0, wx.LEFT|wx.BOTTOM, intPPI(5))
 
         # Standard buttons
         okay  = wx.Button(self, wx.ID_OK, _('OK'))
+        SetFontPPI(okay)
         self.Bind(wx.EVT_BUTTON, self.OnButtonOK, okay)
         cancel = wx.Button(self, wx.ID_CANCEL, _('Cancel'))
+        SetFontPPI(cancel)
         btns = wx.StdDialogButtonSizer()
         btns.AddButton(okay)
         btns.AddButton(cancel)
@@ -4316,17 +4372,17 @@ class AvsFunctionExportImportDialog(wx.Dialog):
 
         # Size the elements
         buttonSizer = wx.BoxSizer(wx.VERTICAL)
-        buttonSizer.Add(buttonSelectAll, 0, wx.ALL, 5)
-        buttonSizer.Add(buttonClearAll, 0, wx.ALL, 5)
+        buttonSizer.Add(buttonSelectAll, 0, wx.ALL, intPPI(5))
+        buttonSizer.Add(buttonClearAll, 0, wx.ALL, intPPI(5))
         listSizer = wx.BoxSizer(wx.HORIZONTAL)
-        listSizer.Add(self.checkListBox, 1, wx.EXPAND|wx.ALL, 5)
-        listSizer.Add(buttonSizer, 0, wx.ALL, 5)
+        listSizer.Add(self.checkListBox, 1, wx.EXPAND|wx.ALL, intPPI(5))
+        listSizer.Add(buttonSizer, 0, wx.ALL, intPPI(5))
         dlgSizer = wx.BoxSizer(wx.VERTICAL)
-        dlgSizer.Add((-1,5))
-        dlgSizer.Add(staticText, 0, wx.ALL, 5)
-        dlgSizer.Add(listSizer, 1, wx.EXPAND|wx.LEFT|wx.RIGHT, 5)
-        dlgSizer.Add(extraItem, 0, wx.ALL, 5)
-        dlgSizer.Add(btns, 0, wx.EXPAND|wx.ALL, 5)
+        dlgSizer.Add((-1,intPPI(5)))
+        dlgSizer.Add(staticText, 0, wx.ALL, intPPI(5))
+        dlgSizer.Add(listSizer, 1, wx.EXPAND|wx.LEFT|wx.RIGHT, intPPI(5))
+        dlgSizer.Add(extraItem, 0, wx.ALL, intPPI(5))
+        dlgSizer.Add(btns, 0, wx.EXPAND|wx.ALL, intPPI(5))
         self.SetSizer(dlgSizer)
         dlgSizer.SetSizeHints(self)
         # Misc
@@ -4355,12 +4411,13 @@ class AvsFunctionExportImportDialog(wx.Dialog):
 
 # Custom slider
 class SliderPlus(wx.Panel):
-    def __init__(self, parent, app, id, value=0, minValue=0, maxValue=100, size=(-1, 28), big=False, bookmarkDict={}, selectionsDict={}):
+    def __init__(self, parent, app, id, value=0, minValue=0, maxValue=100, size=(-1, 28), big=False, titleDict={}, selectionsDict={}):
         self.big = big
+        _size = size[0], intPPI(size[1])
         if self.big:
-            size = size[0], size[1] + 16
-        wx.Panel.__init__(self, parent, id, size=size, style=wx.WANTS_CHARS)
-        self.bookmarkDict = bookmarkDict # GPo TODO, remove it and store the titles in the bookmarks
+            _size[1] += intPPI(16)
+        wx.Panel.__init__(self, parent, id, size=_size, style=wx.WANTS_CHARS)
+        self.titleDict = titleDict # GPo TODO, remove it and store the titles in the bookmarks
         self.selectionsDict = selectionsDict # GPo 2020, selections now seperate and bookmarks only contains bmtype 0
         self.childSelectionsDict = None  # Update this dict on create selections
         self.parent = parent
@@ -4373,17 +4430,17 @@ class SliderPlus(wx.Panel):
         # Internal display variables
         self.isclicked = False
         self.xdelta = None
-        self.xo = 15
-        self.yo = 5
-        self.yo2 = 10
-        self.wT = 22
-        self.wH = 10
+        self.xo = intPPI(15)
+        self.yo = intPPI(5)
+        self.yo2 = intPPI(10)
+        self.wT = intPPI(22)
+        self.wH = intPPI(10)
         if self.big:
-            self.xo += 8
-            self.yo += 4
-            self.yo2 += 4
-            self.wT += 8
-            self.wH += 4
+            self.xo += intPPI(8)
+            self.yo += intPPI(4)
+            self.yo2 += intPPI(4)
+            self.wT += intPPI(8)
+            self.wH += intPPI(4)
         self.selections = None
         self.selmode = 0
         # GPo
@@ -4612,7 +4669,7 @@ class SliderPlus(wx.Panel):
 
             p1 = wx.Point(pixelpos, h-wT/2)
             if bmtype == 0:
-                if value in self.bookmarkDict:
+                if value in self.titleDict:
                     dc.SetBrush(wx.BLUE_BRUSH)
                 else:
                     dc.SetBrush(wx.BLACK_BRUSH)
@@ -4739,7 +4796,7 @@ class SliderPlus(wx.Panel):
             pixelpos = int(value * wB / float(self.maxValue - self.minValue)) + self.xo
             if pixelpos == lastpixelpos: # speed it up if next bookmark pixelpos the last one (rounding float int)
                 continue
-            if value in self.bookmarkDict:
+            if value in self.titleDict:
                 dc.SetBrush(wx.BLUE_BRUSH)
             else:
                 dc.SetBrush(wx.BLACK_BRUSH)
@@ -4883,7 +4940,6 @@ class SliderPlus(wx.Panel):
         if selectionmarks[0][1] == 2:
             start = self.minValue
         for value, bmtype in selectionmarks:
-            #added = False
             if start is None:
                 if bmtype == 1:
                     start = value
@@ -4891,29 +4947,12 @@ class SliderPlus(wx.Panel):
                 if bmtype == 2:
                     stop = value
                     selectionList.append((start, stop))
-                    #added = True
                     start = stop = None
 
         if start is not None:
             stop = self.maxValue
             selectionList.append((start, stop))
-            #added = True
-        """
-        newList = []
-        for start1, stop1 in selectionList:
-            for start2, stop2 in selectionList:
-                if ((start1 == start2) and (stop1 == stop2)) or ((start2 > stop1) and (stop2 > stop1)):
-                    newList.append((start2, stop2))
 
-        # insert only valide selections
-        if added:
-            self.selectionsDict.clear()
-            for start, stop in newList:
-                self.selectionsDict[start] = 1
-                self.selectionsDict[stop] = 2
-            if not lastMark[0] in self.selectionsDict:
-                self.selectionsDict[lastMark[0]] = lastMark[1]
-        """
         updateChild()
         return selectionList
 
@@ -5153,7 +5192,6 @@ class SliderPlus(wx.Panel):
 
 ################################################################################
 """
-
 if os.name == 'nt':
     CallWindowProc = ctypes.windll.user32.CallWindowProcW
     if platform.architecture()[0].startswith('64'):
@@ -5251,13 +5289,21 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.x86_64 = sys.maxsize > 2**32
         self.calltipstemporal = False  # GPo, disable/enable calltip
         self.playing_video = False     # GPo, moved, HidePreviewWindow calls self.StopPlayback on createWindowElements
+        """
+        self.DpiAwareness = False
+        self.ppi = wx.ScreenDC().GetPPI() # GPo 2020 Monitor PPI (DPI)
+        if self.ppi < 110:
+            self.ppi = 96.0
+        self.ppi_factor = 1.0
+        """
+
         # GPo, init WndProc
         self.customHandler = 0
         if os.name == 'nt':
             self.w_param_zero = -50000  # Zero for w_param, use 50000 - 10 for -10
-            #SendMessage = ctypes.windll.user32.SendMessageW
-            #SendMessage.argtypes = HANDLE, UINT, WPARAM, LPARAM
-            #SendMessage.restype = LPARAM
+            #self.SendMessage = ctypes.windll.user32.SendMessageW
+            #self.SendMessage.argtypes = HANDLE, UINT, WPARAM, LPARAM
+            #self.SendMessage.restype = LPARAM
             self.PostMessage = ctypes.windll.user32.PostMessageW
             self.PostMessage.argtypes = HANDLE, UINT, WPARAM, LPARAM
             WndProcHookMixin.__init__(self, self.GetHandle())
@@ -5281,6 +5327,25 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             #~WndProcHookMixin.add_msg_handler(self, WM_XBUTTONDOWN, self.wm_xbuttondown) not working
             # enable custom WndProc
             WndProcHookMixin.hook_wnd_proc(self)
+            """
+            if self.ppi > 96:
+                try:
+                    ctypes.windll.shcore.SetProcessDpiAwareness(2) # Win 10 (mode 2)
+                    self.DpiAwareness = True
+                except:
+                    try:
+                        ctypes.windll.user32.SetProcessDPIAware() # Win 8,7 (mode 1)
+                        self.DpiAwareness = True
+                    except:
+                        pass
+            """
+        """
+        if self.DpiAwareness:
+            try:
+                self.ppi_factor = float(self.ppi[0] / 96.0)
+            except:
+                pass
+        """
 
         # Define program directories
         if hasattr(sys,'frozen'):
@@ -5321,6 +5386,16 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         else:
             self.optionsMacros = {}
 
+        DPI = dpi.DPI()
+        self.ppi_factor = DPI.GetPPIFactor()
+        global ppi_factor
+        if self.options['ppiscalingmanually']:
+            self.ppi_factor = 1.0
+        ppi_factor = self.ppi_factor
+        global_vars.ppi_factor = self.ppi_factor
+        dpi.ppi_factor = self.ppi_factor
+        self.setPPIFactor()
+
         # load translation file
         self.translations_dir = os.path.join(self.programdir, 'translations')
         if self.options['lang'] != 'eng':
@@ -5344,10 +5419,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         self.colour_data = wxp.ColourData() # needed before the following
         self.optionsDlgInfo = self.getOptionsDlgInfo()
-
-        # single-instance socket
-        #~self.port = 50009
-        #~self.instance = wx.SingleInstanceChecker(title+wx.GetUserId())
 
         # GPo 2020, set port and name for wxp.SingleInstanceApp
         # make a difference between x64, x32
@@ -5504,7 +5575,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.blockStatusbar = False  # GPo 2020
         self.NewFileName = _('New File')
         self.scrapWindow = ScrapWindow(self)
-        self.bookmarkDict = {}
+        self.titleDict = {}
         self.selectionsDict = {}
         self.recentframes = []
         self.bmpVideo = None
@@ -5706,7 +5777,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.OnMenuVideoBackgroundColor(color=self.options['videobackground'])
         if self.need_to_show_preview:
             self.IdleCall.append((self.ShowVideoFrame, (self.startupframe,), {'forceRefresh':False}))
-        #~ self.Refresh()
         if self.mainSplitter.IsSplit():
             self.SplitVideoWindow()
         self.Show()
@@ -5717,6 +5787,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         index = self.scriptNotebook.GetSelection()
         self.ReloadModifiedScripts()
         self.scriptNotebook.SetSelection(index)
+        """
+        self.scriptNotebook.SetFont(wx.Font(10, wx.FONTFAMILY_DEFAULT,
+                         wx.FONTWEIGHT_NORMAL,
+                         wx.FONTSTYLE_NORMAL))
+        """
         self.currentScript.SetFocus()
         # set the script selections
         if self.tabChangeLoadBookmarks:
@@ -5779,6 +5854,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         self.StatusbarTimer = StatusbarTimer(self)
 
+
     def StatusbarTimer_Start(self, ms=3000, txt=''):
         self.blockStatusbar = True
         if txt:
@@ -5804,10 +5880,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if self.previewWindowVisible:
             if not self.zoomwindowfit:
                 if self.zoom_antialias and (self.zoomfactor != 1 or self.zoomwindowfill):
-                    self.zoom_antialias = False
-                    # for reset must call custom_reset_antialias
-                    #~wx.CallAfter(self.OnAfterScrollVideoWindow)
-                    #self.IdleCall.append((self.OnAfterScrollVideoWindow, tuple(), {}))
+                    self.zoom_antialias = False # for reset must call custom_reset_antialias
                 self.videoWindow.Scroll(xy)
         elif not self.zoomwindowfit:
             self.IdleCall.append((self.ShowVideoFrame, {'scroll': xy}, {}))
@@ -5821,9 +5894,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if self.previewWindowVisible:
             if not self.zoomwindowfit:
                 if self.zoom_antialias and (self.zoomfactor != 1 or self.zoomwindowfill):
-                    self.zoom_antialias = False
-                    # for reset must call custom_reset_antialias
-                    #~wx.CallAfter(self.OnAfterScrollVideoWindow)
+                    self.zoom_antialias = False # for reset must call custom_reset_antialias
                 self.videoWindow.Scroll(x, y)
         elif not self.zoomwindowfit:
             wx.CallAfter(self.ShowVideoFrame, forceLayout=True, scroll=(x,y))
@@ -5861,6 +5932,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             s = ctypes.wstring_at(pCDS.contents.lpData)
             idx = self.FindTabByName(s, False)
             if idx > -1:
+                if self.previewWindowVisible:
+                    self.HidePreviewWindow()
                 wx.CallAfter(self.CloseTab, idx)
         elif ide == 5:  # find only the tab
             s = ctypes.wstring_at(pCDS.contents.lpData)
@@ -6227,7 +6300,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'scraptext': ('', 0, 0),
             'maximized': False,
             'maximized2': False,
-            'dimensions': (50, 50, 700, 550),
+            'dimensions': (intPPI(50), intPPI(50), intPPI(700), intPPI(550)),
             'find_recent': [],
             'replace_recent': [],
             'cropchoice': 0,
@@ -6321,7 +6394,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'enableframepertab_same': True,
             'applygroupoffsets': True,
             'offsetbookmarks': False,
-            #'splitview_next' : True,
             # AUTOSLIDER OPTIONS
             'keepsliderwindowhidden': False,
             'autoslideron': True,
@@ -6373,6 +6445,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'paranoiamode': False,
             'periodicbackup': 0,
             'autoupdatevideo': False,
+            'ppiscalingoverall': 0,
+            'ppiscalingstatusbar': 0,
+            'ppiscalingmanually': True,
+            'ppiscalingscripttabs': 0,
         })
         # Import certain options from older version if necessary
         if oldOptions is not None:
@@ -7081,6 +7157,32 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 count = len(arg)
         return ''.join(argList)
 
+    """
+    def wrapFilterCalltip(self, txt, maxchars=80):
+        if (txt.count('\n') > 0) and (txt.Find('>next') < 0):
+            return txt
+        args = txt.split(',')
+        argList = []
+        count = 0
+        lastArg = len(args) - 1
+        for i, arg in enumerate(args):
+            arg = arg.strip()
+            if arg.startswith('>next'):
+                argList.append('\n' + 'Alternative:')
+                argList.append('\n')
+                count = 0
+                continue
+            if i != lastArg: #not arg.endswith(')'):
+                arg += ', '
+            count += len(arg)
+            if count <= maxchars:
+                argList.append(arg)
+            else:
+                argList.append('\n'+arg)
+                count = len(arg)
+        return ''.join(argList)
+    """
+
     def getOptionsDlgInfo(self):
         plugtxt = 'Plugins directory 64 bit:' if self.x86_64 else 'Plugins directory 32 bit:'
         return (
@@ -7199,6 +7301,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 ((_('Custom jump size:'), wxp.OPT_ELEM_SPIN, 'customjump', _('Jump size used in video menu'), dict(min_val=0) ), ),
                 ((_('Custom jump size units'), wxp.OPT_ELEM_RADIO, 'customjumpunits', _('Units of custom jump size'), dict(choices=[(_('frames'), 'frames'),(_('seconds'), 'sec'),(_('minutes'), 'min'),(_('hours'), 'hr')]) ), ),
             ),
+            (_('Misc 2'),
+                ((_('AvsPmod DPI scaling'), wxp.OPT_ELEM_SEP, '', _('Beta: some elements may be not scaled'), dict(adjust_width=True) ), ),
+                ((_('DPI scaling overall:*'), wxp.OPT_ELEM_SPIN, 'ppiscalingoverall', _('Adjust dpi scaling overall (10 % steps). For 150 % DPI set value 5'), dict(min_val=0, max_val=10) ), ),
+                ((_('DPI scaling main tabs:*'), wxp.OPT_ELEM_SPIN, 'ppiscalingscripttabs', _('Adjust script window tabs (10 % steps)'), dict(min_val=0, val=0, max_val=10) ), ),
+                ((_('DPI scaling statusbar:*'), wxp.OPT_ELEM_SPIN, 'ppiscalingstatusbar', _('Adjust statusbar (10 % steps)'), dict(min_val=0, val=0, max_val=10) ), ),
+                ((_('Use manual DPI scaling only*'), wxp.OPT_ELEM_CHECK, 'ppiscalingmanually', _('Do not DPI scaling automatically'), dict() ), ),
+            ),
         )
 
     def getTranslations(self, return_paths=False):
@@ -7222,9 +7331,30 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             return paths
         return sorted(translation_list)
 
+    def setPPIFactor(self):
+        if self.options['ppiscalingoverall'] > 0:
+            new_factor = global_vars.ppi_factor + float(self.options['ppiscalingoverall'] / 10.0)
+        else:
+            new_factor = global_vars.ppi_factor
+        self.ppi_factor = new_factor
+        global ppi_factor
+        ppi_factor = self.ppi_factor
+        dpi.ppi_factor = self.ppi_factor
+        # all dialogs fit inside display and greate scrollbars if needed
+        wx.Dialog.EnableLayoutAdaptation(True)
+
     def createWindowElements(self):
         # Create the program's status bar
         statusBar = self.CreateStatusBar(2)
+        if self.ppi_factor > 1 or self.options['ppiscalingstatusbar'] > 0:
+            i = self.options['ppiscalingstatusbar']
+            if i > 0:
+                i = float(i / 10.0)
+            font = statusBar.GetFont()
+            factor = self.ppi_factor + i
+            font.SetPointSize(int(font.GetPointSize()*factor))
+            statusBar.SetFont(font)
+            statusBar.SetMinHeight(int(statusBar.GetSize()[1]*factor)-6)
         statusBar.SetStatusWidths([-1, 0])
 
         class PartialFormatter(string.Formatter):
@@ -7262,7 +7392,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 size = self.videoDialog.GetSize()
                 pos = self.videoDialog.GetPosition()
                 wC, hC = wx.ScreenDC().GetSize()
-                if (pos[0]+50>wC) or (pos[1]+50>hC):
+                if (pos[0]+intPPI(50)>wC) or (pos[1]+intPPI(50)>hC):
                     self.videoDialog.Center()
             self.videoDialog.SetIcon(AvsP_icon.getIcon())
             self.videoDialog.Bind(wx.EVT_CLOSE, self.OnMenuVideoHide)
@@ -7290,23 +7420,23 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.videoSplitter = wx.SplitterWindow(self.videoPane, wx.ID_ANY, style=wx.SP_3DSASH|wx.SP_NOBORDER|wx.SP_LIVE_UPDATE)
 
         if self.options['largeui']:
-            w = 16
-            h = 72
+            w = intPPI(16)
+            h = intPPI(72)
             bmpMask = wx.EmptyBitmap(w, h)
             mdc = wx.MemoryDC()
             mdc.SelectObject(bmpMask)
-            mdc.DrawPolygon([(14,0), (2,9), (14,18)])
-            mdc.DrawPolygon([(14,26), (2,35), (14,44)])
-            mdc.DrawPolygon([(14,52), (2,61), (14,70)])
+            mdc.DrawPolygon([tuplePPI(14,0), tuplePPI(2,9), tuplePPI(14,18)])
+            mdc.DrawPolygon([tuplePPI(14,26), tuplePPI(2,35), tuplePPI(14,44)])
+            mdc.DrawPolygon([tuplePPI(14,52), tuplePPI(2,61), tuplePPI(14,70)])
         else:
-            w = 10
-            h = 50
+            w = intPPI(10)
+            h = intPPI(50)
             bmpMask = wx.EmptyBitmap(w, h)
             mdc = wx.MemoryDC()
             mdc.SelectObject(bmpMask)
-            mdc.DrawPolygon([(8,0), (2,6), (8,12)])
-            mdc.DrawPolygon([(8,18), (2,24), (8,30)])
-            mdc.DrawPolygon([(8,36), (2,42), (8,48)])
+            mdc.DrawPolygon([tuplePPI(8,0), tuplePPI(2,6), tuplePPI(8,12)])
+            mdc.DrawPolygon([tuplePPI(8,18), tuplePPI(2,24), tuplePPI(8,30)])
+            mdc.DrawPolygon([tuplePPI(8,36), tuplePPI(2,42), tuplePPI(8,48)])
         mdc = None
         bmpShow = wx.EmptyBitmap(w, h)
         bmpShow.SetMask(wx.Mask(bmpMask))
@@ -7417,7 +7547,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         # Create the program's video controls
         self.videoControls = self.createVideoControls(self.programSplitter)
-        spos = self.videoControls.GetClientSize().height + 6
+        spos = self.videoControls.GetClientSize().height + intPPI(6)
         self.toolbarHeight = spos
 
         if wx.VERSION < (2, 9):
@@ -7427,7 +7557,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.programSplitter.Thaw()
         # Set the minimum pane sizes
         self.SetMinimumScriptPaneSize()
-        self.videoSplitter.SetMinimumPaneSize(3)
+        self.videoSplitter.SetMinimumPaneSize(intPPI(3))
 
         # Manually implement splitter gravity (improper size updating with sub-splitters...)
         self.videoSplitter.SetSashGravity(1.0)
@@ -7469,7 +7599,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.videoDialog.SetSizer(sizer)
             sizer.Layout()
 
-        self.videoSplitter.SplitVertically(self.videoWindow, self.currentScript.sliderWindow, 10)
+        self.videoSplitter.SplitVertically(self.videoWindow, self.currentScript.sliderWindow, intPPI(10))
 
         if wx.VERSION > (2, 9):
             mainFrameSizer = wx.BoxSizer(wx.VERTICAL)
@@ -7482,7 +7612,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         # Misc
         scriptWindow.SetFocus()
-        self.SetMinSize((320, 240))
+        self.SetMinSize(tuplePPI(320, 240))
 
     def SaveLastSplitVideoPos(self):
         self.currentScript.lastSplitVideoPos = self.mainSplitter.GetSashPosition() - \
@@ -7492,17 +7622,18 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                        # GPo 2018
     def SetMinimumScriptPaneSize(self, mlines=-1):
         if self.mainSplitter.GetSplitMode() == wx.SPLIT_HORIZONTAL:
-            minpanesize = 23
+            tabS = 0 if self.options['ppiscalingscripttabs'] < 1 else float(self.options['ppiscalingscripttabs']/10.0)
+            minpanesize = int((self.ppi_factor + tabS) * 23)
             if mlines < 0:
                 mintextlines = max(0, self.options['mintextlines'])
             else:
                 mintextlines = max(0, mlines)
             if mintextlines != 0:
                 scrollbarheight = wx.SystemSettings.GetMetric(wx.SYS_VSCROLL_X)
-                minpanesize = minpanesize + mintextlines * self.currentScript.TextHeight(0) + scrollbarheight + 5
+                minpanesize = minpanesize + mintextlines * self.currentScript.TextHeight(0) + scrollbarheight + intPPI(5)
             self.mainSplitter.SetMinimumPaneSize(minpanesize)
         else:
-            self.mainSplitter.SetMinimumPaneSize(100)
+            self.mainSplitter.SetMinimumPaneSize(intPPI(100))
 
     def bindShortcutsToAllWindows(self):
         self._shortcutBindWindowDict = {self:[], self.videoWindow:[]}
@@ -7860,7 +7991,18 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     (_('Maximum speed'), 'Shift+Numpad *', self.OnMenuVideoPlayMax, _('Play the video as fast as possible without dropping frames')),
                     (''),
                     (_('Play loop'), '', self.OnMenuVideoPlayLoop, _('Play loop between trim editor first selection start and end frame'), wx.ITEM_CHECK, self.options['playloop']),
-                    (_('Drop frames'), '', self.OnMenuVideoPlayDropFrames, _('Maintain correct video speed by skipping frames'), wx.ITEM_CHECK, False),
+                    #(_('Drop frames'), '', self.OnMenuVideoPlayDropFrames, _('Maintain correct video speed by skipping frames'), wx.ITEM_CHECK, False),
+                    #(_('Drop frames'),
+                        #(
+                        #(_('None'), '', self.OnMenuVideoPlayDropFrames, _(''), wx.ITEM_RADIO, True),
+                        #(_('Auto'), '', self.OnMenuVideoPlayDropFrames, _(''), wx.ITEM_RADIO, False),
+                        #('2', '', self.OnMenuVideoPlayDropFrames, _(''), wx.ITEM_RADIO, False),
+                        #('4', '', self.OnMenuVideoPlayDropFrames, _(''), wx.ITEM_RADIO, False),
+                        #('8', '', self.OnMenuVideoPlayDropFrames, _(''), wx.ITEM_RADIO, False),
+                        #('12', '', self.OnMenuVideoPlayDropFrames, _(''), wx.ITEM_RADIO, False),
+                        #('16', '', self.OnMenuVideoPlayDropFrames, _(''), wx.ITEM_RADIO, False),
+                        #),
+                    #),
                     (_('Use faster playback routine'), '', self.OnMenuVideoPlayFunc, _('0 % to 38 % faster playback, depending on CPU load'), wx.ITEM_CHECK, self.options['playfastfunc']),
                     ),
                 ),
@@ -8018,6 +8160,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 (_('Avisynth help'), 'F1', self.OnMenuHelpAvisynth, _('Open the avisynth help html')),
                 (_('Open Avisynth plugins folder'), '', self.OnMenuHelpAvisynthPlugins, _('Open the avisynth plugins folder, or the last folder from which a plugin was loaded')),
                 (''),
+                (_('DPI Info'), '', self.OnMenuDPIInfo, _('')),
                 (_('Changelog'), '', self.OnMenuHelpChangelog, _('Open the changelog file')),
                 (_('About AvsPmod'), '', self.OnMenuHelpAbout, _('About this program')),
             ),
@@ -8030,11 +8173,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         bmpRight = next_icon.getImage()
         bmpSkipRight = skip_icon.getImage()
         if not self.options['largeui']:
-            bmpPlay = bmpPlay.Scale(16,16)
-            bmpPause = bmpPause.Scale(16,16)
-            bmpExternal = bmpExternal.Scale(16,16)
-            bmpRight = bmpRight.Scale(16,16)
-            bmpSkipRight = bmpSkipRight.Scale(16,16)
+            bmpPlay = bmpPlay.Scale(intPPI(16),intPPI(16))
+            bmpPause = bmpPause.Scale(intPPI(16),intPPI(16))
+            bmpExternal = bmpExternal.Scale(intPPI(16),intPPI(16))
+            bmpRight = bmpRight.Scale(intPPI(16),intPPI(16))
+            bmpSkipRight = bmpSkipRight.Scale(intPPI(16),intPPI(16))
         self.bmpPlay = wx.BitmapFromImage(bmpPlay)
         self.bmpPause = wx.BitmapFromImage(bmpPause)
         bmpExternal = wx.BitmapFromImage(bmpExternal)
@@ -8053,7 +8196,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             (bmpLeft, self.OnMenuVideoPrevFrame, _('Previous frame')),
             (bmpRight, self.OnMenuVideoNextFrame, _('Next frame')),
             (bmpSkipRight, self.OnButtonVideoGotoNextBookmark,_('Next bookmark')),
-            (self.bmpPlay, self.OnMenuVideoPlay, _('Play/pause video')),
+            (self.bmpPlay, self.OnMenuVideoPlay, _('Play/pause video. Right click for options.')),
             (bmpExternal, self.OnMenuVideoExternalPlayer, _('Run the script with an external program')),
         )
 
@@ -8218,6 +8361,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if self.options['fixedwidthtab']:
             style |= wx.NB_FIXEDWIDTH
         nb = Notebook(self.mainSplitter, wx.ID_ANY, style=style)
+        if (self.ppi_factor > 1) or (self.options['ppiscalingscripttabs'] > 0):
+            f = float(self.ppi_factor + float((self.options['ppiscalingscripttabs'] / 10.0)))
+            nb.SetTabSize((-1, int(23*f)))
+            font = nb.GetFont()
+            font.SetPointSize(int(f*font.GetPointSize()))
+            nb.SetFont(font)
         nb.app = self
         # Create the right-click menu
         menuInfo = (
@@ -8282,11 +8431,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             color3 = wx.SystemSettings.GetColour(wx.SYS_COLOUR_WINDOW)
             color4 = wx.SystemSettings.GetColour(wx.SYS_COLOUR_WINDOWTEXT)
             # Create the mask
-            w = h = 15
+            sTab = 0 if self.options['ppiscalingscripttabs'] < 1 else float(self.options['ppiscalingscripttabs']/10.0)
+            factor = self.ppi_factor + sTab
+            w = h = int(factor*15)
             bmpMask = wx.EmptyBitmap(w, h)
             mdc = wx.MemoryDC()
             mdc.SelectObject(bmpMask)
-            mdc.DrawRoundedRectangle(0,0,w,h,3)
+            mdc.DrawRoundedRectangle(0,0,w,h,int(factor*3))
             mdc = None
             mask = wx.Mask(bmpMask)
             # Create the bitmap
@@ -8302,7 +8453,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             mdc.SetPen(wx.Pen(color3))
             mdc.SetBrush(wx.Brush(color3))
             th = 3
-            mdc.DrawRoundedRectangle(th,th,w-2*th,h-2*th,0)
+            mdc.DrawRoundedRectangle(th,th,w-int(factor*2)*th,h-int(factor*2)*th,0)
             mdc = None
             imageBase = bmpBase.ConvertToImage()
             il = wx.ImageList(w, h)
@@ -8311,8 +8462,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 mdc = wx.MemoryDC()
                 mdc.SelectObject(bmp)
                 mdc.SetTextForeground(color4)
-                mdc.SetFont(wx.Font(8, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName='courier new'))
-                mdc.DrawText(str((i+1) % 10), 4,0)
+                mdc.SetFont(wx.Font(int(factor*8), wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, faceName='courier new'))
+                mdc.DrawText(str((i+1) % 10), int(factor*4),0)
                 mdc = None
                 il.Add(bmp)
             nb.AssignImageList(il)
@@ -8366,8 +8517,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             pass
                                                                                      # GPo 2020, wx 2.9
         scriptWindow.sliderWindow = wx.ScrolledWindow(self.videoSplitter, wx.ID_ANY, pos=(0,0), size=(10,10), style=wx.STATIC_BORDER|wx.TAB_TRAVERSAL)
+        SetFontPPI(scriptWindow.sliderWindow)
         scriptWindow.sliderWindow.SetScrollRate(10, 10)
-        scriptWindow.sliderSizer = wx.GridBagSizer(hgap=0, vgap=10)
+        scriptWindow.sliderSizer = wx.GridBagSizer(hgap=0, vgap=intPPI(10))
         if wx.VERSION < (2, 9):
             scriptWindow.sliderSizer.AddGrowableCol(3)
         scriptWindow.sliderSizerNew = wx.GridBagSizer(hgap=0, vgap=0)
@@ -8376,9 +8528,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         scriptWindow.sliderSizerNew.SetEmptyCellSize((0,0))
         scriptWindow.toggleTagSizer = wx.BoxSizer(wx.VERTICAL)
         scriptWindow.videoSidebarSizer = wx.BoxSizer(wx.VERTICAL)
-        scriptWindow.videoSidebarSizer.Add(scriptWindow.toggleTagSizer, 0, wx.TOP|wx.LEFT, 5)
-        scriptWindow.videoSidebarSizer.Add(scriptWindow.sliderSizerNew, 0, wx.EXPAND|wx.LEFT, 5)
-        scriptWindow.videoSidebarSizer.Add(scriptWindow.sliderSizer, 0, wx.EXPAND|wx.LEFT, 5)
+        scriptWindow.videoSidebarSizer.Add(scriptWindow.toggleTagSizer, 0, wx.TOP|wx.LEFT, intPPI(5))
+        scriptWindow.videoSidebarSizer.Add(scriptWindow.sliderSizerNew, 0, wx.EXPAND|wx.LEFT, intPPI(5))
+        scriptWindow.videoSidebarSizer.Add(scriptWindow.sliderSizer, 0, wx.EXPAND|wx.LEFT, intPPI(5))
         scriptWindow.sliderWindow.SetSizer(scriptWindow.videoSidebarSizer)
         scriptWindow.sliderWindow.Bind(wx.EVT_LEFT_DOWN, lambda event: self.videoWindow.SetFocus())
 
@@ -8432,10 +8584,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     def createVideoControls(self, parent, primary=True):
         if wx.VERSION < (2, 9):
-            height = 40 if self.options['largeui'] else 24
+            height = intPPI(40) if self.options['largeui'] else intPPI(24)
             panel = wx.Panel(parent, style=wx.BORDER_NONE, size=(-1, height))
         else:
-            height = 46 if self.options['largeui'] else 30
+            height = intPPI(46) if self.options['largeui'] else intPPI(30)
             panel = wx.Panel(parent, size=(-1, height))
         sizer = wx.BoxSizer(wx.HORIZONTAL)
         videoControlWidgets = []
@@ -8449,15 +8601,25 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     self.toggleButton2 = button
                     self.toggleButton2.SetBitmapLabel(self.bmpVidDown)
             elif handler == self.OnMenuVideoPlay:
+                button.Bind(wx.EVT_CONTEXT_MENU, self.OnPlayButtonContextMenu) # GPo 2020
                 if primary:
                     self.play_button = button
                 else:
                     self.play_button2 = button
+
             button.Bind(wx.EVT_MOUSE_CAPTURE_LOST, self.OnMouseCaptureLost) # GPo 2020
             sizer.Add(button, 0, wx.ALIGN_CENTER_VERTICAL)#, wx.EXPAND)#, wx.ALIGN_BOTTOM)#, wx.ALL, 1)
             videoControlWidgets.append(button)
         # Create the frame textbox
-        frameTextCtrl = wx.TextCtrl(panel, wx.ID_ANY, size=(80,-1), style=wx.TE_RIGHT|wx.TE_PROCESS_ENTER)
+        fs = 80 if ((not self.options['largeui']) and (self.ppi_factor == 1)) else 100
+        frameTextCtrl = wx.TextCtrl(panel, wx.ID_ANY, size=(fs,-1), style=wx.TE_RIGHT|wx.TE_PROCESS_ENTER)
+        if self.ppi_factor > 1 or self.options['largeui']:
+            font = frameTextCtrl.GetFont()
+            fs = intPPI(font.GetPointSize())
+            if self.options['largeui']:
+                fs = fs*2
+            font.SetPointSize(min(fs, 36))
+            frameTextCtrl.SetFont(font) # GPo 2020
         frameTextCtrl.Bind(wx.EVT_TEXT_ENTER, self.OnButtonTextKillFocus)
         frameTextCtrl.Bind(wx.EVT_KILL_FOCUS, self.OnButtonTextKillFocus)
         frameTextCtrl.Bind(wx.EVT_SET_FOCUS, self.OnButtonTextSetFocus)
@@ -8472,7 +8634,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         # Create the video slider
         if primary:
             self.videoSlider = SliderPlus(panel, self, wx.ID_ANY, 0, 0, 240-1, big=self.options['largeui'],
-                                            bookmarkDict=self.bookmarkDict,selectionsDict=self.selectionsDict)
+                                            titleDict=self.titleDict,selectionsDict=self.selectionsDict)
             self.videoSlider.Bind(wx.EVT_SCROLL_THUMBTRACK, self.OnSliderChanged)
             self.videoSlider.Bind(wx.EVT_SCROLL_ENDSCROLL, self.OnSliderReleased)
             self.videoSlider.Bind(wx.EVT_RIGHT_UP, self.OnSliderRightUp)
@@ -8485,7 +8647,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.videoSlider.selectionsHilightColor = wx.Brush(self.options['selectionshilightcolor'])  # GPo
         else:
             self.videoSlider2 = SliderPlus(panel, self, wx.ID_ANY, 0, 0, 240-1, big=self.options['largeui'],
-                                            bookmarkDict=self.bookmarkDict,selectionsDict=self.selectionsDict)
+                                            titleDict=self.titleDict,selectionsDict=self.selectionsDict)
             self.videoSlider2.Bind(wx.EVT_SCROLL_THUMBTRACK, self.OnSliderChanged)
             self.videoSlider2.Bind(wx.EVT_SCROLL_ENDSCROLL, self.OnSliderReleased)
             self.videoSlider2.Bind(wx.EVT_RIGHT_UP, self.OnSliderRightUp)
@@ -8534,6 +8696,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     def createCropDialog(self, parent):
         dlg = wx.Dialog(parent, wx.ID_ANY, _('Crop editor'),
                         style=wx.DEFAULT_DIALOG_STYLE|wx.STAY_ON_TOP)
+        SetFontPPI(dlg)
         dlg.ctrls = {}
         # Create the crop spin controls
         spinSizer = wx.GridBagSizer(hgap=5, vgap=5)
@@ -8543,7 +8706,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             ('-right', (1,4), (1,5)),
             ('-bottom', (2,2), (2,3)),
         )
-        width = 50 if wx.version() >= '2.9' else 55 # fix for wxPython v2.8
+        width = intPPI(50) if wx.version() >= '2.9' else intPPI(55) # fix for wxPython v2.8
         for name, txtPos, spinPos in spinInfo:
             staticText = wx.StaticText(dlg, wx.ID_ANY, name)
             spinCtrl = wx.SpinCtrl(dlg, wx.ID_ANY, '', size=(width,-1))
@@ -8567,14 +8730,14 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             buttonAutocrop.GetTextExtent(_('Cancel') + ' (10/10)    ')[0], -1))
         buttonAutocrop.running = False
         dlg.Bind(wx.EVT_BUTTON, self.OnCropAutocrop, buttonAutocrop)
-        spinAutocrop = wx.SpinCtrl(dlg, wx.ID_ANY, size=(100,-1),
+        spinAutocrop = wx.SpinCtrl(dlg, wx.ID_ANY, size=(intPPI(100),-1),
             value=u'{0} ({1})'.format(_('Samples'), self.options['autocrop_samples']),
             min=1, initial=self.options['autocrop_samples'],
             style=wx.TE_PROCESS_ENTER|wx.SP_ARROW_KEYS|wx.ALIGN_RIGHT)
         dlg.Bind(wx.EVT_SPINCTRL, self.OnCropAutocropSamples, spinAutocrop)
         autocropSizer = wx.BoxSizer(wx.HORIZONTAL)
-        autocropSizer.Add(buttonAutocrop, 0, wx.ALIGN_CENTER|wx.ALL, 5)
-        autocropSizer.Add(spinAutocrop, 0, wx.ALIGN_CENTER|wx.ALL, 5)
+        autocropSizer.Add(buttonAutocrop, 0, wx.ALIGN_CENTER|wx.ALL, intPPI(5))
+        autocropSizer.Add(spinAutocrop, 0, wx.ALIGN_CENTER|wx.ALL, intPPI(5))
         # Create the choice box for insertion options
         choiceBox = wx.Choice(
             dlg, wx.ID_ANY,
@@ -8587,8 +8750,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         choiceBox.SetSelection(self.options['cropchoice'])
         choiceLabel = wx.StaticText(dlg, wx.ID_ANY, _('Insert Crop() command:'))
         choiceSizer = wx.BoxSizer(wx.HORIZONTAL)
-        choiceSizer.Add(choiceLabel, 0, wx.ALIGN_CENTER_VERTICAL|wx.LEFT, 5)
-        choiceSizer.Add(choiceBox, 1, wx.EXPAND|wx.LEFT, 5)
+        choiceSizer.Add(choiceLabel, 0, wx.ALIGN_CENTER_VERTICAL|wx.LEFT, intPPI(5))
+        choiceSizer.Add(choiceBox, 1, wx.EXPAND|wx.LEFT, intPPI(5))
         dlg.ctrls['choiceInsert'] = choiceBox
         # Create the dialog buttons
         buttonApply = wx.Button(dlg, wx.ID_OK, _('Apply'))
@@ -8596,16 +8759,16 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         buttonCancel = wx.Button(dlg, wx.ID_CANCEL, _('Cancel'))
         dlg.Bind(wx.EVT_BUTTON, self.OnCropDialogCancel, buttonCancel)
         buttonSizer = wx.BoxSizer(wx.HORIZONTAL)
-        buttonSizer.Add(buttonApply, 0, wx.ALL, 5)
-        buttonSizer.Add(buttonCancel, 0, wx.ALL, 5)
+        buttonSizer.Add(buttonApply, 0, wx.ALL, intPPI(5))
+        buttonSizer.Add(buttonCancel, 0, wx.ALL, intPPI(5))
         # Size the elements
         sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(spinSizer, 0, wx.ALL, 10)
+        sizer.Add(spinSizer, 0, wx.ALL, intPPI(10))
         sizer.Add(autocropSizer, 0, wx.ALIGN_CENTER)
-        sizer.Add(choiceSizer, 0, wx.TOP|wx.BOTTOM, 10)
+        sizer.Add(choiceSizer, 0, wx.TOP|wx.BOTTOM, intPPI(10))
         sizer.Add(wx.StaticLine(dlg), 0, wx.EXPAND)
-        sizer.Add(staticText, 0, wx.ALIGN_CENTER|wx.EXPAND|wx.ALL, 5)
-        sizer.Add(buttonSizer, 0, wx.ALIGN_CENTER|wx.ALL, 10)
+        sizer.Add(staticText, 0, wx.ALIGN_CENTER|wx.EXPAND|wx.ALL, intPPI(5))
+        sizer.Add(buttonSizer, 0, wx.ALIGN_CENTER|wx.ALL, intPPI(10))
         dlg.SetSizer(sizer)
         dlg.Fit()
         # Events
@@ -8617,6 +8780,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         dlg = wx.Dialog(parent, wx.ID_ANY, _('Trim editor'),
                         style=wx.DEFAULT_DIALOG_STYLE|wx.STAY_ON_TOP)
         dlg.ctrls = {}
+        SetFontPPI(dlg)
         # Create the radio box for Crop() options
         radioBoxTrim = wx.RadioBox(
             dlg, wx.ID_ANY, _('Selection options'),
@@ -8663,7 +8827,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         checkBox2.Bind(wx.EVT_CHECKBOX, OnCheckBox2)
         # GPo create checkbox for single clips c0..cn
         checkBox3 = wx.CheckBox(dlg, wx.ID_ANY, _('Single clips (c0..cn) with prefix:'))
-        clipPrefix = wx.TextCtrl(dlg, wx.ID_ANY, value='c', size=(50,-1))
+        clipPrefix = wx.TextCtrl(dlg, wx.ID_ANY, value='c', size=(intPPI(50),-1))
         clipPrefix.Enable(False)
         def OnCheckBox3(event):
             if event.IsChecked():
@@ -8683,17 +8847,17 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         dlg.ctrls['useDissolve'] = checkBox2
         dlg.ctrls['singleClips'] = checkBox3
         dlg.ctrls['clipPrefix']  = clipPrefix
-        spinCtrl = wx.SpinCtrl(dlg, wx.ID_ANY, size=(50, -1), max=999)
+        spinCtrl = wx.SpinCtrl(dlg, wx.ID_ANY, size=(intPPI(50), -1), max=999)
         spinCtrl.SetValue(25)
         spinCtrl.Enable(False)
         if wx.VERSION < (2, 8):
             spinCtrl.Bind(wx.EVT_TEXT, self.OnTrimDialogSpinTextChange)
         dlg.ctrls['dissolveOverlap'] = spinCtrl
         dissolveSizer = wx.BoxSizer(wx.HORIZONTAL)
-        dissolveSizer.Add(checkBox2, 0, wx.TOP, 3)
+        dissolveSizer.Add(checkBox2, 0, wx.TOP, intPPI(3))
         dissolveSizer.Add(spinCtrl)
         clipSizer = wx.BoxSizer(wx.HORIZONTAL)  # GPo
-        clipSizer.Add(checkBox3, 0, wx.TOP, 3)
+        clipSizer.Add(checkBox3, 0, wx.TOP, intPPI(3))
         clipSizer.Add(clipPrefix)
         # Create the choice box for insertion options
         choiceBoxInsert = wx.Choice(
@@ -8709,12 +8873,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         clipTxt = _('Insert clips commands: ')
         dissolveTxt = _('Insert Dissolve(trim,) commands: ')
         clipDissolveTxt = _('Insert Dissolve(clips,) commands: ')
-        labelSize = self.GetTextExtent(clipDissolveTxt)
+        labelSize = dlg.GetTextExtent(clipDissolveTxt)
         choiceLabel = wx.StaticText(dlg, wx.ID_ANY, _('Insert Trim() commands: '),
                                     size=labelSize, style=wx.ALIGN_RIGHT|wx.ST_NO_AUTORESIZE)
         choiceSizer = wx.BoxSizer(wx.HORIZONTAL)
         choiceSizer.Add(choiceLabel, 0, wx.ALIGN_CENTER_VERTICAL)
-        choiceSizer.Add(choiceBoxInsert, 0, wx.RIGHT, 5)
+        choiceSizer.Add(choiceBoxInsert, 0, wx.RIGHT, intPPI(5))
         dlg.ctrls['choiceInsert'] = choiceBoxInsert
         # Create a static text message
         staticText = wx.StaticText(dlg, wx.ID_ANY,
@@ -8732,20 +8896,20 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         buttonClear = wx.Button(dlg, wx.ID_CLEAR, _('Clear'))
         dlg.Bind(wx.EVT_BUTTON, self.OnTrimDialogClear, buttonClear)
         buttonSizer = wx.BoxSizer(wx.HORIZONTAL)
-        buttonSizer.Add(buttonClear, 0, wx.ALL, 5)
-        buttonSizer.Add(buttonCancel, 0, wx.ALL, 5)
-        buttonSizer.Add(buttonApply, 0, wx.ALL, 5)
+        buttonSizer.Add(buttonClear, 0, wx.ALL, intPPI(5))
+        buttonSizer.Add(buttonCancel, 0, wx.ALL, intPPI(5))
+        buttonSizer.Add(buttonApply, 0, wx.ALL, intPPI(5))
 
         # Size the elements
         sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(radioBoxTrim, 0, wx.EXPAND|wx.ALIGN_CENTER|wx.ALL, 5)
-        sizer.Add(checkBox, 0, wx.ALL, 10)
-        sizer.Add(dissolveSizer, 0, wx.LEFT|wx.RIGHT|wx.BOTTOM, 10)
-        sizer.Add(clipSizer, 0, wx.LEFT|wx.RIGHT|wx.BOTTOM, 10)
-        sizer.Add(choiceSizer, 0, wx.ALL, 5)
-        sizer.Add(wx.StaticLine(dlg), 0, wx.EXPAND|wx.TOP, 5)
-        sizer.Add(staticText, 0, wx.ALIGN_CENTER|wx.EXPAND|wx.ALL, 5)
-        sizer.Add(buttonSizer, 0, wx.ALIGN_CENTER|wx.ALL, 10)
+        sizer.Add(radioBoxTrim, 0, wx.EXPAND|wx.ALIGN_CENTER|wx.ALL, intPPI(5))
+        sizer.Add(checkBox, 0, wx.ALL, intPPI(10))
+        sizer.Add(dissolveSizer, 0, wx.LEFT|wx.RIGHT|wx.BOTTOM, intPPI(10))
+        sizer.Add(clipSizer, 0, wx.LEFT|wx.RIGHT|wx.BOTTOM, intPPI(10))
+        sizer.Add(choiceSizer, 0, wx.ALL, intPPI(5))
+        sizer.Add(wx.StaticLine(dlg), 0, wx.EXPAND|wx.TOP, intPPI(5))
+        sizer.Add(staticText, 0, wx.ALIGN_CENTER|wx.EXPAND|wx.ALL, intPPI(5))
+        sizer.Add(buttonSizer, 0, wx.ALIGN_CENTER|wx.ALL, intPPI(10))
         dlg.SetSizer(sizer)
         dlg.Fit()
         # Events
@@ -8850,15 +9014,19 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 script.SetSavePoint()
                 script.GotoPos(pos)
                 self.DeleteAllSelections()
+                refresh = True
             else: # GPo 2020
+                refresh = False
                 script.SetModified(False)
                 script.old_modified = False
                 self.UpdateScriptTabname(script=script)
             # GPo 2020, on reload reset all
             script.bookmarks = None
-            self.bookmarkDict.clear()
+            self.titleDict.clear()
             if self.options['bookmarksfromscript']:
                 self.OnMenuBookmarksFromScript(difWarn=False)
+            if refresh and self.previewWindowVisible:
+                self.ShowVideoFrame(forceRefresh=True, forceLayout=True, forceCursor=True, focus=self.options['focusonrefresh'])
         else:
             wx.Bell()
 
@@ -8931,9 +9099,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 ID = dlg.ShowModal()
                 dlg.Destroy()
                 if ID == wx.ID_YES:
-                    self.DeleteAllFrameBookmarks(bmtype=0)
-                    self.bookmarkDict.clear()
-                    self.MacroSetBookmark(script.bookmarks.items())
+                    self.SetTabBookmarks(script.bookmarks)
                     return False
             return True
 
@@ -8964,9 +9130,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             wx.Bell()
             return 0
         if bookmarkDict and not getOnlyCount:
-            self.DeleteAllFrameBookmarks(bmtype=0)
-            self.bookmarkDict.clear()                   # it is the title dict (wrong named)
-            self.MacroSetBookmark(bookmarkDict.items()) # you can see the script bookmarks
+            self.SetTabBookmarks(bookmarkDict)
             if event is not None: # no difWarn on menu itself (event)
                 difWarn = False
             if compareBookmarks(script, bookmarkDict, difWarn):
@@ -9601,7 +9765,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         else:
             curr = self.GetFrameNumber()
         bookmarkList = [bookmark for bookmark, bmtype in self.GetBookmarkFrameList().items() if bmtype == 0]
-        diffList = [(abs(curr - i), i) for i in self.bookmarkDict if self.bookmarkDict[i]]
+        diffList = [(abs(curr - i), i) for i in self.titleDict if self.titleDict[i]]
         if not diffList:
             return
         diff, bookmark = min(diffList)
@@ -9610,31 +9774,31 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             return
         if not diff:
             return
-        self.bookmarkDict[curr] = self.bookmarkDict[bookmark]
-        del self.bookmarkDict[bookmark]
+        self.titleDict[curr] = self.titleDict[bookmark]
+        del self.titleDict[bookmark]
         if curr not in bookmarkList:
             self.AddFrameBookmark(curr, refreshProgram=False)
         self.DeleteFrameBookmark(bookmark)
 
     def OnMenuVideoBookmarkRestoreHistory(self, event):
         bookmarkList = [bookmark for bookmark, bmtype in self.GetBookmarkFrameList().items() if bmtype == 0]
-        for bookmark in self.bookmarkDict.keys():
-            if bookmark not in bookmarkList and self.bookmarkDict[bookmark]:
+        for bookmark in self.titleDict.keys():
+            if bookmark not in bookmarkList and self.titleDict[bookmark]:
                 self.OnMenuVideoBookmarkMoveTitle(bookmark)
 
     def OnMenuVideoBookmarkClearHistory(self, event=None, start=0, end=None):
         bookmarkList = [bookmark for bookmark, bmtype in self.GetBookmarkFrameList().items() if bmtype == 0]
-        for bookmark in self.bookmarkDict.keys():
-            if ((bookmark not in bookmarkList or not self.bookmarkDict[bookmark]) and
+        for bookmark in self.titleDict.keys():
+            if ((bookmark not in bookmarkList or not self.titleDict[bookmark]) and
                 bookmark >= start and (end is None or bookmark <= end)):
-                del self.bookmarkDict[bookmark]
+                del self.titleDict[bookmark]
 
     def OnMenuVideoBookmarkAutoTitle(self, event):
         bookmarkList = [bookmark for bookmark, bmtype in self.GetBookmarkFrameList().items() if bmtype == 0]
         bookmarkList.sort()
         for i in range(len(bookmarkList)):
-            if bookmarkList[i] not in self.bookmarkDict:
-                self.bookmarkDict[bookmarkList[i]] = _('Chapter') + (' %02d' % (i+1))
+            if bookmarkList[i] not in self.titleDict:
+                self.titleDict[bookmarkList[i]] = _('Chapter') + (' %02d' % (i+1))
         self.UpdateBookmarkMenu()
         if self.previewWindowVisible:
             self.videoSlider.Refresh()
@@ -9646,7 +9810,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         historyList = []
         titleList = []
         bookmarkList = [bookmark for bookmark, bmtype in self.GetBookmarkFrameList().items() if bmtype == 0]
-        for bookmark in self.bookmarkDict:
+        for bookmark in self.titleDict:
             if bookmark in bookmarkList:
                 titleList.append(bookmark)
             else:
@@ -9662,7 +9826,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 timecode = '%02d:%02d:%06.3f' % (hr, min, sec)
             else:
                 timecode = '??:??:??.???'
-            title = self.bookmarkDict.get(bookmark, '')
+            title = self.titleDict.get(bookmark, '')
             bookmarkInfo.append((bookmark, timecode, title))
         bookmarkInfo.sort()
         dlg = wx.Dialog(self, wx.ID_ANY, _('Set title for bookmarks'), size=(450, 270), style=wx.DEFAULT_DIALOG_STYLE|wx.RESIZE_BORDER)
@@ -9734,9 +9898,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         ID = dlg.ShowModal()
         if ID == wx.ID_OK:
             for bookmark, timecode, title in bookmarkInfo:
-                self.bookmarkDict[bookmark] = title
+                self.titleDict[bookmark] = title
                 if not title:
-                    del self.bookmarkDict[bookmark]
+                    del self.titleDict[bookmark]
             self.UpdateBookmarkMenu()
             if self.previewWindowVisible:
                 self.videoSlider.Refresh()
@@ -9745,7 +9909,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         dlg.Destroy()
 
     def OnMenuVideoBookmarkRemoveAllTitle(self, event):
-        self.bookmarkDict.clear()
+        self.titleDict.clear()
         self.currentScript.bookmarks = None
         self.currentScript.bookmarks = self.GetBookmarkDict()
         self.UpdateBookmarkMenu()
@@ -9806,14 +9970,14 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     def OnMenuVideoGotoClearAll(self, event):
         self.DeleteAllFrameBookmarks(bmtype=0)
-        self.bookmarkDict.clear()
+        self.titleDict.clear()
         # GPo clear all script bookmarks
         for index in xrange(self.scriptNotebook.GetPageCount()):
             self.scriptNotebook.GetPage(index).bookmarks.clear()
 
     def OnMenuVideoClearTabBookmarks(self, event):
         self.DeleteAllFrameBookmarks(bmtype=0)
-        self.bookmarkDict.clear()
+        self.titleDict.clear()
         self.currentScript.bookmarks.clear()
 
     def OnMenuVideoGoto(self, event):
@@ -10380,16 +10544,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if self.options['zoom_antialias']:
             if self.zoomfactor != 1 or self.zoomwindow:
                 if forceYield:
-                    try:
-                        self.Refresh()
-                        self.Update()
-                        #wx.SafeYield(enabledWnd, False) # erros on to fast calls
-                    except:
-                        pass
+                    self.Refresh()
+                    self.Update()
+
                 self.zoom_antialias = True
                 self.videoWindow.Refresh()
             else:
-                self.Refresh() # it's nicer on some functions (wx is a update bitch)
+                self.Refresh() # it's nicer on some functions
                 self.Update()
                 self.zoom_antialias = True
         else:
@@ -10626,16 +10787,41 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     # GPo 2020, update Check state on (menubar, context)
     def UpdateVideoMenuItems(self):
         x_menus = {
-            'Keep variables on refreshing': self.reuse_environment,
-            'Save view pos on tab change': self.saveViewPos
+            _('Keep variables on refreshing'): self.reuse_environment,
+            _('Save view pos on tab change'): self.saveViewPos,
+            _('Play video'): 'check'
         }
         vidmenus = [self.videoWindow.contextMenu, self.GetMenuBar().GetMenu(2)]
         for vidmenu in vidmenus:
             for i, (label, check) in enumerate(x_menus.items()):
                 id = vidmenu.FindItem(label)
                 if id != wx.NOT_FOUND:
-                    menu = vidmenu.FindItemById(id)
-                    menu.Check(check)
+                    if label == _('Play video'):
+                        submenu = vidmenu.FindItemById(id).GetSubMenu()
+                        if submenu:
+                            id = submenu.FindItem(_('Play loop'))
+                            if id != wx.NOT_FOUND:
+                                submenu.Check(id, self.options['playloop'])
+                            id = submenu.FindItem(_('Use faster playback routine'))
+                            if id != wx.NOT_FOUND:
+                                submenu.Check(id, self.play_fastFunc)
+                    else:
+                        vidmenu.Check(id, check)
+
+
+    def UpdateVideoMenuItem(self, menu, submenu, checked):
+        vidmenus = [self.videoWindow.contextMenu, self.GetMenuBar().GetMenu(2)]
+        for vidmenu in vidmenus:
+            id = vidmenu.FindItem(menu)
+            if id != wx.NOT_FOUND:
+                if submenu:
+                    sm = vidmenu.FindItemById(id).GetSubMenu()
+                    if sm:
+                        id = sm.FindItem(submenu)
+                        if id != wx.NOT_FOUND:
+                            sm.Check(id, checked)
+                else:
+                    vidmenu.Check(id, checked)
 
     def OnMenuVideoSetCustomBackgroundColor(self, event):
         self.x_SetCustomColor('customvideobackground')  # GPo
@@ -10805,11 +10991,16 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.PlayPauseVideo(refreshFrame=False)
             self.PlayPauseVideo()
 
+    """ GPo, out of date, now on play button context menu
     def OnMenuVideoPlayDropFrames(self, event):
         self.play_drop = not self.play_drop
+        self.UpdateVideoMenuItems()
+    """
 
     def OnMenuVideoPlayLoop(self, event):
         self.options['playloop'] = event.IsChecked()
+        #self.UpdateVideoMenuItem(_('Play video'), _('Play loop'), self.options['playloop'])
+        self.UpdateVideoMenuItems()
         if self.playing_video:
             self.PlayPauseVideo(refreshFrame=False)
             self.PlayPauseVideo()
@@ -10817,9 +11008,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     def OnMenuVideoPlayFunc(self, event):
         self.play_fastFunc = event.IsChecked()
         self.options['playfastfunc'] = self.play_fastFunc
+        #self.UpdateVideoMenuItem(_('Play video'), _('Use faster playback routine'), self.play_fastFunc)
+        self.UpdateVideoMenuItems()
 
     def OnMenuSaveViewPos(self, event):
         self.saveViewPos = not self.saveViewPos
+        # GPo, not needed, handled in MenuBar and show context menu
+        #self.UpdateVideoMenuItem(_('Save view pos on tab change'), '', self.saveViewPos)
 
     def OnMenuVideoExternalPlayer(self, event):
         self.RunExternalPlayer()
@@ -10845,6 +11040,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             wx.Bell()
             return
         dlg = wx.Dialog(self, wx.ID_ANY, _('Video information'))
+        SetFontPPI(dlg)
         vi = self.GetVideoInfoDict()
         labels = (
             (_('Video'),
@@ -10868,14 +11064,14 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             ),
         )
         # Main items
-        sizer = wx.FlexGridSizer(cols=2, hgap=10, vgap=3)
+        sizer = wx.FlexGridSizer(cols=2, hgap=intPPI(10), vgap=intPPI(3))
         for sectionLabel, items in labels:
             staticText = wx.StaticText(dlg, wx.ID_ANY, sectionLabel)
             font = staticText.GetFont()
             font.SetWeight(wx.FONTWEIGHT_BOLD)
             font.SetUnderlined(True)
             staticText.SetFont(font)
-            sizer.Add(staticText, 0, wx.TOP, 5)
+            sizer.Add(staticText, 0, wx.TOP, intPPI(5))
             sizer.Add((0,0), 0, 0)
             for label, value in items:
                 sizer.Add(wx.StaticText(dlg, wx.ID_ANY, '  ' + label), 0, 0)
@@ -10886,8 +11082,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         btns.AddButton(okay)
         btns.Realize()
         dlgSizer = wx.BoxSizer(wx.VERTICAL)
-        dlgSizer.Add(sizer, 1, wx.EXPAND|wx.ALL, 5)
-        dlgSizer.Add(btns, 0, wx.EXPAND|wx.ALL, 10)
+        dlgSizer.Add(sizer, 1, wx.EXPAND|wx.ALL, intPPI(5))
+        dlgSizer.Add(btns, 0, wx.EXPAND|wx.ALL, intPPI(10))
         dlg.SetSizer(dlgSizer)
         dlg.Fit()
         ID = dlg.ShowModal()
@@ -11395,12 +11591,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         prog_name = global_vars.name
         version = self.version
         arch = u'{0} {1}'.format(platform.system(), 'x86-64' if self.x86_64 else 'x86-32')
-        dlg = wx.Dialog(self, wx.ID_ANY, _('About AvsPmod'), size=(220,180))
+        dlg = wx.Dialog(self, wx.ID_ANY, _('About AvsPmod'), size=tuplePPI(220,180))
+        SetFontPPI(dlg)
         bmp = AvsP_icon.getBitmap()
         logo = wx.StaticBitmap(dlg, wx.ID_ANY, bmp)
         title = wx.StaticText(dlg, wx.ID_ANY, _('{prog_name} v{version} ({arch})').format(**locals()))
         font = title.GetFont()
-        font.SetPointSize(12)
+        font.SetPointSize(intPPI(12))
         font.SetWeight(wx.FONTWEIGHT_BOLD)
         title.SetFont(font)
         description = wx.StaticText(dlg, wx.ID_ANY, _(global_vars.description))
@@ -11455,38 +11652,40 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         button = wx.Button(dlg, wx.ID_OK, _('OK'))
         inner = wx.BoxSizer(wx.HORIZONTAL)
-        inner.Add(logo, 0, wx.LEFT, 10)
-        inner.Add(title, 0, wx.ALIGN_CENTER|wx.LEFT|wx.RIGHT, 10)
+        inner.Add(logo, 0, wx.LEFT, intPPI(10))
+        inner.Add(title, 0, wx.ALIGN_CENTER|wx.LEFT|wx.RIGHT, intPPI(10))
         sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(inner, 0, wx.TOP, 20)
-        sizer.Add(description, 0, wx.ALIGN_CENTER|wx.ALL, 10)
-        sizer.Add(link0, 0, wx.ALIGN_CENTER|wx.ALL, 5)
-        sizer.Add(link1, 0, wx.ALIGN_CENTER|wx.ALL, 5)
-        sizer.Add(link, 0, wx.ALIGN_CENTER|wx.ALL, 5)
+        sizer.Add(inner, 0, wx.TOP, intPPI(20))
+        sizer.Add(description, 0, wx.ALIGN_CENTER|wx.ALL, intPPI(10))
+        sizer.Add(link0, 0, wx.ALIGN_CENTER|wx.ALL, intPPI(5))
+        sizer.Add(link1, 0, wx.ALIGN_CENTER|wx.ALL, intPPI(5))
+        sizer.Add(link, 0, wx.ALIGN_CENTER|wx.ALL, intPPI(5))
         sizer.Add((0,5), 0, wx.EXPAND)
-        sizer.Add(wx.StaticLine(dlg), 0, wx.EXPAND|wx.TOP, 10)
-        sizer.Add(staticText, 0, wx.ALIGN_CENTER|wx.ALL, 5)
-        sizer.Add(link2, 0, wx.ALIGN_CENTER|wx.ALL, 5)
-        sizer.Add(button, 0, wx.ALIGN_CENTER|wx.ALL, 5)
+        sizer.Add(wx.StaticLine(dlg), 0, wx.EXPAND|wx.TOP, intPPI(10))
+        sizer.Add(staticText, 0, wx.ALIGN_CENTER|wx.ALL, intPPI(5))
+        sizer.Add(link2, 0, wx.ALIGN_CENTER|wx.ALL, intPPI(5))
+        sizer.Add(button, 0, wx.ALIGN_CENTER|wx.ALL, intPPI(5))
         dlg.SetSizer(sizer)
         dlg.Layout()
         dlg.Fit()
         dlg.ShowModal()
         dlg.Destroy()
 
+    def OnMenuDPIInfo(self, event):
+        sTab = 0 if self.options['ppiscalingscripttabs'] < 1 else float(self.options['ppiscalingscripttabs']/10.0)
+        sStatus = 0 if self.options['ppiscalingstatusbar'] < 1 else float(self.options['ppiscalingstatusbar']/10.0)
+        wx.MessageBox('Monitor DPI:    ' + str(wx.GetDisplayPPI()) +
+                      '\nScreen DPI: ' + str(wx.ScreenDC().GetPPI()) +
+                      '\nDPI scaling overall: ' + str(self.ppi_factor*100) + ' %' +
+                      '\nDPI scaling main tab: ' + str((self.ppi_factor+sTab)*100) + ' %' +
+                      '\nDPI scaling statusbar: ' + str((self.ppi_factor+sStatus)*100) + ' %')
+
     def OnButtonTextSetFocus(self, event):
         self.SetStatusText(_('Input a frame number or time (hr:min:sec) and hit Enter. Right-click to retrieve from history. ' +
                              'Or input a text and set the bookmark title.'))
         frameTextCtrl = event.GetEventObject()
         frameTextCtrl.SetForegroundColour(wx.BLACK)
-
-        # GPo, alternative to SetSelection without Skip, change the back color to emulate the focused state
-        ###frameTextCtrl.SetBackgroundColour(wx.LIGHT_GREY)
-        ###frameTextCtrl.Refresh()
-        #frameTextCtrl.ShowNativeCaret(True) # doese nothing
-
         wx.CallAfter(frameTextCtrl.SetSelection, -1, -1)
-        # GPo 2020, if skip forced, OnButtonTextKillFocus Skip is also needed, but then wx.Bell is called automatically (fixed)
         event.Skip()
 
     # GPo 2020, for macro uses
@@ -11513,18 +11712,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if txt and txt not in self.recentframes:
             if txt.isdigit() or len(txt.split(':')) > 1: # GPo 2020, ~ frame or time
                 self.recentframes.append(txt)
-        """
-        # GPo, alternative to SetSelection without Skip change the back color
-        color = wx.SystemSettings.GetColour(wx.SYS_COLOUR_WINDOW)
-        frameTextCtrl.SetBackgroundColour(color)
-        frameTextCtrl.Refresh()
-        wx.Yield()
-        # end alternative
-        """
-        #~event.Skip() # GPo, needed for wx 2.9 see OnButtonTextSetFocus, but wx calls wx.Bell on Key 'Enter', It annoys me)
         win = self.FindFocus()
         if win != frameTextCtrl:
-            event.Skip()  # GPo 2020, Oh man, that was my fault, must check if not focused otherwise it bells
+            event.Skip()
             frame = self.videoSlider.GetValue()
             bms = self.GetBookmarkFrameList()
             if frame in bms and bms[frame] == 0:
@@ -11566,6 +11756,78 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.currentScript.SetFocus()
             else:
                 self.ShowVideoFrame(frame)
+
+    def OnPlayButtonContextMenu(self, event): # GPo 2020
+
+        def OnSelectDropFrames(event):
+            if self.playing_video:
+                self.PlayPauseVideo(refreshFrame=False)
+                self.playing_video = ''
+            item = dropMenu.FindItemById(event.GetId())
+            nr = item.GetLabel()
+            if nr == _('Auto'):
+                self.play_drop = True
+            elif nr.isdigit():
+                self.play_drop = int(nr)
+            else:
+                self.play_drop = False
+            if self.playing_video == '':
+                self.PlayPauseVideo()
+
+        def AddDropFrameItems(menu):
+            nr = 2
+            for i in range(5):
+                id = wx.NewId()
+                self.Bind(wx.EVT_MENU, OnSelectDropFrames, id=id)
+                menu.Append(id, str(nr), kind=wx.ITEM_CHECK)
+                menu.Check(id, self.play_drop==nr)
+                if nr < 4:
+                    nr += 2
+                else: nr += 4
+
+        def OnVideoPlayHalfSpeed(event):
+            if self.playing_video:
+                self.PlayPauseVideo(refreshFrame=False)
+                self.playing_video = ''
+            self.play_speed_factor = 0.5
+            if self.playing_video == '':
+                self.PlayPauseVideo()
+
+        popup = wx.Menu()
+        dropMenu = wx.Menu()
+        # Loop
+        id = wx.NewId()
+        popup.Append(id, _('Play loop'), kind=wx.ITEM_CHECK)
+        popup.Check(id, self.options['playloop'])
+        self.Bind(wx.EVT_MENU, self.OnMenuVideoPlayLoop, id=id)
+        # Drop frames
+        id = wx.NewId()
+        self.Bind(wx.EVT_MENU, OnSelectDropFrames, id=id)
+        dropMenu.Append(id, _('None'), kind=wx.ITEM_CHECK)
+        dropMenu.Check(id, self.play_drop==False)
+        id = wx.NewId()
+        self.Bind(wx.EVT_MENU, OnSelectDropFrames, id=id)
+        dropMenu.Append(id, _('Auto'), kind=wx.ITEM_CHECK)
+        dropMenu.Check(id, self.play_drop==True)
+        AddDropFrameItems(dropMenu)
+        popup.AppendMenu(wx.ID_ANY, _('Drop frames'), dropMenu)
+        popup.AppendSeparator()
+        # Speed
+        id = wx.NewId()
+        popup.Append(id, _('Half speed'), kind=wx.ITEM_CHECK)
+        popup.Check(id, self.play_speed_factor == 0.5)
+        self.Bind(wx.EVT_MENU, OnVideoPlayHalfSpeed, id=id)
+        id = wx.NewId()
+        popup.Append(id, _('Normal speed'), kind=wx.ITEM_CHECK)
+        popup.Check(id, self.play_speed_factor == 1.0)
+        self.Bind(wx.EVT_MENU, self.OnMenuVideoPlayNormal, id=id)
+        id = wx.NewId()
+        popup.Append(id, _('Maximum speed'), kind=wx.ITEM_CHECK)
+        popup.Check(id, self.play_speed_factor == 'max')
+        self.Bind(wx.EVT_MENU, self.OnMenuVideoPlayMax, id=id)
+
+        self.PopupMenu(popup)
+        popup.Destroy()
 
     def OnButtonTextContextMenu(self, event):
         textCtrl = event.GetEventObject()
@@ -11640,9 +11902,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if frame  in bookmarks:
                 s = textCtrl.GetLineText(0)
                 if s:
-                    self.bookmarkDict[frame] = s
-                elif frame in self.bookmarkDict:
-                    del self.bookmarkDict[frame]
+                    self.titleDict[frame] = s
+                elif frame in self.titleDict:
+                    del self.titleDict[frame]
                 self.currentScript.bookmarks = None
                 self.currentScript.bookmarks = self.GetBookmarkDict()
                 self.UpdateBookmarkMenu()
@@ -11681,7 +11943,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.Bind(wx.EVT_MENU, OnContextMenuHilight, id=id)
         menu.Append(id, _('highlight bookmarks'), kind=wx.ITEM_CHECK)
         menu.Check(id, self.videoSlider.hilightBookmarks)
-        #menu.AppendSeparator()
         id = wx.NewId()
         self.Bind(wx.EVT_MENU, OnContextMenuBookmarkTitle, id=id)
         menu.Append(id, _('Set bookmark title'))
@@ -11745,7 +12006,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.ShowVideoFrame(frame, adjust_handle=videoSlider.adjust_handle)
         self.videoWindow.SetFocus()
         if self.playing_video == '':
-            wx.CallAfter(self.PlayPauseVideo)  # GPo 2018 CallAfter
+            wx.CallAfter(self.PlayPauseVideo)
 
     def OnSliderRightUp(self, event):
         slider = event.GetEventObject()
@@ -11753,18 +12014,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if slider.HitTestHandle(mousepos):
             frame = slider.GetValue()
             self.AddFrameBookmark(frame)
-            """
-            if frame in self.currentScript.bookmarks:
-                del self.currentScript.bookmarks[frame]
-            else:
-                self.currentScript.bookmarks[frame] = 0
-            """
             self.frameTextCtrl.Refresh()
             color = self.frameTextCtrl.GetForegroundColour()
             if self.separatevideowindow:
                 self.frameTextCtrl2.Refresh()
-            if color == wx.BLACK and frame in self.bookmarkDict and (event.ControlDown() or event.AltDown() or event.ShiftDown()):
-                del self.bookmarkDict[frame]
+            if color == wx.BLACK and frame in self.titleDict and (event.ControlDown() or event.AltDown() or event.ShiftDown()):
+                del self.titleDict[frame]
         event.Skip()
 
     def OnSliderMiddleDown(self, event):
@@ -11775,8 +12030,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             bookmarks = slider.GetBookmarks()
             bmtype = bookmarks[index]
             self.DeleteFrameBookmark(index, bmtype)
-            if index in self.bookmarkDict and (event.ControlDown() or event.AltDown() or event.ShiftDown()):
-                del self.bookmarkDict[index]
+            if index in self.titleDict and (event.ControlDown() or event.AltDown() or event.ShiftDown()):
+                del self.titleDict[index]
             self.frameTextCtrl.SetForegroundColour(wx.BLACK)
             self.frameTextCtrl.Refresh()
             if self.separatevideowindow:
@@ -11799,11 +12054,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if self.tabChangeLoadBookmarks:
                 c = self.OnMenuBookmarksFromScript()
                 if c == 0:
-                    self.DeleteAllFrameBookmarks(bmtype=0)
-                    self.bookmarkDict.clear()
-                    if self.currentScript.bookmarks:
-                        self.MacroSetBookmark(self.currentScript.bookmarks.items())
-
+                    self.SetTabBookmarks(self.currentScript.bookmarks)
                 self.SetSelectionsDict(self.currentScript.selections) # set selections
             return True
 
@@ -11831,7 +12082,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.refreshAVI = True
         self.snapShotIdx = 0
         bmSet = False # bookmarks not set, its nicer to set bookmarks after show frame
-        forcePlaying = False # GPo new
+        forcePlaying = False
 
         oldSliderWindow = self.currentSliderWindow
         newSliderWindow = script.sliderWindow
@@ -11875,10 +12126,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 script.lastFramenum = None
 
             # GPo, reset video zoom and pos if in group or zoomwindow
-            if script.lastFramenum == None or self.zoomwindow or not self.saveViewPos:
+            if (script.lastFramenum == None) or not self.saveViewPos or self.zoomwindow:
                 script.videoXY = None
                 script.videoZoom = None
-            # GPo new, keep playing if group or framepertab the same
+            # GPo, keep playing if group or framepertab the same
             forcePlaying = (forcePlaying or script.lastFramenum == None) and (self.playing_video == '')
             script.lastSplitVideoPos = self.oldLastSplitVideoPos  # GPo, keep it always
             self.zoom_antialias = False
@@ -11886,16 +12137,14 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if not bmSet:
                 bmSet = SetBookmarks()
             if self.zoomwindow:
-                forcePlaying = self.ShowVideoFrame(forceLayout=True, focus=False, forceCursor=True) and forcePlaying
+                forcePlaying = self.ShowVideoFrame(forceLayout=True, focus=False, scroll=None, forceCursor=True) and forcePlaying
             else:
                 if script.videoZoom != None:
                     self.zoomfactor = script.videoZoom
                 forcePlaying = self.ShowVideoFrame(forceLayout=True, focus=False, scroll=script.videoXY, forceCursor=True) and forcePlaying
-            try:
-                self.Refresh()
-                self.Update()
-            except:
-                pass
+
+            self.Refresh()
+            self.Update()
 
             if not script.sliderWindowShown:
                 self.HideSliderWindow(script)
@@ -11956,7 +12205,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         else:
             self.zoom_antialias = self.options['zoom_antialias']
 
-
     def OnNotebookPageChanging(self, event):
         def resetViewPos():
             self.currentScript.videoXY = None
@@ -11969,7 +12217,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             wx.MessageBox(_('Cannot switch tabs while trim editor is open!'), _('Error'), style=wx.OK|wx.ICON_ERROR)
             event.Veto()
 
-        #~self.StopPlayback() # GPo new
         if self.playing_video:
             self.PlayPauseVideo(refreshFrame=False)
             self.playing_video = ''
@@ -11987,9 +12234,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.oldGroup = oldScript.group
             self.oldGroupFrame = oldScript.group_frame
 
-        if self.tabChangeLoadBookmarks:
-            self.currentScript.bookmarks = None   # GPo 2020
-            self.currentScript.bookmarks = self.GetBookmarkDict()  # GPo 2020
+            if self.tabChangeLoadBookmarks: # GPo new, if selectionIndex > 0
+                oldScript.bookmarks = None   # GPo 2020
+                oldScript.bookmarks = self.GetBookmarkDict()  # GPo 2020
+                self.DeleteAllFrameBookmarks(bmtype=0) # GPo new
 
         if self.previewWindowVisible:
             if oldSelectionIndex >= 0:
@@ -12002,15 +12250,25 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.oldSliderWindowShown = oldScript.sliderWindowShown
                 self.oldBoolSliders = bool(oldScript.sliderTexts or oldScript.sliderProperties or oldScript.toggleTags or oldScript.autoSliderInfo)
                 self.oldVideoSize = (oldScript.AVI.Width, oldScript.AVI.Height)
+
+                # GPo, save display pos and zoom
+                if not self.zoomwindow:
+                    oldScript.videoXY = self.videoWindow.GetViewStart()
+                    oldScript.videoZoom = self.zoomfactor
             else:
                 self.oldLastSplitVideoPos = None
                 self.oldLastSplitSliderPos = None
                 self.oldBoolSliders = None
                 self.oldVideoSize = (None, None)
+                resetViewPos() # GPo new
+
             # GPo, save display pos and zoom
+            """
             if not self.zoomwindow:
                 self.currentScript.videoXY = self.videoWindow.GetViewStart()
                 self.currentScript.videoZoom = self.zoomfactor
+            """
+
         elif oldSelectionIndex >= 0:
             if oldScript.AVI and not self.splitView:
                 if (self.oldWidth != int(oldScript.AVI.DisplayWidth * self.zoomfactor)) or \
@@ -12095,6 +12353,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 item = menu.FindItemById(menu.FindItem(_('Save view pos on tab change')))
                 if item:
                     item.Check(self.saveViewPos)
+
 
                 win.PopupMenu(win.contextMenu, pos)
             except AttributeError:
@@ -12520,9 +12779,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         else:
             if self.refreshAVI:  # GPo, on double clicked (zoom full size), self.refreshAVI is after first mouse down False
                 self.ShowVideoFrame(forceCursor=self.options['refreshpreview'] and self.ScriptChanged(self.currentScript))
-                    #GPo, very bad, do not update here
-                    #~if (self.zoomfactor != 1 or self.zoomwindow) and self.zoom_antialias:
-                        #~wx.YieldIfNeeded()
 
             videoWindow = self.videoWindow
             videoWindow.CaptureMouse()
@@ -12918,6 +13174,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             choices += keywords
         choices.sort(key=lambda k: k.lower())
         dlg = wx.Dialog(self, wx.ID_ANY, _('Select autocomplete keywords'), style=wx.DEFAULT_DIALOG_STYLE|wx.RESIZE_BORDER)
+        SetFontPPI(dlg)
         listbox = wx.CheckListBox(dlg, wx.ID_ANY, choices=choices)
         for i in range(len(choices)):
             if choices[i] not in self.options['autocompleteexclusions']:
@@ -12977,8 +13234,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     def OnConfigureVideoStatusBarMessage(self, event):
         dlg = wx.Dialog(self, wx.ID_ANY, _('Customize the video status bar message'))
+        SetFontPPI(dlg)
         label = wx.StaticText(dlg, wx.ID_ANY, _('Video status bar message:'))
-        textCtrl = wx.TextCtrl(dlg, wx.ID_ANY, self.videoStatusBarInfo.replace('\t','\\t'), size=(500,-1))
+        textCtrl = wx.TextCtrl(dlg, wx.ID_ANY, self.videoStatusBarInfo.replace('\t','\\t'), size=(intPPI(500),-1))
         textCtrl.SetSelection(0,0)
         box = wx.StaticBox(dlg, wx.ID_ANY, _('Legend'))
         staticBoxSizer = wx.StaticBoxSizer(box, wx.HORIZONTAL)
@@ -13018,17 +13276,17 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             ),
         ]
         for eachList in keyList:
-            gridSizer = wx.FlexGridSizer(cols=2, hgap=0, vgap=3)
+            gridSizer = wx.FlexGridSizer(cols=2, hgap=0, vgap=intPPI(3))
             for key, value in eachList:
                 gridSizer.Add(wx.StaticText(dlg, wx.ID_ANY, key), 0, 0)
                 gridSizer.Add(wx.StaticText(dlg, wx.ID_ANY, '  -  '+value), 0, 0)
-            staticBoxSizer.Add(gridSizer, 0, wx.LEFT|wx.RIGHT, 20)
+            staticBoxSizer.Add(gridSizer, 0, wx.LEFT|wx.RIGHT, intPPI(20))
         noteText = wx.StaticText(dlg, wx.ID_ANY, _('Note: The "\\t\\t" or "\\T\\T" is used to separate the left and right portions of the status bar\n         message.'))
         sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(label, 0, wx.BOTTOM, 5)
-        sizer.Add(textCtrl, 0, wx.EXPAND|wx.BOTTOM, 5)
-        sizer.Add(staticBoxSizer, 0, wx.EXPAND|wx.ALL, 5)
-        sizer.Add(noteText, 0, wx.ALL, 5)
+        sizer.Add(label, 0, wx.BOTTOM, intPPI(5))
+        sizer.Add(textCtrl, 0, wx.EXPAND|wx.BOTTOM, intPPI(5))
+        sizer.Add(staticBoxSizer, 0, wx.EXPAND|wx.ALL, intPPI(5))
+        sizer.Add(noteText, 0, wx.ALL, intPPI(5))
         # Standard buttons
         okay  = wx.Button(dlg, wx.ID_OK, _('OK'))
         okay.SetDefault()
@@ -13039,8 +13297,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         btns.AddButton(cancel)
         btns.Realize()
         dlgSizer = wx.BoxSizer(wx.VERTICAL)
-        dlgSizer.Add(sizer, 0, wx.ALL, 5)
-        dlgSizer.Add(btns, 0, wx.EXPAND|wx.ALL, 5)
+        dlgSizer.Add(sizer, 0, wx.ALL, intPPI(5))
+        dlgSizer.Add(btns, 0, wx.EXPAND|wx.ALL, intPPI(5))
         dlg.SetSizer(dlgSizer)
         dlg.Fit()
         ID = dlg.ShowModal()
@@ -13104,7 +13362,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 newSliderText = '%s"%s", %s, %s, %s%s' % (sOpen, label, items[1], items[2], newVal, sClose)
             script.ReplaceTarget(newSliderText)
             self.refreshAVI = True
-        self.ShowVideoFrame(userScrolling=True, keep_env=keep_env)
+        self.ShowVideoFrame(userScrolling=True, keep_env=keep_env, forceCursor=True)
 
     def OnToggleTagChecked(self, event):
         script = self.currentScript
@@ -13715,7 +13973,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                             last_bookmarks = dict(newScript.bookmarks)
                             newScript.bookmarks = {} # disable difWarn
                             self.SelectTab(idx)
-                            newScript.bookmarks = last_bookmarks
+                            if len(newScript.bookmarks) < 1: # no bookmarks from script, set last bookmarks
+                                newScript.bookmarks = last_bookmarks
+                                if self.tabChangeLoadBookmarks:
+                                    self.SetTabBookmarks(newScript.bookmarks)
+                                forceSetBookmarks = False
+
                         if scripttext != script.GetText():
                             dlg = wx.MessageDialog(self, _('Reload the file and lose the current changes?'),
                                                    os.path.basename(filename), wx.YES_NO)
@@ -13791,16 +14054,14 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                             script.bookmarks = None
                             script.bookmarks = dict(bookmarks)
                             self.tabChangeLoadBookmarks = tbc
-                            self.DeleteAllFrameBookmarks(bmtype=0)
-                            self.bookmarkDict.clear()
-                            self.MacroSetBookmark(script.bookmarks.items())
+                            self.SetTabBookmarks(script.bookmarks)
                     else:
                         self.scriptNotebook.SetSelection(index)
                         script = self.scriptNotebook.GetPage(index)
                         if forceSetBookmarks or (index == indexCur): # then bookmarks must set
                             if self.tabChangeLoadBookmarks:
                                 self.DeleteAllFrameBookmarks(bmtype=0)
-                                self.bookmarkDict.clear()
+                                self.titleDict.clear()
                                 if ext.lower() == '.avs' and self.options['bookmarksfromscript']:
                                     bCount = self.OnMenuBookmarksFromScript(difWarn=False)
                         elif (ext.lower() == '.avs') and self.options['bookmarksfromscript']:
@@ -14494,11 +14755,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 if self.options['bookmarksfromscript']:
                     bCount = self.OnMenuBookmarksFromScript()
                 if bCount <= 0:
-                    self.bookmarkDict.clear()
-                    self.DeleteAllFrameBookmarks(bmtype=0)
-                    bCount = len(script.bookmarks)
-                    if bCount > 0:
-                        self.MacroSetBookmark(script.bookmarks.items())
+                    bCount = self.SetTabBookmarks(script.bookmarks)
                 self.SetSelectionsDict(script.selections)
 
             if bCount > -1:
@@ -14535,8 +14792,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                             self.SetBookmarkFrameList(session['bookmarks'])
                     else:
                         self.SetBookmarkFrameList(session['bookmarks'])
-                    if 'bookmarkDict' in session:
-                        self.bookmarkDict.update(session['bookmarkDict'].items())
+                    if 'titleDict' in session:
+                        self.titleDict.update(session['titleDict'].items())
             """
             # Save the recent dir
             if saverecentdir:
@@ -14645,7 +14902,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             session['lastclosed'] = self.lastClosed
             session['saveViewPos'] = self.saveViewPos # GPo
             session['bookmarks'] = list(self.GetBookmarkFrameList().items())
-            session['bookmarkDict'] = self.bookmarkDict
+            session['titleDict'] = self.titleDict
             # Save info to filename
             f = open(filename, mode='wb')
             cPickle.dump(session, f, protocol=0)
@@ -15263,14 +15520,14 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                             newbookmarks[j] -= gapframes
                         else:
                             newbookmarks[j] = (c-gapframes)
-                    if bookmarks[j] in self.bookmarkDict:  # GPo, update titles
-                        newTitleDict[newbookmarks[j]] = self.bookmarkDict[bookmarks[j]]
+                    if bookmarks[j] in self.titleDict:  # GPo, update titles
+                        newTitleDict[newbookmarks[j]] = self.titleDict[bookmarks[j]]
 
             for newbookmark in newbookmarks:
                 self.AddFrameBookmark(newbookmark, toggle=False, refreshVideo=False)
             if insertMode in (0,1):
-                self.bookmarkDict.clear()
-                self.bookmarkDict.update(newTitleDict)
+                self.titleDict.clear()
+                self.titleDict.update(newTitleDict)
             self.ShowVideoFrame(newframenum)
         return True
 
@@ -15415,8 +15672,36 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         bookmarks = self.videoSlider.GetBookmarks(False)
         for i, item in enumerate(bookmarks.items()):
             if item[1] == 0:
-                bDict[item[0]] = self.bookmarkDict.get(item[0], '')
+                bDict[item[0]] = self.titleDict.get(item[0], '')
         return bDict
+
+    def SetTabBookmarks(self, inputDict): # for script.bookmarks
+        bmtype = 0
+        self.titleDict.clear()
+        self.DeleteAllFrameBookmarks(bmtype=0)
+        if not inputDict:
+            return 0
+        lastindex = len(inputDict) - 1
+        for i, item in enumerate(inputDict.items()):
+            value, t = item
+            if t:
+                title = t.strip()
+                if title:
+                    self.titleDict[value] = title
+            if i != lastindex:
+                self.AddFrameBookmark(value, bmtype, refreshProgram=False)
+            else:
+                self.AddFrameBookmark(value, bmtype, refreshProgram=True)
+        return len(inputDict)
+
+    def SetSelectionsDict(self, selDict):
+        self.selectionsDict.clear()
+        if selDict:
+            self.selectionsDict.update(selDict)
+        sliderList = self.GetVideoSliderList()
+        for slider in sliderList:
+            slider.childSelectionsDict = selDict # set tab selectionsDict as children
+            slider.RefreshBookmarks()
 
     """
     def SetBookmarkFrameList(self, bookmarks):
@@ -15433,7 +15718,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             else:
                 self.AddFrameBookmark(value, bmType, refreshProgram=True)
     """
-
+    """
     def SetBookmarkFrameList(self, bookmarks, bmtype=None):
         self.DeleteAllFrameBookmarks(bmtype)
         for i, item in enumerate(bookmarks):
@@ -15451,25 +15736,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.UpdateBookmarkMenu()
         if self.trimDialog.IsShown():
             self.ShowVideoFrame()
-
-    def SetSelectionsDict(self, selDict):
-        self.selectionsDict.clear()
-        if selDict:
-            self.selectionsDict.update(selDict)
-        sliderList = self.GetVideoSliderList()
-        for slider in sliderList:
-            slider.childSelectionsDict = selDict # set tab selectionsDict as children
-            slider.RefreshBookmarks()
-    """
-    def SetTimelineMarkers(self, bookmarksDict, selectionsDict, clearTitles=False):
-        if clearTitles:
-            self.bookmarkDict.clear()
-        if bookmarksDict is not None:
-            self.DeleteAllFrameBookmarks(bmtype=0)
-            if len(bookmarksDict) > 0:
-                self.MacroSetBookmark(bookmarks)
-        if selectionsDict is not None:
-            self.SetSelectionsDict(selectionsDict)
     """
 
     def DeleteFrameBookmark(self, value, bmtype=0, refreshVideo=True, refreshProgram=True):
@@ -15609,7 +15875,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     else:
                         label += '[??:??:??.???]'
                 if titleItem.IsChecked():
-                    label += ' ' + self.bookmarkDict.get(bookmark, '')
+                    label += ' ' + self.titleDict.get(bookmark, '')
                 menuItem = self.menuBookmark.Insert(pos, wx.ID_ANY, label, _('Jump to specified bookmark'))
                 self.Bind(wx.EVT_MENU, self.OnMenuVideoGotoFrameNumber, menuItem)
                 pos += 1
@@ -15978,7 +16244,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         framecount = v.Framecount
         time = self.FormatTime(frame/framerate)
         totaltime = self.FormatTime(framecount/framerate)
-        bookmarktitle = self.bookmarkDict.get(frame, '')
+        bookmarktitle = self.titleDict.get(frame, '')
         zoom = ''
         width, height = v.DisplayWidth, v.DisplayHeight
         if self.zoomfactor != 1:
@@ -16492,7 +16758,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.videoWindow.SetVirtualSize((0,0))
             if doLayout:
                 if forceLayout or not self.previewWindowVisible or (videoWidth != self.oldWidth) or (videoHeight != self.oldHeight):
-                    #wx.Bell()  # for testing
                     # GPo 2018, 2020
                     if not self.splitView:
                         zfa = 3 if self.zoomfactor <= 2 else 4  # GPo, make the free space larger over 2.0 zoom, must also change OnEraseBackground()
@@ -16524,7 +16789,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if scroll is not None: # GPo
                 self.videoWindow.Freeze()
             if newSize != oldSize or newVideoSize != oldVideoSize or not self.previewWindowVisible:
-                #wx.Bell()  # for testing
                 self.previewWindowVisible = True
 
                 # GPo 2020, if zoomwindow zoom must calc new, if preview wasn't visible
@@ -16538,17 +16802,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     if self.zoomwindowfill and not self.splitView:
                         zfa = 3 if self.zoomfactor <= 2 else 4
                         self.videoWindow.SetVirtualSize((w + self.xo + zfa, 0))
-                """
-                if self.splitView:
-                    dc = wx.ClientDC(self.videoWindow)
-                    self.PaintAVIFrame(dc, script, self.currentframenum)
-                    self.OnEraseBackground()
-                else:
-                    #~self.videoWindow.Refresh() # Bad for zoom_antialias
-                    dc = wx.ClientDC(self.videoWindow)
-                    self.PaintAVIFrame(dc, script, self.currentframenum)
-                    self.OnEraseBackground() # must be used, Refresh does it automatically
-                """
+
                 dc = wx.ClientDC(self.videoWindow)
                 self.PaintAVIFrame(dc, script, self.currentframenum)
                 self.OnEraseBackground()
@@ -16588,7 +16842,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             else:
                 # GPo, antialias
                 if (self.zoomfactor != 1 or self.zoomwindow) and self.zoom_antialias: # and not self.playing_video:
-                    # example data.update({'c':3,'d':4})  # Updates 'c' and adds 'd'
                     #self.IdleCall.append((self.videoWindow.Refresh, tuple(), {})) # to many refreshes on Mouse Wheel or keyboard events
                     #self.IdleCallDict = {'self.videoWindow.Refresh':self.videoWindow.Refresh} # only one refresh
                     #self.IdleCallDict.update({'self.videoWindow.Refresh' : self.videoWindow.Refresh}) # only one refresh
@@ -16847,7 +17100,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                     if btype in bmtype and value < clip.Framecount]
             else:
                 bookmarkValues = [value for value, btype in self.GetBookmarkFrameList().items() # go only to titled bookmarks
-                                    if value in self.bookmarkDict and value < clip.Framecount]
+                                    if value in self.titleDict and value < clip.Framecount]
         else:
             if not bmtype:
                 bookmarkValues = [value for value in bmDict.keys()]
@@ -16855,7 +17108,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 bookmarkValues = [value for value, btype in bmDict if btype in bmtype]
             else:
                 bookmarkValues = [value for value, btype in self.GetBookmarkFrameList().items()
-                                    if value in self.bookmarkDict]
+                                    if value in self.titleDict]
 
         if len(bookmarkValues) == 0:
             return
@@ -16895,7 +17148,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 if fitWidth == None:
                     return
                 if self.splitView and self.zoomwindowfit:
-                    zoomfactorWidth = float(fitWidth) / script.AVI.DisplayWidth / 2 # TODO check it, can be wrong!
+                    zoomfactorWidth = float(fitWidth) / script.AVI.DisplayWidth / 2
                     zoomfactorHeight = float(fitHeight) / script.AVI.DisplayHeight
                 else:
                     zoomfactorWidth = float(fitWidth) / script.AVI.DisplayWidth
@@ -17322,7 +17575,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     self.videoWindow.DoPrepareDC(inputdc)
                 except:
                     self.videoWindow.PrepareDC(inputdc)
-
                 inputdc.Blit(0, 0, w, h, dc, 0, 0)
 
             elif self.splitView:
@@ -17667,9 +17919,16 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 #interval_fast = 1.0
             else:
                 interval = 1000 / (script.AVI.Framerate * self.play_speed_factor)
-                #self.interval = interval
                 self.interval = float(interval/1000)
                 #interval_fast = self.interval/2 # double the interval, seems not needed,
+
+            # GPo new, set the drop count out of the play routine make a int, it's faster
+            if self.play_drop == True:
+                self.drop_count = 1
+            elif self.play_drop > 1:
+                self.drop_count = self.play_drop
+            else:
+                self.drop_count = 0
 
             if os.name == 'nt': # default Windows resolution is ~10 ms
 
@@ -17691,14 +17950,14 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     fps = float(self.currentframenum - self.play_initial_frame)  / (startTime - self.play_initial_time)
                     sfps = 'fps ' + '{:4.2f}'.format(fps) + ' '
 
-                    if self.play_drop and self.play_speed_factor != 'max':
+                    if (self.drop_count == 1) and self.play_speed_factor != 'max':
                         frame = self.play_initial_frame
                         increment = int(round(1000 * (time.time() - self.play_initial_time) / interval)) * factor
                         if debug_stats:
                             debug_stats_str += ' dropped: ' + str(increment - self.increment - 1)
                             self.increment = increment
                     else:
-                        frame = self.currentframenum
+                        frame = self.currentframenum + self.drop_count
                         increment = 1
                         if self.loop_start > -1:  # GPo 2020. play loop
                             if (frame + 1 >= self.loop_end) or (frame + 1 < self.loop_start):
@@ -17729,7 +17988,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                      check_playing=True, focus=False, addon0=sfps).Wait():
                             return
 
-                    if self.currentframenum == script.AVI.Framecount - 1:
+                    if self.currentframenum >= script.AVI.Framecount - 1:
                         # GPo 2020, play loop
                         if (self.loop_start > -1) and (self.loop_start < script.AVI.Framecount - 3)\
                             and (self.loop_end <= script.AVI.Framecount-1): #continue, new lop_start is in the next run set
@@ -18532,7 +18791,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         # Create the slider
         slider = wxp.Slider(parent, wx.ID_ANY,
             value, minValue, maxValue,
-            size=(50,-1),
+            size=(intPPI(50),-1),
             style=wx.SL_BOTH,
             name=labelTxt,
             nDecimal=nDecimal,
@@ -18577,10 +18836,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         valTxtCtrl.Bind(wx.EVT_LEFT_DOWN, OnTextLeftDown)
         if isRescaled:
             valTxtCtrl2.Bind(wx.EVT_LEFT_DOWN, OnTextLeftDown)
-        leftCtrl = wxButtons.GenBitmapButton(parent, wx.ID_ANY, self.bmpLeftTriangle, size=(16,16))
+        leftCtrl = wxButtons.GenBitmapButton(parent, wx.ID_ANY, self.bmpLeftTriangle, size=tuplePPI(16,16))
         leftCtrl.SetBezelWidth(1)
         leftCtrl.SetUseFocusIndicator(False)
-
         def OnLeftTimer(event):
             newvalue = slider.Decrement()
             valTxtCtrl.SetLabel(strTemplate % newvalue)
@@ -18599,7 +18857,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             valTxtCtrl.SetLabel(strTemplate % newvalue)
             if isRescaled:
                 valTxtCtrl2.SetLabel(strTemplate2 % Rescale(newvalue))
-            if wx.GetKeyState(wx.WXK_CONTROL):                          # GPo 2020
+            if wx.GetKeyState(wx.WXK_CONTROL):
                 self.fc = wx.CallLater(400, leftTimer.Start, 500)
             else:
                 self.fc = wx.CallLater(300, leftTimer.Start, 100)
@@ -18608,11 +18866,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if self.fc is not None:
                 self.fc.Stop()
             leftTimer.Stop()
-            self.UserSliderVideoUpdate(slider)
+            #self.UserSliderVideoUpdate(slider)
             event.Skip()
+            self.fc = wx.CallLater(200, leftTimer.Start, 200)
         leftCtrl.Bind(wx.EVT_LEFT_DOWN, OnButtonDecLeftDown)
         leftCtrl.Bind(wx.EVT_LEFT_UP, OnButtonDecLeftUp)
-        rightCtrl = wxButtons.GenBitmapButton(parent, wx.ID_ANY, self.bmpRightTriangle, size=(16,16))
+        leftCtrl.Bind(wx.EVT_MOUSE_CAPTURE_LOST, self.OnMouseCaptureLost)
+        rightCtrl = wxButtons.GenBitmapButton(parent, wx.ID_ANY, self.bmpRightTriangle, size=tuplePPI(16,16))
         rightCtrl.SetBezelWidth(1)
         rightCtrl.SetUseFocusIndicator(False)
         def OnRightTimer(event):
@@ -18642,24 +18902,26 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if self.fc is not None:
                 self.fc.Stop()
             rightTimer.Stop()
-            self.UserSliderVideoUpdate(slider)
+            #self.UserSliderVideoUpdate(slider)
             event.Skip()
+            self.fc = wx.CallLater(200, rightTimer.Start, 200)
         rightCtrl.Bind(wx.EVT_LEFT_DOWN, OnButtonIncLeftDown)
         rightCtrl.Bind(wx.EVT_LEFT_UP, OnButtonIncLeftUp)
+        rightCtrl.Bind(wx.EVT_MOUSE_CAPTURE_LOST, self.OnMouseCaptureLost)
         # Add the elements to the sliderSizer
-        sizer.Add(labelTxtCtrl, (row,0), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 10)
+        sizer.Add(labelTxtCtrl, (row,0), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, intPPI(10))
         if isRescaled:
             sizer.Add(minTxtCtrlSizer, (row,1), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_RIGHT)
         else:
             sizer.Add(minTxtCtrl, (row,1), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_RIGHT)
-        sizer.Add(leftCtrl, (row,2), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL|wx.LEFT, 5)
+        sizer.Add(leftCtrl, (row,2), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL|wx.LEFT, intPPI(5))
         sizer.Add(slider, (row,3), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL|wx.EXPAND)
-        sizer.Add(rightCtrl, (row,4), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, 5)
+        sizer.Add(rightCtrl, (row,4), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, intPPI(5))
         if isRescaled:
-            sizer.Add(maxTxtCtrlSizer, (row,5), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 10)
+            sizer.Add(maxTxtCtrlSizer, (row,5), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, intPPI(10))
             sizer.Add(valTxtCtrlSizer, (row,6), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 0)
         else:
-            sizer.Add(maxTxtCtrl, (row,5), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 10)
+            sizer.Add(maxTxtCtrl, (row,5), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, intPPI(10))
             sizer.Add(valTxtCtrl, (row,6), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 0)
 
     def addAvsSliderSeparator(self, script, label='', row=None, sizer=None):
@@ -18671,7 +18933,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         # Add a separator
         tempsizer = wx.BoxSizer(wx.VERTICAL)
         if row == 0: border = 0
-        else: border = 10
+        else: border = intPPI(10)
         if label == '':
             tempsizer.Add(wx.StaticLine(parent), 0, wx.EXPAND|wx.ALIGN_BOTTOM|wx.TOP, border)
         else:
@@ -18694,7 +18956,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         # Create the slider
         slider = wxp.Slider(parent, wx.ID_ANY,
             value, minValue, maxValue,
-            size=(50,-1),
+            size=(intPPI(50),-1),
             style=wx.SL_BOTH,
             name=labelTxt,
             nDecimal=nDecimal,
@@ -18705,18 +18967,16 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         slider.argName = labelTxt
         slider.script = script
         slider.argIndex = argIndex
-
         # Slider event binding
         def UserSliderVideoUpdateNew(slider):
             # Create the new arg text
             newVal = slider.GetValueAsString()
             self.SetNewAvsValue(slider, newVal)
-
         def OnLeftUpUserSlider(event):
             UserSliderVideoUpdateNew(slider)
             event.Skip()
         slider.Bind(wx.EVT_LEFT_UP, OnLeftUpUserSlider)
-
+        slider.Bind(wx.EVT_MOUSE_CAPTURE_LOST, self.OnMouseCaptureLost)
         # Create the static text labels
         labelTxtCtrl = self.MakeArgNameStaticText(parent, labelTxt, filterName, script, argIndex)
         minTxtCtrl = wx.StaticText(parent, wx.ID_ANY, strTemplate % minValue)
@@ -18731,7 +18991,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             slider.SetValue(defaultValue)
             UserSliderVideoUpdateNew(slider)
         valTxtCtrl.Bind(wx.EVT_LEFT_DOWN, OnTextLeftDown)
-        leftCtrl = wxButtons.GenBitmapButton(parent, wx.ID_ANY, self.bmpLeftTriangle, size=(16,16))
+        leftCtrl = wxButtons.GenBitmapButton(parent, wx.ID_ANY, self.bmpLeftTriangle, size=tuplePPI(16,16))
         leftCtrl.SetBezelWidth(1)
         leftCtrl.SetUseFocusIndicator(False)
         def OnLeftTimer(event):
@@ -18757,11 +19017,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if self.fc is not None:
                 self.fc.Stop()
             leftTimer.Stop()
-            UserSliderVideoUpdateNew(slider)
+            #UserSliderVideoUpdateNew(slider)
             event.Skip()
+            self.fc = wx.CallLater(200, leftTimer.Start, 200)
         leftCtrl.Bind(wx.EVT_LEFT_DOWN, OnButtonDecLeftDown)
         leftCtrl.Bind(wx.EVT_LEFT_UP, OnButtonDecLeftUp)
-        rightCtrl = wxButtons.GenBitmapButton(parent, wx.ID_ANY, self.bmpRightTriangle, size=(16,16))
+        leftCtrl.Bind(wx.EVT_MOUSE_CAPTURE_LOST, self.OnMouseCaptureLost)
+        rightCtrl = wxButtons.GenBitmapButton(parent, wx.ID_ANY, self.bmpRightTriangle, size=tuplePPI(16,16))
         rightCtrl.SetBezelWidth(1)
         rightCtrl.SetUseFocusIndicator(False)
         def OnRightTimer(event):
@@ -18787,17 +19049,20 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if self.fc is not None:
                 self.fc.Stop()
             rightTimer.Stop()
-            UserSliderVideoUpdateNew(slider)
+            #UserSliderVideoUpdateNew(slider)
             event.Skip()
+            self.fc = wx.CallLater(200, rightTimer.Start, 200)
+
         rightCtrl.Bind(wx.EVT_LEFT_DOWN, OnButtonIncLeftDown)
         rightCtrl.Bind(wx.EVT_LEFT_UP, OnButtonIncLeftUp)
+        rightCtrl.Bind(wx.EVT_MOUSE_CAPTURE_LOST, self.OnMouseCaptureLost)
         # Add the elements to the sliderSizer
-        sizer.Add(labelTxtCtrl, (row,0), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT|wx.LEFT, 10)
+        sizer.Add(labelTxtCtrl, (row,0), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT|wx.LEFT, intPPI(10))
         sizer.Add(minTxtCtrl, (row,1), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_RIGHT)
-        sizer.Add(leftCtrl, (row,2), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL|wx.LEFT, 5)
+        sizer.Add(leftCtrl, (row,2), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL|wx.LEFT, intPPI(5))
         sizer.Add(slider, (row,3), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL|wx.EXPAND)
-        sizer.Add(rightCtrl, (row,4), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, 5)
-        sizer.Add(maxTxtCtrl, (row,5), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 10)
+        sizer.Add(rightCtrl, (row,4), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, intPPI(5))
+        sizer.Add(maxTxtCtrl, (row,5), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, intPPI(10))
         sizer.Add(valTxtCtrl, (row,6), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 0)
         separator.controls += [labelTxtCtrl, minTxtCtrl, leftCtrl, slider, rightCtrl, maxTxtCtrl, valTxtCtrl]
         separator.hasNumericalSlider = True
@@ -18866,8 +19131,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         sizer = script.sliderSizerNew
         # Create window elements
         labelTxtCtrl = self.MakeArgNameStaticText(parent, argname, filterName, script, argIndex)
-        radioButtonTrue = wx.RadioButton(parent, wx.ID_ANY, 'true', style=wx.RB_GROUP, size=(-1,20))
-        radioButtonFalse = wx.RadioButton(parent, wx.ID_ANY, 'false', size=(-1,20))
+        radioButtonTrue = wx.RadioButton(parent, wx.ID_ANY, 'true', style=wx.RB_GROUP, size=(-1,intPPI(20)))
+        radioButtonFalse = wx.RadioButton(parent, wx.ID_ANY, 'false', size=(-1,intPPI(20)))
         if value:
             radioButtonTrue.SetValue(True)
         else:
@@ -18896,10 +19161,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 font.SetUnderlined(True)
                 radioButtonFalse.SetFont(font)
         radioSizer = wx.BoxSizer(wx.HORIZONTAL)
-        radioSizer.Add(radioButtonTrue, 0, wx.TOP|wx.BOTTOM|wx.RIGHT, 5)
-        radioSizer.Add(radioButtonFalse, 0, wx.ALL, 5)
+        radioSizer.Add(radioButtonTrue, 0, wx.TOP|wx.BOTTOM|wx.RIGHT, intPPI(5))
+        radioSizer.Add(radioButtonFalse, 0, wx.ALL, intPPI(5))
         # Add the elements to the slider sizer
-        sizer.Add(labelTxtCtrl, (row,0), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT|wx.LEFT, 10)
+        sizer.Add(labelTxtCtrl, (row,0), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT|wx.LEFT, intPPI(10))
         sizer.Add(radioSizer, (row, 1), (1,6), wx.ALIGN_CENTER_VERTICAL)
         separator.controls += [labelTxtCtrl, radioSizer]
 
@@ -18921,7 +19186,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             b = int(value[4:6],16)
         except:
             r=g=b=0
-        colorButton = wxp.ColourSelect(parent, wx.ID_ANY, colour=wx.Colour(r,g,b), size=(50,23), colour_data=self.colour_data)
+        colorButton = wxp.ColourSelect(parent, wx.ID_ANY, colour=wx.Colour(r,g,b), size=tuplePPI(50,23), colour_data=self.colour_data)
         def OnSelectColour(event):
             self.options['colourdata'] = self.colour_data.ToString()
             with open(self.optionsfilename, mode='wb') as f:
@@ -18942,9 +19207,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         #TODO: FIX
         colorSizer = wx.BoxSizer(wx.HORIZONTAL)
-        colorSizer.Add(colorButton, 0, wx.TOP|wx.BOTTOM|wx.RIGHT, 5)
+        colorSizer.Add(colorButton, 0, wx.TOP|wx.BOTTOM|wx.RIGHT, intPPI(5))
         # Add the elements to the slider sizer
-        sizer.Add(labelTxtCtrl, (row,0), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT|wx.LEFT, 10)
+        sizer.Add(labelTxtCtrl, (row,0), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT|wx.LEFT, intPPI(10))
         sizer.Add(colorSizer, (row, 1), (1,6), wx.ALIGN_CENTER_VERTICAL)
         separator.controls += [labelTxtCtrl, colorSizer]
 
@@ -18992,7 +19257,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         choiceBox.argIndex = argIndex
         choiceBox.Bind(wx.EVT_CHOICE, OnChoice)
         # Add the elements to the slider sizer
-        sizer.Add(labelTxtCtrl, (row,0), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT|wx.LEFT, 10)
+        sizer.Add(labelTxtCtrl, (row,0), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT|wx.LEFT, intPPI(10))
         sizer.Add(choiceBox, (row, 1), (1,6), wx.ALIGN_CENTER_VERTICAL)
         separator.controls += [labelTxtCtrl, choiceBox]
 
@@ -19003,7 +19268,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         extList = [s.strip() for s in extList if not s.strip().startswith('*.*')]
         labelTxtCtrl = self.MakeArgNameStaticText(parent, argname, filterName, script, argIndex)
         textCtrl = wx.TextCtrl(parent, wx.ID_ANY, value, style=wx.TE_PROCESS_ENTER)
-        browseButton = wx.Button(parent, wx.ID_ANY, '...', size=(20, -1))
+        browseButton = wx.Button(parent, wx.ID_ANY, '...', size=(intPPI(20), -1))
         def OnTextChange(event):
             script.oldAutoSliderInfo = None
             event.Skip()
@@ -19050,10 +19315,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         textCtrl.Bind(wx.EVT_TEXT_ENTER, OnTextEnter)
         textCtrl.Bind(wx.EVT_TEXT, OnTextChange)
         browseSizer = wx.BoxSizer(wx.HORIZONTAL)
-        browseSizer.Add(textCtrl, 1, wx.EXPAND|wx.RIGHT, 2)
+        browseSizer.Add(textCtrl, 1, wx.EXPAND|wx.RIGHT, intPPI(2))
         browseSizer.Add(browseButton, 0)#, wx.ALL, 5)
         # Add the elements to the slider sizer
-        sizer.Add(labelTxtCtrl, (row,0), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT|wx.LEFT, 10)
+        sizer.Add(labelTxtCtrl, (row,0), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT|wx.LEFT, intPPI(10))
         sizer.Add(browseSizer, (row,1), (1,6), wx.ALIGN_CENTER_VERTICAL|wx.EXPAND)
         separator.controls += [labelTxtCtrl, browseSizer]
 
@@ -19115,11 +19380,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if self.playing_video:     # GPo 2020
                 self.PlayPauseVideo(refreshFrame=False)
                 self.refreshAVI = True
-                #self.ShowVideoFrame(userScrolling=True, keep_env=keep_env)
                 wx.CallAfter(self.PlayPauseVideo)
                 return
             self.refreshAVI = True
-            self.ShowVideoFrame(userScrolling=True, keep_env=keep_env)
+            self.ShowVideoFrame(userScrolling=True, keep_env=keep_env, forceCursor=True)
 
     def GetArgTextAndPos(self, slider):
         # Find the filter in the text
@@ -19190,8 +19454,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         color2 = wx.SystemSettings.GetColour(wx.SYS_COLOUR_3DHILIGHT)
         # Add a separator
         tempsizer = wx.BoxSizer(wx.VERTICAL)
-        if row == 0: border = 0 if wx.VERSION < (2, 9) else 5
-        else: border = 10
+        if row == 0: border = 0 if wx.VERSION < (2, 9) else intPPI(5)
+        else: border = intPPI(10)
         if label == '':
             tempsizer.Add(wx.StaticLine(parent), 0, wx.EXPAND|wx.ALIGN_BOTTOM|wx.TOP, border)
         else:
@@ -19347,15 +19611,15 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                                       'You should clean up your plugins.'))
         msgsizer = wx.BoxSizer(wx.HORIZONTAL)
         msgsizer.Add(bmp)
-        msgsizer.Add(message, 0, wx.LEFT, 10)
+        msgsizer.Add(message, 0, wx.LEFT, intPPI(10))
 
         checkbox = wx.CheckBox(dlg, wx.ID_ANY, _("Don't show me this again"))
         btnsizer = dlg.CreateStdDialogButtonSizer(wx.OK)
 
         dlgsizer = wx.BoxSizer(wx.VERTICAL)
-        dlgsizer.Add(msgsizer, 0, wx.ALL, 10)
-        dlgsizer.Add(checkbox, 0, wx.LEFT, 10)
-        dlgsizer.Add(btnsizer, 0, wx.ALL|wx.ALIGN_CENTER, 10)
+        dlgsizer.Add(msgsizer, 0, wx.ALL, intPPI(10))
+        dlgsizer.Add(checkbox, 0, wx.LEFT, intPPI(10))
+        dlgsizer.Add(btnsizer, 0, wx.ALL|wx.ALIGN_CENTER, intPPI(10))
         dlg.SetSizerAndFit(dlgsizer)
         dlg.ShowModal()
         if isFunc:
@@ -19364,7 +19628,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.options['dllnamewarning'] = not checkbox.IsChecked()
         dlg.Destroy()
 
-    def ShowOptions(self, startPageIndex=0):
+    def ShowOptions(self, startPageIndex=0): # PPI set on wxp
         '''Show the program settings dialog, save them, apply them if necessary and save to file'''
         dlg = wxp.OptionsDialog(self, self.optionsDlgInfo, self.options,
                                 startPageIndex=startPageIndex,
@@ -20679,7 +20943,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         bookmarkList = [value for value, bmtype in self.GetBookmarkFrameList().items() if bmtype == 0]
         if title:
             for i in range(len(bookmarkList)):
-                title = self.bookmarkDict.get(bookmarkList[i], '')
+                title = self.titleDict.get(bookmarkList[i], '')
                 bookmarkList[i] = (bookmarkList[i], title)
         return bookmarkList
 
@@ -20723,9 +20987,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             value = int(value)
             if not isinstance(title, basestring): return False
             title = title.strip()
-            self.bookmarkDict[value] = title
+            self.titleDict[value] = title
             if not title:
-                del self.bookmarkDict[value]
+                del self.titleDict[value]
             self.AddFrameBookmark(value, bmtype)
             return True
         except (TypeError, ValueError):
@@ -20740,9 +21004,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             lastindex = len(items) - 1
             for i, item in enumerate(items):
                 value, title = item
-                self.bookmarkDict[value] = title
+                self.titleDict[value] = title
                 if not title:
-                    del self.bookmarkDict[value]
+                    del self.titleDict[value]
                 if i != lastindex:
                     self.AddFrameBookmark(value, bmtype, refreshProgram=False)
                 else:

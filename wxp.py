@@ -29,6 +29,7 @@ import wx.lib.buttons as wxButtons
 import wx.lib.mixins.listctrl  as  listmix
 import wx.lib.filebrowsebutton as filebrowse
 import wx.lib.colourselect as  colourselect
+#import colourselect_dpi as colourselect
 from wx.lib.agw.floatspin import FloatSpin
 from wx.lib.agw.hyperlink import HyperLinkCtrl
 from wx import stc
@@ -39,6 +40,7 @@ import os.path
 import sys
 import copy
 import time
+import dpi
 
 import wx.lib.newevent
 import socket
@@ -204,7 +206,7 @@ class StdoutStderrWindow:
         self.frame  = None
         self.title  = title
         self.pos    = wx.DefaultPosition
-        self.size   = (550, 300)
+        self.size   = dpi.tuplePPI(550, 300)
         self.parent = None
         logname = 'error_log.txt'
         if hasattr(sys,'frozen'):
@@ -675,6 +677,7 @@ class QuickFindDialog(wx.Dialog):
     def __init__(self, parent, text=''):
         wx.Dialog.__init__(self, parent, wx.ID_ANY, _('Quick find'), style=0)
         self.app = parent.app
+        dpi.SetFontPPI(self)
 
         # Prepare a toolbar-like dialog
         find_bitmap = wx.StaticBitmap(self, wx.ID_ANY, wx.ArtProvider.GetBitmap(wx.ART_FIND))
@@ -782,6 +785,7 @@ class FindReplaceDialog(wx.Dialog):
         wx.Dialog.__init__(self, parent, wx.ID_ANY, _('Find/replace text'),
                            style=wx.DEFAULT_DIALOG_STYLE|wx.RESIZE_BORDER)
         self.app = parent.app
+        dpi.SetFontPPI(self)
         self.find_recent = self.app.options['find_recent']
         self.replace_recent = self.app.options['replace_recent']
 
@@ -789,9 +793,9 @@ class FindReplaceDialog(wx.Dialog):
         panel = wx.Panel(self)
         find_text = wx.StaticText(self, wx.ID_ANY, _('Search &for'))
         self.find_text_ctrl = wx.ComboBox(self, wx.ID_ANY, style=wx.CB_DROPDOWN,
-                            size=(200,-1), value=text, choices=self.find_recent)
+                            size=(dpi.intPPI(200),-1), value=text, choices=self.find_recent)
         replace_text = wx.StaticText(self, wx.ID_ANY, _('R&eplace with'))
-        self.replace_text_ctrl = wx.ComboBox(self, wx.ID_ANY, size=(200,-1),
+        self.replace_text_ctrl = wx.ComboBox(self, wx.ID_ANY, size=(dpi.intPPI(200),-1),
                                     style=wx.CB_DROPDOWN|wx.TE_PROCESS_ENTER,
                                     value='', choices=self.replace_recent)
         self.find_next = wx.Button(self, wx.ID_ANY, label=_('Find &next'))
@@ -1086,6 +1090,7 @@ class ColourSelect(colourselect.ColourSelect):
         data.SetChooseFull(True)
         data.SetColour(self.colour)
         dlg = wx.ColourDialog(wx.GetTopLevelParent(self), data)
+
         changed = dlg.ShowModal() == wx.ID_OK
 
         if changed:
@@ -1147,6 +1152,7 @@ class OptionsDialog(wx.Dialog):
             title = _('Program Settings')
         wx.Dialog.__init__(self, parent, wx.ID_ANY, title,
                            style=wx.DEFAULT_DIALOG_STYLE|wx.RESIZE_BORDER)
+        dpi.SetFontPPI(self)
         self.options = options.copy()
         self.optionsOriginal = options
         # Create the options tabs
@@ -1156,15 +1162,15 @@ class OptionsDialog(wx.Dialog):
         if notebook:
             nb = self.nb = Notebook(self, wx.ID_ANY, style=wx.NO_BORDER,
                                     invert_scroll=invert_scroll)
+            #nb.SetDoubleBuffered(True) # bug in wx
         for tabInfo in dlgInfo:
             if notebook:
                 tabPanel = wx.Panel(nb, wx.ID_ANY)
                 nb.AddPage(tabPanel, tabInfo[0], select=True)
             else:
                 tabPanel = wx.Panel(self, wx.ID_ANY)
-            #~tabPanel.SetDoubleBuffered(True) # GPo, Bug in wx.2.9.3 some elements hiden
             tabSizer = wx.BoxSizer(wx.VERTICAL)
-            tabSizer.Add((-1,5), 0)
+            tabSizer.Add((-1,dpi.intPPI(5)), 0)
             boolStar = False
             for line in tabInfo[1:]:
                 colSizer = wx.BoxSizer(wx.HORIZONTAL)
@@ -1182,7 +1188,7 @@ class OptionsDialog(wx.Dialog):
                     if flag is None:
                         # horizontal blank space separator
                         # misc: {height}
-                        height = misc['height'] if 'height' in misc else 10
+                        height = misc['height'] if 'height' in misc else dpi.intPPI(10)
                         itemSizer = wx.BoxSizer(wx.VERTICAL)
                         itemSizer.Add((-1,height), 0)
 
@@ -1201,12 +1207,12 @@ class OptionsDialog(wx.Dialog):
                             if tip:
                                 staticText.SetToolTipString(tip)
                             if adjust_width:
-                                width = staticText.GetTextExtent(label)[0] + 4
-                            itemSizer.Add(staticText, 0, wx.EXPAND|wx.ALL, 2)
+                                width = staticText.GetTextExtent(label)[0] + dpi.intPPI(4)
+                            itemSizer.Add(staticText, 0, wx.EXPAND|wx.ALL, dpi.intPPI(2))
                         else:
                             itemSizer.AddSpacer((-1, 3))
                         staticLine = wx.StaticLine(tabPanel, wx.ID_ANY, size=(width, -1))
-                        margin = 0 if not width and not expand else 2
+                        margin = 0 if not width and not expand else dpi.intPPI(2)
                         itemSizer.Add(staticLine, 0, expand|wx.TOP|wx.BOTTOM, margin)
 
                     elif flag == OPT_ELEM_CHECK:
@@ -1215,6 +1221,7 @@ class OptionsDialog(wx.Dialog):
                         width = misc['width'] if 'width' in misc else -1
                         ctrl = wx.CheckBox(tabPanel, wx.ID_ANY, label, size=(width,-1))
                         ctrl.SetMinSize(ctrl.GetBestSize())
+                        #ctrl.SetMinSize((dpi.tuplePPI(ctrl.GetBestSize()[0], ctrl.GetBestSize()[1]))) # test dpi
                         ctrl.SetValue(bool(optionsValue))
                         if tip:
                             ctrl.SetToolTipString(tip)
@@ -1222,17 +1229,17 @@ class OptionsDialog(wx.Dialog):
                         if 'ident' in misc:
                             identSizer = wx.BoxSizer(wx.HORIZONTAL)
                             identSizer.Add((misc['ident'], -1), 0)
-                            identSizer.Add(ctrl, 1, wx.TOP|wx.BOTTOM, 1)
+                            identSizer.Add(ctrl, 1, wx.TOP|wx.BOTTOM, dpi.intPPI(1))
                             itemSizer.AddStretchSpacer()
                             itemSizer.Add(identSizer, 0, wx.EXPAND|wx.ALIGN_CENTER_VERTICAL)
                         else:
                             itemSizer.Add((-1,2), 1, wx.EXPAND)
-                            itemSizer.Add(ctrl, 0, wx.EXPAND|wx.ALIGN_CENTER_VERTICAL|wx.TOP|wx.BOTTOM, 2)
+                            itemSizer.Add(ctrl, 0, wx.EXPAND|wx.ALIGN_CENTER_VERTICAL|wx.TOP|wx.BOTTOM, dpi.intPPI(2))
 
                     elif flag in (OPT_ELEM_SPIN, OPT_ELEM_INT, OPT_ELEM_FLOAT):
                         # numeric field, with arrows to increment and decrement the value
                         # misc: (width, expand, label_position, min_val, max_val, digits, increment)
-                        width = misc['width'] if 'width' in misc else 50
+                        width = misc['width'] if 'width' in misc else dpi.intPPI(50)
                         expand = misc['expand'] if 'expand' in misc else False
                         label_position = misc['label_position'] if 'label_position' in misc else wx.HORIZONTAL
                         min_val = misc['min_val'] if 'min_val' in misc else None
@@ -1248,20 +1255,20 @@ class OptionsDialog(wx.Dialog):
                             staticText.SetToolTipString(tip)
                             ctrl._textctrl.SetToolTipString(tip)
                         if label_position == wx.HORIZONTAL:
-                            itemSizer.Add(staticText, 0, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, 6)
+                            itemSizer.Add(staticText, 0, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, dpi.intPPI(6))
                             expand_flags = (1, 0) if expand else (0, 0)
-                            itemSizer.Add(ctrl, expand_flags[0], expand_flags[1]|wx.ALIGN_CENTER_VERTICAL|wx.TOP|wx.BOTTOM, 2)
+                            itemSizer.Add(ctrl, expand_flags[0], expand_flags[1]|wx.ALIGN_CENTER_VERTICAL|wx.TOP|wx.BOTTOM, dpi.intPPI(2))
                         else:
                             itemSizer.AddStretchSpacer()
-                            itemSizer.Add(staticText, 0, wx.LEFT|wx.RIGHT|wx.TOP|wx.BOTTOM, 2)
+                            itemSizer.Add(staticText, 0, wx.LEFT|wx.RIGHT|wx.TOP|wx.BOTTOM, dpi.intPPI(2))
                             expand_flags = (0, wx.EXPAND) if expand else (0, 0)
-                            itemSizer.Add(ctrl, expand_flags[0], expand_flags[1]|wx.ALIGN_CENTER_VERTICAL|wx.TOP|wx.BOTTOM, 2)
+                            itemSizer.Add(ctrl, expand_flags[0], expand_flags[1]|wx.ALIGN_CENTER_VERTICAL|wx.TOP|wx.BOTTOM, dpi.intPPI(2))
                             itemSizer.AddStretchSpacer()
 
                     elif flag == OPT_ELEM_SLIDER:
                         # select a number with a draggable handle
                         # misc: (width, expand, label_position, orientation, minValue, maxValue, TickFreq)
-                        width = misc['width'] if 'width' in misc else 200
+                        width = misc['width'] if 'width' in misc else dpi.intPPI(200)
                         expand = misc['expand'] if 'expand' in misc else False
                         label_position = misc['label_position'] if 'label_position' in misc else wx.HORIZONTAL
                         orientation = misc['orientation'] if 'orientation' in misc else wx.HORIZONTAL
@@ -1281,12 +1288,12 @@ class OptionsDialog(wx.Dialog):
                             ctrl.SetToolTipString(tip)
                         itemSizer = wx.BoxSizer(label_position)
                         if label_position == wx.HORIZONTAL:
-                            itemSizer.Add(staticText, 0, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, 5)
+                            itemSizer.Add(staticText, 0, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, dpi.intPPI(5))
                             expand_flags = (1, 0) if expand else (0, 0)
                             itemSizer.Add(ctrl, expand_flags[0], expand_flags[1]|wx.ALIGN_CENTER_VERTICAL)
                         else:
                             itemSizer.AddStretchSpacer()
-                            itemSizer.Add(staticText, 0, wx.LEFT|wx.RIGHT|wx.TOP|wx.BOTTOM, 2)
+                            itemSizer.Add(staticText, 0, wx.LEFT|wx.RIGHT|wx.TOP|wx.BOTTOM, dpi.intPPI(2))
                             expand_flags = (0, wx.EXPAND) if expand else (0, 0)
                             itemSizer.Add(ctrl, expand_flags[0], expand_flags[1]|wx.ALIGN_CENTER_VERTICAL)
                             itemSizer.AddStretchSpacer()
@@ -1294,7 +1301,7 @@ class OptionsDialog(wx.Dialog):
                     elif flag in (OPT_ELEM_FILE, OPT_ELEM_FILE_OPEN, OPT_ELEM_FILE_SAVE, OPT_ELEM_FILE_URL):
                         # text field with additional browse for file button
                         # misc: {width, expand, label_position, fileMask, startDirectory, buttonText, buttonWidth}
-                        width = misc['width'] if 'width' in misc else 400
+                        width = misc['width'] if 'width' in misc else dpi.intPPI(400)
                         expand = misc['expand'] if 'expand' in misc else True
                         label_position = misc['label_position'] if 'label_position' in misc else wx.HORIZONTAL
                         fileMode = wx.SAVE|wx.OVERWRITE_PROMPT if flag == OPT_ELEM_FILE_SAVE else wx.OPEN|wx.FILE_MUST_EXIST
@@ -1309,7 +1316,7 @@ class OptionsDialog(wx.Dialog):
                         if label and label_position == wx.VERTICAL:
                             staticText = wx.StaticText(tabPanel, wx.ID_ANY, label)
                             staticText.SetToolTipString(tip)
-                            itemSizer.Add(staticText, 0, wx.LEFT|wx.RIGHT|wx.TOP|wx.BOTTOM, 2)
+                            itemSizer.Add(staticText, 0, wx.LEFT|wx.RIGHT|wx.TOP|wx.BOTTOM, dpi.intPPI(2))
                             label = ''
                         ctrl = filebrowse.FileBrowseButton(tabPanel, wx.ID_ANY, size=(width,-1),
                             labelText=label,
@@ -1328,13 +1335,13 @@ class OptionsDialog(wx.Dialog):
                             ctrl.label.SetToolTipString(tip)
                         ctrl.Sizer.Children[0].Sizer.Children[2].SetInitSize(buttonWidth, -1)
                         ctrl.Label = Label
-                        itemSizer.Add(ctrl, 0, (wx.EXPAND if expand else 0)|wx.ALIGN_CENTER_VERTICAL|wx.TOP|wx.BOTTOM, 2)
+                        itemSizer.Add(ctrl, 0, (wx.EXPAND if expand else 0)|wx.ALIGN_CENTER_VERTICAL|wx.TOP|wx.BOTTOM, dpi.intPPI(2))
                         itemSizer.AddStretchSpacer()
 
                     elif flag in (OPT_ELEM_DIR, OPT_ELEM_DIR_URL):
                         # text field with additional browse for directory button
                         # misc: (width, expand, label_position, startDirectory, buttonText, buttonWidth)
-                        width = misc['width'] if 'width' in misc else 400
+                        width = misc['width'] if 'width' in misc else dpi.intPPI(400)
                         expand = misc['expand'] if 'expand' in misc else True
                         label_position = misc['label_position'] if 'label_position' in misc else wx.HORIZONTAL
                         startDirectory = (self.GetParent().ExpandVars(misc['startDirectory']) if misc.get('startDirectory')
@@ -1347,7 +1354,7 @@ class OptionsDialog(wx.Dialog):
                         if label and label_position == wx.VERTICAL:
                                 staticText = wx.StaticText(tabPanel, wx.ID_ANY, label)
                                 staticText.SetToolTipString(tip)
-                                itemSizer.Add(staticText, 0, wx.LEFT|wx.RIGHT|wx.TOP|wx.BOTTOM, 2)
+                                itemSizer.Add(staticText, 0, wx.LEFT|wx.RIGHT|wx.TOP|wx.BOTTOM, dpi.intPPI(2))
                                 label = ''
                         ctrl = filebrowse.DirBrowseButton(tabPanel, wx.ID_ANY, size=(width,-1),
                             labelText=label,
@@ -1365,7 +1372,7 @@ class OptionsDialog(wx.Dialog):
                             ctrl.label.SetToolTipString(tip)
                         ctrl.Sizer.Children[0].Sizer.Children[2].SetInitSize(buttonWidth, -1)
                         ctrl.Label = Label
-                        itemSizer.Add(ctrl, 0, (wx.EXPAND if expand else 0)|wx.ALIGN_CENTER_VERTICAL|wx.TOP|wx.BOTTOM, 2)
+                        itemSizer.Add(ctrl, 0, (wx.EXPAND if expand else 0)|wx.ALIGN_CENTER_VERTICAL|wx.TOP|wx.BOTTOM, dpi.intPPI(2))
                         itemSizer.AddStretchSpacer()
 
                     elif flag == OPT_ELEM_RADIO:
@@ -1388,7 +1395,7 @@ class OptionsDialog(wx.Dialog):
                         if tip:
                             ctrl.SetToolTipString(tip)
                         itemSizer = wx.BoxSizer(wx.HORIZONTAL)
-                        itemSizer.Add(ctrl, expand, wx.ALIGN_CENTER_VERTICAL|wx.TOP|wx.BOTTOM, 2)
+                        itemSizer.Add(ctrl, expand, wx.ALIGN_CENTER_VERTICAL|wx.TOP|wx.BOTTOM, dpi.intPPI(2))
 
                     elif flag == OPT_ELEM_LIST:
                         # select an option from a drop-down list
@@ -1414,14 +1421,14 @@ class OptionsDialog(wx.Dialog):
                             staticText.SetToolTipString(tip)
                             ctrl.SetToolTipString(tip)
                         if label_position == wx.HORIZONTAL:
-                            itemSizer.Add(staticText, 0, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, 5)
+                            itemSizer.Add(staticText, 0, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, dpi.intPPI(5))
                             expand_flags = (1, 0) if expand else (0, 0)
-                            itemSizer.Add(ctrl, expand_flags[0], expand_flags[1]|wx.ALIGN_CENTER_VERTICAL|wx.TOP|wx.BOTTOM, 2)
+                            itemSizer.Add(ctrl, expand_flags[0], expand_flags[1]|wx.ALIGN_CENTER_VERTICAL|wx.TOP|wx.BOTTOM, dpi.intPPI(2))
                         else:
                             itemSizer.AddStretchSpacer()
-                            itemSizer.Add(staticText, 0, wx.LEFT|wx.RIGHT|wx.TOP|wx.BOTTOM, 2)
+                            itemSizer.Add(staticText, 0, wx.LEFT|wx.RIGHT|wx.TOP|wx.BOTTOM, dpi.intPPI(2))
                             expand_flags = (0, wx.EXPAND) if expand else (0, 0)
-                            itemSizer.Add(ctrl, expand_flags[0], expand_flags[1]|wx.ALIGN_CENTER_VERTICAL|wx.TOP|wx.BOTTOM, 2)
+                            itemSizer.Add(ctrl, expand_flags[0], expand_flags[1]|wx.ALIGN_CENTER_VERTICAL|wx.TOP|wx.BOTTOM, dpi.intPPI(2))
                             itemSizer.AddStretchSpacer()
 
                     elif flag == OPT_ELEM_BUTTON:
@@ -1438,7 +1445,7 @@ class OptionsDialog(wx.Dialog):
                         #~ ctrl = wxButtons.GenButton(tabPanel, wx.ID_ANY, label=label)
                         #~ ctrl.SetUseFocusIndicator(False)
                         #~ itemSizer.Add(staticText, 0, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, 5)
-                        itemSizer.Add(ctrl, 0, wx.ALIGN_CENTER_VERTICAL|wx.TOP|wx.BOTTOM, 2)
+                        itemSizer.Add(ctrl, 0, wx.ALIGN_CENTER_VERTICAL|wx.TOP|wx.BOTTOM, dpi.intPPI(2))
 
                     elif flag == OPT_ELEM_COLOR:
                         # button for selecting a color
@@ -1453,8 +1460,8 @@ class OptionsDialog(wx.Dialog):
                             staticText.SetToolTipString(tip)
                             ctrl.SetToolTipString(tip)
                         itemSizer = wx.BoxSizer(wx.HORIZONTAL)
-                        itemSizer.Add(staticText, 0, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, 6)
-                        itemSizer.Add(ctrl, 0, wx.ALIGN_CENTER_VERTICAL|wx.TOP|wx.BOTTOM, 2)
+                        itemSizer.Add(staticText, 0, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, dpi.intPPI(6))
+                        itemSizer.Add(ctrl, 0, wx.ALIGN_CENTER_VERTICAL|wx.TOP|wx.BOTTOM, dpi.intPPI(2))
 
                     elif flag == OPT_ELEM_FONT:
                         # button for choosing font
@@ -1481,8 +1488,8 @@ class OptionsDialog(wx.Dialog):
                             staticText.SetToolTipString(tip)
                             ctrl.SetToolTipString(tip)
                         itemSizer = wx.BoxSizer(wx.HORIZONTAL)
-                        itemSizer.Add(staticText, 0, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, 6)
-                        itemSizer.Add(ctrl, 0, wx.ALIGN_CENTER_VERTICAL|wx.EXPAND|wx.TOP|wx.BOTTOM, 2)
+                        itemSizer.Add(staticText, 0, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, dpi.intPPI(6))
+                        itemSizer.Add(ctrl, 0, wx.ALIGN_CENTER_VERTICAL|wx.EXPAND|wx.TOP|wx.BOTTOM, dpi.intPPI(2))
 
                     else: #elif flag == OPT_ELEM_STRING:
                         # regular text field
@@ -1497,28 +1504,28 @@ class OptionsDialog(wx.Dialog):
                             ctrl.SetToolTipString(tip)
                         itemSizer = wx.BoxSizer(label_position)
                         if label_position == wx.HORIZONTAL:
-                            itemSizer.Add(staticText, 0, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, 5)
+                            itemSizer.Add(staticText, 0, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, dpi.intPPI(5))
                             expand_flags = (1, 0) if expand else (0, 0)
-                            itemSizer.Add(ctrl, expand_flags[0], expand_flags[1]|wx.ALIGN_CENTER_VERTICAL|wx.TOP|wx.BOTTOM, 2)
+                            itemSizer.Add(ctrl, expand_flags[0], expand_flags[1]|wx.ALIGN_CENTER_VERTICAL|wx.TOP|wx.BOTTOM, dpi.intPPI(2))
                         else:
                             itemSizer.AddStretchSpacer()
-                            itemSizer.Add(staticText, 0, wx.LEFT|wx.RIGHT|wx.TOP|wx.BOTTOM, 2)
+                            itemSizer.Add(staticText, 0, wx.LEFT|wx.RIGHT|wx.TOP|wx.BOTTOM, dpi.intPPI(2))
                             expand_flags = (0, wx.EXPAND) if expand else (0, 0)
-                            itemSizer.Add(ctrl, expand_flags[0], expand_flags[1]|wx.ALIGN_CENTER_VERTICAL|wx.TOP|wx.BOTTOM, 2)
+                            itemSizer.Add(ctrl, expand_flags[0], expand_flags[1]|wx.ALIGN_CENTER_VERTICAL|wx.TOP|wx.BOTTOM, dpi.intPPI(2))
                             itemSizer.AddStretchSpacer()
 
                     #~ if label.startswith('*'):
                     if label.rstrip(' :').endswith('*'):
                         boolStar = True
                     if flag != OPT_ELEM_SEP: self.controls[key] = (ctrl, flag, nb.GetSelection() if notebook else -1)
-                    colSizer.Add(itemSizer, 1, wx.EXPAND|wx.ALIGN_CENTER_VERTICAL|wx.LEFT|wx.RIGHT, 4)
-                tabSizer.Add(colSizer, 0, wx.EXPAND|wx.ALIGN_CENTER_VERTICAL|wx.TOP|wx.BOTTOM, 4)
+                    colSizer.Add(itemSizer, 1, wx.EXPAND|wx.ALIGN_CENTER_VERTICAL|wx.LEFT|wx.RIGHT, dpi.intPPI(4))
+                tabSizer.Add(colSizer, 0, wx.EXPAND|wx.ALIGN_CENTER_VERTICAL|wx.TOP|wx.BOTTOM, dpi.intPPI(4))
             if boolStar:
                 self.starList.append(tabPanel if notebook else 1)
                 #~ tabSizer.Add((0,0),1)
                 #~ tabSizer.Add(wx.StaticText(tabPanel, wx.ID_ANY, '    '+_('* Requires program restart for full effect')), 0, wx.TOP, 20)
             tabSizerBorder = wx.BoxSizer(wx.VERTICAL)
-            tabSizerBorder.Add(tabSizer, 1, wx.EXPAND|wx.LEFT|wx.RIGHT, 4)
+            tabSizerBorder.Add(tabSizer, 1, wx.EXPAND|wx.LEFT|wx.RIGHT, dpi.intPPI(4))
             tabSizerBorder.Add((-1,4), 0, wx.EXPAND)
             tabPanel.SetSizer(tabSizerBorder)
             tabSizerBorder.Layout()
@@ -1548,15 +1555,16 @@ class OptionsDialog(wx.Dialog):
         # Size the elements
         dlgSizer = wx.BoxSizer(wx.VERTICAL)
         if notebook:
-            dlgSizer.Add(nb, 0, wx.EXPAND|wx.ALL, 5)
+            dlgSizer.Add(nb, 0, wx.EXPAND|wx.ALL, dpi.intPPI(5))
         else:
             dlgSizer.Add(tabPanel, 0, wx.EXPAND|wx.ALL, 0)
-        dlgSizer.Add(btns, 0, wx.EXPAND|wx.ALL, 10)
+        dlgSizer.Add(btns, 0, wx.EXPAND|wx.ALL, dpi.intPPI(10))
         dlgSizer.Fit(self)
         self.Center()
         self.SetSizer(dlgSizer)
         dlgSizer.SetSizeHints(self)
         dlgSizer.Layout()
+        #self.DoLayoutAdaptation() # GPo, fit inside display and greate scrollbars if needed (set global in avsp)
         # Misc
         okay.SetDefault()
         if starText and self.starText is not None:
@@ -1689,6 +1697,7 @@ class ShortcutsDialog(wx.Dialog):
         if title is None:
             title = _('Edit shortcuts')
         wx.Dialog.__init__(self, parent, wx.ID_ANY, title, style=wx.DEFAULT_DIALOG_STYLE|wx.RESIZE_BORDER)
+        dpi.SetFontPPI(self)
         self.parent = parent
         self.shortcutList = copy.deepcopy(shortcutList)#shortcutList[:]
         if exceptionIds is None:
@@ -1745,12 +1754,12 @@ class ShortcutsDialog(wx.Dialog):
         btns.Realize()
         # Size the elements
         dlgSizer = wx.BoxSizer(wx.VERTICAL)
-        dlgSizer.Add(listCtrl, 1, wx.EXPAND|wx.ALL, 5)
+        dlgSizer.Add(listCtrl, 1, wx.EXPAND|wx.ALL, dpi.intPPI(5))
         if submessage is not None:
-            dlgSizer.Add(wx.StaticText(self, wx.ID_ANY, submessage), 0, wx.ALIGN_LEFT|wx.LEFT|wx.BOTTOM, 10)
+            dlgSizer.Add(wx.StaticText(self, wx.ID_ANY, submessage), 0, wx.ALIGN_LEFT|wx.LEFT|wx.BOTTOM, dpi.intPPI(10))
         message = _('Double-click or hit enter on an item in the list to edit the shortcut.')
-        dlgSizer.Add(wx.StaticText(self, wx.ID_ANY, message), 0, wx.ALIGN_CENTER|wx.ALL, 5)
-        dlgSizer.Add(btns, 0, wx.EXPAND|wx.ALL, 10)
+        dlgSizer.Add(wx.StaticText(self, wx.ID_ANY, message), 0, wx.ALIGN_CENTER|wx.ALL, dpi.intPPI(5))
+        dlgSizer.Add(btns, 0, wx.EXPAND|wx.ALL, dpi.intPPI(10))
         self.SetSizerAndFit(dlgSizer)
         width, height = self.GetSize()
         self.SetSize((width, height*2))
@@ -1760,6 +1769,7 @@ class ShortcutsDialog(wx.Dialog):
 
     def OnAdvancedButton(self, event):
         dlg = wx.Dialog(self, wx.ID_ANY, _('Advanced'), style=wx.DEFAULT_DIALOG_STYLE|wx.RESIZE_BORDER)
+        dpi.SetFontPPI(dlg)
         class CheckListCtrl(wx.ListCtrl, listmix.CheckListCtrlMixin):
             def __init__(self, parent):
                 wx.ListCtrl.__init__(self, parent, wx.ID_ANY, style=wx.LC_REPORT)
@@ -1786,12 +1796,12 @@ class ShortcutsDialog(wx.Dialog):
         btns.Realize()
         # Dialog layout
         dlgSizer = wx.BoxSizer(wx.VERTICAL)
-        dlgSizer.Add(checklist, 1, wx.EXPAND|wx.ALL, 5)
+        dlgSizer.Add(checklist, 1, wx.EXPAND|wx.ALL, dpi.intPPI(5))
         if self.advancedInfo:
-            dlgSizer.Add(wx.StaticText(dlg, wx.ID_ANY, self.advancedInfo), 0, wx.LEFT|wx.BOTTOM, 10)
-        dlgSizer.Add(btns, 0, wx.EXPAND|wx.ALL, 10)
+            dlgSizer.Add(wx.StaticText(dlg, wx.ID_ANY, self.advancedInfo), 0, wx.LEFT|wx.BOTTOM, dpi.intPPI(10))
+        dlgSizer.Add(btns, 0, wx.EXPAND|wx.ALL, dpi.intPPI(10))
         dlg.SetSizerAndFit(dlgSizer)
-        width = checklist.GetColumnWidth(0) + checklist.GetColumnWidth(1) + 40
+        width = checklist.GetColumnWidth(0) + checklist.GetColumnWidth(1) + dpi.intPPI(40)
         dlg.SetSize((width, width*3/4))
         if wx.ID_OK == dlg.ShowModal():
             while self.reservedShortcuts:
@@ -1807,6 +1817,7 @@ class ShortcutsDialog(wx.Dialog):
 
     def defineShortcutEditDialog(self):
         dlg = wx.Dialog(self, wx.ID_ANY, _('Edit the keyboard shortcut'))
+        dpi.SetFontPPI(dlg)
         # Menu string label
         dlg.menuLabel = wx.StaticText(dlg, wx.ID_ANY, '')
         # Main controls
@@ -1815,11 +1826,11 @@ class ShortcutsDialog(wx.Dialog):
         dlg.checkBoxShift = wx.CheckBox(dlg, wx.ID_ANY, _('Shift'))
         dlg.listBoxKey = wx.Choice(dlg, wx.ID_ANY, choices=keyStringList)
         sizer = wx.BoxSizer(wx.HORIZONTAL)
-        sizer.Add(dlg.checkBoxCtrl, 0, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, 15)
-        sizer.Add(dlg.checkBoxAlt, 0, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, 15)
-        sizer.Add(dlg.checkBoxShift, 0, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, 15)
-        sizer.Add(wx.StaticText(dlg, wx.ID_ANY, _('Key:')), 0, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, 5)
-        sizer.Add(dlg.listBoxKey, 0, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, 15)
+        sizer.Add(dlg.checkBoxCtrl, 0, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, dpi.intPPI(15))
+        sizer.Add(dlg.checkBoxAlt, 0, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, dpi.intPPI(15))
+        sizer.Add(dlg.checkBoxShift, 0, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, dpi.intPPI(15))
+        sizer.Add(wx.StaticText(dlg, wx.ID_ANY, _('Key:')), 0, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, dpi.intPPI(5))
+        sizer.Add(dlg.listBoxKey, 0, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, dpi.intPPI(15))
         # Standard buttons
         okay  = wx.Button(dlg, wx.ID_OK, _('OK'))
         #~ dlg.Bind(wx.EVT_BUTTON, self.OnEditButtonOK, okay)
@@ -1833,9 +1844,9 @@ class ShortcutsDialog(wx.Dialog):
         btns.Realize()
         # Size the elements
         dlgSizer = wx.BoxSizer(wx.VERTICAL)
-        dlgSizer.Add(dlg.menuLabel, 0, wx.TOP|wx.LEFT, 10)
-        dlgSizer.Add(sizer, 0, wx.EXPAND|wx.ALL, 15)
-        dlgSizer.Add(btns, 0, wx.EXPAND|wx.ALL, 10)
+        dlgSizer.Add(dlg.menuLabel, 0, wx.TOP|wx.LEFT, dpi.intPPI(10))
+        dlgSizer.Add(sizer, 0, wx.EXPAND|wx.ALL, dpi.intPPI(15))
+        dlgSizer.Add(btns, 0, wx.EXPAND|wx.ALL, dpi.intPPI(10))
         dlg.SetSizer(dlgSizer)
         dlgSizer.Fit(dlg)
         # Misc
@@ -1956,7 +1967,8 @@ class EditStringDictDialog(wx.Dialog):
     def __init__(self, parent, infoDict, title='Edit', keyTitle='Key',
                  valueTitle='Value', editable=False, insertable=False,
                  about='', keyChecker=None, valueChecker=None, nag=True):
-        wx.Dialog.__init__(self, parent, wx.ID_ANY, title, size=(500, 300), style=wx.DEFAULT_DIALOG_STYLE|wx.RESIZE_BORDER)
+        wx.Dialog.__init__(self, parent, wx.ID_ANY, title, size=dpi.tuplePPI(500, 300), style=wx.DEFAULT_DIALOG_STYLE|wx.RESIZE_BORDER)
+        dpi.SetFontPPI(self)
         self.infoDict = infoDict.copy()
         self.keyTitle = keyTitle
         self.valueTitle = valueTitle
@@ -2084,6 +2096,7 @@ class EditStringDictDialog(wx.Dialog):
 
     def OnButtonInsert(self, event):
         dlg = wx.Dialog(self, wx.ID_ANY, _('Insert a new item'))
+        dpi.SetFontPPI(dlg)
         sizer = wx.BoxSizer(wx.VERTICAL)
         keyTextCtrl = wx.TextCtrl(dlg, wx.ID_ANY)
         valueTextCtrl = TextCtrl(dlg, wx.ID_ANY, style=wx.TE_MULTILINE|wx.HSCROLL)

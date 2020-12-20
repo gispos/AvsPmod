@@ -12,6 +12,17 @@ GPo source: https://github.com/gispos/AvsPmod
 GPo releases: https://github.com/gispos/AvsPmod/releases
 
 --------------------------
+Version 2.6.5.2 [2020-12-12] GPo
+--------------------------
+* Added context menu to play button (right click)
+* Removed Play video > 'Drop frames'
+-- 'Drop frames' now in the play button context menu
+-- 'Auto' is the old one (video frame rate related)
+-- manually (2 - 16) is nice for fast playback (without filters), I get 1800 fps on maximum speed (but that's not real fps) ;)
+* Again tab bookmarks handling slightly revised. And that's not the end.
+* Synchronisation between 'menu bar' and 'context menu' items 'is item checked' improved.
+
+--------------------------
 Version 2.6.5.1 [2020-12-06] GPo
 --------------------------
 * Set tab bookmarks from session file slightly revised. 

@@ -29,8 +29,12 @@ except NameError: _ = lambda s:s
 name = 'AvsPmod'
 description = _('An AviSynth script editor')
 url = 'http://avspmod.github.io/'
+url2 = 'https://github.com/gispos/AvsPmod/'
 license = 'GNU GPL v2'
-version = '2.6.5.1'
+version = '2.6.5.2'
+
+# stores the dpi scalling factor on startup
+ppi_factor = 1.0
 
 # Used to pass the shared library location to avisynth.py, don't touch
 avisynth_library_dir = ''
@@ -38,3 +42,4 @@ avisynth_library_dir = ''
 # This will be improved on the future refactoring for wxPython Phoenix
 # and VapourSynth
 options = {}
+
