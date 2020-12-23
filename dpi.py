@@ -15,52 +15,63 @@ import wx
 import global_vars
 
 ppi_factor = 1.0
+dpiAware = False
+dpiAwareness = 0
 
-def intPPI(i):
-    return int(ppi_factor * i)
+def intPPI(n):
+    return int(ppi_factor * n)
 
-def floatPPI(f):
-    return float(ppi_factor * f)
+def roundPPI(n):
+    return round(ppi_factor * n)
+
+def floatPPI(n):
+    return ppi_factor * float(n)
 
 def tuplePPI(n1,n2):
     return ((int(ppi_factor * n1), int(ppi_factor * n2)))
 
-def SetFontPPI(obj):
+def SetFontPPI(obj, size_adj=0):
     if ppi_factor > 1:
         font = obj.GetFont()
-        font.SetPointSize(intPPI(font.GetPointSize()))
+        font.SetPointSize(intPPI(font.GetPointSize())+size_adj)
         obj.SetFont(font)
 
 class DPI():
     def __init__(self):
-        self.ppi = 96.0
         self.ppi_factor = 1.0
-        self.DpiAwareness = False
+        self.dpiAware = False
+        self.dpiAwareness = 0
 
     def GetPPIFactor(self, setPPI=False):
         if os.name != 'nt':
             return 1.0
-        if self.DpiAwareness:
+        if self.dpiAware:
             return self.ppi_factor
         pw, ph = wx.ScreenDC().GetPPI()
         if ph < 110:
             ph = 96.0
         try:
-            ctypes.windll.shcore.SetProcessDpiAwareness(2) # Win 10 (mode 2)
-            self.DpiAwareness = True
+            ctypes.windll.shcore.SetProcessDpiAwareness(2) # Win 10 (mode 2) monitor v2 (win10 sizes the non client areas)
+            self.dpiAware = True
+            self.dpiAwareness = 2
         except:
             try:
-                ctypes.windll.user32.SetProcessDPIAware() # Win 8,7 (mode 1)
-                self.DpiAwareness = True
+                ctypes.windll.user32.SetProcessDPIAware() # Win 8,7 (mode 1) windows borders, title bar may be to small
+                self.dpiAware = True
+                self.dpiAwareness = 1
             except:
                 pass
-        if self.DpiAwareness:
+        if self.dpiAware:
             try:
                 self.ppi_factor = float(ph / 96.0)
             except:
                 pass
 
-        self.ppi = ph
+        global dpiAware
+        global dpiAwareness
+        dpiAware = self.dpiAware
+        dpiAwareness = self.dpiAwareness
+
         if setPPI:
             global ppi_factor
             ppi_factor = self.ppi_factor

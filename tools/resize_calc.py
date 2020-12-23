@@ -2,10 +2,15 @@ import os
 import cPickle
 import re
 import wx
+import dpi
+
+intPPI = dpi.intPPI
+tuplePPI = dpi.tuplePPI
 
 class ResizeCalculatorDialog(wx.Dialog):
     def __init__(self, parent, script, input_width, input_height):
         wx.Dialog.__init__(self, parent, wx.ID_ANY, _('Resize calculator'))
+        dpi.SetFontPPI(self)
         self.script = script
         self.input_width = input_width
         self.input_height = input_height
@@ -14,22 +19,22 @@ class ResizeCalculatorDialog(wx.Dialog):
         self.CreateInterface()
         self.SetDefaultValues()
         self.ctrlDict['slider'].SetFocus()
-        
+
     def LoadOptions(self):
         self.options = {}
-        self.optionsFilename = os.path.join(self.GetParent().toolsfolder, 
+        self.optionsFilename = os.path.join(self.GetParent().toolsfolder,
                                             __name__ + '.dat')
         if os.path.isfile(self.optionsFilename):
             f = open(self.optionsFilename, mode='rb')
             self.options = cPickle.load(f)
             f.close()
-            
+
     def SaveOptions(self):
         # Save the options file
         f = open(self.optionsFilename, mode='wb')
         cPickle.dump(self.options, f, protocol=0)
         f.close()
-        
+
     def SetDefaultValues(self):
         wmod = self.options.setdefault('wmod', 16)
         hmod = self.options.setdefault('hmod', 16)
@@ -57,47 +62,48 @@ class ResizeCalculatorDialog(wx.Dialog):
         self.final_width = -1
         self.final_height = -1
         self.CalculateResize()
-        
+
     def CreateInterface(self):
+        int5 = intPPI(5)
         self.ctrlDict = {}
         # Input
         sizerInput = wx.StaticBoxSizer(wx.StaticBox(self, wx.ID_ANY, _('Input')), wx.VERTICAL)
-        gridsizer = wx.FlexGridSizer(cols=2, hgap=5, vgap=5)
+        gridsizer = wx.FlexGridSizer(cols=2, hgap=int5, vgap=int5)
         staticText = wx.StaticText(self, wx.ID_ANY, _('Video resolution:'))
-        textCtrlx = wx.TextCtrl(self, wx.ID_ANY, size=(50, -1))
-        textCtrly = wx.TextCtrl(self, wx.ID_ANY, size=(50, -1))
+        textCtrlx = wx.TextCtrl(self, wx.ID_ANY, size=(intPPI(50), -1))
+        textCtrly = wx.TextCtrl(self, wx.ID_ANY, size=(intPPI(50), -1))
         textCtrlx.Bind(wx.EVT_TEXT, lambda event: self.CalculateRangeAndResize())
         textCtrly.Bind(wx.EVT_TEXT, lambda event: self.CalculateResize())
         self.ctrlDict['widthi'] = textCtrlx
         self.ctrlDict['heighti'] = textCtrly
         sizer = wx.BoxSizer(wx.HORIZONTAL)
-        sizer.Add(textCtrlx, 0, wx.RIGHT, 5)
-        sizer.Add(wx.StaticText(self, wx.ID_ANY, 'x'), 0, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, 5)
-        sizer.Add(textCtrly, 0, wx.RIGHT, 5)
+        sizer.Add(textCtrlx, 0, wx.RIGHT, int5)
+        sizer.Add(wx.StaticText(self, wx.ID_ANY, 'x'), 0, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, int5)
+        sizer.Add(textCtrly, 0, wx.RIGHT, int5)
         gridsizer.Add(staticText, 0, wx.ALIGN_CENTER_VERTICAL)
         gridsizer.Add(sizer, 0, wx.EXPAND)
         staticText = wx.StaticText(self, wx.ID_ANY, _('Pixel aspect ratio:'))
-        textCtrlx = wx.TextCtrl(self, wx.ID_ANY, size=(40, -1))
-        textCtrly = wx.TextCtrl(self, wx.ID_ANY, size=(40, -1))
+        textCtrlx = wx.TextCtrl(self, wx.ID_ANY, size=(intPPI(40), -1))
+        textCtrly = wx.TextCtrl(self, wx.ID_ANY, size=(intPPI(40), -1))
         textCtrlx.Bind(wx.EVT_TEXT, lambda event: self.CalculateResize())
         textCtrly.Bind(wx.EVT_TEXT, lambda event: self.CalculateResize())
-        button = wx.Button(self, wx.ID_ANY, '...', size=(30,-1))
+        button = wx.Button(self, wx.ID_ANY, '...', size=(intPPI(30),-1))
         self.Bind(wx.EVT_BUTTON, self.OnButtonPAR, button)
         self.ctrlDict['pari_x'] = textCtrlx
         self.ctrlDict['pari_y'] = textCtrly
         sizer = wx.BoxSizer(wx.HORIZONTAL)
-        sizer.Add(textCtrlx, 0, wx.RIGHT, 5)
-        sizer.Add(wx.StaticText(self, wx.ID_ANY, ':'), 0, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, 5)
-        sizer.Add(textCtrly, 0, wx.RIGHT, 5)
+        sizer.Add(textCtrlx, 0, wx.RIGHT, int5)
+        sizer.Add(wx.StaticText(self, wx.ID_ANY, ':'), 0, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, int5)
+        sizer.Add(textCtrly, 0, wx.RIGHT, int5)
         sizer.Add(button, 0, wx.RIGHT, 0)
         gridsizer.Add(staticText, 0, wx.ALIGN_CENTER_VERTICAL)
         gridsizer.Add(sizer, 0, wx.EXPAND)
-        sizerInput.Add(gridsizer, 0, wx.EXPAND|wx.ALL, 5)
+        sizerInput.Add(gridsizer, 0, wx.EXPAND|wx.ALL, int5)
         # Results
         sizerResults = wx.StaticBoxSizer(wx.StaticBox(self, wx.ID_ANY, _('Results')), wx.VERTICAL)
         textCtrl = wx.StaticText(self, wx.ID_ANY, '640 x 480')
         font = textCtrl.GetFont()
-        font.SetPointSize(font.GetPointSize()+2)
+        font.SetPointSize(intPPI(font.GetPointSize()+2))
         font.SetWeight(wx.FONTWEIGHT_BOLD)
         textCtrl.SetFont(font)
         self.ctrlDict['resize'] = textCtrl
@@ -106,12 +112,12 @@ class ResizeCalculatorDialog(wx.Dialog):
         sizer.Add(textCtrl, 0, wx.ALIGN_CENTER|wx.RIGHT, 0)
         sizer.Add((-1,-1), 1, wx.EXPAND)
         #~ sizerResults.Add(sizer, 0, wx.ALL, 5)
-        sizerResults.Add(sizer, 1, wx.EXPAND|wx.BOTTOM, 5)
+        sizerResults.Add(sizer, 1, wx.EXPAND|wx.BOTTOM, int5)
         slider = wx.Slider(self, wx.ID_ANY, 100, 0, 200)
         slider.Bind(wx.EVT_SCROLL, lambda event: self.CalculateResize())
-        buttonLeft = wx.Button(self, wx.ID_ANY, '<<', size=(24, 20))
+        buttonLeft = wx.Button(self, wx.ID_ANY, '<<', size=(intPPI(24), intPPI(20)))
         self.Bind(wx.EVT_BUTTON, lambda event: self.FindNextResize(forward=False), buttonLeft)
-        buttonRight = wx.Button(self, wx.ID_ANY, '>>', size=(24, 20))
+        buttonRight = wx.Button(self, wx.ID_ANY, '>>', size=(intPPI(24), intPPI(20)))
         self.Bind(wx.EVT_BUTTON, lambda event: self.FindNextResize(forward=True), buttonRight)
         sizer = wx.BoxSizer(wx.HORIZONTAL)
         sizer.Add(buttonLeft, 0, wx.ALL, 0)
@@ -125,10 +131,10 @@ class ResizeCalculatorDialog(wx.Dialog):
         sizer = wx.BoxSizer(wx.HORIZONTAL)
         #~ sizer.Add(textCtrl, 0, wx.RIGHT, 0)
         #~ sizer.Add((-1,-1), 1, wx.EXPAND)
-        sizer.Add(staticText, 0, wx.RIGHT, 5)
-        sizer.Add(textCtrl2, 0, wx.RIGHT, 2)
+        sizer.Add(staticText, 0, wx.RIGHT, int5)
+        sizer.Add(textCtrl2, 0, wx.RIGHT, intPPI(2))
         #~ sizer.Add(wx.StaticText(self, wx.ID_ANY, '%'), 0, wx.RIGHT, 0)
-        sizerResults.Add(sizer, 0, wx.EXPAND|wx.ALL, 5)
+        sizerResults.Add(sizer, 0, wx.EXPAND|wx.ALL, int5)
         # Settings
         sizerSettings = wx.StaticBoxSizer(wx.StaticBox(self, wx.ID_ANY, _('Settings')), wx.VERTICAL)
         info = (
@@ -143,18 +149,18 @@ class ResizeCalculatorDialog(wx.Dialog):
             self.ctrlDict[xkey] = textCtrlx
             self.ctrlDict[ykey] = textCtrly
             sizer = wx.BoxSizer(wx.HORIZONTAL)
-            sizer.Add(staticText, 0, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, 5)
-            sizer.Add(textCtrlx, 0, wx.EXPAND|wx.RIGHT, 2)
-            sizer.Add(wx.StaticText(self, wx.ID_ANY, divider), 0, wx.EXPAND|wx.RIGHT, 2)
+            sizer.Add(staticText, 0, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, int5)
+            sizer.Add(textCtrlx, 0, wx.EXPAND|wx.RIGHT, intPPI(2))
+            sizer.Add(wx.StaticText(self, wx.ID_ANY, divider), 0, wx.EXPAND|wx.RIGHT, intPPI(2))
             sizer.Add(textCtrly, 0, wx.EXPAND|wx.RIGHT, 0)
-            sizerSettings.Add(sizer, 0, wx.EXPAND|wx.LEFT|wx.BOTTOM, 5)
+            sizerSettings.Add(sizer, 0, wx.EXPAND|wx.LEFT|wx.BOTTOM, int5)
         staticText = wx.StaticText(self, wx.ID_ANY, _('Max search aspect ratio error:'))
         textCtrl = wx.StaticText(self, wx.ID_ANY, '1.0%')
         self.ctrlDict['searcherror'] = textCtrl
         sizer = wx.BoxSizer(wx.HORIZONTAL)
-        sizer.Add(staticText, 0, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, 5)
+        sizer.Add(staticText, 0, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, int5)
         sizer.Add(textCtrl, 0, wx.EXPAND|wx.RIGHT, 0)
-        sizerSettings.Add(sizer, 0, wx.EXPAND|wx.LEFT|wx.BOTTOM, 5)
+        sizerSettings.Add(sizer, 0, wx.EXPAND|wx.LEFT|wx.BOTTOM, int5)
         button =wx.Button(self, wx.ID_ANY, _('Configure'))
         self.Bind(wx.EVT_BUTTON, lambda event: self.ConfigureOptions(), button)
         sizer = wx.BoxSizer(wx.HORIZONTAL)
@@ -170,13 +176,13 @@ class ResizeCalculatorDialog(wx.Dialog):
         stdbtns.Realize()
         # Total
         dlgSizer = wx.BoxSizer(wx.VERTICAL)
-        dlgSizer.Add(sizerInput, 0, wx.EXPAND|wx.ALL, 5)
-        dlgSizer.Add(sizerResults, 0, wx.EXPAND|wx.ALL, 5)
-        dlgSizer.Add(sizerSettings, 0, wx.EXPAND|wx.ALL, 5)
-        dlgSizer.Add(stdbtns, 0, wx.EXPAND|wx.ALL, 5)
+        dlgSizer.Add(sizerInput, 0, wx.EXPAND|wx.ALL, int5)
+        dlgSizer.Add(sizerResults, 0, wx.EXPAND|wx.ALL, int5)
+        dlgSizer.Add(sizerSettings, 0, wx.EXPAND|wx.ALL, int5)
+        dlgSizer.Add(stdbtns, 0, wx.EXPAND|wx.ALL, int5)
         self.SetSizer(dlgSizer)
         dlgSizer.Fit(self)
-        
+
     def CreatePixelAspectRatioMenu(self):
         menuInfo = (
             (_('compute from .d2v'), None, None),
@@ -211,7 +217,7 @@ class ResizeCalculatorDialog(wx.Dialog):
                     handler = self.OnMenuPixelAspectRatio
                 menuItem = self.par_menu.Append(wx.ID_ANY, label, '')
                 self.Bind(wx.EVT_MENU, handler, menuItem)
-                    
+
     def ComputePARfromD2V(self, par_x='', par_y=''):
         for s in re.findall('".+?.d2v"', self.script):
             d2vfilename = s.strip('"')
@@ -238,7 +244,7 @@ class ResizeCalculatorDialog(wx.Dialog):
                 break
         self.ctrlDict['pari_x'].SetValue(str(par_x))
         self.ctrlDict['pari_y'].SetValue(str(par_y))
-        
+
     def CalculateResize(self):
         try:
             widthi = float(self.ctrlDict['widthi'].GetValue())
@@ -264,7 +270,7 @@ class ResizeCalculatorDialog(wx.Dialog):
             self.ctrlDict['error'].SetLabel('')
         self.final_width = width
         self.final_height = height
-        
+
     def ComputeWidthHeightError(self, target_width, widthi, heighti, pari_x, pari_y, wmod, hmod, paro_x, paro_y):
         aspectratio = (widthi / heighti) * (pari_x / pari_y)
         width = round(target_width / wmod) * wmod
@@ -272,7 +278,7 @@ class ResizeCalculatorDialog(wx.Dialog):
         newaspectratio = width * paro_x / paro_y / float(height)
         error = 100 * abs(aspectratio - newaspectratio) / float(aspectratio)
         return (width, height, error)
-        
+
     def FindNextResize(self, forward=True):
         searcherror = self.options['searcherror']
         widthi = float(self.ctrlDict['widthi'].GetValue())
@@ -304,7 +310,7 @@ class ResizeCalculatorDialog(wx.Dialog):
                 self.CalculateResize()
                 break
         self.ctrlDict['slider'].SetFocus()
-        
+
     def CalculateRangeAndResize(self):
         try:
             # Get old slider values
@@ -328,7 +334,7 @@ class ResizeCalculatorDialog(wx.Dialog):
         except:
             pass
         self.CalculateResize()
-        
+
     def GetAvisynthResize(self):
         try:
             strWidth = '%i' % self.final_width
@@ -336,7 +342,7 @@ class ResizeCalculatorDialog(wx.Dialog):
         except ValueError:
             strWidth = strHeight = '-1'
         return self.options['avisynthresize'].replace('%width%', strWidth).replace('%height%', strHeight)#+'\n'
-        
+
     def ConfigureOptions(self):
         dlg = ResizeCalculatorOptionsDialog(self)
         ID = dlg.ShowModal()
@@ -353,22 +359,23 @@ class ResizeCalculatorDialog(wx.Dialog):
             self.CalculateRangeAndResize()
             self.GetSizer().Layout()
         dlg.Destroy()
-        
+
     def OnButtonPAR(self, event):
         win = event.GetEventObject()
         posx, posy = win.GetPositionTuple()
         pos = (posx, posy+win.GetSize()[1])
         self.PopupMenu(self.par_menu, pos)
-        
+
     def OnMenuPixelAspectRatio(self, event):
         label = self.par_menu.GetLabel(event.GetId())
         par_x, par_y = label.split('-')[1].split(':', 1)
         self.ctrlDict['pari_x'].SetValue(par_x.strip())
         self.ctrlDict['pari_y'].SetValue(par_y.strip())
-        
+
 class ResizeCalculatorOptionsDialog(wx.Dialog):
     def __init__(self, parent):
         wx.Dialog.__init__(self, parent, wx.ID_ANY, _('Configure options'))
+        dpi.SetFontPPI(self)
         self.parent = parent
         self.options = parent.options.copy()
         self.ctrlDict = {}
@@ -376,14 +383,15 @@ class ResizeCalculatorOptionsDialog(wx.Dialog):
         self.CreatePixelAspectRatioMenu()
         self.SetDefaultValues()
         self.Center()
-        
+
     def CreateInterface(self):
+        int5 = intPPI(5)
         generalSizer = wx.BoxSizer(wx.VERTICAL)
         # Settings
         info = (
-            ('paro_x', 'paro_y', _('Target pixel aspect ratio:'), 40, ':', None),
-            ('wmod', 'hmod', _('Resize block constraints:'), 30, 'x', None),
-            ('minresize', 'maxresize', _('Resize percent ranges:'), 30, '-', '%'),
+            ('paro_x', 'paro_y', _('Target pixel aspect ratio:'), intPPI(40), ':', None),
+            ('wmod', 'hmod', _('Resize block constraints:'), intPPI(30), 'x', None),
+            ('minresize', 'maxresize', _('Resize percent ranges:'), intPPI(30), '-', '%'),
         )
         for xkey, ykey, label, ctrlwidth, divider, extra in info:
             staticText = wx.StaticText(self, wx.ID_ANY, label)
@@ -392,38 +400,38 @@ class ResizeCalculatorOptionsDialog(wx.Dialog):
             self.ctrlDict[xkey] = textCtrlx
             self.ctrlDict[ykey] = textCtrly
             sizer = wx.BoxSizer(wx.HORIZONTAL)
-            sizer.Add(staticText, 0, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, 5)
+            sizer.Add(staticText, 0, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, int5)
             sizer.Add(textCtrlx, 0, wx.EXPAND|wx.RIGHT, 0)
             if extra is None:
-                sizer.Add(wx.StaticText(self, wx.ID_ANY, divider), 0, wx.ALIGN_CENTER_VERTICAL|wx.LEFT|wx.RIGHT, 4)
+                sizer.Add(wx.StaticText(self, wx.ID_ANY, divider), 0, wx.ALIGN_CENTER_VERTICAL|wx.LEFT|wx.RIGHT, intPPI(4))
                 sizer.Add(textCtrly, 0, wx.EXPAND|wx.RIGHT, 0)
             else:
-                sizer.Add(wx.StaticText(self, wx.ID_ANY, extra), 0, wx.ALIGN_CENTER_VERTICAL|wx.LEFT, 2)
-                sizer.Add(wx.StaticText(self, wx.ID_ANY, divider), 0, wx.ALIGN_CENTER_VERTICAL|wx.LEFT|wx.RIGHT, 4)
+                sizer.Add(wx.StaticText(self, wx.ID_ANY, extra), 0, wx.ALIGN_CENTER_VERTICAL|wx.LEFT, intPPI(2))
+                sizer.Add(wx.StaticText(self, wx.ID_ANY, divider), 0, wx.ALIGN_CENTER_VERTICAL|wx.LEFT|wx.RIGHT, intPPI(4))
                 sizer.Add(textCtrly, 0, wx.EXPAND|wx.RIGHT, 0)
-                sizer.Add(wx.StaticText(self, wx.ID_ANY, extra), 0, wx.ALIGN_CENTER_VERTICAL|wx.LEFT, 2)
+                sizer.Add(wx.StaticText(self, wx.ID_ANY, extra), 0, wx.ALIGN_CENTER_VERTICAL|wx.LEFT, intPPI(2))
             if xkey == 'paro_x':
-                button = wx.Button(self, wx.ID_ANY, '...', size=(30,-1))
+                button = wx.Button(self, wx.ID_ANY, '...', size=(intPPI(30),-1))
                 self.Bind(wx.EVT_BUTTON, self.OnButtonPAR, button)
-                sizer.Add(button, 0, wx.LEFT, 5)
-            generalSizer.Add(sizer, 0, wx.EXPAND|wx.LEFT|wx.TOP|wx.RIGHT, 5)
+                sizer.Add(button, 0, wx.LEFT, int5)
+            generalSizer.Add(sizer, 0, wx.EXPAND|wx.LEFT|wx.TOP|wx.RIGHT, int5)
         staticText = wx.StaticText(self, wx.ID_ANY, _('Max search aspect ratio error:'))
-        textCtrl = wx.TextCtrl(self, wx.ID_ANY, size=(40, -1))
+        textCtrl = wx.TextCtrl(self, wx.ID_ANY, size=(intPPI(40), -1))
         self.ctrlDict['searcherror'] = textCtrl
         sizer = wx.BoxSizer(wx.HORIZONTAL)
-        sizer.Add(staticText, 0, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, 5)
+        sizer.Add(staticText, 0, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, int5)
         sizer.Add(textCtrl, 0, wx.EXPAND|wx.RIGHT, 0)
-        sizer.Add(wx.StaticText(self, wx.ID_ANY, '%'), 0, wx.ALIGN_CENTER_VERTICAL|wx.LEFT, 2)
-        generalSizer.Add(sizer, 0, wx.EXPAND|wx.LEFT|wx.TOP|wx.RIGHT, 5)
-        generalSizer.Add(wx.StaticLine(self), 0, wx.EXPAND|wx.ALL, 5)
+        sizer.Add(wx.StaticText(self, wx.ID_ANY, '%'), 0, wx.ALIGN_CENTER_VERTICAL|wx.LEFT, intPPI(2))
+        generalSizer.Add(sizer, 0, wx.EXPAND|wx.LEFT|wx.TOP|wx.RIGHT, int5)
+        generalSizer.Add(wx.StaticLine(self), 0, wx.EXPAND|wx.ALL, int5)
         # Avisynth resize
         staticText = wx.StaticText(self, wx.ID_ANY, _('Avisynth resize:'))
         textCtrl = wx.TextCtrl(self, wx.ID_ANY)
         self.ctrlDict['avisynthresize'] = textCtrl
         sizer = wx.BoxSizer(wx.HORIZONTAL)
         sizer.Add(staticText, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALL, 0)
-        sizer.Add(textCtrl, 1, wx.EXPAND|wx.LEFT, 5)
-        generalSizer.Add(sizer, 0, wx.EXPAND|wx.ALL, 5)
+        sizer.Add(textCtrl, 1, wx.EXPAND|wx.LEFT, int5)
+        generalSizer.Add(sizer, 0, wx.EXPAND|wx.ALL, int5)
         # Standard buttons
         okay  = wx.Button(self, wx.ID_OK, _('OK'))
         cancel = wx.Button(self, wx.ID_CANCEL, _('Cancel'))
@@ -431,14 +439,14 @@ class ResizeCalculatorOptionsDialog(wx.Dialog):
         stdbtns.AddButton(okay)
         stdbtns.AddButton(cancel)
         stdbtns.Realize()
-        generalSizer.Add(wx.StaticLine(self), 0, wx.EXPAND|wx.ALL, 5)
-        generalSizer.Add(stdbtns, 0, wx.EXPAND|wx.ALL, 5)
+        generalSizer.Add(wx.StaticLine(self), 0, wx.EXPAND|wx.ALL, int5)
+        generalSizer.Add(stdbtns, 0, wx.EXPAND|wx.ALL, int5)
         # Total
         dlgSizer = wx.BoxSizer(wx.VERTICAL)
-        dlgSizer.Add(generalSizer, 0, wx.EXPAND|wx.ALL, 10)
+        dlgSizer.Add(generalSizer, 0, wx.EXPAND|wx.ALL, intPPI(10))
         self.SetSizer(dlgSizer)
         dlgSizer.Fit(self)
-        
+
     def CreatePixelAspectRatioMenu(self):
         menuInfo = (
             ('PC', 1, 1),
@@ -471,7 +479,7 @@ class ResizeCalculatorOptionsDialog(wx.Dialog):
                     handler = self.OnMenuPixelAspectRatio
                 menuItem = self.par_menu.Append(wx.ID_ANY, label, '')
                 self.Bind(wx.EVT_MENU, handler, menuItem)
-                
+
     def SetDefaultValues(self):
         self.ctrlDict['paro_x'].SetValue('%i' % self.options['paro_x'])
         self.ctrlDict['paro_y'].SetValue('%i' % self.options['paro_y'])
@@ -481,19 +489,19 @@ class ResizeCalculatorOptionsDialog(wx.Dialog):
         self.ctrlDict['maxresize'].SetValue('%i' % self.options['maxresize'])
         self.ctrlDict['searcherror'].SetValue('%.1f' % self.options['searcherror'])
         self.ctrlDict['avisynthresize'].SetValue(self.options['avisynthresize'])
-        
+
     def OnButtonPAR(self, event):
         win = event.GetEventObject()
         posx, posy = win.GetPositionTuple()
         pos = (posx, posy+win.GetSize()[1])
         self.PopupMenu(self.par_menu, pos)
-            
+
     def OnMenuPixelAspectRatio(self, event):
         label = self.par_menu.GetLabel(event.GetId())
         par_x, par_y = label.split('-')[1].split(':', 1)
         self.ctrlDict['paro_x'].SetValue(par_x.strip())
         self.ctrlDict['paro_y'].SetValue(par_y.strip())
-        
+
     def GetOptionsDict(self):
         info = (
             ('paro_x', int),
@@ -513,8 +521,8 @@ class ResizeCalculatorOptionsDialog(wx.Dialog):
             except ValueError:
                 pass
         return self.options
-        
-def avsp_run():    
+
+def avsp_run():
     text = avsp.GetText().strip()
     parent = avsp.GetWindow()
     if text:
@@ -522,7 +530,7 @@ def avsp_run():
             avsp.MsgBox(_('The current Avisynth script contains errors.'), _('Error'))
             return
         width = avsp.GetVideoWidth()
-        height = avsp.GetVideoHeight()        
+        height = avsp.GetVideoHeight()
     else:
         width = 1280
         height = 720
@@ -532,4 +540,3 @@ def avsp_run():
         avsp.InsertText(dlg.GetAvisynthResize(), -2)
         avsp.ShowVideoFrame(forceRefresh=True)
     dlg.Destroy()
-    

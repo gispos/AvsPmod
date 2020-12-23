@@ -8,10 +8,15 @@ import subprocess
 import cPickle
 import wx
 import MP3Info
+import dpi
+
+intPPI = dpi.intPPI
+tuplePPI = dpi.tuplePPI
 
 class CompressVideoDialog(wx.Dialog):
     def __init__(self, parent, inputname='', framecount=None, framerate=None, framewidth=None, frameheight=None):
         wx.Dialog.__init__(self, parent, wx.ID_ANY, _('Encode video'))
+        dpi.SetFontPPI(self)
         self.inputname = inputname
         if not inputname:
             index = parent.scriptNotebook.GetSelection()
@@ -83,6 +88,8 @@ class CompressVideoDialog(wx.Dialog):
                             self.presets[key] += line+'\n'
 
     def CreateInterface(self):
+        int5 = intPPI(5)
+        int10 = intPPI(10)
         self.ctrlDict = {}
         # Files
         sizer_System = wx.StaticBoxSizer(wx.StaticBox(self, wx.ID_ANY, _('System settings')), wx.VERTICAL)
@@ -90,24 +97,24 @@ class CompressVideoDialog(wx.Dialog):
             ('video_input', _('Input file:'), self.OnButtonSelectInput),
             ('video_output', _('Output file:'), self.OnButtonSelectOutput),
         )
-        gridSizer = wx.FlexGridSizer(cols=3, hgap=5, vgap=5)
+        gridSizer = wx.FlexGridSizer(cols=3, hgap=int5, vgap=int5)
         gridSizer.AddGrowableCol(1)
         for key, label, handler in fieldInfo:
             staticText = wx.StaticText(self, wx.ID_ANY, label)
-            textCtrl = wx.TextCtrl(self, size=(300,-1))
+            textCtrl = wx.TextCtrl(self, size=(intPPI(300),-1))
             textCtrl.Bind(wx.EVT_TEXT, self.OnTextChangeCommandLine)
-            button = wx.Button(self, wx.ID_ANY, '...', size=(30,-1), name=key)
+            button = wx.Button(self, wx.ID_ANY, '...', size=(intPPI(0),-1), name=key)
             self.Bind(wx.EVT_BUTTON, handler, button)
             self.ctrlDict[key] = textCtrl
             gridSizer.Add(staticText, 0, wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL)
             gridSizer.Add(textCtrl, 0, wx.EXPAND)
             gridSizer.Add(button, 0, wx.EXPAND)
-        sizer_System.Add(gridSizer, 1, wx.EXPAND|wx.ALL, 5)
+        sizer_System.Add(gridSizer, 1, wx.EXPAND|wx.ALL, int5)
         # Compression
         sizer_Compression = wx.BoxSizer(wx.HORIZONTAL)
         sizer_CompressionA = wx.StaticBoxSizer(wx.StaticBox(self, wx.ID_ANY, _('Compression settings')), wx.VERTICAL)
         staticText = wx.StaticText(self, wx.ID_ANY, _('Bitrate (kbits/sec):'))
-        textCtrl = wx.TextCtrl(self, size=(50,-1))
+        textCtrl = wx.TextCtrl(self, size=(intPPI(50),-1))
         textCtrl.Bind(wx.EVT_TEXT, self.OnTextChangeCommandLine)
         button = wx.Button(self, wx.ID_ANY, _('calculate'))
         self.Bind(wx.EVT_BUTTON, self.OnButtonCalculate, button)
@@ -118,46 +125,46 @@ class CompressVideoDialog(wx.Dialog):
         self.ctrlDict['ffmpeg'] = (_('Quality CRF (0-51):'), 21, 0, 51)
         staticTextQty = wx.StaticText(self, wx.ID_ANY, self.ctrlDict['x264'][0], style=wx.ALIGN_RIGHT|wx.ST_NO_AUTORESIZE)
         self.ctrlDict['quality_label'] = staticTextQty
-        spinCtrlQty = wx.SpinCtrl(self, size=(50,-1), style=wx.SP_ARROW_KEYS|wx.ALIGN_CENTRE)
+        spinCtrlQty = wx.SpinCtrl(self, size=(intPPI(50),-1), style=wx.SP_ARROW_KEYS|wx.ALIGN_CENTRE)
         spinCtrlQty.Bind(wx.EVT_TEXT, self.OnTextChangeCommandLine)
         self.ctrlDict['video_quality'] = spinCtrlQty
-        gridsizer = wx.GridBagSizer(hgap=5, vgap=10)
+        gridsizer = wx.GridBagSizer(hgap=int5, vgap=int10)
         gridsizer.Add(staticText, pos=(0,0), flag=wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL)
-        gridsizer.Add(staticTextQty, pos=(1,0), flag=wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL)
-        gridsizer.Add(textCtrl, pos=(0,1))
-        gridsizer.Add(button, pos=(0,2))
-        gridsizer.Add(spinCtrlQty, pos=(1,1))
+        gridsizer.Add(staticTextQty, pos=tuplePPI(1,0), flag=wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL)
+        gridsizer.Add(textCtrl, pos=tuplePPI(0,1))
+        gridsizer.Add(button, pos=tuplePPI(0,2))
+        gridsizer.Add(spinCtrlQty, pos=tuplePPI(1,1))
 
-        sizer_CompressionA.Add((5,-1), 1, wx.EXPAND|wx.ALL, 0)
-        sizer_CompressionA.Add(gridsizer, 0, wx.ALIGN_CENTER|wx.ALL, 5)
-        sizer_CompressionA.Add((5,-1), 1, wx.EXPAND|wx.ALL, 0)
+        sizer_CompressionA.Add((int5,-1), 1, wx.EXPAND|wx.ALL, 0)
+        sizer_CompressionA.Add(gridsizer, 0, wx.ALIGN_CENTER|wx.ALL, int5)
+        sizer_CompressionA.Add((int5,-1), 1, wx.EXPAND|wx.ALL, 0)
         sizer_CompressionB = wx.StaticBoxSizer(wx.StaticBox(self, wx.ID_ANY, _('Additional settings')), wx.VERTICAL)
         staticTextCredits = wx.StaticText(self, wx.ID_ANY, _('Credits start frame:'))
-        textCtrl = wx.TextCtrl(self, size=(75,-1))
+        textCtrl = wx.TextCtrl(self, size=(intPPI(75),-1))
         textCtrl.Bind(wx.EVT_TEXT, self.OnTextCreditsChange)
         self.ctrlDict['credits_frame'] = textCtrl
         staticTextPAR = wx.StaticText(self, wx.ID_ANY, _('Pixel aspect ratio:'))
-        textCtrl1 = wx.TextCtrl(self, size=(30, -1))
+        textCtrl1 = wx.TextCtrl(self, size=(intPPI(30), -1))
         textCtrl1.Bind(wx.EVT_TEXT, self.OnTextChangeCommandLine)
         self.ctrlDict['par_x'] = textCtrl1
-        textCtrl2 = wx.TextCtrl(self, size=(30, -1))
+        textCtrl2 = wx.TextCtrl(self, size=(intPPI(30), -1))
         textCtrl2.Bind(wx.EVT_TEXT, self.OnTextChangeCommandLine)
         self.ctrlDict['par_y'] = textCtrl2
-        button = wx.Button(self, wx.ID_ANY, '...', size=(30,-1))
+        button = wx.Button(self, wx.ID_ANY, '...', size=(intPPI(30),-1))
         self.Bind(wx.EVT_BUTTON, self.OnCalculateSAR, button)
         self.CreatePixelAspectRatioMenu()
         sizer3 = wx.BoxSizer(wx.HORIZONTAL)
         sizer3.Add(textCtrl1, 0, wx.ALL, 0)
-        sizer3.Add(wx.StaticText(self, wx.ID_ANY, ':'), 0, wx.ALIGN_CENTER_VERTICAL|wx.LEFT|wx.RIGHT, 5)
+        sizer3.Add(wx.StaticText(self, wx.ID_ANY, ':'), 0, wx.ALIGN_CENTER_VERTICAL|wx.LEFT|wx.RIGHT, int5)
         sizer3.Add(textCtrl2, 0, wx.ALL, 0)
-        sizer3.Add(button, 0, wx.LEFT, 5)
-        gridsizer = wx.GridBagSizer(hgap=5, vgap=10)
+        sizer3.Add(button, 0, wx.LEFT, int5)
+        gridsizer = wx.GridBagSizer(hgap=int5, vgap=int10)
         gridsizer.Add(staticTextCredits, pos=(0,0), flag=wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL)
-        gridsizer.Add(staticTextPAR, pos=(1,0), flag=wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL)
-        gridsizer.Add(textCtrl, pos=(0,1))
-        gridsizer.Add(sizer3, pos=(1,1))
-        sizer_CompressionB.Add(gridsizer, 0, wx.ALL, 5)
-        sizer_Compression.Add(sizer_CompressionA, 1, wx.ALIGN_CENTER|wx.EXPAND|wx.RIGHT, 5)
+        gridsizer.Add(staticTextPAR, pos=(intPPI(1),0), flag=wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL)
+        gridsizer.Add(textCtrl, pos=(0,intPPI(1)))
+        gridsizer.Add(sizer3, pos=tuplePPI(1,1))
+        sizer_CompressionB.Add(gridsizer, 0, wx.ALL, int5)
+        sizer_Compression.Add(sizer_CompressionA, 1, wx.ALIGN_CENTER|wx.EXPAND|wx.RIGHT, int5)
         sizer_Compression.Add(sizer_CompressionB, 0, wx.EXPAND|wx.ALL, 0)
         # Command line
         sizer_Command_line = wx.StaticBoxSizer(wx.StaticBox(self, wx.ID_ANY, _('Command line settings')), wx.VERTICAL)
@@ -168,23 +175,23 @@ class CompressVideoDialog(wx.Dialog):
         self.Bind(wx.EVT_BUTTON, self.OnButtonConfigure, button)
         self.ctrlDict['preset'] = choiceBox
         sizer = wx.BoxSizer(wx.HORIZONTAL)
-        sizer.Add(staticText, 0, wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, 5)
+        sizer.Add(staticText, 0, wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, int5)
         sizer.Add(choiceBox, 0, wx.ALL, 0)
-        sizer.Add((10,-1), 1, wx.EXPAND)
+        sizer.Add((int10,-1), 1, wx.EXPAND)
         sizer.Add(button, 0, wx.ALIGN_RIGHT|wx.ALL, 0)
-        sizer_Command_line.Add(sizer, 0, wx.EXPAND|wx.TOP|wx.LEFT|wx.RIGHT, 5)
-        textCtrl = wx.TextCtrl(self, wx.ID_ANY, style=wx.TE_MULTILINE|wx.TE_DONTWRAP, size=(-1,80))
+        sizer_Command_line.Add(sizer, 0, wx.EXPAND|wx.TOP|wx.LEFT|wx.RIGHT, int5)
+        textCtrl = wx.TextCtrl(self, wx.ID_ANY, style=wx.TE_MULTILINE|wx.TE_DONTWRAP, size=(-1,intPPI(80)))
         self.ctrlDict['commandline'] = textCtrl
-        sizer_Command_line.Add(textCtrl, 1, wx.EXPAND|wx.ALL, 5)
+        sizer_Command_line.Add(textCtrl, 1, wx.EXPAND|wx.ALL, int5)
         # Run
         button = wx.Button(self, wx.ID_ANY, _('Run'))
         self.Bind(wx.EVT_BUTTON, self.OnButtonRun, button)
         # Total
         dlgSizer = wx.BoxSizer(wx.VERTICAL)
-        dlgSizer.Add(sizer_System, 0, wx.EXPAND|wx.ALL, 5)
-        dlgSizer.Add(sizer_Compression, 0, wx.EXPAND|wx.LEFT|wx.RIGHT, 5)
-        dlgSizer.Add(sizer_Command_line, 0, wx.EXPAND|wx.ALL, 5)
-        dlgSizer.Add(button, 0, wx.ALIGN_CENTER|wx.ALL, 10)
+        dlgSizer.Add(sizer_System, 0, wx.EXPAND|wx.ALL, int5)
+        dlgSizer.Add(sizer_Compression, 0, wx.EXPAND|wx.LEFT|wx.RIGHT, int5)
+        dlgSizer.Add(sizer_Command_line, 0, wx.EXPAND|wx.ALL, int5)
+        dlgSizer.Add(button, 0, wx.ALIGN_CENTER|wx.ALL, int10)
         self.SetSizer(dlgSizer)
         dlgSizer.Fit(self)
 
@@ -457,6 +464,7 @@ class CompressVideoDialog(wx.Dialog):
 
     def GetUnknownPaths(self, commandline):
         # Parse the command line for exe arguments
+        int5 = intPPI(5)
         exeOptions = self.options.setdefault('exe_options', {})
         unknownPathKeys = []
         for s in commandline.strip().split('\n'):
@@ -500,11 +508,11 @@ class CompressVideoDialog(wx.Dialog):
         dlg = wx.Dialog(self, wx.ID_ANY, _('Exe pathnames'))
         dlg.ctrlDict = {}
         # Path pickers
-        gridSizer = wx.FlexGridSizer(cols=3, hgap=5, vgap=5)
+        gridSizer = wx.FlexGridSizer(cols=3, hgap=int5, vgap=int5)
         for key in unknownPathKeys:
             staticText = wx.StaticText(dlg, wx.ID_ANY, key)
-            textCtrl = wx.TextCtrl(dlg, wx.ID_ANY, size=(200, -1))
-            button = wx.Button(dlg, wx.ID_ANY, '...', size=(30, -1))
+            textCtrl = wx.TextCtrl(dlg, wx.ID_ANY, size=(intPPI(200), -1))
+            button = wx.Button(dlg, wx.ID_ANY, '...', size=(intPPI(30), -1))
             button.textCtrl = textCtrl
             dlg.Bind(wx.EVT_BUTTON, self.OnButtonSelectExe, button)
             dlg.ctrlDict[key] = textCtrl
@@ -513,18 +521,20 @@ class CompressVideoDialog(wx.Dialog):
             gridSizer.Add(button, 0, wx.EXPAND)
         # Standard buttons
         okay  = wx.Button(dlg, wx.ID_OK, _('OK'))
+        dpi.SetFontPPI(okay)
         okay.SetDefault()
         cancel = wx.Button(dlg, wx.ID_CANCEL, _('Cancel'))
+        dpi.SetFontPPI(cancel)
         btns = wx.StdDialogButtonSizer()
         btns.AddButton(okay)
         btns.AddButton(cancel)
         btns.Realize()
         # Total
         dlgSizer = wx.BoxSizer(wx.VERTICAL)
-        dlgSizer.Add((-1,-1), 0, wx.EXPAND|wx.ALL, 5)
-        dlgSizer.Add(gridSizer, 0, wx.EXPAND|wx.ALL, 5)
-        dlgSizer.Add((-1,50), 0, wx.EXPAND|wx.ALL, 5)
-        dlgSizer.Add(btns, 0, wx.EXPAND|wx.ALL, 5)
+        dlgSizer.Add((-1,-1), 0, wx.EXPAND|wx.ALL, int5)
+        dlgSizer.Add(gridSizer, 0, wx.EXPAND|wx.ALL, int5)
+        dlgSizer.Add((-1,intPPI(50)), 0, wx.EXPAND|wx.ALL, int5)
+        dlgSizer.Add(btns, 0, wx.EXPAND|wx.ALL, int5)
         dlg.SetSizer(dlgSizer)
         dlgSizer.Fit(dlg)
         dlg.Center()
@@ -751,13 +761,18 @@ class CompressVideoDialog(wx.Dialog):
 class CompressVideoOptionsDialog(wx.Dialog):
     def __init__(self, parent):
         wx.Dialog.__init__(self, parent, wx.ID_ANY, _('Configure options'))
+        dpi.SetFontPPI(self)
         self.options = parent.options.copy()
         self.ctrlDict = {}
         self.CreateInterface()
         self.Center()
 
     def CreateInterface(self):
+        int5 = intPPI(5)
         noteBook = wx.Notebook(self, wx.ID_ANY, style=wx.NO_BORDER)
+        #if dpi.ppi_factor > 1: # not needed if on init font size set
+            #dpi.SetFontPPI(noteBook)
+            #noteBook.SetTabSize((-1, intPPI(23)))
         # General tab
         tabPanel = wx.Panel(noteBook, wx.ID_ANY)
         noteBook.AddPage(tabPanel, _('General'), select=True)
@@ -765,9 +780,9 @@ class CompressVideoOptionsDialog(wx.Dialog):
         #~ subtitlesTypes = self.options.setdefault('subtitletypes', ('.idx', '.srt', '.sub'))
         #~ 'audio_bitrate'
         #~ 'audio_format'
-        gridSizer = wx.FlexGridSizer(cols=2, hgap=5, vgap=5)
+        gridSizer = wx.FlexGridSizer(cols=2, hgap=int5, vgap=int5)
         staticText = wx.StaticText(tabPanel, wx.ID_ANY, _('Credits warning minutes:'))
-        textCtrl = wx.TextCtrl(tabPanel, wx.ID_ANY, size=(50, -1))
+        textCtrl = wx.TextCtrl(tabPanel, wx.ID_ANY, size=(intPPI(50), -1))
         textCtrl.SetValue(str(self.options['credits_warning']))
         self.ctrlDict['credits_warning'] = textCtrl
         gridSizer.Add(staticText, 0, wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL)
@@ -784,7 +799,7 @@ class CompressVideoOptionsDialog(wx.Dialog):
         self.ctrlDict['auto_par_d2v'] = checkBox1
         self.ctrlDict['append_comments'] = checkBox2
         self.ctrlDict['add_output_newtab'] = checkBox3
-        gridSizer2 = wx.FlexGridSizer(cols=2, hgap=5, vgap=5)
+        gridSizer2 = wx.FlexGridSizer(cols=2, hgap=int5, vgap=int5)
         staticText = wx.StaticText(tabPanel, wx.ID_ANY, _('Encoder priority:'))
         textCtrl = wx.Choice(tabPanel, wx.ID_ANY, choices=('low', 'normal', 'high', 'realtime', 'abovenormal', 'belownormal'))
         textCtrl.SetStringSelection(self.options['priority'])
@@ -792,16 +807,16 @@ class CompressVideoOptionsDialog(wx.Dialog):
         gridSizer2.Add(staticText, 0, wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL)
         gridSizer2.Add(textCtrl, 0, wx.EXPAND)
         tabSizer = wx.BoxSizer(wx.VERTICAL)
-        tabSizer.Add((-1,-1), 0, wx.EXPAND|wx.ALL, 5)
-        tabSizer.Add(checkBox0, 0, wx.EXPAND|wx.ALL, 5)
-        tabSizer.Add(checkBox1, 0, wx.EXPAND|wx.ALL, 5)
-        tabSizer.Add(checkBox2, 0, wx.EXPAND|wx.ALL, 5)
-        tabSizer.Add(checkBox3, 0, wx.EXPAND|wx.ALL, 5)
-        tabSizer.Add((-1,-1), 0, wx.EXPAND|wx.ALL, 5)
-        tabSizer.Add(gridSizer, 0, wx.EXPAND|wx.ALL, 5)
-        tabSizer.Add((-1,-1), 0, wx.EXPAND|wx.ALL, 5)
-        tabSizer.Add(gridSizer2, 0, wx.EXPAND|wx.ALL, 5)
-        tabSizer.Add((-1,100), wx.EXPAND|wx.ALL, 0)
+        tabSizer.Add((-1,-1), 0, wx.EXPAND|wx.ALL, int5)
+        tabSizer.Add(checkBox0, 0, wx.EXPAND|wx.ALL, int5)
+        tabSizer.Add(checkBox1, 0, wx.EXPAND|wx.ALL, int5)
+        tabSizer.Add(checkBox2, 0, wx.EXPAND|wx.ALL, int5)
+        tabSizer.Add(checkBox3, 0, wx.EXPAND|wx.ALL, int5)
+        tabSizer.Add((-1,-1), 0, wx.EXPAND|wx.ALL, int5)
+        tabSizer.Add(gridSizer, 0, wx.EXPAND|wx.ALL, int5)
+        tabSizer.Add((-1,-1), 0, wx.EXPAND|wx.ALL, int5)
+        tabSizer.Add(gridSizer2, 0, wx.EXPAND|wx.ALL, int5)
+        tabSizer.Add((-1,intPPI(100)), wx.EXPAND|wx.ALL, 0)
         tabPanel.SetSizer(tabSizer)
         # Encoder tabs
         exeNames = self.options['exe_options'].keys()
@@ -809,12 +824,12 @@ class CompressVideoOptionsDialog(wx.Dialog):
         for name in exeNames:
             tabPanel = wx.Panel(noteBook, wx.ID_ANY)
             noteBook.AddPage(tabPanel, os.path.splitext(name)[0])
-            gridSizer = wx.FlexGridSizer(cols=3, hgap=5, vgap=5)
+            gridSizer = wx.FlexGridSizer(cols=3, hgap=int5, vgap=int5)
             gridSizer.AddGrowableCol(1)
             staticText = wx.StaticText(tabPanel, wx.ID_ANY, _('Path to %(name)s:') % locals())
-            textCtrl = wx.TextCtrl(tabPanel, size=(200,-1))
+            textCtrl = wx.TextCtrl(tabPanel, size=(intPPI(200),-1))
             textCtrl.SetValue(self.options['exe_options'][name]['path'])
-            button = wx.Button(tabPanel, wx.ID_ANY, '...', size=(30,-1))
+            button = wx.Button(tabPanel, wx.ID_ANY, '...', size=(intPPI(30),-1))
             self.Bind(wx.EVT_BUTTON, self.OnButtonSelectExe, button)
             button.textCtrl = textCtrl
             gridSizer.Add(staticText, 0, wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL)
@@ -827,20 +842,22 @@ class CompressVideoOptionsDialog(wx.Dialog):
             gridSizer.Add(staticText, 0, wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL)
             gridSizer.Add(textCtrl2, 0, wx.EXPAND)
             tabSizer = wx.BoxSizer(wx.VERTICAL)
-            tabSizer.Add(gridSizer, 0, wx.EXPAND|wx.ALL, 5)
+            tabSizer.Add(gridSizer, 0, wx.EXPAND|wx.ALL, int5)
             tabPanel.SetSizer(tabSizer)
         # Standard buttons
         okay  = wx.Button(self, wx.ID_OK, _('OK'))
+        #dpi.SetFontPPI(okay)
         okay.SetDefault()
         cancel = wx.Button(self, wx.ID_CANCEL, _('Cancel'))
+        #dpi.SetFontPPI(cancel)
         btns = wx.StdDialogButtonSizer()
         btns.AddButton(okay)
         btns.AddButton(cancel)
         btns.Realize()
         # Total
         dlgSizer = wx.BoxSizer(wx.VERTICAL)
-        dlgSizer.Add(noteBook, 0, wx.EXPAND|wx.ALL, 5)
-        dlgSizer.Add(btns, 0, wx.EXPAND|wx.ALL, 5)
+        dlgSizer.Add(noteBook, 0, wx.EXPAND|wx.ALL, int5)
+        dlgSizer.Add(btns, 0, wx.EXPAND|wx.ALL, int5)
         self.SetSizer(dlgSizer)
         dlgSizer.Fit(self)
 
@@ -874,6 +891,7 @@ class CompressVideoOptionsDialog(wx.Dialog):
 class BitrateCalcDialog(wx.Dialog):
     def __init__(self, parent, defaultdir=''):
         wx.Dialog.__init__(self, parent, wx.ID_ANY, _('Bitrate Calculator'))
+        dpi.SetFontPPI(self)
         self.ctrlDict = {}
         self.defaultdir = defaultdir
         self.audiofilename = None
@@ -881,6 +899,7 @@ class BitrateCalcDialog(wx.Dialog):
         self.CreateInterface()
 
     def CreateInterface(self):
+        int5 = intPPI(5)
         # Output info
         sizer_Target = wx.StaticBoxSizer(wx.StaticBox(self, wx.ID_ANY, _('Output info')), wx.VERTICAL)
         staticText = wx.StaticText(self, wx.ID_ANY, _('Total size:'))
@@ -889,7 +908,7 @@ class BitrateCalcDialog(wx.Dialog):
         textCtrl.Bind(wx.EVT_COMBOBOX, self.OnComboBoxBitrate)
         self.ctrlDict['target_size'] = textCtrl
         sizer = wx.BoxSizer(wx.HORIZONTAL)
-        sizer.Add(staticText, 0, wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, 5)
+        sizer.Add(staticText, 0, wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, int5)
         sizer.Add(textCtrl, 0, wx.ALL, 0)
         #~ sizer_Target.Add(sizer, 0, wx.ALL, 5)
         staticText = wx.StaticText(self, wx.ID_ANY, _('Container:'))
@@ -899,14 +918,14 @@ class BitrateCalcDialog(wx.Dialog):
         textCtrl.GetValue = textCtrl.GetStringSelection
         self.ctrlDict['container'] = textCtrl
         #~ sizer = wx.BoxSizer(wx.HORIZONTAL)
-        sizer.Add((10,-1), 0, wx.ALL, 0)
-        sizer.Add(staticText, 0, wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, 5)
+        sizer.Add((intPPI(10),-1), 0, wx.ALL, 0)
+        sizer.Add(staticText, 0, wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, int5)
         sizer.Add(textCtrl, 0, wx.ALL, 0)
-        sizer_Target.Add(sizer, 0, wx.ALL, 5)
+        sizer_Target.Add(sizer, 0, wx.ALL, int5)
         # Video info
         sizer_Video = wx.StaticBoxSizer(wx.StaticBox(self, wx.ID_ANY, _('Video info')), wx.VERTICAL)
         staticText = wx.StaticText(self, wx.ID_ANY, _('Framecount:'))
-        textCtrl = wx.TextCtrl(self, size=(75,-1))
+        textCtrl = wx.TextCtrl(self, size=(intPPI(75),-1))
         textCtrl.Bind(wx.EVT_TEXT, self.OnTextChangeBitrate)
         staticText2 = wx.StaticText(self, wx.ID_ANY, _('FPS:'))
         textCtrl2 = wx.ComboBox(self, wx.ID_ANY, '', choices=('23.976', '24.000', '25.000', '29.970', '30.000'), style=wx.CB_DROPDOWN)
@@ -916,29 +935,29 @@ class BitrateCalcDialog(wx.Dialog):
         self.ctrlDict['framecount'] = textCtrl
         self.ctrlDict['framerate'] = textCtrl2
         sizer = wx.BoxSizer(wx.HORIZONTAL)
-        sizer.Add(staticText, 0, wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, 5)
-        sizer.Add(textCtrl, 0, wx.RIGHT, 20)
-        sizer.Add(staticText2, 0, wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, 5)
+        sizer.Add(staticText, 0, wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, int5)
+        sizer.Add(textCtrl, 0, wx.RIGHT, intPPI(20))
+        sizer.Add(staticText2, 0, wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, int5)
         sizer.Add(textCtrl2, 0, wx.ALL, 0)
-        sizer_Video.Add(sizer, 0, wx.ALL, 5)
+        sizer_Video.Add(sizer, 0, wx.ALL, int5)
         # Audio info
         sizer_Audio = wx.StaticBoxSizer(wx.StaticBox(self, wx.ID_ANY, _('Audio info')), wx.VERTICAL)
         staticText = wx.StaticText(self, wx.ID_ANY, _('Audio file:'))
         textCtrl = wx.TextCtrl(self)
         textCtrl.Bind(wx.EVT_TEXT, self.OnTextChangeBitrate)
-        button = wx.Button(self, wx.ID_ANY, '...', size=(30,-1))
+        button = wx.Button(self, wx.ID_ANY, '...', size=(intPPI(30),-1))
         self.Bind(wx.EVT_BUTTON, self.OnButtonSelectInputAudio, button)
         self.ctrlDict['audio_input'] = textCtrl
         sizer = wx.BoxSizer(wx.HORIZONTAL)
-        sizer.Add(staticText, 0, wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, 5)
-        sizer.Add(textCtrl, 1, wx.EXPAND|wx.RIGHT, 5)
+        sizer.Add(staticText, 0, wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, int5)
+        sizer.Add(textCtrl, 1, wx.EXPAND|wx.RIGHT, int5)
         sizer.Add(button, 0, wx.RIGHT, 0)
-        sizer_Audio.Add(sizer, 1, wx.EXPAND|wx.ALL, 5)
+        sizer_Audio.Add(sizer, 1, wx.EXPAND|wx.ALL, int5)
         checkBox = wx.CheckBox(self, wx.ID_ANY, _('Compress audio'))
         checkBox.Bind(wx.EVT_CHECKBOX, self.OnCheckBoxAudioCompression)
         self.ctrlDict['audio_compress'] = checkBox
-        sizer_Audio.Add((-1,5), 0, wx.ALL, 0)
-        sizer_Audio.Add(checkBox, 0, wx.ALL, 5)
+        sizer_Audio.Add((-1,int5), 0, wx.ALL, 0)
+        sizer_Audio.Add(checkBox, 0, wx.ALL, int5)
         staticText = wx.StaticText(self, wx.ID_ANY, _('Audio bitrate:'))
         textCtrl = wx.ComboBox(self, wx.ID_ANY, choices=('320 kbps', '256 kbps', '192 kbps', '128 kpbs', '96 kpbs', '32 kbps'), style=wx.CB_DROPDOWN)
         textCtrl.Bind(wx.EVT_TEXT, self.OnTextChangeBitrate)
@@ -954,24 +973,24 @@ class BitrateCalcDialog(wx.Dialog):
         self.ctrlDict['audio_bitrate'] = textCtrl
         self.ctrlDict['audio_format'] = textCtrl2
         sizer = wx.BoxSizer(wx.HORIZONTAL)
-        sizer.Add(staticText, 0, wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, 5)
-        sizer.Add(textCtrl, 0, wx.RIGHT, 5)
-        sizer.Add(staticText2, 0, wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL|wx.LEFT|wx.RIGHT, 5)
-        sizer.Add(textCtrl2, 0, wx.RIGHT, 5)
-        sizer_Audio.Add(sizer, 0, wx.EXPAND|wx.ALL, 5)
+        sizer.Add(staticText, 0, wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, int5)
+        sizer.Add(textCtrl, 0, wx.RIGHT, int5)
+        sizer.Add(staticText2, 0, wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL|wx.LEFT|wx.RIGHT, int5)
+        sizer.Add(textCtrl2, 0, wx.RIGHT, int5)
+        sizer_Audio.Add(sizer, 0, wx.EXPAND|wx.ALL, int5)
         # Subtitles info
         sizer_Subtitle = wx.StaticBoxSizer(wx.StaticBox(self, wx.ID_ANY, _('Subtitles info')), wx.VERTICAL)
         staticText = wx.StaticText(self, wx.ID_ANY, _('Subtitles file:'))
         textCtrl = wx.TextCtrl(self)
         textCtrl.Bind(wx.EVT_TEXT, self.OnTextChangeBitrate)
-        button = wx.Button(self, wx.ID_ANY, '...', size=(30,-1))
+        button = wx.Button(self, wx.ID_ANY, '...', size=(intPPI(30),-1))
         self.Bind(wx.EVT_BUTTON, self.OnButtonSelectInputSubtitles, button)
         self.ctrlDict['subtitles_input'] = textCtrl
         sizer = wx.BoxSizer(wx.HORIZONTAL)
-        sizer.Add(staticText, 0, wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, 5)
-        sizer.Add(textCtrl, 1, wx.EXPAND|wx.RIGHT, 5)
+        sizer.Add(staticText, 0, wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, int5)
+        sizer.Add(textCtrl, 1, wx.EXPAND|wx.RIGHT, int5)
         sizer.Add(button, 0, wx.RIGHT, 0)
-        sizer_Subtitle.Add(sizer, 1, wx.EXPAND|wx.ALL, 5)
+        sizer_Subtitle.Add(sizer, 1, wx.EXPAND|wx.ALL, int5)
         # Results
         sizer_Results = wx.StaticBoxSizer(wx.StaticBox(self, wx.ID_ANY, _('Results')), wx.VERTICAL)
         fieldInfo = (
@@ -983,10 +1002,10 @@ class BitrateCalcDialog(wx.Dialog):
             ('overhead_size', _('Overhead size:')),
             ('bitrate', _('Bitrate:')),
         )
-        gridSizer = wx.FlexGridSizer(cols=2, hgap=5, vgap=5)
+        gridSizer = wx.FlexGridSizer(cols=2, hgap=int5, vgap=int5)
         for key, label in fieldInfo:
             if not key:
-                gridSizer.Add((-1,5), 0)
+                gridSizer.Add((-1,int5), 0)
                 gridSizer.Add((-1,-1), 0)
                 continue
             staticText = wx.StaticText(self, wx.ID_ANY, label)
@@ -994,7 +1013,7 @@ class BitrateCalcDialog(wx.Dialog):
                 textCtrl = wx.StaticText(self, wx.ID_ANY, '')
                 textCtrl.SetValue = textCtrl.SetLabel
             else:
-                textCtrl = wx.TextCtrl(self, wx.ID_ANY, size=(100,-1), style=wx.TE_READONLY)
+                textCtrl = wx.TextCtrl(self, wx.ID_ANY, size=(intPPI(100),-1), style=wx.TE_READONLY)
                 #~ textCtrl.SetBackgroundColour(wx.SystemSettings.GetColour(wx.SYS_COLOUR_3DFACE))
             if key == 'bitrate':
                 font = staticText.GetFont()
@@ -1005,23 +1024,25 @@ class BitrateCalcDialog(wx.Dialog):
             self.ctrlDict[key] = textCtrl
             gridSizer.Add(staticText, 0, wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL)
             gridSizer.Add(textCtrl, 0, wx.ALL, 0)
-        sizer_Results.Add(gridSizer, 0, wx.ALIGN_CENTER|wx.ALL, 5)
+        sizer_Results.Add(gridSizer, 0, wx.ALIGN_CENTER|wx.ALL, int5)
         # Standard buttons
         okay  = wx.Button(self, wx.ID_OK, _('OK'))
+        #dpi.SetFontPPI(okay) set BitrateCalcDialog
         okay.SetDefault()
         cancel = wx.Button(self, wx.ID_CANCEL, _('Cancel'))
+        #dpi.SetFontPPI(cancel) set BitrateCalcDialog
         btns = wx.StdDialogButtonSizer()
         btns.AddButton(okay)
         btns.AddButton(cancel)
         btns.Realize()
         # Total
         dlgSizer = wx.BoxSizer(wx.VERTICAL)
-        dlgSizer.Add(sizer_Target, 0, wx.EXPAND|wx.TOP|wx.LEFT|wx.RIGHT, 5)
-        dlgSizer.Add(sizer_Video, 0, wx.EXPAND|wx.TOP|wx.LEFT|wx.RIGHT, 5)
-        dlgSizer.Add(sizer_Audio, 0, wx.EXPAND|wx.TOP|wx.LEFT|wx.RIGHT, 5)
-        dlgSizer.Add(sizer_Subtitle, 0, wx.EXPAND|wx.TOP|wx.LEFT|wx.RIGHT, 5)
-        dlgSizer.Add(sizer_Results, 0, wx.EXPAND|wx.TOP|wx.LEFT|wx.RIGHT, 5)
-        dlgSizer.Add(btns, 0, wx.EXPAND|wx.ALL, 5)
+        dlgSizer.Add(sizer_Target, 0, wx.EXPAND|wx.TOP|wx.LEFT|wx.RIGHT, int5)
+        dlgSizer.Add(sizer_Video, 0, wx.EXPAND|wx.TOP|wx.LEFT|wx.RIGHT, int5)
+        dlgSizer.Add(sizer_Audio, 0, wx.EXPAND|wx.TOP|wx.LEFT|wx.RIGHT, int5)
+        dlgSizer.Add(sizer_Subtitle, 0, wx.EXPAND|wx.TOP|wx.LEFT|wx.RIGHT, int5)
+        dlgSizer.Add(sizer_Results, 0, wx.EXPAND|wx.TOP|wx.LEFT|wx.RIGHT, int5)
+        dlgSizer.Add(btns, 0, wx.EXPAND|wx.ALL, int5)
         self.SetSizer(dlgSizer)
         dlgSizer.Fit(self)
         self.Center()
