@@ -12,6 +12,24 @@ GPo source: https://github.com/gispos/AvsPmod
 GPo releases: https://github.com/gispos/AvsPmod/releases
 
 --------------------------
+Version 2.6.6.0 [2021-01-05] GPo, Happy New Year Edition
+--------------------------
+* Added to tab context menu 'Auto preview' find it out ;)
+* Tabs shown an indictor if clip not initialized (preview not ok)  '>' 
+** Preview filter, fast slider preview, fast compare preview. please open the examplePreviewFilter.avs (.txt)
+* The annoying behavior when rearranging the tabs fixed (scripts are initialized that do not yet have a clip)
+* User sliders
+-- the window interface revised (flicker)
+-- slider direct update with preview filters (optional)
+-- new menus in the context menu, check it out
+-- new fold option 'Fold or restore last order', under main options
+-- fixed user sliders makes two steps on the arrow buttons
+* New russian translations file, thanks to Doom9 user 'Shinkiro'
+* New menu 'Help' > 'Preview filter example'
+-- opens the examplePreviewFilter.avs in AvsPmod or shows the .txt version if not found.
+* and other changes
+
+--------------------------
 Version 2.6.5.3 [2020-12-23] GPo
 --------------------------
 * Options > Misc > 'Use large video controls' replaced by options > Misc 2 > 'DPI scaling video controls'

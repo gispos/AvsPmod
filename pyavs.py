@@ -40,6 +40,7 @@ import sys
 import os
 import ctypes
 import re
+import wx
 
 x86_64 = sys.maxsize > 2**32
 if x86_64:
@@ -137,6 +138,7 @@ class AvsClipBase:
         self.current_frame = -1
         self.pBits = None
         self.display_clip = None
+        self.preview_filter = False
         self.ptrY = self.ptrU = self.ptrV = None
         # Avisynth script properties
         self.Width = -1
@@ -351,9 +353,12 @@ class AvsClipBase:
     def __del__(self):
         if self.initialized:
             self.display_frame = None
+            self.preview_filter = False
             self.src_frame = None
             self.display_clip = None
             self.env.set_var("avsp_raw_clip", None)
+            self.env.set_var("avsp_filter_clip", None)
+            self.preview_filter = False
             self.clip = None
             if __debug__:
                 print(u"Deleting allocated video memory for '{0}'".format(self.name))
@@ -404,6 +409,9 @@ class AvsClipBase:
         self.display_clip = self.clip
         self.RGB48 = False
         self.bit_depth = bit_depth
+        if self.preview_filter:
+            self.preview_filter = False
+            self.env.set_var("avsp_filter_clip", None)
         if bit_depth:
             try:
                 if bit_depth == 'rgb48': # TODO
@@ -465,6 +473,76 @@ class AvsClipBase:
         if not self._ConvertToRGB():
             return self.CreateErrorClip(display_clip_error=True)
         return True
+
+    def CreateFilterClip(self, args=''):
+        def Error(err):
+            self.env.set_var("avsp_filter_clip", None)
+            if wx.IsBusy():
+                wx.EndBusyCursor()
+            wx.MessageBox(err, "Preview filter")
+
+        if not args or not self.clip or self.error_message is not None:
+            return
+        """
+        try:
+            if isinstance(self.env.get_var("avsp_filter_clip"), avisynth.AVS_Clip):
+                self.env.set_var("avsp_filter_clip", None)
+        except:
+            pass
+        """
+        self.env.set_var("avsp_filter_clip", None)
+        self.env.set_var("avsp_filter_clip", self.clip)
+
+        args = ('avsp_filter_clip\n' + args)
+        try:
+            clip = self.env.invoke("Eval", args)
+        except:
+            if self.error_message is None:
+                err = self.env.get_error()
+                if not err:
+                    err = "Preview filter error: Not a clip"
+                Error(err)
+            return
+        if not isinstance(clip, avisynth.AVS_Clip):
+            if self.error_message is None:
+                Error("Preview filter error: Not a clip")
+            return
+        vi = clip.get_video_info()
+        if (vi.width != self.DisplayWidth) or (vi.height != self.DisplayHeight):
+            clip = None
+            Error("Preview filter error: \nPreview-Clip must have the same width and height")
+            return
+
+        args = [clip, self.matrix, self.interlaced]
+        try:
+            clip = self.env.invoke("ConvertToRGB32", args)
+        except:
+            Error("Preview filter error: ConvertToRGB failed")
+            clip = None
+            return
+        if not isinstance(clip, avisynth.AVS_Clip):
+            Error("Preview filter error: ConvertToRGB failed")
+            return
+        vi = clip.get_video_info()
+        if (vi.width != self.DisplayWidth) or (vi.height != self.DisplayHeight):
+            clip = None
+            Error("Preview filter error: \nPreview-Clip must have the same width and height")
+            return
+        self.preview_filter = True
+        self.display_clip = clip
+        self.current_frame = -1
+        return True
+
+    def KillFilterClip(self):
+        self.preview_filter = False
+        if not self.initialized:
+            return
+        try:
+            if isinstance(self.env.get_var("avsp_filter_clip"), avisynth.AVS_Clip):
+                self.env.set_var("avsp_filter_clip", None)
+                self.CreateDisplayClip(self.matrix, self.interlaced, False, self.bit_depth)
+        except:
+            pass
 
     def _GetFrame(self, frame):
         if self.initialized:

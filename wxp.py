@@ -467,26 +467,28 @@ class Frame(wx.Frame):
                 menu.AppendSeparator()
                 menu.Remove(menu.Append(wx.ID_ANY, '0',).GetId()) # wxGTK fix
                 continue
-            if nItems > 7:
-                raise
-            defaults = ('', '', None, '', wx.ITEM_NORMAL, None, self)
-            label, shortcut, handler, status, attr, state, bindwindow = eachMenuInfo + defaults[nItems:]
+            if nItems > 8:
+                raise                                                 # GPo 2020, set custom ID (nice for submenus)
+            defaults = ('', '', None, '', wx.ITEM_NORMAL, None, self, wx.ID_ANY)
+            label, shortcut, handler, status, attr, state, bindwindow, wxID = eachMenuInfo + defaults[nItems:]
+            if not bindwindow or bindwindow is None:
+                bindwindow = self
             # Special case: submenu
             if handler is None: #not isinstance(handler, FunctionType):
                 submenu = self.createMenu(shortcut, '%s -> %s'% (name, label), shortcutList, oldShortcuts, backup)
-                menu.AppendMenu(wx.ID_ANY, label, submenu, status)
+                menu.AppendMenu(wxID, label, submenu, status)
                 continue
             elif handler == -1:
                 submenu = shortcut #self.createMenu(shortcut, '%s -> %s'% (name, label), shortcutList, oldShortcuts, bindwindow)
-                menu.AppendMenu(wx.ID_ANY, label, submenu, status)
+                menu.AppendMenu(wxID, label, submenu, status)
                 continue
             # Get the id and type (normal, checkbox, radio)
             if attr in (wx.ITEM_CHECK, wx.ITEM_RADIO):
                 kind = attr
-                id = wx.ID_ANY
+                id = wxID
             elif attr == wx.ITEM_NORMAL:
                 kind = attr
-                id = wx.ID_ANY
+                id = wxID
             elif type(attr) is tuple:
                 kind, state, id = attr
             else:
@@ -1151,7 +1153,8 @@ class OptionsDialog(wx.Dialog):
         if title is None:
             title = _('Program Settings')
         wx.Dialog.__init__(self, parent, wx.ID_ANY, title,
-                           style=wx.DEFAULT_DIALOG_STYLE|wx.RESIZE_BORDER)
+                           style=wx.DEFAULT_DIALOG_STYLE|wx.RESIZE_BORDER|wx.NO_FULL_REPAINT_ON_RESIZE)
+        #self.SetDoubleBuffered(True)
         dpi.SetFontPPI(self)
         self.options = options.copy()
         self.optionsOriginal = options
@@ -1162,7 +1165,8 @@ class OptionsDialog(wx.Dialog):
         if notebook:
             nb = self.nb = Notebook(self, wx.ID_ANY, style=wx.NO_BORDER,
                                     invert_scroll=invert_scroll)
-            #nb.SetDoubleBuffered(True) # bug in wx
+
+            #nb.SetDoubleBuffered(True) # bug in wx radioboxes not drawing
         for tabInfo in dlgInfo:
             if notebook:
                 tabPanel = wx.Panel(nb, wx.ID_ANY)

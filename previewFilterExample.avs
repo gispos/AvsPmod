@@ -1,0 +1,76 @@
+/*
+        GPo, 2021.01.03
+        Examples of preview filter in AvsPmod.  
+
+        Avisynth filters that do not require a high CPU load are suitable as preview filters. 
+        The faster the avisynth filters are, the faster the preview can be created
+        It doesn't make sense to use MCTemporalDenoise in a preview filter. Suitable filters are sharpness, colors or similar filters
+        Preview filters are always processed as last filter, but 'prefetch' in the preview area only affects the preview filter. 
+        Outside of this, 'prefetch' only affects the source filter.
+        You cannot use resize filters in the preview filters, the source clip size must be the same as the preview filter size. An Error will be shown.
+
+        Up to 5 filter sets can be created, each preview filter set must be declared as follows.
+*/
+
+# Youre source and source filters.
+#AviSource("Bla Bla.avi")
+#MCTemporalDenoise()
+# and now the fast preview filters
+
+/**avsp_filter
+Levels(0, 1.000, 255, 0, 255, coring=true)
+Tweak(hue=0.0, sat=1.0, bright=0, cont=1.0, coring=True, sse=False, startHue=0, endHue=360, maxSat=150, minSat=0, interp=16)
+*/
+
+# or 
+
+/*avsp_filter
+sharpen(0.4)
+*/
+
+/*
+        You can see In the second example (in AvsPmod), the text is still displayed as a block comment and the 'sliders' are not integrated either.
+        So a double star activates the avs syntax and the sliders. Very Nice.
+        
+        !!! for the sliders and for avs syntax highlighting !!!
+        'Video' > 'Preview filter' > 'Enable preview filter sliders' must be checked, otherwise the text will shown without avs syntax.
+        The sliders are only updated automatically when a preview filter is selected, or with a normal script update (refresh, reload, etc.)
+        There is also the possibility to read only the slider again (slider context menu)	
+
+        A possibility to see your own name in the 'Preview filter' menu. (multiple same names allowed)
+        You just have to write something after 'avsp_filter' and the text in this line must be longer than 19 characters (including /**avsp_filter)
+        Don't use an '&' in the name. I haven't checked all the characters, one or the other can cause problems. Use something else.
+*/
+
+/**avsp_filter color + sharpen
+#SmoothLevels(input_low=16, gamma=1.00, input_high=235, output_low=16, output_high=235, TVrange=True, Lmode=0, darkSTR=100, brightSTR=100, debug=False)
+#SmoothTweak(brightness=0, contrast=1.00, saturation=1.00, hue1=0, hue2=0, TVrange=True, Lmode=0, limitSTR=100, debug=False)
+#SmoothCurve(Ycurve="0-0;255-255", Ucurve="0-0;255-255", Vcurve="0-0;255-255", debug=False)
+#Highlighter(gblur=100, gradient=True, threshold=100, twopass=False, amount=20, method=0)
+#HighlightLimiter(gblur=100.0, gradient=True, threshold=160, twopass=False, amount=20, method=0)
+Sharpen(0.40)
+#NonlinUSM(z=3, str=2.0, rad=0.6) #sharpen
+#NonlinUSM(z=1.0, pow=1.2, str=0.2, rad=120.0) #contrast
+#NonlinUSM(z=3, pow=1.2, str=0.25, rad=6) #sharp+
+#UnsharpMask(strength=60, radius=3, threshold=8)
+#TUnSharp(strength=80, thresholdL=6, thresholdU=40, radius=2, type=0, map=0, lim=2, gui=false)
+#SharpenComplex2(str0=2.0, str1=1.125, k0="3 14 3", k1="1 1 1", edgethr=0.2, debug=false)
+*/
+
+/*
+        If you now open the video menu 'Preview filter', these three filter sets should now be displayed. 
+        With a selection one of these filters becomes active. I have defined Ctrl + 'Numpad 0' to 'Numpad 5' to change the filter, change it yourself.
+        You can save the filters, 'Preview filter' > 'Save preview filters' , but note! All previously saved filters will be deleted! 
+        You can restore all saved or individual sets (will be written into the script at last position).
+        You can save or restore more then 5 filter sets, but only directly select the first 5 sets.
+        
+        You can also write the preview filter set in the first line and then the source filter, it makes no difference.
+        In the event of a refresh or if the script has changed outside of the preview filter area, the preview filter is switched off
+        When you are done with the settings, simply remove the filter flag start and end or set a comment flag # at the beginning of the line.
+
+        And a final remark. For avisynth the area is only a block comment,
+        for AvsPmod it is a filter, and no matter what is written in this area, an attempt is made to create a clip.
+        
+        I hope that I was understandable.
+*/
+

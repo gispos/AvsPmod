@@ -165,6 +165,8 @@ data_files = [
             'readme.md',
             'changelog.txt',
             'copying.txt',
+            'previewFilterExample.txt',
+            'previewFilterExample.avs',
             ]
         ),
         ('lib', lib_extra),
@@ -173,6 +175,7 @@ data_files = [
                 'run.py',
                 'avsp.py',
                 'wxp.py',
+                'dpi.py',
                 'avisynth.py',
                 'avisynth_cffi.py',
                 'pyavs.py',

@@ -28,24 +28,24 @@
 # Russian interface file for AvsP editor by qwerpoi, http://avisynth.nl/users/qwerpoi
 # Translated by Fizick 19.09.2006-11.03.2007 for AvsP v1.3.7, http://avisynth.org.ru/avsp
 
-version = "2.6.1.5"
+version = "2.6.6.0"
 
 messages = {
     "AviSynth script" : u"", # New in v2.3.0
-    "AviSynth fonts and colors" : u"", 
+    "AviSynth fonts and colors" : u"Шрифты и цвета AviSynth", 
     "Background" : u"Фон", 
     "Font" : u"Шрифт", 
     "Text color" : u"Цвет текста", 
     "Select a predefined theme" : u"", # New in v2.5.1
-    "Only change colours" : u"", # New in v2.5.1
-    "When selecting a theme, don't change current fonts" : u"", # New in v2.5.1
+    "Only change colours" : u"Изменять только цвета",
+    "When selecting a theme, don't change current fonts" : u"При выборе темы не меняйте текущий шрифт.",
     "OK" : u"Да", 
     "Cancel" : u"Отменить ",
-    "Page:" : u"", # New in v2.3.1
-    "Page: %d" : u"", # New in v2.3.1
+    "Page:" : u"Страница",
+    "Page: %d" : u"Страница: %d",
     "Scrap Window" : u"Окно заметок",
-    "Undo" : u"Отмена",
-    "Redo" : u"Повтор",
+    "Undo" : u"Отменить",
+    "Redo" : u"Восстановить",
     "Cut" : u"Вырезать",
     "Copy" : u"Копировать",
     "Paste" : u"Вставить",
@@ -57,8 +57,8 @@ messages = {
     "Toggle scrap window" : u"Переключить окно заметок",
     "Save script" : u"Сохранить скрипт",
     "Error: no contextMenu variable defined for window" : u"Ошибка: переменная contextMenu не определена для окна",
-    "Text document" : u"", # New in v2.3.0
-    "All files" : u"", # New in v2.3.0
+    "Text document" : u"Текстовый документ",
+    "All files" : u"Все файлы",
     "Save scrap text" : u"Сохранить текст заметок",
     "This field must contain a value!" : u"Данное поле должно содержать величину!",
     "This slider label already exists!" : u"Данная метка ползунка уже существует!",
@@ -76,56 +76,56 @@ messages = {
     "Min value:" : u"Минимальное значение:",
     "Max value:" : u"Максимальное значение:",
     "Initial value:" : u"Начальное значение:",
-    "Add or override AviSynth functions in the database" : u"", # New in v2.2.1
-    "Core filters" : u"", # New in v2.2.1
-    "Plugins" : u"", # New in v2.2.1
-    "User functions" : u"", # New in v2.2.1
-    "Script functions" : u"", # New in v2.2.1
-    "Clip properties" : u"", # New in v2.2.1
+    "Add or override AviSynth functions in the database" : u"Добавить или изменить функции AviSynth в базе данных",
+    "Core filters" : u"Основные фильтры",
+    "Plugins" : u"Плагины",
+    "User functions" : u"Пользовательские функции",
+    "Script functions" : u"Функции скрипта",
+    "Clip properties" : u"Свойства клипа",
     "New function" : u"", # New in v2.2.1
-    "Edit selected" : u"", # New in v2.2.1
-    "Delete selected" : u"", # New in v2.2.1
+    "Edit selected" : u"Редактировать выбранное",
+    "Delete selected" : u"Удалить выбранное",
     "Select installed" : u"", # New in v2.2.1
-    "Import" : u"", # New in v2.4.2
-    "Import from files" : u"", # New in v2.2.1
-    "Import from wiki" : u"", # New in v2.4.2
+    "Import" : u"Импорт",
+    "Import from files" : u"Импорт из файла",
+    "Import from wiki" : u"Импорт из wiki",
     "Export customizations" : u"", # New in v2.2.1
     "Clear customizations" : u"", # New in v2.2.1
     "Clear manual presets" : u"", # New in v2.2.1
-    "When importing, don't show the choice dialog" : u"", # New in v2.2.1
+    "When importing, don't show the choice dialog" : u"При импорте не показывать диалог выбора",
     "Edit function information" : u"", # New in v2.2.1
-    "Name:" : u"", # New in v2.2.1
-    "Type:" : u"", # New in v2.2.1
+    "Name:" : u"Имя",
+    "Type:" : u"Тип",
     "clip property" : u"свойство клипа", 
-    "core filter" : u"", # New in v2.2.1
+    "core filter" : u"основной фильтр",
     "plugin" : u"", # New in v2.2.1
     "script function" : u"", # New in v2.2.1
     "user function" : u"", # New in v2.2.1
     "Arguments:" : u"", # New in v2.2.1
-    "define sliders" : u"", # New in v2.2.1
-    "reset to default" : u"", # New in v2.2.1
-    "Slider information" : u"", # New in v2.2.1
+    "define sliders" : u"определение ползунков",
+    "reset to default" : u"Сброс до заводских",
+    "Slider information" : u"Информация ползунка",
     "Preset:" : u"Предустановка",
-    "Auto-generate" : u"", # New in v2.2.1
-    "Filter name already exists!" : u"", # New in v2.2.1
-    "Invalid filter name!" : u"", # New in v2.2.1
-    "Renaming not allowed!" : u"", # New in v2.2.1
-    "You must use dllname_function naming format for plugins!" : u"", # New in v2.2.1
-    "Long name" : u"", # New in v2.5.0
-    "Short name" : u"", # New in v2.5.0
-    "Both" : u"", # New in v2.5.0
-    "Only long names" : u"", # New in v2.5.0
-    "Only short names" : u"", # New in v2.5.0
-    "All names" : u"", # New in v2.5.0
-    "Open Customization files, Avisynth scripts or Avsp options files" : u"", # New in v2.2.1
-    "All supported" : u"", # New in v2.3.0
-    "Customization file" : u"", # New in v2.3.0
-    "AvsP data" : u"", # New in v2.3.0
-    "Unrecognized files" : u"", # New in v2.2.1
-    "Select the functions to import" : u"", # New in v2.4.2
-    "Check selected" : u"", # New in v2.4.2
-    "Check all" : u"", # New in v2.4.2
-    "Check all in this file" : u"", # New in v2.4.2
+    "Auto-generate" : u"Создавать автоматически",
+    "Filter name already exists!" : u"Название фильтра уже существует",
+    "Invalid filter name!" : u"Недействительное имя фильтра",
+    "Renaming not allowed!" : u"Переименование запрещено!",
+    "You must use dllname_function naming format for plugins!" : u"Вы должны использовать формат имения dllname_function для плагинов!",
+    "Long name" : u"Длинное имя",
+    "Short name" : u"Короткое имя",
+    "Both" : u"Оба",
+    "Only long names" : u"Только длинные имена",
+    "Only short names" : u"Только короткие имена",
+    "All names" : u"Все имена",
+    "Open Customization files, Avisynth scripts or Avsp options files" : u"Открыть файлы настройки, скрипты Avisynth или файлы настроек Avsp",
+    "All supported" : u"Все поддерживаемые",
+    "Customization file" : u"Файл настройки",
+    "AvsP data" : u"Данные AvsP",
+    "Unrecognized files" : u"Нераспознанные файлы",
+    "Select the functions to import" : u"Выберите функции для импорта",
+    "Check selected" : u"Отметить выбранное",
+    "Check all" : u"Отметить все",
+    "Check all in this file" : u"Отметьте все в этом файле",
     "Check all not customized" : u"", # New in v2.4.2
     "Uncheck selected" : u"", # New in v2.4.2
     "Uncheck all" : u"", # New in v2.4.2
@@ -158,7 +158,7 @@ messages = {
     "Windows Bitmap" : u"", # New in v2.3.0
     "Animation" : u"", # New in v2.3.0
     "JPEG" : u"", # New in v2.3.0
-    "Zsoft Paintbrush" : u"", # New in v2.3.0
+    "Zsoft Paintbrush" : u"мягкая кисть",
     "Portable Network Graphics" : u"", # New in v2.3.0
     "Netpbm" : u"", # New in v2.3.0
     "Tagged Image File" : u"", # New in v2.3.0
@@ -177,44 +177,50 @@ messages = {
     "Solarized light" : u"", # New in v2.5.1
     "Solarized dark" : u"", # New in v2.5.1
     "Zenburn" : u"", # New in v2.5.1
-    "Cannot read the avisynth plugins directory from the registry\n" : u"", # New in v2.6.1.5
+    "Cannot read the avisynth plugins directory from the registry\n" : u"Не удается прочитать каталог плагинов avisynth из реестра\n",
     "HKLM\\Software\\Avisynth'plugindir2_5' or 'plugindir+' is missing or wrong.\n\n" : u"", # New in v2.6.1.5
-    "You should set the plugins path under options manually or register it." : u"", # New in v2.6.1.5
+    "You should set the plugins path under options manually or register it." : u"Вы должны установить путь плагинов в разделе параметры вручную или зарегистрировать его",
     "Alternatively, specify now its directory." : u"", # New in v2.4.0
-    "Select the {0} directory" : u"", # New in v2.4.0
-    "Make sure you have AviSynth installed and that there are no unstable plugins or avsi files in the AviSynth plugins directory." : u"", # New in v2.2.1
-    "Error loading AviSynth!" : u"", # New in v2.2.1
-    "Paths" : u"", # New in v2.2.1
-    "Available variables: %programdir%, %avisynthdir%, %pluginsdir%" : u"", # New in v2.4.0
-    "Choose a different version than the installed" : u"", # New in v2.4.0
-    "Use a custom AviSynth directory" : u"", # New in v2.4.0
-    "Alternative location of avisynth.dll/avxsynth.so" : u"", # New in v2.4.0
-    "Custom AviSynth directory:" : u"", # New in v2.4.0
-    "Leave blank for reset or choose a directory for manually set or for register" : u"", # New in v2.6.1.5
-    "Disable autoload, set manually" : u"", # New in v2.6.1.5
-    "If plugins autoload fails set the path manually. Read only. Only for proper program functions" : u"", # New in v2.6.1.5
-    "Register the plugins directory" : u"", # New in v2.6.1.5
+    "Select the {0} directory" : u"Выберите каталог {0}",
+    "Make sure you have AviSynth installed and that there are no unstable plugins or avsi files in the AviSynth plugins directory." : u"Убедитесь, что у вас установлен AviSynth и что в каталоге плагинов AviSynth нет нестабильных плагинов или avsi-файлов.",
+    "Error loading AviSynth!" : u"Ошибка при загрузке AviSynth!",
+    "Paths" : u"Пути",
+    "Available variables: %programdir%, %avisynthdir%, %pluginsdir%" : u"Доступные переменные: %programdir%, %avisynthdir%, %pluginsdir%",
+    "Choose a different version than the installed" : u"Выберите версию, отличную от установленной",
+    "Use a custom AviSynth directory" : u"Использовать собственный каталог AviSynth",
+    "Alternative location of avisynth.dll/avxsynth.so" : u"Альтернативное расположение avisynth.dll / avxsynth.so",
+    "Custom AviSynth directory:" : u"Пользовательский каталог AviSynth",
+    "Leave blank for reset or choose a directory for manually set or for register" : u"Оставьте поле пустым для сброса или выберите каталог для ручной настройки или регистрации.",
+    "Disable autoload, set manually" : u"Отключить автозагрузку, установить вручную",
+    "If plugins autoload fails set the path manually. Read only. Only for proper program functions" : u"Если плагины не загружаются автоматически, установите путь вручную. Только для чтения. Только для правильных функций программы",
+    "Register the plugins directory" : u"Зарегистрируйте каталог плагинов",
     "This changes the plugins directory for Avisynth itself. On Windows Registry values in HKLM are changed." : u"", # New in v2.6.1.5
-    "Override the current working directory" : u"", # New in v2.4.0
-    "Use a custom working directory" : u"", # New in v2.4.0
-    "For all scripts" : u"", # New in v2.4.0
-    "Use the custom directory also for scripts saved to file, instead of its parent" : u"", # New in v2.4.0
-    "Specify an alternative working directory" : u"", # New in v2.4.0
-    "Working directory:" : u"", # New in v2.4.0
+    "Override the current working directory" : u"Переопределение текущего рабочего каталога",
+    "Use a custom working directory" : u"Используйте пользовательский рабочий каталог",
+    "For all scripts" : u"Для всех скриптов",
+    "Use the custom directory also for scripts saved to file, instead of its parent" : u"Используйте пользовательский каталог для скриптов, сохраненных в файл, вместо родительского",
+    "Specify an alternative working directory" : u"Укажите альтернативный рабочий каталог",
+    "Working directory:" : u"Рабочий каталог",
     "External player:" : u"Внешний проигрыватель:",
     "Location of external program for script playback" : u"Расположение внешней программы для проигрывания скриптов",
-    "Executable files" : u"", # New in v2.3.0
+    "Executable files" : u"Исполняемые файлы",
     "Additional arguments when running the external player" : u"Дополнительные аргументы при выполнении внешнего проигрывателя", 
     "External player extra args:" : u"Доп. аргументы внешнего проигрывателя", 
+    "External tool:" : u"Внешний инструмент",
+    "Location of external program, e.g. AvsMeter" : u"", # New in v2.6.5.1
+    "Arguments for external tool menu 1, e.g. Menu label|arguments\nUse %fn to pass the script file name with the arguments." : u"", # New in v2.6.5.1
+    "External tool arg1:" : u"Внешний инструмент arg1",
+    "Arguments for external tool menu 2, e.g. Menu label|arguments\nUse %fn to pass the script file name with the arguments." : u"", # New in v2.6.5.1
+    "External tool arg2:" : u"Внешний инструмент arg2",
     "Avisynth help file/url:" : u"Файл/ссылка помощи Avisynth",
     "Location of the avisynth help file or url" : u"Расположение файла справки Avisynth или ссылки",
     "Documentation search paths:" : u"Пути поиска документации",
     "Specify which directories to search for docs when you click on a filter calltip" : u"Укажите в каких папках искать документы, когда Вы щелкните на подсказке для фильтра",
-    "Documentation search url:" : u"", # New in v2.2.1
-    "The web address to search if docs aren't found (the filter's name replaces %filtername%)" : u"", # New in v2.2.1
-    "Text" : u"", # New in v2.2.1
-    "Highlight the text as if it wasn't enclosed by triple quotes" : u"", # New in v2.5.1
-    "Style inside triple-quoted strings" : u"", # New in v2.5.1
+    "Documentation search url:" : u"URL документации",
+    "The web address to search if docs aren't found (the filter's name replaces %filtername%)" : u"Веб-адрес для поиска, если документы не найдены (имя фильтра заменяет %filtername%)",
+    "Text" : u"Текст",
+    "Highlight the text as if it wasn't enclosed by triple quotes" : u"Выделите текст, как будто он не заключен в тройные кавычки",
+    "Style inside triple-quoted strings" : u"Стиль внутри строк с тройными кавычками",
     "Prefer functions over variables" : u"", # New in v2.5.0
     "When a word could be either a function or a variable, highlight it as function" : u"", # New in v2.5.0
     "Don't allow lines wider than the window" : u"Не допускать строки шире чем окно", 
@@ -274,39 +280,42 @@ messages = {
     "Refresh preview automatically" : u"", # New in v2.2.1
     "Refresh preview when switch focus on video window or change a value in slider window" : u"", # New in v2.2.1
     "Seeking to a certain frame will seek to that frame on all tabs" : u"", # New in v2.2.1
-    "Shared timeline" : u"", # New in v2.2.1
-    "Only on tabs of the same characteristics" : u"", # New in v2.5.0
-    "Only share timeline for clips with the same resolution and frame count" : u"", # New in v2.5.0
-    "Determines which mouse wheel function is used, see below tabs" : u"", # New in v2.5.1.09
-    "Frames step" : u"", # New in v2.6.1.5
-    "Mouse Wheel Function" : u"", # New in v2.5.1.09
-    "Tabs scrolling" : u"", # New in v2.5.1.09
-    "Enable scroll wheel through similar tabs" : u"", # New in v2.2.1
-    "Mouse scroll wheel cycles through tabs with similar videos" : u"", # New in v2.2.1
-    "Enable scroll wheel through tabs on the same group" : u"", # New in v2.5.0
-    "Mouse scroll wheel cycles through tabs assigned to the same tab group" : u"", # New in v2.5.0
-    "Allow AvsPmod to resize and/or move the program window when updating the video preview" : u"", # New in v2.2.1
-    "Allow AvsPmod to resize the window" : u"", # New in v2.2.1
+    "Shared timeline" : u"Синхронизировать временную шкалу",
+    "Only on tabs of the same characteristics" : u"Только на вкладках с одинаковыми характеристиками",
+    "Only share timeline for clips with the same resolution and frame count" : u"Синхронизировать временную шкалу только для клипов с одинаковым разрешением и количеством кадров",
+    "Determines which mouse wheel function is used, see below tabs.Tab change also possible under Misc -> Mouse browse buttons" : u"Определяет, какая функция колеса мыши используется, см. Вкладки ниже. Изменение вкладки также возможно в разделе Разное -> Кнопки обзора с помощью мыши",
+    "Mouse wheel function" : u"Функция колесика мыши",
+    "Tab change or scroll" : u"Смена вкладки или прокрутка",
+    "Frame step" : u"Шаг кадра",
+    "Tab change" : u"Смена вкладки",
+    "Enable scroll wheel through similar tabs" : u"Включить колесо прокрутки для просмотра похожих вкладок",
+    "Mouse scroll wheel cycles through tabs with similar videos" : u"Колесо прокрутки мыши циклически перемещается по вкладкам с похожими видео",
+    "Enable scroll wheel through tabs on the same group" : u"Включить колесо прокрутки через вкладки в одной группе",
+    "Mouse scroll wheel cycles through tabs assigned to the same tab group" : u"Колесо прокрутки мыши циклически перемещается по вкладкам, назначенным одной и той же группе вкладок",
+    "Allow AvsPmod to resize and/or move the program window when updating the video preview" : u"Разрешить AvsPmod изменять размер и/или перемещать окно программы при обновлении предварительного просмотра видео",
+    "Allow AvsPmod to resize the window" : u"Разрешить AvsPmod изменять размер окна",
     "Separate video preview window" : u"Отдельное окно просмотра видео",
     "Use a separate window for the video preview" : u"Использоваить отдельное окно для просмотра видео",
-    "Keep it on top of the main window" : u"", # New in v2.3.1
-    "Keep the video preview window always on top of the main one and link its visibility" : u"", # New in v2.3.1
+    "Keep it on top of the main window" : u"Держите его в верхней части главного окна",
+    "Keep the video preview window always on top of the main one and link its visibility" : u"Держите окно предварительного просмотра видео всегда поверх основного и свяжите его видимость",
+    "Startup with last zoom settings" : u"Запуск с последними настройками масштабирования",
+    "Use last zoom settings at startup" : u"Использовать последние настройки масштабирования при запуске",
     "Min text lines on video preview" : u"Мин. число строк при просмотре видео",
     "Minimum number of lines to show when displaying the video preview" : u"Минимальное число строк текста при просмотре видео",
     "Customize the video information shown in the program status bar" : u"Настроить видео информацию показываемую в полосе статуса",
     "Customize video status bar..." : u"Настроить полосу статуса",
-    "Error message font..." : u"", # New in v2.6.1.5
-    "Set the font used for displaying the error if evaluating the script fails" : u"", # New in v2.5.1
-    "User Sliders" : u"", # New in v2.2.1
-    "Hide slider window by default" : u"", # New in v2.2.1
+    "Error message font..." : u"Шрифт сообщения об ошибке ...",
+    "Set the font used for displaying the error if evaluating the script fails" : u"Установите шрифт, используемый для отображения ошибки в случае сбоя оценки скрипта",
+    "User Sliders" : u"Пользовательские ползунки",
+    "Hide slider window by default" : u"Скрыть окно ползунков по умолчанию",
     "Keep the slider window hidden by default when previewing a video" : u"", # New in v2.2.1
-    "Create user sliders automatically" : u"", # New in v2.2.1
-    "Create user sliders automatically using the filter database" : u"", # New in v2.2.1
-    "Create user sliders for int and float arguments" : u"", # New in v2.2.1
-    "type int/float (numerical slider)" : u"", # New in v2.2.1
-    "Create listboxes for int list arguments" : u"", # New in v2.5.1
-    "type int (list)" : u"", # New in v2.5.1
-    "Create color pickers for hex color arguments" : u"", # New in v2.2.1
+    "Create user sliders automatically" : u"Автоматически создавать пользовательские ползунки",
+    "Create user sliders automatically using the filter database" : u"Автоматически создавать пользовательские ползунки с помощью базы данных фильтров",
+    "Create user sliders for int and float arguments" : u"Создание пользовательских ползунков для аргументов типа int и float",
+    "type int/float (numerical slider)" : u"тип int/float (числовой ползунок)",
+    "Create listboxes for int list arguments" : u"Создать списки для аргументов int-списка",
+    "type int (list)" : u"тип int (список) ",
+    "Create color pickers for hex color arguments" : u"Создание палитры цветов для шестнадцатеричных цветовых аргументов",
     "type int (hex color)" : u"", # New in v2.2.1
     "Create radio boxes for bool arguments" : u"", # New in v2.2.1
     "type bool" : u"", # New in v2.2.1
@@ -316,10 +325,11 @@ messages = {
     "type string (filename)" : u"", # New in v2.2.1
     "Create placeholders for arguments which have no database information" : u"", # New in v2.2.1
     "undocumented" : u"", # New in v2.2.1
-    "Determines which filters will initially have hidden arguments in the slider window" : u"", # New in v2.2.1
+    "Determines which filters will initially have hidden arguments in the slider window" : u"Определяет, какие фильтры изначально будут иметь скрытые аргументы в окне ползунка",
     "Fold all" : u"", # New in v2.2.1
     "Fold non-numbers" : u"", # New in v2.2.1
-    "Fold none" : u"", # New in v2.2.1
+    "Fold none" : u"Не складывать",
+    "Fold or restore last order" : u"", # New in v2.6.6.0
     "Fold startup setting" : u"", # New in v2.2.1
     "Filter exclusion list:" : u"", # New in v2.2.1
     "Specify filters never to build automatic sliders for" : u"", # New in v2.2.1
@@ -342,46 +352,52 @@ messages = {
     "When closing tab, don't prompt to save scripts without file" : u"", # New in v2.5.1.09
     "Prompt to save each script with unsaved changes when exiting the program" : u"Приглашение сохранять каждый скрипт с несохраненными изменениями при выходе из программы",
     "Prompt to save scripts on program exit" : u"Приглашение сохранять скрипты при выходе",
-    "Only with existing script" : u"", # New in v2.5.1.09
-    "When exiting the program, don't prompt to save the script if it doesn't already exist on the filesystem" : u"", # New in v2.5.1.09
-    "Auto" : u"", # New in v2.5.1
+    "Only with existing script" : u"Только с существующим скриптом",
+    "When exiting the program, don't prompt to save the script if it doesn't already exist on the filesystem" : u"При выходе из программы не предлагть сохранять скрипт, если он еще не существует в файловой системе",
     "Auto: CRLF on Windows and LF on *nix for new scripts, existing scripts keep their current line endings" : u"", # New in v2.5.1
     "Force CRLF" : u"", # New in v2.5.1
     "Force LF" : u"", # New in v2.5.1
     "Line endings" : u"", # New in v2.5.1
-    "Save and read AvsPmod-specific markings (user sliders, toggle tags, etc) as a commented section in the *.avs file" : u"", # New in v2.6.1.5
-    "Save or read .avs scripts with AvsPmod markings" : u"", # New in v2.6.1.5
-    "Start dialogs on the last used directory" : u"", # New in v2.4.0
-    "If unchecked, the script's directory is used" : u"", # New in v2.4.0
-    "Start save image dialogs on the last used directory" : u"", # New in v2.4.0
+    "Auto" : u"", # New in v2.5.1
+    "Save and read AvsPmod-specific markings (user sliders, toggle tags, etc) as a commented section in the *.avs file" : u"Сохранение и чтение специфичных для AvsPmod маркировок (пользовательских ползунков, тегов переключения и т. д.) в виде комментария в файле*. avs",
+    "Save or read .avs scripts with AvsPmod markings" : u"Сохранение или чтение скриптов .avs с маркировкой AvsPmod",
+    "Start dialogs on the last used directory" : u"Запуск диалоговых окон в последнем использованном каталоге",
+    "If unchecked, the script's directory is used" : u"Если флажок снят, используется каталог скрипта.",
+    "Start save image dialogs on the last used directory" : u"Запуск диалоговых окон сохранения изображений в последнем использованном каталоге",
     "Choose a default pattern for image filenames. %s -> script title, %06d -> frame number padded to six digits" : u"", # New in v2.5.0
     "Default image filename pattern" : u"", # New in v2.5.0
     "Ask for JPEG quality" : u"", # New in v2.5.0
     "When saving a JPEG image, prompt for the quality level. Use the value from the last time if not checked" : u"", # New in v2.5.0
     "Misc" : u"Разное", 
-    "Choose the language used for the interface" : u"", # New in v2.3.0
-    "Language" : u"", # New in v2.3.0
-    "Double the size of the buttons on the video control bar" : u"", # New in v2.4.1
-    "Use large size video controls" : u"", # New in v2.4.1
-    "Show keyboard images in the script tabs when video has focus" : u"", # New in v2.2.1
-    "Use keyboard images in tabs" : u"", # New in v2.2.1
-    "Show tabs in multiline style" : u"", # New in v2.2.1
-    "There can be several rows of tabs" : u"", # New in v2.2.1
-    "All tabs will have same width" : u"", # New in v2.2.1
-    "Show tabs in fixed width" : u"", # New in v2.2.1
-    "Invert scroll wheel direction (Tabs, Zoom)" : u"", # New in v2.5.1.09
-    "Scroll the mouse wheel up for changing tabs to the right" : u"", # New in v2.4.1
-    "Invert scroll wheel direction (Frame)" : u"", # New in v2.5.1.09
-    "Invert wheel direction for frames step" : u"", # New in v2.6.1.5
-    "Automatically load bookmarks from script only if tab count 1" : u"", # New in v2.6.1.5
-    "On first script load bookmarks from script" : u"", # New in v2.6.1.5
-    "Automatically load bookmarks from script if tab changed" : u"", # New in v2.6.1.5
-    "Tabs changing loads bookmarks from script" : u"", # New in v2.6.1.5
-    "Only allow a single instance of AvsPmod" : u"", # New in v2.2.1
-    "Show warning at startup if there are dlls with bad naming in default plugin folder" : u"", # New in v2.2.1
-    "Show warning for bad plugin naming at startup" : u"", # New in v2.2.1
-    "Middle mouse button behavior on the script" : u"", # New in v2.6.1.5
-    "Middle mouse on script (0 open source, 1 show video frame)" : u"", # New in v2.6.1.5
+    "Choose the language used for the interface" : u"Выберите язык, используемый для интерфейса",
+    "Language" : u"Язык",
+    "Show keyboard images in the script tabs when video has focus" : u"Показывать изображения клавиатуры на вкладках скрипта, когда видео находится в фокусе",
+    "Use keyboard images in tabs" : u"Используйте изображения клавиатуры на вкладках",
+    "Show tabs in multiline style" : u"Показывать вкладки в несколько рядов",
+    "There can be several rows of tabs" : u"Может быть несколько рядов вкладок",
+    "All tabs will have same width" : u"Все вкладки одинаковой ширины",
+    "Show tabs in fixed width" : u"Показывать вкладки с фиксированной шириной",
+    "Invert scroll wheel direction (Tabs, Zoom)" : u"Инвертировать направление колеса прокрутки (вкладки, масштабирование)",
+    "Scroll the mouse wheel up for changing tabs to the right" : u"Прокрутите колесико мыши вверх, чтобы сменить вкладку вправо",
+    "Invert scroll wheel direction (Frame)" : u"Инвертировать направление колеса прокрутки (Кадр)",
+    "Invert wheel direction for frames step" : u"Инвертировать направление колеса для покадровой прокрутки",
+    "Automatically load bookmarks from script" : u"Автоматическая загрузка закладок из скрипта",
+    "Load bookmarks from script" : u"Загрузить закладки из скрипта",
+    "Automatically load bookmarks from script or tab if tab changed" : u"Автоматически загружать закладки из скрипта или вкладки, если вкладка изменилась",
+    "Tab change loads bookmarks from script or tab *" : u"", # New in v2.6.5.1
+    "Warn if tab bookmarks and from script reading bookmarks different." : u"", # New in v2.6.5.1
+    "Warning tab bookmarks different" : u"", # New in v2.6.5.1
+    "Only allow a single instance of AvsPmod" : u"Разрешить только один экземпляр AvsPmod",
+    "Show warning at startup if there are dlls with bad naming in default plugin folder" : u"Показывать предупреждение при запуске, если в папке плагинов по умолчанию есть библиотеки с неправильным именем",
+    "Show warning for bad plugin naming at startup" : u"Показывать предупреждение о неправильном имени плагина при запуске",
+    "Bookmark jump" : u"", # New in v2.6.5.1
+    "Custom jump" : u"", # New in v2.6.5.1
+    "Mouse browse buttons" : u"", # New in v2.6.5.1
+    "Mouse browse buttons (forward/backward) on video and script window\nIf 'Tab change' and tab count less than 2, 'Bookmark jump' is used\nIf 'Tab change' press CTRL or left mouse and 'Bookmark jump' is used\nIf 'Bookmark jump', vice versa" : u"", # New in v2.6.5.1
+    "Middle mouse button behavior on the script, if script empty open source is used" : u"Поведение средней кнопки мыши на скрипте, если используется пустой скрипт с открытым исходным кодом",
+    "Middle mouse on script" : u"Средняя кнопка мыши в скрипте",
+    "Open source" : u"Открытый исходный код",
+    "Show video frame" : u"Показать кадр",
     "Max number of recent filenames" : u"Макс. число имен последних файлов", 
     "This number determines how many filenames to store in the recent files menu" : u"Это число определяет, сколько имен файлов сохраняется в меню последних файлов", 
     "Custom jump size:" : u"Задаваемый размер шага",
@@ -392,6 +408,21 @@ messages = {
     "minutes" : u"минуты",
     "seconds" : u"секунды",
     "frames" : u"кадры",
+    "Misc 2" : u"", # New in v2.6.5.2
+    "AvsPmod DPI scaling *" : u"", # New in v2.6.6.0
+    "Beta: some elements may be not scaled" : u"Бета: некоторые элементы могут быть не масштабированы",
+    "DPI scaling overall only manually*" : u"", # New in v2.6.5.3
+    "Do not do overall DPI scaling automatically" : u"Не выполнять автоматическое масштабирование DPI",
+    "Adjust dpi scaling overall (10 % steps). For 150 % DPI set value 5" : u"Отрегулируйте масштабирование dpi (шаг 10%). Для 150% DPI установите значение 5",
+    "DPI scaling overall:*" : u"Общее масштабирование DPI",
+    "Additional adjust the script window tabs (10 % steps)" : u"Настройка панели вкладок (шаг 10%) ",
+    "DPI scaling main tabs:*" : u"DPI Масштабирование вкладок",
+    "Additional adjust the video controls (10 % steps)" : u"", # New in v2.6.5.3
+    "DPI scaling video controls:*" : u"", # New in v2.6.5.3
+    "Additional adjust the statusbar (10 % steps)" : u"", # New in v2.6.5.3
+    "DPI scaling statusbar:*" : u"Масштабирование DPI строки состояния",
+    "Disable AvsPmod DPI Aware. Program is zoomed by the system and set values." : u"", # New in v2.6.5.3
+    "Disable DPI awareness*" : u"", # New in v2.6.5.3
     "Add tab to group" : u"", # New in v2.5.0
     "Extend selection to line down position" : u"", # New in v2.2.1
     "Scroll down" : u"", # New in v2.2.1
@@ -468,34 +499,34 @@ messages = {
     "400%" : u"", # New in v1.3.8
     "Fill window" : u"Заполнить окно",
     "Fit inside window" : u"Подогнать внутрь окна",
-    "Vertically" : u"", # New in v2.2.1
-    "Horizontally" : u"", # New in v2.2.1
-    "Black" : u"", # New in v2.5.1
-    "Dark grey" : u"", # New in v2.5.1
-    "Medium grey" : u"", # New in v2.5.1
-    "Light grey" : u"", # New in v2.5.1
-    "White" : u"", # New in v2.5.1
+    "Vertically" : u"Вертикально",
+    "Horizontally" : u"Горизонтально",
+    "Black" : u"Черный",
+    "Dark grey" : u"Темно-серый",
+    "Medium grey" : u"Серый",
+    "Light grey" : u"Светло-серый",
+    "White" : u"Белый",
     "&File" : u"&Файл",
     "Create a new tab" : u"Создать новую вкладку",
     "New tab" : u"Новая вкладка",
     "Open an existing script" : u"Открыть существующий скрипт",
     "Open..." : u"Открыть...",
     "Reopen the last closed tab" : u"", # New in v2.4.0
-    "Undo close tab" : u"", # New in v2.4.0
+    "Undo close tab" : u"Вернуть закрытую вкладку",
     "Close tab" : u"Закрыть вкладку",
     "Close the current tab" : u"Закрыть текущую вкладку",
-    "Close all tabs" : u"", # New in v2.2.1
+    "Close all tabs" : u"Закрыть все вкладки",
     "Close every tab" : u"", # New in v2.2.1
-    "Rename tab" : u"", # New in v2.2.1
-    "Rename the current tab. If script file is existing, also rename it" : u"", # New in v2.2.1
+    "Rename tab" : u"Переименовать вкладку",
+    "Rename the current tab. If script file is existing, also rename it" : u"Переименовать текущую вкладку. Если файл скрипта существует, переименовать и его",
     "Save the current script" : u"Сохранить текущий скрипт",
     "Choose where to save the current script" : u"Выбрать где сохранить текущий скрипт",
     "Save script as..." : u"Сохранить скрипт как...",
-    "Reload script" : u"", # New in v2.4.1
-    "Reopen the current script file if it has changed" : u"", # New in v2.4.1
-    "If the current script is saved to a file, open its directory" : u"", # New in v2.5.1
-    "Open script's directory" : u"", # New in v2.5.1
-    "Save the current script as a HTML document" : u"", # New in v2.5.0
+    "Reload script" : u"Перезагрузить скрипт",
+    "Reopen the current script file if it has changed" : u"Повторно открыть текущий файл скрипта, если он изменился",
+    "If the current script is saved to a file, open its directory" : u"Если текущий скрипт сохранен в файл, открыть его каталог",
+    "Open script's directory" : u"Открыть каталог скрипта",
+    "Save the current script as a HTML document" : u"Сохранить текущий скрипт как HTML документ.",
     "Export HTML" : u"", # New in v2.5.0
     "&Print script" : u"", # New in v2.3.1
     "Configure page for printing" : u"", # New in v2.3.1
@@ -568,8 +599,8 @@ messages = {
     "Toggle the fold point On/OFF at the current line" : u"", # New in v2.2.1
     "Toggle all fold points On/OFF" : u"", # New in v2.2.1
     "Toggle all folds" : u"", # New in v2.2.1
-    "Toggle text wrap" : u"", # New in v2.5.1.09
-    "Toggle text wrap On/OFF" : u"", # New in v2.5.1.09
+    "Toggle text wrap" : u"Переключение переноса текста",
+    "Toggle text wrap On/OFF" : u"Включить/выключить перенос текста",
     "&AviSynth function" : u"", # New in v2.2.1
     "Show list of filternames matching the partial text at the cursor" : u"Показать список имен фильтров, соответствующих части текста, выделенной курсором",
     "Autocomplete all" : u"", # New in v2.2.1
@@ -594,12 +625,15 @@ messages = {
     "Copy avisynth error to clipboard" : u"", # New in v2.2.1
     "Copy the avisynth error message shown on the preview window to the clipboard" : u"", # New in v2.2.1
     "&Video" : u"&Видео",
-    "Bookmarks" : u"", # New in v2.4.0
-    "Bookmarks to script" : u"", # New in v2.6.1.5
-    "Bookmarks from script" : u"", # New in v2.6.1.5
-    "Add/Remove bookmark" : u"", # New in v2.2.1
+    "Bookmarks" : u"Закладки",
+    "Bookmarks to script" : u"Закладки в скрипт",
+    "Bookmarks from script" : u"Закладки из скрипта",
+    "Add/Remove bookmark" : u"Добавить/Удалить закладку",
     "Mark the current frame on the frame slider" : u"Пометить текущий кадр на ползунке кадров",
-    "Clear all bookmarks" : u"Очистить все закладки",
+    "Clear tab bookmarks" : u"Очистить вкладку закладок",
+    "Clears the current tab bookmarks" : u"Очищает текущую вкладку закладки",
+    "Clear all bookmarks Globally" : u"", # New in v2.6.5.1
+    "Clears all bookmarks, clears also all tab bookmarks" : u"", # New in v2.6.5.1
     "Titled &bookmarks" : u"", # New in v2.2.1
     "Move the nearest titled bookmark to the current position. A historic title will be restored if it matches the condition." : u"", # New in v2.2.1
     "Move titled bookmark" : u"", # New in v2.2.1
@@ -611,6 +645,8 @@ messages = {
     "Set title (auto)" : u"", # New in v2.2.1
     "Edit title for bookmarks in a list table" : u"", # New in v2.2.1
     "Set title (manual)" : u"", # New in v2.2.1
+    "Remove all title" : u"", # New in v2.6.5.1
+    "Remove all title from the bookmarks" : u"", # New in v2.6.5.1
     "Not include this tab on any group" : u"", # New in v2.5.0
     "Add tab to this group" : u"", # New in v2.5.0
     "Clear current tab group" : u"", # New in v2.5.0
@@ -651,97 +687,152 @@ messages = {
     "Go to frame..." : u"Перейти к кадру...",
     "&Play video" : u"", # New in v2.4.0
     "Play/pause video" : u"", # New in v2.4.0
-    "Double the current playback speed" : u"", # New in v2.4.0
+    "Double the current playback speed" : u"Удвоить текущую скорость воспроизведения",
     "Increment speed" : u"", # New in v2.4.0
     "Decrement speed" : u"", # New in v2.4.0
     "Halve the current playback speed" : u"", # New in v2.5.0
-    "Normal speed" : u"", # New in v2.4.0
     "Set the playback speed to the script frame rate" : u"", # New in v2.4.0
-    "Maximum speed" : u"", # New in v2.4.0
+    "Normal speed" : u"", # New in v2.4.0
     "Play the video as fast as possible without dropping frames" : u"", # New in v2.4.0
-    "Drop frames" : u"", # New in v2.4.0
-    "Maintain correct video speed by skipping frames" : u"", # New in v2.4.0
-    "Crop editor..." : u"Редактор обрезки Crop...",
-    "Show the crop editor dialog" : u"Показать диалог редактора обрезки размеров кадра Crop",
-    "&Trim selection editor" : u"", # New in v2.2.1
-    "Show the trim selection editor dialog" : u"Показать диалог редактора выборки кадров Trim",
-    "Show trim selection editor" : u"Показать редактор выборки Trim",
-    "Set a selection startpoint (shows the trim editor if not visible)" : u"Установить начало выборки (показывает редактор вырезки, если невидим)",
-    "Set selection startpoint" : u"Установить начало выборки",
-    "Set a selection endpoint (shows the trim editor if not visible)" : u"Установить конец выборки (показывает редактор вырезки, если невидим)",
-    "Set selection endpoint" : u"Установить конец выборки",
-    "Move selections before the current frame" : u"", # New in v2.5.1
-    "The current selections are cut from the timeline and inserted before the current frame. Bookmarks are shifted accordingly." : u"", # New in v2.5.1
-    "Move selections after the current frame" : u"", # New in v2.5.1
-    "The current selections are cut from the timeline and inserted after the current frame. Bookmarks are shifted accordingly." : u"", # New in v2.5.1
-    "Zoom video preview to 25%" : u"Масштаб видео просмотра 25%", 
-    "Zoom video preview to 50%" : u"Масштаб видео просмотра 50%", 
-    "Zoom video preview to 100% (normal)" : u"Масштаб видео просмотра 100% (нормальный)",
-    "Zoom video preview to 200%" : u"Масштаб видео просмотра 200%",
-    "Zoom video preview to 300%" : u"Масштаб видео просмотра 300%",
-    "Zoom video preview to 400%" : u"Масштаб видео просмотра 400%",
-    "Zoom video preview to fill the entire window" : u"Изменить масштаб видео просмотра до заполнения полного окна",
-    "Zoom video preview to fit inside the window" : u"Изменить масштаб видео просмотра до помещения внутри окна всего окна",
-    "Enlarge preview image to next zoom level. Not work under 'Fill window' or 'Fit inside window'" : u"", # New in v2.2.1
-    "Shrink preview image to previous zoom level. Not work under 'Fill window' or 'Fit inside window'" : u"", # New in v2.2.1
-    "&Flip" : u"", # New in v2.2.1
-    "Flip video preview upside down" : u"", # New in v2.2.1
-    "Flip video preview from left to right" : u"", # New in v2.2.1
+    "Maximum speed" : u"", # New in v2.4.0
+    "Play loop between trim editor first selection start and end frame" : u"Цикл воспроизведения между начальным и конечным кадрами выбранными в редакторе нарезки",
+    "Play loop" : u"Зациклить воспроизведение",
+    "0 % to 38 % faster playback, depending on CPU load" : u"Воспроизведение с ускорением от 0% до 38% в зависимости от загрузки процессора",
+    "Use faster playback routine" : u"Использовать более быстрый режим воспроизведения",
+    "Crop editor..." : u"Редактор кадрирования...",
+    "Show the crop editor dialog" : u"Показать редактор кадрирования",
+    "&Trim selection editor" : u"Редактор покадровой нарезки",
+    "Show the trim selection editor dialog" : u"Показать редактор выборки кадров",
+    "Show trim selection editor" : u"Показать Редактор покадровой нарезки",
+    "Set a selection startpoint (shows the trim editor if not visible)" : u"Установить начальную точку (показывает редактор нарезки, если скрыт)",
+    "Set selection startpoint" : u"Установить начальную точку",
+    "Set a selection endpoint (shows the trim editor if not visible)" : u"Установить конечную точку (показывает редактор нарезки, если скрыт)",
+    "Set selection endpoint" : u"Установить конечную точку",
+    "Move selections before the current frame" : u"Переместить выделение перед текущим кадром",
+    "The current selections are cut from the timeline and inserted before the current frame. Bookmarks are shifted accordingly." : u"Текущие выделение вырезается и вставляются перед текущим кадром. Закладки соответственно смещаются.",
+    "Move selections after the current frame" : u"Переместить выделение после текущего кадра",
+    "The current selections are cut from the timeline and inserted after the current frame. Bookmarks are shifted accordingly." : u"Текущие выделение вырезается и вставляются после текущего кадра. Закладки соответственно смещаются.",
+    "Add bookmark to trim intersections" : u"", # New in v2.6.5.1
+    "Mark trim points" : u"Отметьте точки обрезки",
+    "Save the selections into the script" : u"Сохранить выделение в скрипте",
+    "Selections to script" : u"Выбрать скрипт",
+    "Read the selections from the script" : u"Прочитайте выбранные параметры из скрипта",
+    "Selections from script" : u"Выбрать из скрипта",
+    "Clear tab selections" : u"Очистить выбранные вкладки",
+    "Clear tab trim editor selections (hide the trim editor if visible)" : u"", # New in v2.6.5.1
+    "Clear all selections Globally" : u"", # New in v2.6.5.1
+    "Clear all the tab trim editor selections (hide the trim editor if visible)" : u"", # New in v2.6.5.1
+    "Zoom video preview to 25%" : u"Масштаб превью 25%", 
+    "Zoom video preview to 50%" : u"Масштаб превью 50%", 
+    "Zoom video preview to 100% (normal)" : u"Масштаб превью 100% (нормальный)",
+    "Zoom video preview to 200%" : u"Масштаб превью 200%",
+    "Zoom video preview to 300%" : u"Масштаб превью 300%",
+    "Zoom video preview to 400%" : u"Масштаб превью 400%",
+    "Zoom video preview to fill the entire window" : u"Увеличить пред. просмотр до заполнения окна",
+    "Zoom video preview to fit inside the window" : u"Увеличить предварительный просмотр видео до размеров окна",
+    "Enlarge preview image to next zoom level. Not work under 'Fill window' or 'Fit inside window'" : u"Увеличить пред. просмотр до следующего уровня масштабирования. Не работает в режимах 'Заполнить окно' или 'По размеру окна'.",
+    "Shrink preview image to previous zoom level. Not work under 'Fill window' or 'Fit inside window'" : u"Уменьшить пред. просмотр до предыдущего уровня масштабирования. Не работает в режимах 'Заполнить окно' или 'По размеру окна'.",
+    "Antialiasing" : u"Сглаживание",
+    "If zoom not 100 %, the preview is drawing antialiased" : u"Если масштаб не 100%, пред. просмотр отрисовывается со сглаживанием.",
+    "&Flip" : u"Повернуть",
+    "Flip video preview upside down" : u"Перевернуть пред. просмотр вверх ногами",
+    "Flip video preview from left to right" : u"Отразить пред. просмотр слева направо",
     "&YUV -> RGB" : u"", # New in v2.2.1
-    "Swap chroma channels (U and V)" : u"", # New in v2.2.1
-    "Use BT.709 coefficients for HD, BT.601 for SD (default)" : u"", # New in v2.3.0
-    "Use BT.709 coefficients" : u"", # New in v2.3.0
-    "Use BT.601 coefficients" : u"", # New in v2.3.0
-    "Use limited range (default)" : u"", # New in v2.3.0
-    "Use full range" : u"", # New in v2.3.0
-    "For YV12 only, assume it is progressive (default)" : u"", # New in v2.2.1
-    "For YV12 only, assume it is interlaced" : u"", # New in v2.2.1
-    "Bit &depth" : u"", # New in v2.6.1.5
-    "8-bit" : u"", # New in v2.5.1
-    "Regular 8-bit depth (default)" : u"", # New in v2.5.1
-    "Stacked 16-bit, MSB on top, range reduced to 10-bit. Requires MaskTools v2 loaded" : u"", # New in v2.5.1
-    "Stacked yuv420p10 or yuv444p10" : u"", # New in v2.5.1
-    "Stacked 16-bit, MSB on top" : u"", # New in v2.5.1
-    "Stacked yuv420p16 or yuv444p16" : u"", # New in v2.5.1
-    "Interleaved 16-bit (little-endian), range reduced to 10-bit. Requires MaskTools v2 loaded" : u"", # New in v2.5.1
-    "Interleaved yuv420p10 or yuv444p10" : u"", # New in v2.5.1
-    "Interleaved 16-bit (little-endian)" : u"", # New in v2.5.1
-    "Interleaved yuv420p16 or yuv444p16" : u"", # New in v2.5.1
-    "Background &color" : u"", # New in v2.5.1
-    "Follow current theme" : u"", # New in v2.5.1
+    "Swap chroma channels (U and V)" : u"Поменять местами каналы цветности (U и V)",
+    "Use BT.709 coefficients for HD, BT.601 for SD (default)" : u"Использовать коэффициенты BT.709 для HD, BT.601 для SD (по умолчанию).",
+    "Use BT.709 coefficients" : u"Использовать коэффициент BT.709",
+    "Use BT.601 coefficients" : u"Использовать коэффициент BT.601",
+    "Use limited range (default)" : u"Использовать ограниченный диапазон (по умолчанию)",
+    "Use full range" : u"Использовать полный диапазон",
+    "For YV12 only, assume it is progressive (default)" : u"Только для YV12: предположим, что он прогрессивный (по умолчанию)",
+    "For YV12 only, assume it is interlaced" : u"Только для YV12: предположим, что он чересстрочный.",
+    "Bit &depth" : u"Битность",
+    "8-bit" : u"8-бит",
+    "Regular 8-bit depth (default)" : u"Обычная 8-битная глубина (по умолчанию)",
+    "Stacked 16-bit, MSB on top, range reduced to 10-bit. Requires MaskTools v2 loaded" : u"Составные 16-бит, старший бит сверху, диапазон уменьшен до 10 бит. Требуется загрузка MaskTools v2",
+    "Stacked yuv420p10 or yuv444p10" : u"Составные yuv420p10 или yuv444p10",
+    "Stacked 16-bit, MSB on top" : u"Составные 16-бит, старший бит сверху",
+    "Stacked yuv420p16 or yuv444p16" : u"Составной yuv420p16 или yuv444p16",
+    "Interleaved 16-bit (little-endian), range reduced to 10-bit. Requires MaskTools v2 loaded" : u"16-битное чередование (с прямым порядком байтов), диапазон уменьшен до 10 бит. Требуется загрузка MaskTools v2",
+    "Interleaved yuv420p10 or yuv444p10" : u"Чередование yuv420p10 или yuv444p10",
+    "Interleaved 16-bit (little-endian)" : u"16-битное чередование (прямой порядок байтов)",
+    "Interleaved yuv420p16 or yuv444p16" : u"Чередование yuv420p16 или yuv444p16",
+    "Background &color" : u"Цвет фона",
+    "Follow current theme" : u"Следить за текущей темой",
     "Use RGB {hex_value}" : u"", # New in v2.5.1
-    "Use a custom color" : u"", # New in v2.5.1
+    "Use a custom color" : u"Использовать свой цвет",
     "Custom" : u"", # New in v2.5.1
     "Choose the color used if 'custom' is selected" : u"", # New in v2.5.1
     "Select custom color" : u"", # New in v2.5.1
-    "Create the new AviSynth clip on the same environment. Useful for tweaking parameters" : u"", # New in v2.4.0
-    "Keep variables on refreshing" : u"", # New in v2.4.0
-    "Save last view position and zoom on tab change" : u"", # New in v2.6.1.5
-    "Save view pos on tab change" : u"", # New in v2.6.1.5
     "Save image as..." : u"Сохранить изображение как...",
-    "Save the current frame as a bitmap" : u"Сохранить текущий кадр как файл картинки",
+    "Save the current frame as image file. If you not change the frame number, Quick save image uses the name." : u"", # New in v2.6.5.1
     "Quick save image" : u"", # New in v2.5.0
-    "Save the current frame as a bitmap with a default filename, overwriting the file if already exists" : u"", # New in v2.5.0
+    "Save the current frame with a default filename, overwriting the file if already exists. Press CTRL to reset the default name formatting" : u"", # New in v2.6.5.1
     "Copy image to clipboard" : u"", # New in v2.4.2
     "Copy the current frame to the clipboard as a bitmap" : u"", # New in v2.4.2
     "Force the script to reload and refresh the video frame" : u"Перезагрузить скрипт и обновить видео кадр",
     "Refresh preview" : u"Обновить просмотр",
-    "Show/Hide the preview" : u"", # New in v2.2.1
-    "Toggle the video preview" : u"Переключить просмотр видео",
-    "Toggle preview placement" : u"", # New in v2.5.1
-    "When not using a separate window for the video preview, toggle between showing it at the bottom (default) or to the right" : u"", # New in v2.5.1
-    "Toggle extended left move" : u"", # New in v2.5.1.09
-    "Video window extended left move" : u"", # New in v2.5.1.09
     "Release all open videos from memory" : u"Выгрузить все открытые видео из памяти",
     "Release all videos from memory" : u"Выгрузить все видео из памяти",
+    "Snapshot" : u"", # New in v2.6.5.1
+    "Take snapshot 1" : u"", # New in v2.6.5.1
+    "Make bitmap and script snapshot" : u"", # New in v2.6.5.1
+    "Take snapshot 2" : u"", # New in v2.6.5.1
+    "Show or hide snapshot 1" : u"Показать или скрыть снимок 1",
+    "Show/hide snapshot 1" : u"Показать/скрыть снимок 1",
+    "Show or hide snapshot 2" : u"Показать или скрыть снимок 2",
+    "Show/hide snapshot 2" : u"Показать/скрыть снимок 2",
+    "Copy snap shot 1 to new tab" : u"Скопировать снимок 1 в новую вкладку",
+    "New tab from snapshot 1" : u"Новая вкладка из снимка 1",
+    "Copy snap shot 2 to new tab" : u"Скопировать снимок 2 в новую вкладку",
+    "New tab from snapshot 2" : u"Новая вкладка из снимка 2",
+    "Clear tab snapshots" : u"Очистить снимки вкладок",
+    "Clears the current tab snapshots" : u"Удаляет снимки текущей вкладки",
+    "Clear all snapshots Globally" : u"Очистить все снимки глобально",
+    "Clears all snapshots Globally" : u"Удаляет все снимки глобально",
+    "Preview filter" : u"", # New in v2.6.6.0
+    "Preview filter off" : u"", # New in v2.6.6.0
+    "Preview filter 1" : u"", # New in v2.6.6.0
+    "1" : u"", # New in v2.6.6.0
+    "Preview filter 2" : u"", # New in v2.6.6.0
+    "2" : u"", # New in v2.6.6.0
+    "Preview filter 3" : u"", # New in v2.6.6.0
+    "3" : u"", # New in v2.6.6.0
+    "Preview filter 4" : u"", # New in v2.6.6.0
+    "4" : u"", # New in v2.6.6.0
+    "Preview filter 5" : u"", # New in v2.6.6.0
+    "5" : u"", # New in v2.6.6.0
+    "Save preview filters" : u"", # New in v2.6.6.0
+    "Save preview filters for later use" : u"", # New in v2.6.6.0
+    "Write all preview filters to script" : u"", # New in v2.6.6.0
+    "Write all to script" : u"", # New in v2.6.6.0
+    "Write to script" : u"", # New in v2.6.6.0
+    "Write Preview filter to script" : u"", # New in v2.6.6.0
+    "Enable block commend /** showing as string. Filters must written to script" : u"", # New in v2.6.6.0
+    "Enable preview filter sliders" : u"", # New in v2.6.6.0
+    "Shows the selected and optional the next or previous tab in one view (video width and height must be the same)" : u"Показывает выбранную и необязательную следующую или предыдущую вкладку в одном просмотре (ширина и высота видео должны быть одинаковыми).",
+    "Split View on/off" : u"Разделенный вид вкл/выкл",
+    "Expands the left shift area of the video window" : u"Расширяет область левого сдвига видео окна",
+    "Toggle extended left move" : u"", # New in v2.5.1.09
+    "Save/Restore last view position and zoom factor on tab change" : u"", # New in v2.6.5.1
+    "Save view pos on tab change" : u"", # New in v2.6.1.5
+    "Show/Hide the preview" : u"Показать/скрыть предварительный просмотр",
+    "Toggle the video preview" : u"Переключить просмотр видео",
     "Switch focus between the video preview and the text editor" : u"Переключить фокус между окнами видео просмотра и текстового редактора",
     "Switch video/text focus" : u"Переключить фокус видео/текст",
     "Show/hide the slider sidebar (double-click the divider for the same effect)" : u"Показать/скрыть колонку ползунков (двойной щелчок на разделителе имеет тот же эффект)", 
     "Toggle the slider sidebar" : u"Переключить колонку ползунков", 
-    "Request every video frame once (analysis pass for two-pass filters)" : u"", # New in v2.3.0
-    "Run analysis pass" : u"", # New in v2.3.0
+    "Toggle preview placement" : u"", # New in v2.5.1
+    "When not using a separate window for the video preview, toggle between showing it at the bottom (default) or to the right" : u"", # New in v2.5.1
+    "Tools" : u"Инструменты",
+    "Request every video frame once (analysis pass for two-pass filters)" : u"Запрашивать каждый видеокадр один раз (анализ для двухпроходных фильтров)",
+    "Run analysis pass" : u"Прогон анализа",
     "External player" : u"Внешний проигрыватель",
     "Play the current script in an external program" : u"Проиграть текущий скрипт во внешней программе",
+    "External tool arg1" : u"Внешний инструмент arg1",
+    "Run the current script with an external program and arg1" : u"", # New in v2.6.5.1
+    "External tool arg2" : u"Внешний инструмент arg2",
+    "Run the current script with an external program and arg2" : u"", # New in v2.6.5.1
     "Show information about the video in a dialog box" : u"Показать информацию о видео в диалоговом окне",
     "Video information" : u"Информация о видео",
     "&Options" : u"&Опции",
@@ -751,14 +842,14 @@ messages = {
     "Video preview always on top" : u"", # New in v2.3.1
     "Disable video preview" : u"Отменить видео просмотр", 
     "If checked, the video preview will not be shown under any circumstances" : u"Если отмечено, видео просмотр не будет показан ни при каких обстоятельствах", 
-    "Associate .avs files with AvsP" : u"Ассоциировать .avs файлы с AvsP",
+    "Associate .avs files with AvsPmod" : u"", # New in v2.6.5.1
     "Configure this computer to open .avs files with AvsP when double-clicked. Run again to disassociate" : u"", # New in v2.4.0
     "Edit the various AviSynth script fonts and colors" : u"Редактировать различные шрифты и цвета скриптов AviSynth", 
     "Fonts and colors..." : u"Шрифты и цвета...", 
-    "Make fonts and colors backup" : u"", # New in v2.6.1.5
-    "Make script fonts and colors backup" : u"", # New in v2.6.1.5
-    "Load fonts and colors backup" : u"", # New in v2.6.1.5
-    "Restores script fonts and colors from backup" : u"", # New in v2.6.1.5
+    "Make fonts and colors backup" : u"Резервная копию шрифтов и цветов",
+    "Make script fonts and colors backup" : u"Резервная копию шрифтов и цветов скрипта",
+    "Load fonts and colors backup" : u"Загрузить резервную копию шрифтов и цветов",
+    "Restores script fonts and colors from backup" : u"Восстанавливает шрифты и цвета скрипта из резервной копии",
     "AviSynth function definition..." : u"Определения функций AviSynth...", 
     "Edit the extension-based templates for inserting sources" : u"Редактировать шаблоны типов файлов для вставки источников",
     "Extension templates..." : u"Шаблоны расширений...", 
@@ -781,16 +872,21 @@ messages = {
     "Macros" : u"Макросы",
     "Avisynth help" : u"Справка AviSynth",
     "Open the avisynth help html" : u"Открыть html файл справки AviSynth",
+    "Open the Preview filter examples" : u"", # New in v2.6.6.0
+    "Preview filter example" : u"", # New in v2.6.6.0
     "Open Avisynth plugins folder" : u"", # New in v2.2.1
     "Open the avisynth plugins folder, or the last folder from which a plugin was loaded" : u"", # New in v2.3.1
+    "DPI Info" : u"", # New in v2.6.5.2
+    "DPI information" : u"", # New in v2.6.6.0
     "Changelog" : u"", # New in v2.4.1
     "Open the changelog file" : u"", # New in v2.4.1
     "About this program" : u"Об этой программе",
     "About AvsPmod" : u"", # New in v2.2.1
     "Previous frame" : u"Предыдущий кадр",
     "Next frame" : u"Следующий кадр",
+    "Play/pause video. Right click for options." : u"", # New in v2.6.5.2
     "Run the script with an external program" : u"Выполнить скрипт внешней программой",
-    "Run the selected tool" : u"", # New in v2.2.1
+    "Run the selected tool" : u"Запустить выбранный инструмент",
     "&Tools" : u"&Инструменты",
     "A macro check item" : u"", # New in v2.3.0
     "A macro radio item" : u"", # New in v2.3.0
@@ -800,21 +896,23 @@ messages = {
     "Open the macros folder" : u"", # New in v2.2.1
     "&Macros" : u"", # New in v2.2.1
     "Close" : u"Закрыть",
-    "Close all the other" : u"", # New in v2.6.1.5
-    "Rename" : u"", # New in v2.2.1
-    "Group" : u"", # New in v2.5.0
+    "Close all the other" : u"Закрыть все остальные",
+    "Rename" : u"Переименовать",
+    "Group" : u"Группа",
     "Save" : u"Сохранить",
     "Save as..." : u"Сохранить как...",
-    "Reload" : u"", # New in v2.4.1
-    "Open directory" : u"", # New in v2.5.1
-    "Release video memory" : u"", # New in v2.6.1.5
-    "Release all other video memory" : u"", # New in v2.6.1.5
-    "Tab change loads bookmarks" : u"", # New in v2.6.1.5
-    "Copy to new tab" : u"", # New in v2.2.1
-    "Reposition to" : u"", # New in v2.2.1
+    "Reload" : u"Перезагрузить",
+    "Open directory" : u"Открыть каталог",
+    "Release video memory" : u"Освободить видеопамять",
+    "Release all other video memory" : u"Освободите всю остальную видеопамять",
+    "Tab change loads bookmarks" : u"Смена вкладки загружает закладки",
+    "Copy to new tab" : u"Копировать в новую вкладку",
+    "Split View insert tab" : u"", # New in v2.6.5.1
+    "Auto preview" : u"", # New in v2.6.6.0
+    "Reposition to" : u"Переставить на",
     "Crop editor" : u"Редактор обрезки",
     "You can drag the crop regions with the left mouse button when this dialog is visible, cropping the edge closest to the initial mouse click." : u"Вы можете перетаскивать область обрезки левой кнопкой мыши, когда этот диалог видимый, обрезая края ближайшие в начальному щелчку мышкой",
-    "Auto-crop" : u"", # New in v2.4.0
+    "Auto-crop" : u"Авто-обрезка",
     "Samples" : u"", # New in v2.4.0
     "At script end" : u"В конце скрипта",
     "At script cursor" : u"В позиции курсора",
@@ -825,65 +923,71 @@ messages = {
     "Selection options" : u"Опции выбора",
     "Keep selected regions" : u"Удерживать выбранные области",
     "Keep unselected regions" : u"Удерживать невыбранные области",
-    "Mark video frames inside/outside selection" : u"Пометить видеокадры внути/вне выбранного",
-    "Use Dissolve() with overlap frames:" : u"", # New in v2.2.1
-    "Single clips (c0..cn) with prefix:" : u"", # New in v2.6.1.5
-    "Insert Trim() commands: " : u"", # New in v2.6.1.5
-    "Insert clips commands: " : u"", # New in v2.6.1.5
+    "Mark video frames inside/outside selection" : u"Пометить кадры внути/снаружи выбранного",
+    "Use Dissolve() with overlap frames:" : u"Используйте функцию Dissolve() с перекрывающимися кадрами",
+    "Single clips (c0..cn) with prefix:" : u"Отдельные клипы (c0...cn) с префиксом",
+    "Insert Trim() commands: " : u"Вставлять комманду Trim()",
+    "Insert clips commands: " : u"Вставлять комманды clips",
     "Insert Dissolve(trim,) commands: " : u"", # New in v2.6.1.5
     "Insert Dissolve(clips,) commands: " : u"", # New in v2.6.1.5
     "Use the buttons which appear on the video slider handle to create the frame selections to trim." : u"Использовать кнопки на контроле ползунка видео для создания выборки кадров для вырезки.",
-    "The script's directory doesn't exist anymore!" : u"", # New in v2.5.1
-    "%d Bookmarks imported" : u"", # New in v2.6.1.5
+    "Clear" : u"Очистить",
+    "The script's directory doesn't exist anymore!" : u"Каталог скрипта больше не существует!",
     "Print Preview" : u"", # New in v2.3.1
     "Failed to create print preview" : u"", # New in v2.3.1
     "Print Error" : u"", # New in v2.3.1
-    "There was an error when printing.\nCheck that your printer is properly connected." : u"", # New in v2.3.1
-    "Printer Error" : u"", # New in v2.3.1
-    "Damaged session file" : u"", # New in v2.3.1
+    "There was an error when printing.\nCheck that your printer is properly connected." : u"При печати произошла ошибка. \ NПроверьте, правильно ли подключен ваш принтер.",
+    "Printer Error" : u"Ошибка принтера",
+    "Damaged session file" : u"Поврежденный файл сеанса",
     "File does not exist!" : u"Файл не существует!", 
     "Select a file" : u"Выбрать файл",
     "Create a separator label" : u"Создать метку разделителя",
     "Enter separator label" : u"Введите метку разделителя",
     "Enter tag name:" : u"Введите имя метки", 
     "Tag definition" : u"Определение метки", 
-    "Chapter" : u"", # New in v2.2.1
-    "Set title for bookmarks" : u"", # New in v2.2.1
-    "Title" : u"", # New in v2.2.1
-    "Frame No." : u"", # New in v2.2.1
-    "Time **" : u"", # New in v2.2.1
+    "Chapter" : u"Глава",
+    "Set title for bookmarks" : u"Выбрать заголовок закладок",
+    "Title" : u"Название",
+    "Frame No." : u"Номер кадра",
+    "Time **" : u"Время **",
     "Left-click on a selected item or double-click to edit.\n\n*  RED - a historic title, not a real bookmark.\n** Time may be unavailable or incorrect before preview refreshed." : u"", # New in v2.3.0
-    "Image saved to \"{0}\"" : u"", # New in v2.5.0
+    "Image saved to \"{0}\"" : u"Изображение сохранено в \"{0}\"", # New in v2.5.0
     "No image to save" : u"Нет изображения для сохранения",
-    "Error requesting frame {number}" : u"", # New in v2.5.0
-    "Couldn't open clipboard" : u"", # New in v2.4.2
-    "Cannot use crop editor unless bit depth is set to 8" : u"", # New in v2.5.1
-    "Cannot change bit depth while crop editor is open!" : u"", # New in v2.5.1
+    "Error requesting frame {number}" : u"Ошибка при запросе кадра {number}",
+    "Couldn't open clipboard" : u"Не удалось открыть буфер обмена",
+    "Cannot use crop editor unless bit depth is set to 8" : u"Невозможно использовать редактор обрезки, если битовая глубина не установлена ​​на 8",
+    "No filters found, clear the current saved filters?" : u"", # New in v2.6.6.0
+    "Preview filters" : u"", # New in v2.6.6.0
+    "Snapshot 1" : u"Снимок 1",
+    "Snapshot 2" : u"Снимок 2",
+    "Empty script" : u"Пустой скрипт",
+    "Cannot change bit depth while crop editor is open!" : u"Невозможно изменить битовую глубину, пока открыт редактор кадрирования!",
     "Interleaved RGB48" : u"", # New in v2.5.1
+    "Play video" : u"", # New in v2.6.5.2
     "Error loading the script" : u"Ошибка загрузки скрипта",
     "Starting analysis pass..." : u"", # New in v2.3.0
-    "Frame %s/%s (%#.4g fps)" : u"", # New in v2.4.2
-    "Finished (%s fps average)" : u"", # New in v2.5.0
+    "Average %#.4g fps\nFrame %s/%s (%#.4g fps)" : u"", # New in v2.6.5.1
+    "Finished (%s fps average)\n*** live and let live ***" : u"", # New in v2.6.5.1
     "Frame size:" : u"Размер кадра",
     "Length:" : u"Длина",
     "Frame rate:" : u"Частота кадров",
     "Colorspace:" : u"Цветовое пространство",
-    "Bit depth:" : u"", # New in v2.6.1.5
-    "Field or frame based:" : u"Поля или целые кадры",
+    "Bit depth:" : u"Битность",
+    "Field or frame based:" : u"На основе поля или кадра",
     "Parity:" : u"Четность",
     "Audio" : u"Аудио",
     "Channels:" : u"Каналов:",
     "Hz" : u"Гц",
-    "Sampling rate:" : u"Частота отсчетов",
-    "Sample type:" : u"Тип отсчетов",
+    "Sampling rate:" : u"Частота выборки",
+    "Sample type:" : u"Тип образца",
     "bits" : u"бит",
     "samples" : u"отсчетов",
-    "Could not find the macros folder!" : u"", # New in v2.2.1
-    "Failed to import the selected tool" : u"", # New in v2.2.1
-    "You must restart for changes to take effect!" : u"", # New in v2.2.1
-    "Basic (1)" : u"", # New in v2.5.1
+    "Could not find the macros folder!" : u"Не удалось найти папку макросов!",
+    "Failed to import the selected tool" : u"Не удалось импортировать выбранный инструмент",
+    "You must restart for changes to take effect!" : u"Вы должны перезапустить, чтобы изменения вступили в силу!",
+    "Basic (1)" : u"Базовый (1)",
     "Override all fonts to use a specified monospace font (no effect on scrap window)" : u"", # New in v2.2.1
-    "Use monospaced font:" : u"", # New in v2.2.1
+    "Use monospaced font:" : u"Использовать моноширинный шрифт",
     "Default:" : u"По умолчанию:", 
     "Comment:" : u"Комментарий:", 
     "Block Comment:" : u"", # New in v2.2.1
@@ -891,14 +995,14 @@ messages = {
     "Number:" : u"Число:", 
     "String:" : u"Строка:", 
     "Triple-quoted string:" : u"Строка в тройных кавычках:", 
-    "Assignment:" : u"", # New in v2.5.0
+    "Assignment:" : u"Присвоение",
     "Operator:" : u"Оператор:", 
-    "Basic (2)" : u"", # New in v2.5.1
+    "Basic (2)" : u"Базовый (2)",
     "Internal filter:" : u"Внутренний фильтр:", 
     "External filter:" : u"Внешний фильтр:", 
     "Internal function:" : u"Внутренняя функция:", 
     "User defined function:" : u"Функция определенная пользователем:",
-    "Unknown function:" : u"", # New in v2.5.0
+    "Unknown function:" : u"Неизвестная функция",
     "Clip property:" : u"Свойство клипа:", 
     "Parameter:" : u"", # New in v2.5.0
     "AviSynth data type:" : u"Тип данных AviSynth:",
@@ -914,10 +1018,10 @@ messages = {
     "Miscellaneous word:" : u"Различные слова:",
     "Calltip:" : u"Подсказка:",
     "Calltip highlight:" : u"Подстветка подсказки:",
-    "Cursor:" : u"", # New in v2.2.1
-    "If checked, highlight also foreground" : u"", # New in v2.5.1
-    "Selection highlight:" : u"", # New in v2.2.1
-    "Current line highlight:" : u"", # New in v2.2.1
+    "Cursor:" : u"Курсор",
+    "If checked, highlight also foreground" : u"Если отмечено, также выделяется передний план",
+    "Selection highlight:" : u"Подсветка выделения",
+    "Current line highlight:" : u"Выделение текущей строки",
     "Highlight the line that the caret is currently in" : u"Подсвечивать строку, на которой сейчас каретка", 
     "Fold margin:" : u"", # New in v2.2.1
     "Scrap window" : u"", # New in v2.2.1
@@ -931,40 +1035,44 @@ messages = {
     "This info is used for inserting sources based on file extensions." : u"Эта информация используется для вставки источников, основываясь на расширениях.",
     "Any instances of *** in the template are replaced with the filename." : u"Любое нахождение *** в шаблоне заменяется именем файла.",
     "(If you want relative paths instead of the full filename, use [***].)" : u"", # New in v2.2.1
-    "Only alphanumeric and underscores allowed!" : u"", # New in v2.5.0
+    "Only alphanumeric and underscores allowed!" : u"Разрешены только буквенно-цифровые символы и подчеркивания!",
     "Tag" : u"", # New in v2.5.0
     "Snippet" : u"", # New in v2.5.0
     "Associating .avs files will write to the windows registry." : u"Ассоциирование .avs файлов проводится путем внесения изменений в реестр Windows.",
     "Do you wish to continue?" : u"Хотите продолжить?",
     "Associate avs files for all users?" : u"", # New in v2.4.0
     "Disassociate avs files for all users?" : u"", # New in v2.4.0
-    " Admin rights are needed." : u"", # New in v2.4.0
+    " Admin rights are needed." : u"", # New in v2.6.5.2
     "Above keys are built-in editing shortcuts. If item is checked,\nit will not be overrided by a menu shortcut in script window." : u"", # New in v2.3.0
     "* This shortcut is active only when video window has focus.\n~ This shortcut is active only when script window has focus." : u"", # New in v2.3.0
     "Could not find the Avisynth plugins folder!" : u"", # New in v2.2.1
     "Could not find %(readme)s!" : u"Не могу найти %(readme)s!",
     "Could not find %(changelog)s!" : u"", # New in v2.4.1
+    "Could not find %(example)s!" : u"", # New in v2.6.6.0
     "{prog_name} v{version} ({arch})" : u"", # New in v2.5.1
     "AvsP Website" : u"AvsP WWW-сайт",
     "AvsPmod Website" : u"", # New in v2.5.1
     "Active thread on Doom9's forum" : u"", # New in v2.2.1
-    "This program is freeware under the GPL license." : u"", # New in v2.2.1
-    "Input a frame number or time (hr:min:sec) and hit Enter. Right-click to retrieve from history." : u"", # New in v2.2.1
+    "This program is freeware under the GPL license." : u"Эта программа распространяется бесплатно под лицензией GPL.",
+    "Drop frames" : u"", # New in v2.4.0
+    "Half speed" : u"Половина скорости",
+    "bookmark highlight color..." : u"цвет выделения закладки...",
+    "selection highlight color..." : u"цвета подсветки выделения...",
     "bell at bookmarks" : u"", # New in v2.6.1.5
-    "highlight bookmarks" : u"", # New in v2.6.1.5
-    "set highlight color..." : u"", # New in v2.6.1.5
-    "copy as time" : u"", # New in v2.2.1
-    "copy" : u"", # New in v2.2.1
-    "paste" : u"", # New in v2.2.1
-    "clear history" : u"", # New in v2.2.1
+    "highlight bookmarks" : u"выделить закладки",
+    "Set bookmark title" : u"Задать название закладки ",
+    "copy as time" : u"копировать как время",
+    "copy" : u"Копировать",
+    "paste" : u"Вставить",
+    "clear history" : u"очистить историю",
     "Cannot switch tabs while crop editor is open!" : u"Не могу переключить вкладки если редактор обрезки активен!",
     "Cannot switch tabs while trim editor is open!" : u"Не могу переключить вкладки, если открыт редактор вырезок!",
-    "Invalid crop values detected.  Continue?" : u"", # New in v2.2.1
+    "Invalid crop values detected.  Continue?" : u"Обнаружены недопустимые значения обрезки.  Продолжать?",
     "You must create at least one frame selection first!" : u"Вы должны сначала создать по крайней мере одну выборку кадров!",
-    "Select autocomplete keywords" : u"", # New in v2.2.1
-    "select all" : u"", # New in v2.2.1
-    "select none" : u"", # New in v2.2.1
-    "exclude long names" : u"", # New in v2.2.1
+    "Select autocomplete keywords" : u"Выберите ключевые слова автозаполнения",
+    "select all" : u"выбрать все",
+    "select none" : u"Ни чего не выбирать",
+    "exclude long names" : u"исключить длинные имена",
     "Customize the video status bar message" : u"Настроить сообщение в полосе статуса видео",
     "Video status bar message:" : u"Сообщение статуса видео",
     "Legend" : u"Метка",
@@ -976,8 +1084,8 @@ messages = {
     "Height" : u"Высота",
     "Aspect ratio" : u"Отношение сторон",
     "Framerate" : u"Частота кадров",
-    "Framerate numerator" : u"Делимое частоты кадров",
-    "Framerate denominator" : u"Делитель частоты кадров",
+    "Framerate numerator" : u"числитель частоты кадров",
+    "Framerate denominator" : u"знаменатель частоты кадров",
     "Colorspace" : u"Цветовое пространство",
     "Bits per component" : u"", # New in v2.6.1.5
     "Field or frame based" : u"Поля или целые кадры",
@@ -992,23 +1100,25 @@ messages = {
     "Pixel hex color (cursor based)" : u"16-ный цвет пиксела (курсором)",
     "Pixel rgb color (cursor based)" : u"RGB цвет (курсором)",
     "Pixel yuv color (cursor based)" : u"YUV цвет (курсором)",
-    "Pixel color (auto-detect colorspace)" : u"Цвет пиксела (автоопределение формата)",
+    "Pixel color (auto-detect colorspace)" : u"Цвет пикселя (автоопределение формата)",
     "Program zoom" : u"Программный зум",
-    "Bookmark title" : u"", # New in v2.4.0
-    "Note: The \"\\t\\t\" or \"\\T\\T\" is used to separate the left and right portions of the status bar\n         message." : u"", # New in v2.3.0
-    "A macro is still running. Close anyway?" : u"", # New in v2.3.0
+    "Bookmark title" : u"Название закладки",
+    "Note: The \"\\t\\t\" or \"\\T\\T\" is used to separate the left and right portions of the status bar\n         message." : u"Примечание: \"\\t\\t\" или \"\\T\\T\" используется для разделения левой и правой частей сообщения строки состояния\n.",
+    "Slider update immediately" : u"", # New in v2.6.6.0
+    "A macro is still running. Close anyway?" : u"Макрос все еще работает. Все равно закрыть?",
     "Save changes before closing?" : u"Сохранить изменения перед закрытием?",
     "Cannot create a new tab while crop editor is open!" : u"Не могу создать новую вкладку при открытом редакторе обрезки",
     "Cannot create a new tab while trim editor is open!" : u"Не могу создать новую вкладку при открытом редакторе вырезок",
-    "Source files" : u"", # New in v2.3.0
+    "Source files" : u"Исходные файлы",
     "Open a script or source" : u"Открыть скрипт или источник",
-    "Reload the file and lose the current changes?" : u"", # New in v2.2.1
-    "Open this file" : u"", # New in v2.2.1
-    "Save session before closing all tabs?" : u"", # New in v2.2.1
+    "Reload the file and lose the current changes?" : u"Перезагрузить файл и потерять текущие изменения?",
+    "%d Bookmarks imported" : u"%d импортированные закладки",
+    "Open this file" : u"Открыть этот файл",
+    "Save session before closing all tabs?" : u"Сохранить сеанс перед закрытием всех вкладок?",
     "Save current script" : u"Сохранить текущий скрипт",
     "Directory %(dirname)s does not exist!" : u"Папка %(dirname)s не существует",
-    "Script has no text!" : u"", # New in v2.5.0
-    "HTML files" : u"", # New in v2.5.0
+    "Script has no text!" : u"В скрипте нет текста!",
+    "HTML files" : u"HTML-файлы",
     "Load a session" : u"Загрузить сеанс",
     "File has been modified since the session was saved. Reload?" : u"Файл был изменен с момента сохранения сеанса. Загрузить заново?",
     "Save the session" : u"Сохранить сеанс",
@@ -1023,8 +1133,6 @@ messages = {
     "Script import" : u"", # New in v2.6.1.5
     "AvxSynth plugins" : u"", # New in v2.4.0
     "Insert a plugin" : u"Вставить плагин",
-    "No bookmarks defined!" : u"Нет определенных закладок!",
-    "There must be more than one unique bookmark to use this feature!" : u"Должно быть более чем одна закладка для использования этой функции!",
     "Jump to specified bookmark" : u"Прыгнуть к указанной закладке",
     "Line: %(line)i  Col: %(col)i" : u"Строка: %(line)i  Колонка: %(col)i",
     "Frame Based" : u"Полные кадры",
@@ -1034,49 +1142,45 @@ messages = {
     "Top Field First" : u"Верхнее поле первое",
     "TFF" : u"TFF",
     "Integer" : u"Целое",
-    "Float" : u"Вещественное",
-    "pos" : u"поз",
+    "Float" : u"С запятой",
+    "pos" : u"",
     "*hex" : u"", # New in v2.6.1.5
-    "Edit AviSynth function information" : u"Редактировать информацию по функции AviSynth", 
-    "  Function name" : u"   Имя функции", 
-    "Function arguments" : u"Аргументы функции", 
-    "Open filter customization file" : u"Открыть файл настроек фильтра",
-    "Filter customization file" : u"", # New in v2.3.0
-    "Calltip-only text file" : u"", # New in v2.3.0
-    "Invalid filter customization file!" : u"Негодный файл настроек фильтра!",
-    "Save filter customization file" : u"Сохранить файл настроек фильтра",
-    "Invalid argument!" : u"Неверный аргумент!",
-    "Error: can not save the Session" : u"", # New in v2.6.1.5
+    "Error: cannot save the Session" : u"", # New in v2.6.6.0
     "Question" : u"Вопрос",
+    "Invalid slider text: min > max" : u"Неверный  текст ползунка:  min > max",
+    "Invalid slider text: value not in bounds" : u"Неверный  текст ползунка: величина вне диапазона",
+    "Invalid slider text: bad modulo label" : u"Неверный  текст ползунка: плохая метка",
+    "Invalid slider text: slider label already exists" : u"Неверный текст ползунка: метка уже существует",
+    "Invalid slider text: invalid number" : u"Неверный текст ползунка:",
+    "General settings..." : u"Общие настройки...",
+    "Clear all auto fold orders" : u"", # New in v2.6.6.0
+    "Only with preview filter /**avsp_filter" : u"", # New in v2.6.6.0
+    "Update sliders" : u"", # New in v2.6.6.0
+    "Reset to initial value: %(value_formatted)s" : u"Сброс к начальному значению: %(value_formatted)s",
+    "Reset to initial value: %(value2_formatted)s" : u"Сброс к начальному значению: %(value2_formatted)s",
+    "Reset to default value: %(value_formatted)s" : u"Сброс к начальному значению: %(value_formatted)s",
+    "Invalid hexadecimal color!" : u"Неверный шестнадцатеричный цвет!",
+    "Must specify a max value!" : u"Необходимо указать максимальное значение!",
+    "Must specify a min value!" : u"Необходимо указать минимальное значение!",
+    "Min value must be a number!" : u"Минимальное значение должно быть числом!",
+    "Max value must be a number!" : u"Максимальное значение должно быть числом!",
+    "Default value must be a number!" : u"Значение по умолчанию должно быть числом!",
+    "Step size value must be a number!" : u"Значение шага должно быть числом!",
+    "Left-click to select a color, right click to reset to default" : u"Щелкните левой кнопкой мыши, чтобы выбрать цвет, щелкните правой кнопкой, чтобы восстановить значение по умолчанию.",
+    "Toggle \"%(label)s\" section" : u"Блок \"%(label)s\" включен",
+    "Error: can not save the Session" : u"Ошибка: не удается сохранить сеанс",
     "Save changes before previewing?" : u"Сохранить изменения перед просмотром?", 
     "Select an external player" : u"Выберете внешний проигрыватель",
     "A program must be specified to use this feature!" : u"Для использования этой функции должна быть указана программа!",
-    "General settings..." : u"", # New in v2.2.1
-    "Invalid slider text: min > max" : u"Негодный текст ползунка:  min > max",
-    "Invalid slider text: value not in bounds" : u"Негодный текст ползунка: величина вне диапазона",
-    "Invalid slider text: bad modulo label" : u"Негодный текст ползунка: плохая метка",
-    "Invalid slider text: slider label already exists" : u"Негодный текст ползунка: метка уже существует",
-    "Invalid slider text: invalid number" : u"Негодный текст ползунка:",
-    "Reset to initial value: %(value_formatted)s" : u"Сброс к начальному значению: %(value_formatted)s",
-    "Reset to initial value: %(value2_formatted)s" : u"", # New in v2.2.1
-    "Reset to default value: %(value_formatted)s" : u"", # New in v2.2.1
-    "Invalid hexadecimal color!" : u"", # New in v2.2.1
-    "Must specify a max value!" : u"", # New in v2.2.1
-    "Must specify a min value!" : u"", # New in v2.2.1
-    "Min value must be a number!" : u"", # New in v2.2.1
-    "Max value must be a number!" : u"", # New in v2.2.1
-    "Default value must be a number!" : u"", # New in v2.2.1
-    "Step size value must be a number!" : u"", # New in v2.2.1
-    "Left-click to select a color, right click to reset to default" : u"", # New in v2.2.1
-    "Toggle \"%(label)s\" section" : u"Блок \"%(label)s\" включен",
-    "Above plugin names contain undesirable symbols.\nRename them to only use alphanumeric or underscores,\nor make sure to use them in short name style only." : u"", # New in v2.3.0
-    "Found more then one function with the same name.\nYou should clean up your plugins." : u"", # New in v2.6.1.5
-    "Don't show me this again" : u"", # New in v2.2.1
-    "Changing the plugins directory writes to the Windows registry.\n" : u"", # New in v2.6.1.5
+    "Program not found. Must be specified to use this feature!" : u"", # New in v2.6.5.1
+    "Above plugin names contain undesirable symbols.\nRename them to only use alphanumeric or underscores,\nor make sure to use them in short name style only." : u"Вышеупомянутые имена плагинов содержат нежелательные символы. \nПереименуйте их, чтобы использовать только буквенно-цифровые символы или символы подчеркивания,\n не используйте их только в стиле коротких имен.",
+    "This function is beta!\nFound more then one function with the same name.\nYou should clean up your plugins." : u"Это бета-версия! \nНайдено более одной функции с тем же именем. \n NВы должны очистить свои плагины.",
+    "Don't show me this again" : u"Не показывай это снова",
+    "Changing the plugins directory writes to the Windows registry.\n" : u"Изменение каталога плагинов записывает в реестр Windows.",
     "Writing to: HKLM\\Software\\Avisynth\\plugindir2_5\n" : u"", # New in v2.6.1.5
-    "Plugins dir registration failed" : u"", # New in v2.6.1.5
+    "Plugins dir registration failed" : u"Ошибка при регистрации каталога плагинов",
     "You're changing the plugins autoload directory.\nDo you wish to change it for all applications? This will\nrequire writing to {0}" : u"", # New in v2.4.0
-    "Save as" : u"", # New in v2.2.1
+    "Save as" : u"Сохранить как",
     "Select a directory" : u"Выберете папку",
     "Enter information" : u"Введите информацию",
     "Progress" : u"Выполнение",
@@ -1113,18 +1217,17 @@ messages = {
     "Replaced %(count)i times" : u"Заменено %(count)i раз(а)",
     "Program Settings" : u"Настройки программы",
     "Browse" : u"Обзор",
-    "* Requires program restart for full effect" : u"* Требует перезапуска программы для действия",
-    "Invalid directory!" : u"Негодная папка!",
-    "Invalid filename!" : u"Негодное имя файла!",
+    "* Requires program restart for full effect" : u"* Требует перезапуска программы",
+    "Invalid directory!" : u"Неверный каталог!",
+    "Invalid filename!" : u"Недопустимое имя файла!",
     "Edit shortcuts" : u"Редактировать сочетания клавиш",
     "Menu label" : u"Пункт меню",
     "Keyboard shortcut" : u"Сочетание клавиш",
     "Double-click or hit enter on an item in the list to edit the shortcut." : u"Для изменения - двойной щелчок или нажмите Enter на пункте",
-    "Shortcut" : u"", # New in v2.2.1
+    "Shortcut" : u"Сочетание клавиш",
     "Action" : u"", # New in v2.2.1
     "Edit the keyboard shortcut" : u"Редактировать сочетание клавиш быстрого запуска",
     "Key:" : u"Клавиша:",
-    "Clear" : u"Очистить",
     "%(keyString)s not found in key string list" : u"%(keyString)s не найдена в списке сочетаний клавиш",
     "This shortcut is being used by:" : u"Это сочетание клавиш используется как:",
     "Insert" : u"Вставить",
@@ -1188,6 +1291,7 @@ messages = {
     "Automatically compute bitrate value on startup" : u"", # New in v2.2.1
     "Automatically compute pixel aspect ratio from d2v on startup" : u"", # New in v2.2.1
     "Append batch commands to the avs script as comments" : u"", # New in v2.2.1
+    "Add output file to new tab" : u"", # New in v2.6.5.1
     "Encoder priority:" : u"", # New in v2.2.1
     "Path to %(name)s:" : u"", # New in v2.2.1
     "Extra arguments:" : u"", # New in v2.2.1
@@ -1253,13 +1357,16 @@ messages = {
     #--- Macros ---#
     "Bookmarks at Intervals" : u"", # New in v2.3.0
     "Bookmarks to Chapter" : u"", # New in v2.3.0
+    "Bookmarks to Trims" : u"", # New in v2.6.5.1
     "ConditionalReader file from bookmarks" : u"", # New in v2.3.0
     "DeleteFrame" : u"", # New in v2.3.0
     "DuplicateFrame" : u"", # New in v2.3.0
     "Import bookmarks from file" : u"", # New in v2.3.1
+    "Open Image Sequence" : u"", # New in v2.6.5.1
     "Preview from current point" : u"", # New in v2.3.0
     "Random Clip Order" : u"", # New in v2.3.0
     "Save Image Sequence" : u"", # New in v2.3.0
+    "Selected trims to selections" : u"", # New in v2.6.5.1
     "Shift Bookmarks by frames" : u"", # New in v2.3.0
     "Example (Resize)" : u"", # New in v2.3.0
     "Examples" : u"", # New in v2.3.0
@@ -1281,7 +1388,6 @@ messages = {
 
     #--- Macro: Bookmarks at Intervals ---#
     "Choose a frame step or a number of intervals" : u"", # New in v2.3.0
-    "Frame step" : u"", # New in v2.3.0
     "Number of intervals" : u"", # New in v2.3.0
     "End frame" : u"", # New in v2.4.2
     "Start frame" : u"", # New in v2.4.2
@@ -1290,6 +1396,9 @@ messages = {
     #--- Macro: Bookmarks to Chapter ---#
     "Save chapter file as..." : u"", # New in v2.4.0
     "Text files" : u"", # New in v2.3.0
+
+    #--- Macro: Bookmarks to Trims ---#
+    "No bookmarks defined." : u"", # New in v2.6.5.1
 
     #--- Macro: ConditionalReader file from bookmarks ---#
     "There is not bookmarks" : u"", # New in v2.3.0
@@ -1333,6 +1442,11 @@ messages = {
     "[COMBED FRAMES] section could not be parsed" : u"", # New in v2.3.1
     "Bookmark file unrecognized!" : u"", # New in v2.3.0
 
+    #--- Macro: Open Image Sequence ---#
+    "Select the Image" : u"", # New in v2.6.5.1
+    "Images (bmp, jpg, png, tiff)" : u"", # New in v2.6.5.1
+    "All files (*.*)" : u"", # New in v2.6.5.1
+
     #--- Macro: Preview from current point ---#
     "Failed to run the external player!\n\nOpen the macro file in the \"Macros\" subdirectory\nwith a text editor and edit the executable\ndirectory appropriately!" : u"", # New in v2.3.0
 
@@ -1348,11 +1462,17 @@ messages = {
     "Use always this directory" : u"", # New in v2.4.0
     "Add the frame number as the suffix" : u"", # New in v2.5.0
     "Save ranges to subdirectories" : u"", # New in v2.5.0
+    "Add image source to the script  ->" : u"", # New in v2.6.5.1
+    "To new tab" : u"", # New in v2.6.5.1
     "Range between bookmarks" : u"", # New in v2.4.0
+    "From first to last bookmark" : u"", # New in v2.6.5.1
     "Trim editor selections" : u"", # New in v2.4.0
     "All frames" : u"", # New in v2.4.0
     "Select an output directory and basename for the new images files" : u"", # New in v2.4.0
+    "Bookmarks out of frame count" : u"", # New in v2.6.5.1
+    "At least 2 bookmarks are required" : u"", # New in v2.6.5.1
     "There is not Trim editor selections" : u"", # New in v2.4.0
+    "There is no process selection" : u"", # New in v2.6.5.1
     "Saving images..." : u"", # New in v2.3.0
     "scene_{0:0{1}}" : u"", # New in v2.5.0
     "%d image files created." : u"", # New in v2.3.0

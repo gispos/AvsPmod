@@ -17,7 +17,7 @@
 # Português(Br) translation authors:
 #   Veiga v1.2.0 - v2.0.1
 
-version = "2.6.1.5"
+version = "2.6.6.0"
 
 messages = {
     "AviSynth script" : u"", # New in v2.3.0
@@ -195,6 +195,12 @@ messages = {
     "Executable files" : u"", # New in v2.3.0
     "Additional arguments when running the external player" : u"Argumentos adicionais p/ qdo usar o player externo",
     "External player extra args:" : u"Arqumentos extras p/ player externo",
+    "External tool:" : u"", # New in v2.6.6.0
+    "Location of external program, e.g. AvsMeter" : u"", # New in v2.6.6.0
+    "Arguments for external tool menu 1, e.g. Menu label|arguments\nUse %fn to pass the script file name with the arguments." : u"", # New in v2.6.6.0
+    "External tool arg1:" : u"", # New in v2.6.6.0
+    "Arguments for external tool menu 2, e.g. Menu label|arguments\nUse %fn to pass the script file name with the arguments." : u"", # New in v2.6.6.0
+    "External tool arg2:" : u"", # New in v2.6.6.0
     "Avisynth help file/url:" : u"Avisynth, Arquivo Ajuda / URL",
     "Location of the avisynth help file or url" : u"Local do Arquivo Ajuda Avisynth / URL",
     "Documentation search paths:" : u"Local da documenção para pesquisa",
@@ -266,10 +272,11 @@ messages = {
     "Shared timeline" : u"", # New in v2.2.1
     "Only on tabs of the same characteristics" : u"", # New in v2.5.0
     "Only share timeline for clips with the same resolution and frame count" : u"", # New in v2.5.0
-    "Determines which mouse wheel function is used, see below tabs" : u"", # New in v2.5.1.09
-    "Frames step" : u"", # New in v2.6.1.5
-    "Mouse Wheel Function" : u"", # New in v2.5.1.09
-    "Tabs scrolling" : u"", # New in v2.5.1.09
+    "Determines which mouse wheel function is used, see below tabs.Tab change also possible under Misc -> Mouse browse buttons" : u"", # New in v2.6.6.0
+    "Mouse wheel function" : u"", # New in v2.6.6.0
+    "Tab change or scroll" : u"", # New in v2.6.6.0
+    "Frame step" : u"", # New in v2.3.0
+    "Tab change" : u"", # New in v2.6.6.0
     "Enable scroll wheel through similar tabs" : u"", # New in v2.2.1
     "Mouse scroll wheel cycles through tabs with similar videos" : u"A roda do mouse irá navegar pelas fichas com videos similares",
     "Enable scroll wheel through tabs on the same group" : u"", # New in v2.5.0
@@ -280,6 +287,8 @@ messages = {
     "Use a separate window for the video preview" : u"Usa a janela de video separada",
     "Keep it on top of the main window" : u"", # New in v2.3.1
     "Keep the video preview window always on top of the main one and link its visibility" : u"", # New in v2.3.1
+    "Startup with last zoom settings" : u"", # New in v2.6.6.0
+    "Use last zoom settings at startup" : u"", # New in v2.6.6.0
     "Min text lines on video preview" : u"Tamanho mínimo da janela de texto(linhas)",
     "Minimum number of lines to show when displaying the video preview" : u"Número mínimo de linhas da janela de texto, com a janela de video ativa ",
     "Customize the video information shown in the program status bar" : u"Configuração das informações de video mostradas na barra de status",
@@ -309,6 +318,7 @@ messages = {
     "Fold all" : u"Não",
     "Fold non-numbers" : u"Só os numéricos",
     "Fold none" : u"Todos",
+    "Fold or restore last order" : u"", # New in v2.6.6.0
     "Fold startup setting" : u"Modo de inicialização (mostrar argumentos ?)",
     "Filter exclusion list:" : u"Filtrar (lista de exclusão)",
     "Specify filters never to build automatic sliders for" : u"Especificar p/ quais filtros não construir sliders automatimente",
@@ -333,11 +343,11 @@ messages = {
     "Prompt to save scripts on program exit" : u"Alertar p/ salvar scripts qdo sair do programa",
     "Only with existing script" : u"", # New in v2.5.1.09
     "When exiting the program, don't prompt to save the script if it doesn't already exist on the filesystem" : u"", # New in v2.5.1.09
-    "Auto" : u"", # New in v2.5.1
     "Auto: CRLF on Windows and LF on *nix for new scripts, existing scripts keep their current line endings" : u"", # New in v2.5.1
     "Force CRLF" : u"", # New in v2.5.1
     "Force LF" : u"", # New in v2.5.1
     "Line endings" : u"", # New in v2.5.1
+    "Auto" : u"", # New in v2.5.1
     "Save and read AvsPmod-specific markings (user sliders, toggle tags, etc) as a commented section in the *.avs file" : u"", # New in v2.6.1.5
     "Save or read .avs scripts with AvsPmod markings" : u"", # New in v2.6.1.5
     "Start dialogs on the last used directory" : u"", # New in v2.4.0
@@ -350,8 +360,6 @@ messages = {
     "Misc" : u"Miscelânias",
     "Choose the language used for the interface" : u"", # New in v2.3.0
     "Language" : u"", # New in v2.3.0
-    "Double the size of the buttons on the video control bar" : u"", # New in v2.4.1
-    "Use large size video controls" : u"", # New in v2.4.1
     "Show keyboard images in the script tabs when video has focus" : u"Mostra nas fichas, o numero correspondente do teclado qdo o video estiver focado",
     "Use keyboard images in tabs" : u"Mostra o número correspondente do teclado nas fichas",
     "Show tabs in multiline style" : u"", # New in v2.2.1
@@ -362,15 +370,23 @@ messages = {
     "Scroll the mouse wheel up for changing tabs to the right" : u"", # New in v2.4.1
     "Invert scroll wheel direction (Frame)" : u"", # New in v2.5.1.09
     "Invert wheel direction for frames step" : u"", # New in v2.6.1.5
-    "Automatically load bookmarks from script only if tab count 1" : u"", # New in v2.6.1.5
-    "On first script load bookmarks from script" : u"", # New in v2.6.1.5
-    "Automatically load bookmarks from script if tab changed" : u"", # New in v2.6.1.5
-    "Tabs changing loads bookmarks from script" : u"", # New in v2.6.1.5
+    "Automatically load bookmarks from script" : u"", # New in v2.6.6.0
+    "Load bookmarks from script" : u"", # New in v2.6.6.0
+    "Automatically load bookmarks from script or tab if tab changed" : u"", # New in v2.6.6.0
+    "Tab change loads bookmarks from script or tab *" : u"", # New in v2.6.6.0
+    "Warn if tab bookmarks and from script reading bookmarks different." : u"", # New in v2.6.6.0
+    "Warning tab bookmarks different" : u"", # New in v2.6.6.0
     "Only allow a single instance of AvsPmod" : u"", # New in v2.2.1
     "Show warning at startup if there are dlls with bad naming in default plugin folder" : u"", # New in v2.2.1
     "Show warning for bad plugin naming at startup" : u"", # New in v2.2.1
-    "Middle mouse button behavior on the script" : u"", # New in v2.6.1.5
-    "Middle mouse on script (0 open source, 1 show video frame)" : u"", # New in v2.6.1.5
+    "Bookmark jump" : u"", # New in v2.6.6.0
+    "Custom jump" : u"", # New in v2.6.6.0
+    "Mouse browse buttons" : u"", # New in v2.6.6.0
+    "Mouse browse buttons (forward/backward) on video and script window\nIf 'Tab change' and tab count less than 2, 'Bookmark jump' is used\nIf 'Tab change' press CTRL or left mouse and 'Bookmark jump' is used\nIf 'Bookmark jump', vice versa" : u"", # New in v2.6.6.0
+    "Middle mouse button behavior on the script, if script empty open source is used" : u"", # New in v2.6.6.0
+    "Middle mouse on script" : u"", # New in v2.6.6.0
+    "Open source" : u"", # New in v2.6.6.0
+    "Show video frame" : u"", # New in v2.6.6.0
     "Max number of recent filenames" : u"Últimos arquivos(nº máximo)",
     "This number determines how many filenames to store in the recent files menu" : u"Determina o número máximo de nome de arquivos abertos recentemente que serão mostrados como últimos arquivos",
     "Custom jump size:" : u"Definir tamanho do avanço/retrocesso",
@@ -381,6 +397,21 @@ messages = {
     "minutes" : u"minutos",
     "seconds" : u"segundos",
     "frames" : u"quadros",
+    "Misc 2" : u"", # New in v2.6.6.0
+    "AvsPmod DPI scaling *" : u"", # New in v2.6.6.0
+    "Beta: some elements may be not scaled" : u"", # New in v2.6.6.0
+    "DPI scaling overall only manually*" : u"", # New in v2.6.6.0
+    "Do not do overall DPI scaling automatically" : u"", # New in v2.6.6.0
+    "Adjust dpi scaling overall (10 % steps). For 150 % DPI set value 5" : u"", # New in v2.6.6.0
+    "DPI scaling overall:*" : u"", # New in v2.6.6.0
+    "Additional adjust the script window tabs (10 % steps)" : u"", # New in v2.6.6.0
+    "DPI scaling main tabs:*" : u"", # New in v2.6.6.0
+    "Additional adjust the video controls (10 % steps)" : u"", # New in v2.6.6.0
+    "DPI scaling video controls:*" : u"", # New in v2.6.6.0
+    "Additional adjust the statusbar (10 % steps)" : u"", # New in v2.6.6.0
+    "DPI scaling statusbar:*" : u"", # New in v2.6.6.0
+    "Disable AvsPmod DPI Aware. Program is zoomed by the system and set values." : u"", # New in v2.6.6.0
+    "Disable DPI awareness*" : u"", # New in v2.6.6.0
     "Add tab to group" : u"", # New in v2.5.0
     "Extend selection to line down position" : u"", # New in v2.2.1
     "Scroll down" : u"", # New in v2.2.1
@@ -588,7 +619,10 @@ messages = {
     "Bookmarks from script" : u"", # New in v2.6.1.5
     "Add/Remove bookmark" : u"", # New in v2.2.1
     "Mark the current frame on the frame slider" : u"Marcar quadro atual no slider de quadro",
-    "Clear all bookmarks" : u"Desmarcar todos os quadros",
+    "Clear tab bookmarks" : u"", # New in v2.6.6.0
+    "Clears the current tab bookmarks" : u"", # New in v2.6.6.0
+    "Clear all bookmarks Globally" : u"", # New in v2.6.6.0
+    "Clears all bookmarks, clears also all tab bookmarks" : u"", # New in v2.6.6.0
     "Titled &bookmarks" : u"", # New in v2.2.1
     "Move the nearest titled bookmark to the current position. A historic title will be restored if it matches the condition." : u"", # New in v2.2.1
     "Move titled bookmark" : u"", # New in v2.2.1
@@ -600,6 +634,8 @@ messages = {
     "Set title (auto)" : u"", # New in v2.2.1
     "Edit title for bookmarks in a list table" : u"", # New in v2.2.1
     "Set title (manual)" : u"", # New in v2.2.1
+    "Remove all title" : u"", # New in v2.6.6.0
+    "Remove all title from the bookmarks" : u"", # New in v2.6.6.0
     "Not include this tab on any group" : u"", # New in v2.5.0
     "Add tab to this group" : u"", # New in v2.5.0
     "Clear current tab group" : u"", # New in v2.5.0
@@ -644,12 +680,14 @@ messages = {
     "Increment speed" : u"", # New in v2.4.0
     "Decrement speed" : u"", # New in v2.4.0
     "Halve the current playback speed" : u"", # New in v2.5.0
-    "Normal speed" : u"", # New in v2.4.0
     "Set the playback speed to the script frame rate" : u"", # New in v2.4.0
-    "Maximum speed" : u"", # New in v2.4.0
+    "Normal speed" : u"", # New in v2.4.0
     "Play the video as fast as possible without dropping frames" : u"", # New in v2.4.0
-    "Drop frames" : u"", # New in v2.4.0
-    "Maintain correct video speed by skipping frames" : u"", # New in v2.4.0
+    "Maximum speed" : u"", # New in v2.4.0
+    "Play loop between trim editor first selection start and end frame" : u"", # New in v2.6.6.0
+    "Play loop" : u"", # New in v2.6.6.0
+    "0 % to 38 % faster playback, depending on CPU load" : u"", # New in v2.6.6.0
+    "Use faster playback routine" : u"", # New in v2.6.6.0
     "Crop editor..." : u"Editor de apara(crop)",
     "Show the crop editor dialog" : u"Mostra o editor de apara (crop)",
     "&Trim selection editor" : u"", # New in v2.2.1
@@ -663,6 +701,16 @@ messages = {
     "The current selections are cut from the timeline and inserted before the current frame. Bookmarks are shifted accordingly." : u"", # New in v2.5.1
     "Move selections after the current frame" : u"", # New in v2.5.1
     "The current selections are cut from the timeline and inserted after the current frame. Bookmarks are shifted accordingly." : u"", # New in v2.5.1
+    "Add bookmark to trim intersections" : u"", # New in v2.6.6.0
+    "Mark trim points" : u"", # New in v2.6.6.0
+    "Save the selections into the script" : u"", # New in v2.6.6.0
+    "Selections to script" : u"", # New in v2.6.6.0
+    "Read the selections from the script" : u"", # New in v2.6.6.0
+    "Selections from script" : u"", # New in v2.6.6.0
+    "Clear tab selections" : u"", # New in v2.6.6.0
+    "Clear tab trim editor selections (hide the trim editor if visible)" : u"", # New in v2.6.6.0
+    "Clear all selections Globally" : u"", # New in v2.6.6.0
+    "Clear all the tab trim editor selections (hide the trim editor if visible)" : u"", # New in v2.6.6.0
     "Zoom video preview to 25%" : u"Altera zoom p/ 25%",
     "Zoom video preview to 50%" : u"Altera zoom p/ 50%",
     "Zoom video preview to 100% (normal)" : u"Altera zoom p/ 100% (normal)",
@@ -673,6 +721,8 @@ messages = {
     "Zoom video preview to fit inside the window" : u"Zoom video até o limite da janela",
     "Enlarge preview image to next zoom level. Not work under 'Fill window' or 'Fit inside window'" : u"", # New in v2.2.1
     "Shrink preview image to previous zoom level. Not work under 'Fill window' or 'Fit inside window'" : u"", # New in v2.2.1
+    "Antialiasing" : u"", # New in v2.6.6.0
+    "If zoom not 100 %, the preview is drawing antialiased" : u"", # New in v2.6.6.0
     "&Flip" : u"", # New in v2.2.1
     "Flip video preview upside down" : u"", # New in v2.2.1
     "Flip video preview from left to right" : u"", # New in v2.2.1
@@ -703,34 +753,75 @@ messages = {
     "Custom" : u"", # New in v2.5.1
     "Choose the color used if 'custom' is selected" : u"", # New in v2.5.1
     "Select custom color" : u"", # New in v2.5.1
-    "Create the new AviSynth clip on the same environment. Useful for tweaking parameters" : u"", # New in v2.4.0
-    "Keep variables on refreshing" : u"", # New in v2.4.0
-    "Save last view position and zoom on tab change" : u"", # New in v2.6.1.5
-    "Save view pos on tab change" : u"", # New in v2.6.1.5
     "Save image as..." : u"Salvar imagem como...",
-    "Save the current frame as a bitmap" : u"Salvar quadro atual como bitmap",
+    "Save the current frame as image file. If you not change the frame number, Quick save image uses the name." : u"", # New in v2.6.6.0
     "Quick save image" : u"", # New in v2.5.0
-    "Save the current frame as a bitmap with a default filename, overwriting the file if already exists" : u"", # New in v2.5.0
+    "Save the current frame with a default filename, overwriting the file if already exists. Press CTRL to reset the default name formatting" : u"", # New in v2.6.6.0
     "Copy image to clipboard" : u"", # New in v2.4.2
     "Copy the current frame to the clipboard as a bitmap" : u"", # New in v2.4.2
     "Force the script to reload and refresh the video frame" : u"Força recarregar o script e atualizar o quadro de video",
     "Refresh preview" : u"Mostrar/Atualizar o video",
-    "Show/Hide the preview" : u"", # New in v2.2.1
-    "Toggle the video preview" : u"Alternar janela de video",
-    "Toggle preview placement" : u"", # New in v2.5.1
-    "When not using a separate window for the video preview, toggle between showing it at the bottom (default) or to the right" : u"", # New in v2.5.1
-    "Toggle extended left move" : u"", # New in v2.5.1.09
-    "Video window extended left move" : u"", # New in v2.5.1.09
     "Release all open videos from memory" : u"Liberar todos os videos abertos da memória",
     "Release all videos from memory" : u"Liberar memória",
+    "Snapshot" : u"", # New in v2.6.6.0
+    "Take snapshot 1" : u"", # New in v2.6.6.0
+    "Make bitmap and script snapshot" : u"", # New in v2.6.6.0
+    "Take snapshot 2" : u"", # New in v2.6.6.0
+    "Show or hide snapshot 1" : u"", # New in v2.6.6.0
+    "Show/hide snapshot 1" : u"", # New in v2.6.6.0
+    "Show or hide snapshot 2" : u"", # New in v2.6.6.0
+    "Show/hide snapshot 2" : u"", # New in v2.6.6.0
+    "Copy snap shot 1 to new tab" : u"", # New in v2.6.6.0
+    "New tab from snapshot 1" : u"", # New in v2.6.6.0
+    "Copy snap shot 2 to new tab" : u"", # New in v2.6.6.0
+    "New tab from snapshot 2" : u"", # New in v2.6.6.0
+    "Clear tab snapshots" : u"", # New in v2.6.6.0
+    "Clears the current tab snapshots" : u"", # New in v2.6.6.0
+    "Clear all snapshots Globally" : u"", # New in v2.6.6.0
+    "Clears all snapshots Globally" : u"", # New in v2.6.6.0
+    "Preview filter" : u"", # New in v2.6.6.0
+    "Preview filter off" : u"", # New in v2.6.6.0
+    "Preview filter 1" : u"", # New in v2.6.6.0
+    "1" : u"", # New in v2.6.6.0
+    "Preview filter 2" : u"", # New in v2.6.6.0
+    "2" : u"", # New in v2.6.6.0
+    "Preview filter 3" : u"", # New in v2.6.6.0
+    "3" : u"", # New in v2.6.6.0
+    "Preview filter 4" : u"", # New in v2.6.6.0
+    "4" : u"", # New in v2.6.6.0
+    "Preview filter 5" : u"", # New in v2.6.6.0
+    "5" : u"", # New in v2.6.6.0
+    "Save preview filters" : u"", # New in v2.6.6.0
+    "Save preview filters for later use" : u"", # New in v2.6.6.0
+    "Write all preview filters to script" : u"", # New in v2.6.6.0
+    "Write all to script" : u"", # New in v2.6.6.0
+    "Write to script" : u"", # New in v2.6.6.0
+    "Write Preview filter to script" : u"", # New in v2.6.6.0
+    "Enable block commend /** showing as string. Filters must written to script" : u"", # New in v2.6.6.0
+    "Enable preview filter sliders" : u"", # New in v2.6.6.0
+    "Shows the selected and optional the next or previous tab in one view (video width and height must be the same)" : u"", # New in v2.6.6.0
+    "Split View on/off" : u"", # New in v2.6.6.0
+    "Expands the left shift area of the video window" : u"", # New in v2.6.6.0
+    "Toggle extended left move" : u"", # New in v2.5.1.09
+    "Save/Restore last view position and zoom factor on tab change" : u"", # New in v2.6.6.0
+    "Save view pos on tab change" : u"", # New in v2.6.1.5
+    "Show/Hide the preview" : u"", # New in v2.2.1
+    "Toggle the video preview" : u"Alternar janela de video",
     "Switch focus between the video preview and the text editor" : u"Alterna o foco entre janelas video/texto",
     "Switch video/text focus" : u"Alternar foco (video/texto)",
     "Show/hide the slider sidebar (double-click the divider for the same effect)" : u"Mostra/Oculta o slide / sidebar(Clique duplo faz o mesmo eveito",
     "Toggle the slider sidebar" : u"Ativar/Desat. slide/sidebar",
+    "Toggle preview placement" : u"", # New in v2.5.1
+    "When not using a separate window for the video preview, toggle between showing it at the bottom (default) or to the right" : u"", # New in v2.5.1
+    "Tools" : u"", # New in v2.6.6.0
     "Request every video frame once (analysis pass for two-pass filters)" : u"", # New in v2.3.0
     "Run analysis pass" : u"", # New in v2.3.0
     "External player" : u"Player externo",
     "Play the current script in an external program" : u"Mostra video do script atual em um programa externo",
+    "External tool arg1" : u"", # New in v2.6.6.0
+    "Run the current script with an external program and arg1" : u"", # New in v2.6.6.0
+    "External tool arg2" : u"", # New in v2.6.6.0
+    "Run the current script with an external program and arg2" : u"", # New in v2.6.6.0
     "Show information about the video in a dialog box" : u"Mostra informaçao do video em uma caixa de dialogo",
     "Video information" : u"Informação do video",
     "&Options" : u"&Opções",
@@ -740,7 +831,7 @@ messages = {
     "Video preview always on top" : u"", # New in v2.3.1
     "Disable video preview" : u"Desabilitar janela de video",
     "If checked, the video preview will not be shown under any circumstances" : u"Nunca mostrar janela de video",
-    "Associate .avs files with AvsP" : u"Associar arquivos .avs com AvsP",
+    "Associate .avs files with AvsPmod" : u"", # New in v2.6.6.0
     "Configure this computer to open .avs files with AvsP when double-clicked. Run again to disassociate" : u"", # New in v2.4.0
     "Edit the various AviSynth script fonts and colors" : u"Escolha fonte e côr p/ os vários scripts Avisynth",
     "Fonts and colors..." : u"Fontes e Cores",
@@ -770,14 +861,19 @@ messages = {
     "Macros" : u"Macros",
     "Avisynth help" : u"Ajuda Avisynth",
     "Open the avisynth help html" : u"Abre ajuda html do avisynth",
+    "Open the Preview filter examples" : u"", # New in v2.6.6.0
+    "Preview filter example" : u"", # New in v2.6.6.0
     "Open Avisynth plugins folder" : u"", # New in v2.2.1
     "Open the avisynth plugins folder, or the last folder from which a plugin was loaded" : u"", # New in v2.3.1
+    "DPI Info" : u"", # New in v2.6.6.0
+    "DPI information" : u"", # New in v2.6.6.0
     "Changelog" : u"", # New in v2.4.1
     "Open the changelog file" : u"", # New in v2.4.1
     "About this program" : u"Sôbre este programa",
     "About AvsPmod" : u"", # New in v2.2.1
     "Previous frame" : u"Quadro anterior",
     "Next frame" : u"Próximo quadro",
+    "Play/pause video. Right click for options." : u"", # New in v2.6.6.0
     "Run the script with an external program" : u"Executa o script com um programa externo",
     "Run the selected tool" : u"Aplicar a ferramenta selecionada",
     "&Tools" : u"", # New in v2.2.1
@@ -800,6 +896,8 @@ messages = {
     "Release all other video memory" : u"", # New in v2.6.1.5
     "Tab change loads bookmarks" : u"", # New in v2.6.1.5
     "Copy to new tab" : u"Copiar p/ nova tabulação",
+    "Split View insert tab" : u"", # New in v2.6.6.0
+    "Auto preview" : u"", # New in v2.6.6.0
     "Reposition to" : u"", # New in v2.2.1
     "Crop editor" : u"Editor crop",
     "You can drag the crop regions with the left mouse button when this dialog is visible, cropping the edge closest to the initial mouse click." : u"Aqui, você pode definir valores de apara (crop) observando o resultado na imagem, ou enquanto este editor estiver aberto, (clicando direto na imagem se preferir)",
@@ -822,8 +920,8 @@ messages = {
     "Insert Dissolve(trim,) commands: " : u"", # New in v2.6.1.5
     "Insert Dissolve(clips,) commands: " : u"", # New in v2.6.1.5
     "Use the buttons which appear on the video slider handle to create the frame selections to trim." : u"Use os botões que aparecem no slider de video para criar seleções de corte",
+    "Clear" : u"Limpar",
     "The script's directory doesn't exist anymore!" : u"", # New in v2.5.1
-    "%d Bookmarks imported" : u"", # New in v2.6.1.5
     "Print Preview" : u"", # New in v2.3.1
     "Failed to create print preview" : u"", # New in v2.3.1
     "Print Error" : u"", # New in v2.3.1
@@ -847,12 +945,18 @@ messages = {
     "Error requesting frame {number}" : u"", # New in v2.5.0
     "Couldn't open clipboard" : u"", # New in v2.4.2
     "Cannot use crop editor unless bit depth is set to 8" : u"", # New in v2.5.1
+    "No filters found, clear the current saved filters?" : u"", # New in v2.6.6.0
+    "Preview filters" : u"", # New in v2.6.6.0
+    "Snapshot 1" : u"", # New in v2.6.6.0
+    "Snapshot 2" : u"", # New in v2.6.6.0
+    "Empty script" : u"", # New in v2.6.6.0
     "Cannot change bit depth while crop editor is open!" : u"", # New in v2.5.1
     "Interleaved RGB48" : u"", # New in v2.5.1
+    "Play video" : u"", # New in v2.6.6.0
     "Error loading the script" : u"Erro durante carregamento do script",
     "Starting analysis pass..." : u"", # New in v2.3.0
-    "Frame %s/%s (%#.4g fps)" : u"", # New in v2.4.2
-    "Finished (%s fps average)" : u"", # New in v2.5.0
+    "Average %#.4g fps\nFrame %s/%s (%#.4g fps)" : u"", # New in v2.6.6.0
+    "Finished (%s fps average)\n*** live and let live ***" : u"", # New in v2.6.6.0
     "Frame size:" : u"Tamanho do quadro",
     "Length:" : u"Comprimento",
     "Frame rate:" : u"Quadros / segundo",
@@ -933,15 +1037,19 @@ messages = {
     "Could not find the Avisynth plugins folder!" : u"", # New in v2.2.1
     "Could not find %(readme)s!" : u"Impossivel encontrar %(readme)s!",
     "Could not find %(changelog)s!" : u"", # New in v2.4.1
+    "Could not find %(example)s!" : u"", # New in v2.6.6.0
     "{prog_name} v{version} ({arch})" : u"", # New in v2.5.1
     "AvsP Website" : u"AvsP Website",
     "AvsPmod Website" : u"", # New in v2.5.1
     "Active thread on Doom9's forum" : u"", # New in v2.2.1
     "This program is freeware under the GPL license." : u"Este programa sob licença GPL é livre",
-    "Input a frame number or time (hr:min:sec) and hit Enter. Right-click to retrieve from history." : u"", # New in v2.2.1
+    "Drop frames" : u"", # New in v2.4.0
+    "Half speed" : u"", # New in v2.6.6.0
+    "bookmark highlight color..." : u"", # New in v2.6.6.0
+    "selection highlight color..." : u"", # New in v2.6.6.0
     "bell at bookmarks" : u"", # New in v2.6.1.5
     "highlight bookmarks" : u"", # New in v2.6.1.5
-    "set highlight color..." : u"", # New in v2.6.1.5
+    "Set bookmark title" : u"", # New in v2.6.6.0
     "copy as time" : u"", # New in v2.2.1
     "copy" : u"", # New in v2.2.1
     "paste" : u"", # New in v2.2.1
@@ -985,6 +1093,7 @@ messages = {
     "Program zoom" : u"Zoom atual",
     "Bookmark title" : u"", # New in v2.4.0
     "Note: The \"\\t\\t\" or \"\\T\\T\" is used to separate the left and right portions of the status bar\n         message." : u"", # New in v2.3.0
+    "Slider update immediately" : u"", # New in v2.6.6.0
     "A macro is still running. Close anyway?" : u"", # New in v2.3.0
     "Save changes before closing?" : u"Salvar alterações antes de fechar?",
     "Cannot create a new tab while crop editor is open!" : u"Impossivel criar uma nova ficha enquanto o editor de Apara (Crop) está aberto",
@@ -992,6 +1101,7 @@ messages = {
     "Source files" : u"", # New in v2.3.0
     "Open a script or source" : u"Abrir um script ou fonte",
     "Reload the file and lose the current changes?" : u"Recarregar o arquivo e perder as alterações atuais",
+    "%d Bookmarks imported" : u"", # New in v2.6.1.5
     "Open this file" : u"Abir este arquivo",
     "Save session before closing all tabs?" : u"Salvar seção antes de fechar todas as fichas?",
     "Save current script" : u"Salvar script atual",
@@ -1012,8 +1122,6 @@ messages = {
     "Script import" : u"", # New in v2.6.1.5
     "AvxSynth plugins" : u"", # New in v2.4.0
     "Insert a plugin" : u"Inserir um plugin",
-    "No bookmarks defined!" : u"Não existe ponto marcado definido",
-    "There must be more than one unique bookmark to use this feature!" : u"É preciso ter mais de um unico ponto marcado para usar esta possibilidade",
     "Jump to specified bookmark" : u"Ir para um determinado ponto marcado",
     "Line: %(line)i  Col: %(col)i" : u"Linha: %(line)i  Coluna: %(col)i",
     "Frame Based" : u"Base quadro",
@@ -1026,26 +1134,17 @@ messages = {
     "Float" : u"Variavel",
     "pos" : u"pos",
     "*hex" : u"", # New in v2.6.1.5
-    "Edit AviSynth function information" : u"Editor de informção da função Avisynth",
-    "  Function name" : u" Nome da função",
-    "Function arguments" : u"Argumentos da função",
-    "Open filter customization file" : u"Abrir arquivo de configuração de filtro",
-    "Filter customization file" : u"", # New in v2.3.0
-    "Calltip-only text file" : u"", # New in v2.3.0
-    "Invalid filter customization file!" : u"Arquivo de configuração de filtro inválido",
-    "Save filter customization file" : u"Salvar arquivo de configuração de filtro",
-    "Invalid argument!" : u"Agumento inválido!",
-    "Error: can not save the Session" : u"", # New in v2.6.1.5
+    "Error: cannot save the Session" : u"", # New in v2.6.6.0
     "Question" : u"Pergunta",
-    "Save changes before previewing?" : u"Salvar as alterações antes da pré-visulização",
-    "Select an external player" : u"Selecione um Player externo",
-    "A program must be specified to use this feature!" : u"Para usar esta caracteristica, é preciso indicar um programa",
-    "General settings..." : u"Configurações gerais...",
     "Invalid slider text: min > max" : u"Texto de slider inválido: mínimo > máximo",
     "Invalid slider text: value not in bounds" : u"Texto de slider inválido: valor não aceitavel",
     "Invalid slider text: bad modulo label" : u"Texto de slider inválido: nome inválido p/ o módulo",
     "Invalid slider text: slider label already exists" : u"Texto de slider inválido: nome já existe",
     "Invalid slider text: invalid number" : u"Texto de slider inválido: número inválido",
+    "General settings..." : u"Configurações gerais...",
+    "Clear all auto fold orders" : u"", # New in v2.6.6.0
+    "Only with preview filter /**avsp_filter" : u"", # New in v2.6.6.0
+    "Update sliders" : u"", # New in v2.6.6.0
     "Reset to initial value: %(value_formatted)s" : u"Retornar para os valores iniciais: %(value_formatted)s",
     "Reset to initial value: %(value2_formatted)s" : u"", # New in v2.2.1
     "Reset to default value: %(value_formatted)s" : u"Retornar aos valores padrões: %(value_formatted)s",
@@ -1058,8 +1157,13 @@ messages = {
     "Step size value must be a number!" : u"Valor precisa ser um número!",
     "Left-click to select a color, right click to reset to default" : u"Clique esquerdo p/ selecionar a cor, clique direito p/ retornar ao padrão",
     "Toggle \"%(label)s\" section" : u"Ativar/Desat. secção: \"%(label)s\" ",
+    "Error: can not save the Session" : u"", # New in v2.6.1.5
+    "Save changes before previewing?" : u"Salvar as alterações antes da pré-visulização",
+    "Select an external player" : u"Selecione um Player externo",
+    "A program must be specified to use this feature!" : u"Para usar esta caracteristica, é preciso indicar um programa",
+    "Program not found. Must be specified to use this feature!" : u"", # New in v2.6.6.0
     "Above plugin names contain undesirable symbols.\nRename them to only use alphanumeric or underscores,\nor make sure to use them in short name style only." : u"", # New in v2.3.0
-    "Found more then one function with the same name.\nYou should clean up your plugins." : u"", # New in v2.6.1.5
+    "This function is beta!\nFound more then one function with the same name.\nYou should clean up your plugins." : u"", # New in v2.6.6.0
     "Don't show me this again" : u"", # New in v2.2.1
     "Changing the plugins directory writes to the Windows registry.\n" : u"", # New in v2.6.1.5
     "Writing to: HKLM\\Software\\Avisynth\\plugindir2_5\n" : u"", # New in v2.6.1.5
@@ -1113,7 +1217,6 @@ messages = {
     "Action" : u"", # New in v2.2.1
     "Edit the keyboard shortcut" : u"Editor de atalhos",
     "Key:" : u"Key",
-    "Clear" : u"Limpar",
     "%(keyString)s not found in key string list" : u"%(keyString)s não encontrado na lista de chave de string",
     "This shortcut is being used by:" : u"Este atalho está sendo usado por",
     "Insert" : u"Inserir",
@@ -1177,6 +1280,7 @@ messages = {
     "Automatically compute bitrate value on startup" : u"Computar automaticamente o bitrate no inicio",
     "Automatically compute pixel aspect ratio from d2v on startup" : u"Computar automaticamente no inicio, o aspect ratio de d2v",
     "Append batch commands to the avs script as comments" : u"Adicionar lote de comandos aos scripts avs como comentários",
+    "Add output file to new tab" : u"", # New in v2.6.6.0
     "Encoder priority:" : u"Prioridade de codificação",
     "Path to %(name)s:" : u"Caminho para %(name)s:",
     "Extra arguments:" : u"Argumentos extras",
@@ -1242,13 +1346,16 @@ messages = {
     #--- Macros ---#
     "Bookmarks at Intervals" : u"", # New in v2.3.0
     "Bookmarks to Chapter" : u"", # New in v2.3.0
+    "Bookmarks to Trims" : u"", # New in v2.6.6.0
     "ConditionalReader file from bookmarks" : u"", # New in v2.3.0
     "DeleteFrame" : u"", # New in v2.3.0
     "DuplicateFrame" : u"", # New in v2.3.0
     "Import bookmarks from file" : u"", # New in v2.3.1
+    "Open Image Sequence" : u"", # New in v2.6.6.0
     "Preview from current point" : u"", # New in v2.3.0
     "Random Clip Order" : u"", # New in v2.3.0
     "Save Image Sequence" : u"", # New in v2.3.0
+    "Selected trims to selections" : u"", # New in v2.6.6.0
     "Shift Bookmarks by frames" : u"", # New in v2.3.0
     "Example (Resize)" : u"", # New in v2.3.0
     "Examples" : u"", # New in v2.3.0
@@ -1270,7 +1377,6 @@ messages = {
 
     #--- Macro: Bookmarks at Intervals ---#
     "Choose a frame step or a number of intervals" : u"", # New in v2.3.0
-    "Frame step" : u"", # New in v2.3.0
     "Number of intervals" : u"", # New in v2.3.0
     "End frame" : u"", # New in v2.4.2
     "Start frame" : u"", # New in v2.4.2
@@ -1279,6 +1385,9 @@ messages = {
     #--- Macro: Bookmarks to Chapter ---#
     "Save chapter file as..." : u"", # New in v2.4.0
     "Text files" : u"", # New in v2.3.0
+
+    #--- Macro: Bookmarks to Trims ---#
+    "No bookmarks defined." : u"", # New in v2.6.6.0
 
     #--- Macro: ConditionalReader file from bookmarks ---#
     "There is not bookmarks" : u"", # New in v2.3.0
@@ -1322,6 +1431,11 @@ messages = {
     "[COMBED FRAMES] section could not be parsed" : u"", # New in v2.3.1
     "Bookmark file unrecognized!" : u"", # New in v2.3.0
 
+    #--- Macro: Open Image Sequence ---#
+    "Select the Image" : u"", # New in v2.6.6.0
+    "Images (bmp, jpg, png, tiff)" : u"", # New in v2.6.6.0
+    "All files (*.*)" : u"", # New in v2.6.6.0
+
     #--- Macro: Preview from current point ---#
     "Failed to run the external player!\n\nOpen the macro file in the \"Macros\" subdirectory\nwith a text editor and edit the executable\ndirectory appropriately!" : u"", # New in v2.3.0
 
@@ -1337,11 +1451,17 @@ messages = {
     "Use always this directory" : u"", # New in v2.4.0
     "Add the frame number as the suffix" : u"", # New in v2.5.0
     "Save ranges to subdirectories" : u"", # New in v2.5.0
+    "Add image source to the script  ->" : u"", # New in v2.6.6.0
+    "To new tab" : u"", # New in v2.6.6.0
     "Range between bookmarks" : u"", # New in v2.4.0
+    "From first to last bookmark" : u"", # New in v2.6.6.0
     "Trim editor selections" : u"", # New in v2.4.0
     "All frames" : u"", # New in v2.4.0
     "Select an output directory and basename for the new images files" : u"", # New in v2.4.0
+    "Bookmarks out of frame count" : u"", # New in v2.6.6.0
+    "At least 2 bookmarks are required" : u"", # New in v2.6.6.0
     "There is not Trim editor selections" : u"", # New in v2.4.0
+    "There is no process selection" : u"", # New in v2.6.6.0
     "Saving images..." : u"", # New in v2.3.0
     "scene_{0:0{1}}" : u"", # New in v2.5.0
     "%d image files created." : u"", # New in v2.3.0
