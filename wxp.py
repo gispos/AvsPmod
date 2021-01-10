@@ -223,6 +223,7 @@ class StdoutStderrWindow:
     def CreateOutputWindow(self, st):
         self.frame = wx.Frame(self.parent, -1, self.title, self.pos, self.size,
                               style=wx.DEFAULT_FRAME_STYLE)
+        dpi.SetFontPPI(self.frame)
         self.text  = TextCtrl(self.frame, -1, "",
                                  style=wx.TE_MULTILINE|wx.TE_READONLY)
         self.text.AppendText(st)
@@ -1154,7 +1155,6 @@ class OptionsDialog(wx.Dialog):
             title = _('Program Settings')
         wx.Dialog.__init__(self, parent, wx.ID_ANY, title,
                            style=wx.DEFAULT_DIALOG_STYLE|wx.RESIZE_BORDER|wx.NO_FULL_REPAINT_ON_RESIZE)
-        #self.SetDoubleBuffered(True)
         dpi.SetFontPPI(self)
         self.options = options.copy()
         self.optionsOriginal = options

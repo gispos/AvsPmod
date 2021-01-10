@@ -1,4 +1,4 @@
-# Version 2.6.6.0 GPo   
+# Version 2.6.6.1 GPo   
 - With pinterf (pfmod) modifications   
 - Avisynth header version 6   
 - For more see changelog   
@@ -10,11 +10,15 @@
 - Press left and use mouse wheel: changes the zoom   
 - Press Ctrl and double click on the video window increases the height a few pixels
 - If tab change for mouse browse buttons selected, press Ctrl or move the mouse on the slider area and bookmark jump is used.   
-- When the mouse pointer is in the video slider area. Press Ctrl and use mouse browse buttons only trim editor marks would be selected   
+- When the mouse pointer is in the video slider area. Press Ctrl and use mouse browse buttons only trim editor marks would be selected  
+- When the mouse pointer is in the video slider area. Press Alt and use mouse browse buttons only bookmarks with title would be selected 
 
 ##### On script window:   
 - Press left and right click: The # character is removed or added at the beginning of the selected lines 
-- if a boolean selected (True, False) the value does change  
+- If a boolean selected (True, False) the value does change  
+
+##### On slider window:
+- If direct slider update enabled (only with preview filters), can then be deactivated by pressing Ctrl on slider move
    
 ##### Furthermore   
 - On the video slider right click to add or remove a bookmark   

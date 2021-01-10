@@ -181,7 +181,10 @@ YPlaneMax(clip, float "threshold"=0)
 YPlaneMin(clip, float "threshold"=0)
 YPlaneMedian(clip)
 YPlaneMinMaxDifference(clip, float "threshold"=0)
-
+OnCPU(clip, int "num_prefetch"=0)
+OnCUDA(clip, int "num_prefetch"=0, int "device_index"=0)
+SetGraphAnalysis(bool)
+DumpFilterGraph(clip, string "outfile"="", int "mode"=0, int "nframes"=-1, bool "repeat"=false)
 
 [COREFILTERS]
 AddBorders(
@@ -490,7 +493,7 @@ clip
 
 ConvertBackToYUY2(
 clip,
-string "matrix"="Rec601" ("Rec601"/ "PC.601"/ "Rec709"/ "PC.709"/ "AVERAGE")
+string "matrix"="Rec709" ("Rec601"/ "PC.601"/ "Rec709"/ "PC.709"/ "AVERAGE")
 )
 
 ConvertFPS(
@@ -507,7 +510,7 @@ clip
 
 ConvertToRGB(
 clip,
-string "matrix"="Rec601" ("Rec601"/ "PC.601"/ "Rec709"/ "PC.709"/ "AVERAGE"),
+string "matrix"="Rec709" ("Rec601"/ "PC.601"/ "Rec709"/ "PC.709"/ "AVERAGE"),
 bool "interlaced"=false,
 [string "ChromaInPlacement"="MPEG2" ("MPEG2"/ "MPEG1"/ "DV")],
 [string "chromaresample"="bicubic" ("point"/ "bilinear"/ "bicubic"/ "lanczos"/ "lanczos4"/ "blackman"/ "spline16"/ "spline36"/ "spline64"/ "gauss"/ "sinc")]
@@ -515,7 +518,7 @@ bool "interlaced"=false,
 
 ConvertToRGB24(
 clip,
-string "matrix"="Rec601" ("Rec601"/ "PC.601"/ "Rec709"/ "PC.709"/ "AVERAGE"),
+string "matrix"="Rec709" ("Rec601"/ "PC.601"/ "Rec709"/ "PC.709"/ "AVERAGE"),
 bool "interlaced"=false,
 [string "ChromaInPlacement"="MPEG2" ("MPEG2"/ "MPEG1"/ "DV")],
 [string "chromaresample"="bicubic" ("point"/ "bilinear"/ "bicubic"/ "lanczos"/ "lanczos4"/ "blackman"/ "spline16"/ "spline36"/ "spline64"/ "gauss"/ "sinc")]
@@ -523,7 +526,7 @@ bool "interlaced"=false,
 
 ConvertToRGB32(
 clip,
-string "matrix"="Rec601" ("Rec601"/ "PC.601"/ "Rec709"/ "PC.709"/ "AVERAGE"),
+string "matrix"="Rec709" ("Rec601"/ "PC.601"/ "Rec709"/ "PC.709"/ "AVERAGE"),
 bool "interlaced"=false,
 [string "ChromaInPlacement"="MPEG2" ("MPEG2"/ "MPEG1"/ "DV")],
 [string "chromaresample"="bicubic" ("point"/ "bilinear"/ "bicubic"/ "lanczos"/ "lanczos4"/ "blackman"/ "spline16"/ "spline36"/ "spline64"/ "gauss"/ "sinc")]
@@ -531,12 +534,12 @@ bool "interlaced"=false,
 
 ConvertToY8(
 clip,
-string "matrix"="Rec601" ("Rec601"/ "PC.601"/ "Rec709"/ "PC.709"/ "AVERAGE")
+string "matrix"="Rec709" ("Rec601"/ "PC.601"/ "Rec709"/ "PC.709"/ "AVERAGE")
 )
 
 ConvertToYUY2(
 clip,
-string "matrix"="Rec601" ("Rec601"/ "PC.601"/ "Rec709"/ "PC.709"/ "AVERAGE"),
+string "matrix"="Rec709" ("Rec601"/ "PC.601"/ "Rec709"/ "PC.709"/ "AVERAGE"),
 bool "interlaced"=false,
 [string "ChromaInPlacement"="MPEG2" ("MPEG2"/ "MPEG1"/ "DV")],
 [string "chromaresample"="bicubic" ("point"/ "bilinear"/ "bicubic"/ "lanczos"/ "lanczos4"/ "blackman"/ "spline16"/ "spline36"/ "spline64"/ "gauss"/ "sinc")]
@@ -544,7 +547,7 @@ bool "interlaced"=false,
 
 ConvertToYV12(
 clip,
-string "matrix"="Rec601" ("Rec601"/ "PC.601"/ "Rec709"/ "PC.709"/ "AVERAGE"),
+string "matrix"="Rec709" ("Rec601"/ "PC.601"/ "Rec709"/ "PC.709"/ "AVERAGE"),
 bool "interlaced"=false,
 [string "ChromaInPlacement"="MPEG2" ("MPEG2"/ "MPEG1"/ "DV")],
 [string "chromaresample"="bicubic" ("point"/ "bilinear"/ "bicubic"/ "lanczos"/ "lanczos4"/ "blackman"/ "spline16"/ "spline36"/ "spline64"/ "gauss"/ "sinc")],
@@ -553,7 +556,7 @@ bool "interlaced"=false,
 
 ConvertToYV16(
 clip,
-string "matrix"="Rec601" ("Rec601"/ "PC.601"/ "Rec709"/ "PC.709"/ "AVERAGE"),
+string "matrix"="Rec709" ("Rec601"/ "PC.601"/ "Rec709"/ "PC.709"/ "AVERAGE"),
 bool "interlaced"=false,
 [string "ChromaInPlacement"="MPEG2" ("MPEG2"/ "MPEG1"/ "DV")],
 [string "chromaresample"="bicubic" ("point"/ "bilinear"/ "bicubic"/ "lanczos"/ "lanczos4"/ "blackman"/ "spline16"/ "spline36"/ "spline64"/ "gauss"/ "sinc")]
@@ -561,7 +564,7 @@ bool "interlaced"=false,
 
 ConvertToYV24(
 clip,
-string "matrix"="Rec601" ("Rec601"/ "PC.601"/ "Rec709"/ "PC.709"/ "AVERAGE"),
+string "matrix"="Rec709" ("Rec601"/ "PC.601"/ "Rec709"/ "PC.709"/ "AVERAGE"),
 bool "interlaced"=false,
 [string "ChromaInPlacement"="MPEG2" ("MPEG2"/ "MPEG1"/ "DV")],
 [string "chromaresample"="bicubic" ("point"/ "bilinear"/ "bicubic"/ "lanczos"/ "lanczos4"/ "blackman"/ "spline16"/ "spline36"/ "spline64"/ "gauss"/ "sinc")]
@@ -569,7 +572,7 @@ bool "interlaced"=false,
 
 ConvertToYV411(
 clip,
-string "matrix"="Rec601" ("Rec601"/ "PC.601"/ "Rec709"/ "PC.709"/ "AVERAGE"),
+string "matrix"="Rec709" ("Rec601"/ "PC.601"/ "Rec709"/ "PC.709"/ "AVERAGE"),
 bool "interlaced"=false,
 [string "ChromaInPlacement"="MPEG2" ("MPEG2"/ "MPEG1"/ "DV")],
 [string "chromaresample"="bicubic" ("point"/ "bilinear"/ "bicubic"/ "lanczos"/ "lanczos4"/ "blackman"/ "spline16"/ "spline36"/ "spline64"/ "gauss"/ "sinc")]
@@ -758,12 +761,12 @@ clip
 
 Grayscale(
 clip,
-string "matrix"="Rec601" ("Rec601"/ "Rec709"/ "Average")
+string "matrix"="Rec709" ("Rec601"/ "Rec709"/ "Average")
 )
 
 Greyscale(
 clip,
-string "matrix"="Rec601" ("Rec601"/ "Rec709"/ "Average")
+string "matrix"="Rec709" ("Rec601"/ "Rec709"/ "Average")
 )
 
 Histogram(
@@ -882,7 +885,7 @@ int "color"=$000000
 Levels(
 clip clip,
 int input_low=0 (0 to 255),
-float gamma=1.000 (0.001 to 10.000),
+float gamma=1.000 (0.001 to 10.000 by 0.01),
 int input_high=255 (0 to 255),
 int output_low=0 (0 to 255),
 int output_high=255 (0 to 255),
@@ -1371,9 +1374,9 @@ clip
 Tweak(
 clip,
 float "hue"=0.0 (-180.0 to 180.0),
-float "sat"=1.0 (0.0 to 10.0),
+float "sat"=1.00 (0.00 to 10.00),
 float "bright"=0 (-255 to 255),
-float "cont"=1.0 (0.0 to 10.0),
+float "cont"=1.00 (0.00 to 10.00),
 bool "coring"=True,
 bool "sse"=False,
 float "startHue"=0 (0 to 360),
@@ -2886,14 +2889,15 @@ clip,
 string "Ycurve"="0-0;255-255",
 string "Ucurve"="0-0;255-255",
 string "Vcurve"="0-0;255-255",
-[int "interp"=100 (0 to 100)],
+[int "mode"=100 (0 to 100)],
 [bool "limiter"=False],
 [int "TVrange"=0 (0 / 1 / 2)],
-[int "smooth"=100 (0 to 200)],
+[int "interp"=100 (0 to 200)],
 [int "dither"=75 (-1 to 100)],
+[int "HQ"=False],
 [int "useMT"=0 (0 to 64)],
 [int "useOPT"=0 (0 / 1 / 2 / 3)],
-bool "show"=False,
+bool "debug"=False,
 [int "screenW"=-1 (-1 to 1920)],
 [int "screenH"=-1 (-1 to 1080)],
 [bool "scale"=True]
@@ -2907,11 +2911,12 @@ string "Vcurve"="0-0;65535-65535",
 [int "interp"=100 (0 to 100)],
 [bool "limiter"=False],
 [int "TVrange"=0 (0 / 1 / 2)],
-[int "smooth"=100 (0 to 200)],
+[int "interp"=100 (0 to 200)],
 [int "dither"=75 (-1 to 100)],
+[int "HQ"=False],
 [int "useMT"=0 (0 to 64)],
 [int "useOPT"=0 (0 / 1 / 2 / 3)],
-bool "show"=False,
+bool "debug"=False,
 [int "screenW"=-1 (-1 to 1920)],
 [int "screenH"=-1 (-1 to 1080)],
 [bool "scale"=True]
@@ -2924,11 +2929,12 @@ string "Uexpr"="U",
 string "Vexpr"="V",
 [bool "limiter"=False],
 [int "TVrange"=0 (0 / 1 / 2)],
-[int "smooth"=100 (0 to 200)],
+[int "interp"=100 (0 to 200)],
 [int "dither"=75 (-1 to 100)],
+[int "HQ"=False],
 [int "useMT"=0 (0 to 64)],
 [int "useOPT"=0 (0 / 1 / 2 / 3)],
-bool "show"=False,
+bool "debug"=False,
 [int "screenW"=-1 (-1 to 1920)],
 [int "screenH"=-1 (-1 to 1080)],
 [bool "scale"=True]
@@ -2941,11 +2947,12 @@ string "Uexpr"="U",
 string "Vexpr"="V",
 [bool "limiter"=False],
 [int "TVrange"=0 (0 / 1 / 2)],
-[int "smooth"=100 (0 to 200)],
+[int "interp"=100 (0 to 200)],
 [int "dither"=75 (-1 to 100)],
+[int "HQ"=False],
 [int "useMT"=0 (0 to 64)],
 [int "useOPT"=0 (0 / 1 / 2 / 3)],
-bool "show"=False,
+bool "debug"=False,
 [int "screenW"=-1 (-1 to 1920)],
 [int "screenH"=-1 (-1 to 1080)],
 [bool "scale"=True]
@@ -2954,7 +2961,7 @@ bool "show"=False,
 SmoothAdjust_SmoothLevels(
 clip,
 int "input_low"=16 (0 to 255),
-float "gamma"=1.0 (0.01 to 5 by 0.05),
+float "gamma"=1.00 (0.01 to 5.00),
 int "input_high"=235 (0 to 255),
 int "output_low"=16 (0 to 255),
 int "output_high"=235 (0 to 255),
@@ -2968,11 +2975,12 @@ int "brightSTR"=100 (0 to 200),
 [int "Ecurve"=0 (0 / 1)],
 [int "Ecenter"=128 (0 to 255)],
 [int "protect"=-1 (-1 to 255)],
-[int "smooth"=100 (0 to 200)],
+[int "interp"=100 (0 to 200)],
 [int "dither"=75 (-1 to 100)],
+[bool "HQ"=False],
 [int "useMT"=0 (0 to 64)],
 [int "useOPT"=0 (0 / 1 / 2 / 3)],
-bool "show"=False,
+bool "debug"=False,
 [int "screenW"=-1 (-1 to 1920)],
 [int "screenH"=-1 (-1 to 1080)],
 [bool "scale"=True]
@@ -2981,7 +2989,7 @@ bool "show"=False,
 SmoothAdjust_SmoothLevels16(
 clip,
 int "input_low"=16 (0 to 65535),
-float "gamma"=1.0 (0.01 to 5 by 0.05),
+float "gamma"=1.00 (0.01 to 5.00),
 int "input_high"=235 (0 to 65535),
 int "output_low"=16 (0 to 65535),
 int "output_high"=235 (0 to 65535),
@@ -2993,13 +3001,14 @@ int "Lmode"=0 (0 / 1 / 2 / 3),
 int "darkSTR"=100 (0 to 200),
 int "brightSTR"=100 (0 to 200),
 [int "Ecurve"=0 (0 / 1)],
-[int "Ecenter"=128 (0 to 65535)],
+[int "Ecenter"=32768 (0 to 65535)],
 [int "protect"=-1 (-1 to 65535)],
-[int "smooth"=100 (0 to 200)],
+[int "interp"=100 (0 to 200)],
 [int "dither"=75 (-1 to 100)],
+[bool "HQ"=False],
 [int "useMT"=0 (0 to 64)],
 [int "useOPT"=0 (0 / 1 / 2 / 3)],
-bool "show"=False,
+bool "debug"=False,
 [int "screenW"=-1 (-1 to 1920)],
 [int "screenH"=-1 (-1 to 1080)],
 [bool "scale"=True]
@@ -3008,11 +3017,12 @@ bool "show"=False,
 SmoothAdjust_SmoothTools(
 clip,
 string "filename"="default.smt" ("*.smt"),
-[int "smooth"=100 (0 to 200)],
+[int "interp"=100 (0 to 200)],
 [int "dither"=75 (-1 to 100)],
+[int "HQ"=False],
 [int "useMT"=0 (0 to 64)],
 [int "useOPT"=0 (0 / 1 / 2 / 3)],
-bool "show"=False,
+bool "debug"=False,
 [int "screenW"=-1 (-1 to 1920)],
 [int "screenH"=-1 (-1 to 1080)],
 [bool "scale"=True]
@@ -3021,11 +3031,12 @@ bool "show"=False,
 SmoothAdjust_SmoothTools16(
 clip,
 string "filename"="default.smt" ("*.smt"),
-[int "smooth"=100 (0 to 200)],
+[int "interp"=100 (0 to 200)],
 [int "dither"=75 (-1 to 100)],
+[int "HQ"=False],
 [int "useMT"=0 (0 to 64)],
 [int "useOPT"=0 (0 / 1 / 2 / 3)],
-bool "show"=False,
+bool "debug"=False,
 [int "screenW"=-1 (-1 to 1920)],
 [int "screenH"=-1 (-1 to 1080)],
 [bool "scale"=True]
@@ -3034,20 +3045,21 @@ bool "show"=False,
 SmoothAdjust_SmoothTweak(
 clip,
 int "brightness"=0 (-255 to 255),
-float "contrast"=1.0 (0.0 to 10.0),
-float "saturation"=1.0 (0.0 to 10.0),
+float "contrast"=1.00 (0.00 to 10.00),
+float "saturation"=1.00 (0.00 to 10.00),
 int "hue1"=0 (-255 to 255),
 int "hue2"=0 (-255 to 255),
 [bool "limiter"=False],
 bool "TVrange"=True,
 int "Lmode"=0 (0 / 1 / 2),
 int "limitSTR"=100 (0 to 200),
-[int "Ecurve"=0 (0 / 1)],
-[int "smooth"=100 (0 to 200)],
+[int "Ecenter"=128 (0 to 255)],
+[int "interp"=100 (0 to 200)],
 [int "dither"=75 (-1 to 100)],
+[int "HQ"=False],
 [int "useMT"=0 (0 to 64)],
 [int "useOPT"=0 (0 / 1 / 2 / 3)],
-bool "show"=False,
+bool "debug"=False,
 [int "screenW"=-1 (-1 to 1920)],
 [int "screenH"=-1 (-1 to 1080)],
 [bool "scale"=True]
@@ -3056,20 +3068,21 @@ bool "show"=False,
 SmoothAdjust_SmoothTweak16(
 clip,
 int "brightness"=0 (-65535 to 65535),
-float "contrast"=1.0 (0.0 to 10.0),
-float "saturation"=1.0 (0.0 to 10.0),
+float "contrast"=1.00 (0.00 to 10.00),
+float "saturation"=1.00 (0.00 to 10.00),
 int "hue1"=0 (-65535 to 65535),
 int "hue2"=0 (-65535 to 65535),
 [bool "limiter"=False],
 bool "TVrange"=True,
 int "Lmode"=0 (0 / 1 / 2),
 int "limitSTR"=100 (0 to 200),
-[int "Ecurve"=0 (0 / 1)],
-[int "smooth"=100 (0 to 200)],
+[int "Ecenter"=32768 (0 to 65535)],
+[int "interp"=100 (0 to 200)],
 [int "dither"=75 (-1 to 100)],
+[int "HQ"=False],
 [int "useMT"=0 (0 to 64)],
 [int "useOPT"=0 (0 / 1 / 2 / 3)],
-bool "show"=False,
+bool "debug"=False,
 [int "screenW"=-1 (-1 to 1920)],
 [int "screenH"=-1 (-1 to 1080)],
 [bool "scale"=True]
@@ -3474,10 +3487,10 @@ clip,
 int "strength"=100 (0 to 512),
 int "thresholdL"=2 (0 to 255),
 int "thresholdU"=40 (0 to 255),
+int "radius"=2 (1 to 3),
 int "type"=0 (0 / 1 / 2 / 3 / 4 / 5 / 6),
 int "map"=0 (0 / 1 / 2),
 int "lim"=2 (0 to 256),
-int "radius"=2 (1 to 3),
 bool "gui"=false
 )
 
@@ -3530,7 +3543,7 @@ float "scl"=0.25,
 
 warpsharp_UnsharpMask(
 clip,
-int "strength"=64 (0 to 64 by 1),
+int "strength"=60 (0 to 64 by 1),
 int "radius"=3 (0 to 64 by 1),
 int "threshold"=8 (0 to 64 by 1)
 )
@@ -4268,10 +4281,10 @@ float "GFthr"=1.2,
 float "AGstr"=0.8,
 int "bias"=64,
 int "temp"=50,
-int "bwbh",
-int "owoh",
-int "blksize",
-int "overlap",
+[int "bwbh"],
+[int "owoh"],
+[int "blksize"],
+[int "overlap"],
 bool "GPU"=false,
 bool "fixband"=true,
 int "bt"=3,

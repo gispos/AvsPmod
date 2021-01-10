@@ -12,6 +12,20 @@ GPo source: https://github.com/gispos/AvsPmod
 GPo releases: https://github.com/gispos/AvsPmod/releases
 
 --------------------------
+Version 2.6.6.1 [2021-01-10] GPo
+--------------------------
+* Preview filters revised
+* User sliders
+-- if direct slider update enabled (only with preview filters), can then be deactivated by pressing Ctrl on slider move.
+-- options > 'User slider' > 'Button show / hide applies to all tabs'
+-- sliders context menu new item 'Same width for all'
+* Error window font size now with DPI scaling
+* Step frame buttons got a context menu (frame, second, minute, custom jump). For those who can't let go of their mouse and beer ;)
+* Fixed separate video window zoom and flickering on tab change with mouse browse buttons.
+* Fixed separate video window shows no bookmarks and selections.
+* Fixed encoder_gui.py shows no path buttons, and a new button in the config part (please delete the encoder_gui.pyo)
+
+--------------------------
 Version 2.6.6.0 [2021-01-05] GPo, Happy New Year Edition
 --------------------------
 * Added to tab context menu 'Auto preview' find it out ;)

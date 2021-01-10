@@ -4423,14 +4423,13 @@ class AvsFunctionExportImportDialog(wx.Dialog):
 
 # Custom slider
 class SliderPlus(wx.Panel):
-    def __init__(self, parent, app, id, value=0, minValue=0, maxValue=100, size=(-1, 28), dpiScale=1.0, titleDict={}, selectionsDict={}):
+    def __init__(self, parent, app, id, value=0, minValue=0, maxValue=100, size=(-1, 28), dpiScale=1.0, titleDict={}):
         self.dpiScale = dpiScale
         _size = size[0], int(size[1]*dpiScale)
         wx.Panel.__init__(self, parent, id, size=_size, style=wx.WANTS_CHARS)
         self.titleDict = titleDict # GPo TODO, remove it and store the titles in the bookmarks
-        self.selectionsDict = selectionsDict # GPo 2020, selections now seperate and bookmarks only contains bmtype 0
+        self.selectionsDict = {}
         self.childSelectionsDict = None  # Update this dict on create selections
-        self.childBookmarksDict = None
         self.parent = parent
         self.app = app
         self.minValue = minValue
@@ -5412,7 +5411,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.NewFileName = _('New File')
         self.scrapWindow = ScrapWindow(self)
         self.titleDict = {}
-        self.selectionsDict = {}
         self.recentframes = []
         self.bmpVideo = None
         self.createWindowElements()
@@ -5514,7 +5512,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if not self.separatevideowindow:
             def OnSize(event):
                 if self.zoomwindow and self.previewWindowVisible:
-                    self.IdleCall.append((self.ShowVideoFrame, tuple(), {'focus': False}))
+                    func = (self.ShowVideoFrame, tuple(), {'focus': False})
+                    if not func in self.IdleCall:
+                        self.IdleCall.append(func)
                 if self.titleEntry:
                     self.scriptNotebook.SetFocus()
                 event.Skip()
@@ -5522,7 +5522,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         else:
             def OnSize(event):
                 if self.zoomwindow and self.previewWindowVisible:
-                    self.IdleCall.append((self.ShowVideoFrame, tuple(), {'focus': False}))
+                    func = (self.ShowVideoFrame, tuple(), {'focus': False})
+                    if not func in self.IdleCall:
+                        self.IdleCall.append(func)
                 event.Skip()
             self.videoDialog.Bind(wx.EVT_SIZE, OnSize)
 
@@ -5574,10 +5576,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         def OnIdle(event):
             if self.IdleCallDict: # GPo, fire from first to last entry
-                key = next(iter(self.IdleCallDict))
-                f = self.IdleCallDict.pop(key)
-                if f:
+                try:
+                    key = next(iter(self.IdleCallDict))
+                    f = self.IdleCallDict.pop(key)
                     f()
+                except:
+                    self.IdleCallDict.clear()
 
             if self.IdleCall:
                 func, args, kwargs = self.IdleCall.pop() # GPo, fire from last to first entry
@@ -6231,6 +6235,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'mousewheelfunc': 'frame_step',    # GPo 2020
             'startupwithlastzoom': False,      # GPo 2020
             'zoom_antialias': False,           # GPo 2020
+            'buttonjumpchoice' : 0,            # GPo 0=frame, 1=1 sec, 2=1 minute, 3=custom units
             'dragupdate': True,
             'focusonrefresh': True,
             'previewunsavedchanges': True,
@@ -6259,6 +6264,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'keepsliderwindowhidden': False,
             'autoslideron': True,
             'autosliderstartfold': 3, # fold or restor
+            'allsliderwindowshideshow': True,     # GPo, Button shows or hides all slider window
             'autoslidermakeintfloat': True,
             'autoslidermakeintlist': True,
             'autoslidermakecolor': True,
@@ -7126,7 +7132,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 ((_('type string (list)'), wxp.OPT_ELEM_CHECK, 'autoslidermakestringlist', _('Create listboxes for string list arguments'), dict(ident=20) ), ),
                 ((_('type string (filename)'), wxp.OPT_ELEM_CHECK, 'autoslidermakestringfilename', _('Create filename pickers for string filename arguments'), dict(ident=20) ), ),
                 ((_('undocumented'), wxp.OPT_ELEM_CHECK, 'autoslidermakeunknown', _('Create placeholders for arguments which have no database information'), dict(ident=20) ), ),
-               # ((_('Fold startup setting'), wxp.OPT_ELEM_RADIO, 'autosliderstartfold', _('Determines which filters will initially have hidden arguments in the slider window'), dict( choices=[(_('Fold all'), 0),(_('Fold none'), 1),(_('Fold non-numbers'), 2), (_('Restore last'), 3) ]    ) ), ),
+                ((_('Button show/hide applies to all tabs'), wxp.OPT_ELEM_CHECK, 'allsliderwindowshideshow', _('Or press Ctrl when you click the button.'), dict() ), ),
                 ((_('Fold startup setting'), wxp.OPT_ELEM_RADIO, 'autosliderstartfold', _('Determines which filters will initially have hidden arguments in the slider window'), dict(dimensions=2, choices=[(_('Fold all'), 0),(_('Fold none'), 1), (_('Fold non-numbers'), 2), (_('Fold or restore last status'), 3) ]) ), ),
                 ((_('Filter exclusion list:'), wxp.OPT_ELEM_STRING, 'autosliderexclusions', _('Specify filters never to build automatic sliders for'), dict() ), ),
             ),
@@ -7318,7 +7324,14 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         def OnToggleSliderWindowButton(event):
             self.ToggleSliderWindow(vidrefresh=True)
             script = self.currentScript
+            script = self.currentScript
             script.userHidSliders = not script.sliderWindowShown
+            if self.options['allsliderwindowshideshow'] or wx.GetKeyState(wx.WXK_CONTROL):
+                shown = script.sliderWindowShown
+                for i in range(self.scriptNotebook.GetPageCount()): # GPo, show/hide all
+                    script,idx = self.getScriptAtIndex(i)
+                    script.sliderWindowShown = shown
+                    script.userHidSliders = not shown
             self.videoWindow.SetFocus()
         self.videoPane.Bind(wx.EVT_BUTTON, OnToggleSliderWindowButton, self.toggleSliderWindowButton)
 
@@ -7923,35 +7936,39 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     (_('Antialiasing'), '', self.OnMenuVideoZoomAntialias, _("If zoom not 100 %, the preview is drawing antialiased"), wx.ITEM_CHECK, self.options['zoom_antialias']),
                     ),
                 ),
-                (_('&Flip'),
+                (_('&Display'),
                     (
-                    (_('Vertically'), '', self.OnMenuVideoFlip, _('Flip video preview upside down'), wx.ITEM_CHECK, False),
-                    (_('Horizontally'), '', self.OnMenuVideoFlip, _('Flip video preview from left to right'), wx.ITEM_CHECK, False),
+                    (_('&Flip'),
+                        (
+                        (_('Vertically'), '', self.OnMenuVideoFlip, _('Flip video preview upside down'), wx.ITEM_CHECK, False),
+                        (_('Horizontally'), '', self.OnMenuVideoFlip, _('Flip video preview from left to right'), wx.ITEM_CHECK, False),
+                        ),
                     ),
-                ),
-                (_('&YUV -> RGB'),
-                    (
-                    (reverseMatrixDict['swapuv'], '', self.OnMenuVideoYUV2RGB, _('Swap chroma channels (U and V)'), wx.ITEM_CHECK, False),
-                    (''),
-                    (reverseMatrixDict['auto'], '', self.OnMenuVideoYUV2RGB, _('Use BT.709 coefficients for HD, BT.601 for SD (default)'), wx.ITEM_RADIO, True),
-                    (reverseMatrixDict['709'], '', self.OnMenuVideoYUV2RGB, _('Use BT.709 coefficients'), wx.ITEM_RADIO, False),
-                    (reverseMatrixDict['601'], '', self.OnMenuVideoYUV2RGB, _('Use BT.601 coefficients'), wx.ITEM_RADIO, False),
-                    #(reverseMatrixDict['2020'], '', self.OnMenuVideoYUV2RGB, _('Use BT.2020 coefficients'), wx.ITEM_RADIO, False),  # GPo
-                    (''),
-                    (reverseMatrixDict['tv'], '', self.OnMenuVideoYUV2RGB, _('Use limited range (default)'), wx.ITEM_RADIO, True),
-                    (reverseMatrixDict['pc'], '', self.OnMenuVideoYUV2RGB, _('Use full range'), wx.ITEM_RADIO, False),
-                    (''),
-                    (reverseMatrixDict['Progressive'], '', self.OnMenuVideoYUV2RGB, _('For YV12 only, assume it is progressive (default)'), wx.ITEM_RADIO, True),
-                    (reverseMatrixDict['Interlaced'], '', self.OnMenuVideoYUV2RGB, _('For YV12 only, assume it is interlaced'), wx.ITEM_RADIO, False),
+                    (_('&YUV -> RGB'),
+                        (
+                        (reverseMatrixDict['swapuv'], '', self.OnMenuVideoYUV2RGB, _('Swap chroma channels (U and V)'), wx.ITEM_CHECK, False),
+                        (''),
+                        (reverseMatrixDict['auto'], '', self.OnMenuVideoYUV2RGB, _('Use BT.709 coefficients for HD, BT.601 for SD (default)'), wx.ITEM_RADIO, True),
+                        (reverseMatrixDict['709'], '', self.OnMenuVideoYUV2RGB, _('Use BT.709 coefficients'), wx.ITEM_RADIO, False),
+                        (reverseMatrixDict['601'], '', self.OnMenuVideoYUV2RGB, _('Use BT.601 coefficients'), wx.ITEM_RADIO, False),
+                        #(reverseMatrixDict['2020'], '', self.OnMenuVideoYUV2RGB, _('Use BT.2020 coefficients'), wx.ITEM_RADIO, False),  # GPo
+                        (''),
+                        (reverseMatrixDict['tv'], '', self.OnMenuVideoYUV2RGB, _('Use limited range (default)'), wx.ITEM_RADIO, True),
+                        (reverseMatrixDict['pc'], '', self.OnMenuVideoYUV2RGB, _('Use full range'), wx.ITEM_RADIO, False),
+                        (''),
+                        (reverseMatrixDict['Progressive'], '', self.OnMenuVideoYUV2RGB, _('For YV12 only, assume it is progressive (default)'), wx.ITEM_RADIO, True),
+                        (reverseMatrixDict['Interlaced'], '', self.OnMenuVideoYUV2RGB, _('For YV12 only, assume it is interlaced'), wx.ITEM_RADIO, False),
+                        ),
                     ),
-                ),
-                (_('Bit &depth'),
-                    (
-                    (_('8-bit'), '', self.OnMenuVideoBitDepth, _('Regular 8-bit depth (default)'), wx.ITEM_RADIO, True),
-                    (_('Stacked yuv420p10 or yuv444p10'), '', self.OnMenuVideoBitDepth, _('Stacked 16-bit, MSB on top, range reduced to 10-bit. Requires MaskTools v2 loaded'), wx.ITEM_RADIO, False),
-                    (_('Stacked yuv420p16 or yuv444p16'), '', self.OnMenuVideoBitDepth, _('Stacked 16-bit, MSB on top'), wx.ITEM_RADIO, False),
-                    (_('Interleaved yuv420p10 or yuv444p10'), '', self.OnMenuVideoBitDepth, _('Interleaved 16-bit (little-endian), range reduced to 10-bit. Requires MaskTools v2 loaded'), wx.ITEM_RADIO, False),
-                    (_('Interleaved yuv420p16 or yuv444p16'), '', self.OnMenuVideoBitDepth, _('Interleaved 16-bit (little-endian)'), wx.ITEM_RADIO, False),
+                    (_('Bit &depth'),
+                        (
+                        (_('8-bit'), '', self.OnMenuVideoBitDepth, _('Regular 8-bit depth (default)'), wx.ITEM_RADIO, True),
+                        (_('Stacked yuv420p10 or yuv444p10'), '', self.OnMenuVideoBitDepth, _('Stacked 16-bit, MSB on top, range reduced to 10-bit. Requires MaskTools v2 loaded'), wx.ITEM_RADIO, False),
+                        (_('Stacked yuv420p16 or yuv444p16'), '', self.OnMenuVideoBitDepth, _('Stacked 16-bit, MSB on top'), wx.ITEM_RADIO, False),
+                        (_('Interleaved yuv420p10 or yuv444p10'), '', self.OnMenuVideoBitDepth, _('Interleaved 16-bit (little-endian), range reduced to 10-bit. Requires MaskTools v2 loaded'), wx.ITEM_RADIO, False),
+                        (_('Interleaved yuv420p16 or yuv444p16'), '', self.OnMenuVideoBitDepth, _('Interleaved 16-bit (little-endian)'), wx.ITEM_RADIO, False),
+                        ),
+                    ),
                     ),
                 ),
                 (_('Background &color'),
@@ -8018,10 +8035,14 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 (_('Toggle extended left move'), '', self.OnMenuExtendedMove, _('Expands the left shift area of the video window')),
                 (_('Save view pos on tab change'), '', self.OnMenuSaveViewPos, _('Save/Restore last view position and zoom factor on tab change'), wx.ITEM_CHECK, False),
                 (''),
-                (_('Show/Hide the preview'), 'Shift+F5', self.OnMenuVideoToggle, _('Toggle the video preview')),
-                (_('Switch video/text focus'), 'Escape', self.OnMenuVideoSwitchMode, _('Switch focus between the video preview and the text editor')),
-                (_('Toggle the slider sidebar'), 'Alt+F5', self.OnMenuVideoToggleSliderWindow, _('Show/hide the slider sidebar (double-click the divider for the same effect)')),
-                (_('Toggle preview placement'), '', self.OnMenuVideoTogglePlacement, _('When not using a separate window for the video preview, toggle between showing it at the bottom (default) or to the right')),
+                (_('Additional'),
+                    (
+                    (_('Show/Hide the preview'), 'Shift+F5', self.OnMenuVideoToggle, _('Toggle the video preview')),
+                    (_('Switch video/text focus'), 'Escape', self.OnMenuVideoSwitchMode, _('Switch focus between the video preview and the text editor')),
+                    (_('Toggle the slider sidebar'), 'Alt+F5', self.OnMenuVideoToggleSliderWindow, _('Show/hide the slider sidebar (double-click the divider for the same effect)')),
+                    (_('Toggle preview placement'), '', self.OnMenuVideoTogglePlacement, _('When not using a separate window for the video preview, toggle between showing it at the bottom (default) or to the right')),
+                    ),
+                ),
                 (_('Tools'),
                     (
                     (_('Run analysis pass'), '', self.OnMenuVideoRunAnalysisPass, _('Request every video frame once (analysis pass for two-pass filters)')),
@@ -8030,7 +8051,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     (_('External tool arg2'), '', self.OnMenuExternalToolArg2, _('Run the current script with an external program and arg2')),
                     ),
                 ),
-                (''),
+                #(''),
                 (_('Video information'), '', self.OnMenuVideoInfo, _('Show information about the video in a dialog box')),
             ),
             (_('&Options'),
@@ -8102,8 +8123,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         return (
             (self.bmpVidUp, self.OnMenuVideoToggle, _('Toggle the video preview')),
             (bmpSkipLeft, self.OnButtonVideoGotoPreviousBookmark,_('Previous bookmark')),
-            (bmpLeft, self.OnMenuVideoPrevFrame, _('Previous frame')),
-            (bmpRight, self.OnMenuVideoNextFrame, _('Next frame')),
+            (bmpLeft, self.OnMenuVideoPrevFrame, _('Jump back. Right click for options')),
+            (bmpRight, self.OnMenuVideoNextFrame, _('Jump forward. Right click for options')),
             (bmpSkipRight, self.OnButtonVideoGotoNextBookmark,_('Next bookmark')),
             (self.bmpPlay, self.OnMenuVideoPlay, _('Play/pause video. Right click for options.')),
             (bmpExternal, self.OnMenuVideoExternalPlayer, _('Run the script with an external program')),
@@ -8551,6 +8572,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     self.play_button = button
                 else:
                     self.play_button2 = button
+            elif handler == self.OnMenuVideoNextFrame or handler == self.OnMenuVideoPrevFrame:
+                button.Bind(wx.EVT_CONTEXT_MENU, self.OnButtonFrameStepContextMenu) # GPo 2020
 
             button.Bind(wx.EVT_MOUSE_CAPTURE_LOST, self.OnMouseCaptureLost) # GPo 2020
             sizer.Add(button, 0, wx.ALIGN_CENTER_VERTICAL)#, wx.EXPAND)#, wx.ALIGN_BOTTOM)#, wx.ALL, 1)
@@ -8575,7 +8598,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         # Create the video slider
         if primary:
             self.videoSlider = SliderPlus(panel, self, wx.ID_ANY, 0, 0, 240-1, dpiScale=factor,
-                                            titleDict=self.titleDict,selectionsDict=self.selectionsDict)
+                                            titleDict=self.titleDict)
             self.videoSlider.Bind(wx.EVT_SCROLL_THUMBTRACK, self.OnSliderChanged)
             self.videoSlider.Bind(wx.EVT_SCROLL_ENDSCROLL, self.OnSliderReleased)
             self.videoSlider.Bind(wx.EVT_RIGHT_UP, self.OnSliderRightUp)
@@ -8588,7 +8611,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.videoSlider.selectionsHilightColor = wx.Brush(self.options['selectionshilightcolor'])  # GPo
         else:
             self.videoSlider2 = SliderPlus(panel, self, wx.ID_ANY, 0, 0, 240-1, dpiScale=factor,
-                                            titleDict=self.titleDict,selectionsDict=self.selectionsDict)
+                                            titleDict=self.titleDict)
             self.videoSlider2.Bind(wx.EVT_SCROLL_THUMBTRACK, self.OnSliderChanged)
             self.videoSlider2.Bind(wx.EVT_SCROLL_ENDSCROLL, self.OnSliderReleased)
             self.videoSlider2.Bind(wx.EVT_RIGHT_UP, self.OnSliderRightUp)
@@ -9669,12 +9692,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     def OnMenuVideoBookmark(self, event):
         framenum = self.GetFrameNumber()
         self.AddFrameBookmark(framenum)
-        """
-        if framenum in self.currentScript.bookmarks:
-            del self.currentScript.bookmarks[framenum]
-        else:
-            self.currentScript.bookmarks[framenum] = 0
-        """
+
     """
     def OnMenuVideoRestoreScriptBookmarks(self, event):
         if len(self.currentScript.bookmarks) < 1:
@@ -9932,24 +9950,52 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         frameTextCtrl.SetFocus()
 
     def OnMenuVideoPrevFrame(self, event):
+        unit = 'frames'
+        offset = -1
+        if event is not None:
+            ctrl = event.GetEventObject()
+            if isinstance(ctrl, wxButtons.GenBitmapButton):
+                sel = self.options['buttonjumpchoice']
+                if sel == 1:
+                    unit = 'sec'
+                elif sel == 2:
+                    unit = 'min'
+                elif sel == 3:
+                    offset = -self.options['customjump']
+                    unit = self.options['customjumpunits']
+
         if not self.separatevideowindow:
-            self.ShowVideoOffset(-1)
+            self.ShowVideoOffset(offset, units=unit)
         else:
             if event is not None and event.GetEventObject() in self.videoControlWidgets and self.previewWindowVisible:
-                self.ShowVideoOffset(-1, focus=False)
+                self.ShowVideoOffset(offset, units=unit, focus=False)
                 self.currentScript.SetFocus()
             else:
-                self.ShowVideoOffset(-1)
+                self.ShowVideoOffset(offset, units=unit)
 
     def OnMenuVideoNextFrame(self, event):
+        unit = 'frames'
+        offset = +1
+        if event is not None:
+            ctrl = event.GetEventObject()
+            if isinstance(ctrl, wxButtons.GenBitmapButton):
+                sel = self.options['buttonjumpchoice']
+                if sel == 1:
+                    unit = 'sec'
+                elif sel == 2:
+                    unit = 'min'
+                elif sel == 3:
+                    offset = +self.options['customjump']
+                    unit = self.options['customjumpunits']
+
         if not self.separatevideowindow:
-            self.ShowVideoOffset(+1)
+            self.ShowVideoOffset(offset, units=unit)
         else:
             if event is not None and event.GetEventObject() in self.videoControlWidgets and self.previewWindowVisible:
-                self.ShowVideoOffset(+1, focus=False)
+                self.ShowVideoOffset(offeset, units=unit, focus=False)
                 self.currentScript.SetFocus()
             else:
-                self.ShowVideoOffset(+1)
+                self.ShowVideoOffset(offset, units=unit)
 
     def OnMenuVideoPrevSecond(self, event):
         self.ShowVideoOffset(-1, units='sec')
@@ -10151,10 +10197,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.UpdateVideoSubMenuByPosition(_('Preview filter'), state, True)
                 script.previewFilterIdx = state
                 script.lastpreviewFilterIdx = state
-            else: # preview filter failed, set last index
-                self.UpdateVideoSubMenuByPosition(_('Preview filter'), lastIdx, True)
-                script.previewFilterIdx = lastIdx
-                script.lastpreviewFilterIdx = lastIdx
+            else: # preview filter failed, now disabled #set last index
+                self.UpdateVideoSubMenuByPosition(_('Preview filter'), 0, True)
+                script.previewFilterIdx = 0 #lastIdx
+                script.lastpreviewFilterIdx = 0 #lastIdx
+
         if event is not None:
             lKey = event.GetId()
         elif index is not None:
@@ -10187,16 +10234,20 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 #previewFilterText = arg
                 if arg:
                     wx.BeginBusyCursor()
-                    ret = script.AVI.CreateFilterClip(arg)
+                    #ret = script.AVI.CreateFilterClip(arg)
+                    ret, err = script.AVI.CreateFilterClip(arg)
                     updateState(lKey)
-                    if wx.IsBusy(): # On error CreateFilterClip close the cursor, so check it
-                        wx.EndBusyCursor()
-                    #self.refreshAVI = updateUserSliders
+                    wx.EndBusyCursor()
+                    #if wx.IsBusy(): # On error CreateFilterClip close the cursor, so check it
+                    if err:
+                        wx.MessageBox(err, "Preview filter")
+                        script.display_clip_refresh_needed = True
+                        self.refreshAVI = True #updateUserSliders
                     self.ShowVideoFrame(userScrolling= not updateUserSliders)
                 else:
                     #lKey = 0
                     updateState(0)
-                    if script.AVI.preview_filter:
+                    if script.AVI is not None and script.AVI.preview_filter:
                         script.AVI.KillFilterClip()
                         #self.refreshAVI = updateUserSliders
                         self.ShowVideoFrame(userScrolling= not updateUserSliders)
@@ -10799,13 +10850,14 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.zoom_antialias = True
         else:
             self.zoom_antialias = False
-
+    """
     def OnMenuVideoFlip(self, event):
         id = event.GetId()
         if True:#wx.VERSION > (2, 8):
             vidmenus = [self.videoWindow.contextMenu, self.GetMenuBar().GetMenu(2)]
             for vidmenu in vidmenus:
-                menu = vidmenu.FindItemById(vidmenu.FindItem(_('&Flip'))).GetSubMenu()
+                menu = vidmenu.FindItemById(vidmenu.FindItem(_('&Display'))).GetSubMenu()
+                menu = menu.FindItemById(menu.FindItem(_('&Flip'))).GetSubMenu()
                 menuItem = menu.FindItemById(id)
                 if menuItem:
                     label = menuItem.GetLabel()
@@ -10821,7 +10873,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             menuItem.Check(value not in self.flip)
         else:
             vidmenu = self.videoWindow.contextMenu
-            menu = vidmenu.FindItemById(vidmenu.FindItem(_('&Flip'))).GetSubMenu()
+            menu = vidmenu.FindItemById(vidmenu.FindItem(_('&Display'))).GetSubMenu()
+            menu = menu.FindItemById(menu.FindItem(_('&Flip'))).GetSubMenu()
             menuItem = menu.FindItemById(id)
             if menuItem is None:
                 print>>sys.stderr, _('Error'), 'OnMenuVideoFlip(): cannot find menu item by id'
@@ -10835,57 +10888,64 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.flip.append(value)
         self.bmpVideo = None
         self.videoWindow.Refresh()
+        """
 
-    def OnMenuVideoYUV2RGB(self, event):
-        # GPo, check BT2020
-        """def TVItemCheck(menu):
-            id = menu.FindItem(_('TV levels'))
+    def OnMenuVideoFlip(self, event):
+        menuitem = None
+        id = event.GetId()
+        vidmenus = [self.videoWindow.contextMenu, self.GetMenuBar().GetMenu(2)]
+        for vidmenu in vidmenus:
+            menu = vidmenu.FindItemById(vidmenu.FindItem(_('&Display'))).GetSubMenu()
+            menu = menu.FindItemById(menu.FindItem(_('&Flip'))).GetSubMenu()
             menuItem = menu.FindItemById(id)
             if menuItem:
-                menuItem.Check() """
+                label = menuItem.GetLabel()
+                value = self.flipLabelDict[label]
+                menuItem.Check(value not in self.flip)
+            else:
+                updateMenu = menu
+        id = updateMenu.FindItem(label)
+        menuItem = updateMenu.FindItemById(id)
+        if menuItem is None:
+            print>>sys.stderr, _('Error'), 'OnMenuVideoFlip(): cannot find menu item by id'
+            return
+        menuItem.Check(value not in self.flip)
 
+        if value in self.flip:
+            self.flip.remove(value)
+        else:
+            self.flip.append(value)
+        self.bmpVideo = None
+        self.videoWindow.Refresh()
+
+    def OnMenuVideoYUV2RGB(self, event):
         id = event.GetId()
         value = ''
-        #updateMenu = None
-        #lastMenu = None
-        if True:#wx.VERSION > (2, 8):
-            vidmenus = [self.videoWindow.contextMenu, self.GetMenuBar().GetMenu(2)]
-            for vidmenu in vidmenus:
-                menu = vidmenu.FindItemById(vidmenu.FindItem(_('&YUV -> RGB'))).GetSubMenu()
-                menuItem = menu.FindItemById(id)
-                if menuItem:
-                    #lastMenu = menu
-                    label = menuItem.GetLabel()
-                    value = self.yuv2rgbDict[label]
-                    if menuItem.GetKind() == wx.ITEM_RADIO:
-                        menuItem.Check()
-                    else:
-                        menuItem.Check(not getattr(self, value))
-                else:
-                    updateMenu = menu
-
-            id = updateMenu.FindItem(label)
-            menuItem = updateMenu.FindItemById(id)
-            if not menuItem:
-                print>>sys.stderr, _('Error'), 'OnMenuVideoYUV2RGB(): cannot find menu item by id'
-                return
-            if menuItem.GetKind() == wx.ITEM_RADIO:
-                menuItem.Check()
-            else:
-                menuItem.Check(not getattr(self, value))
-        else:
-            vidmenu = self.videoWindow.contextMenu
-            menu = vidmenu.FindItemById(vidmenu.FindItem(_('&YUV -> RGB'))).GetSubMenu()
+        vidmenus = [self.videoWindow.contextMenu, self.GetMenuBar().GetMenu(2)]
+        for vidmenu in vidmenus:
+            menu = vidmenu.FindItemById(vidmenu.FindItem(_('&Display'))).GetSubMenu()
+            menu = menu.FindItemById(menu.FindItem(_('&YUV -> RGB'))).GetSubMenu()
             menuItem = menu.FindItemById(id)
-            if menuItem is None:
-                print>>sys.stderr, _('Error'), 'OnMenuVideoYUV2RGB(): cannot find menu item by id'
-                return
-            value = self.yuv2rgbDict[menuItem.GetLabel()]
-            if menuItem.GetKind() == wx.ITEM_RADIO:
-                menuItem.Check()
-                #lastMenu = menu
+            if menuItem:
+                label = menuItem.GetLabel()
+                value = self.yuv2rgbDict[label]
+                if menuItem.GetKind() == wx.ITEM_RADIO:
+                    menuItem.Check()
+                else:
+                    menuItem.Check(not getattr(self, value))
             else:
-                menuItem.Check(not self.swapuv)
+                updateMenu = menu
+
+        id = updateMenu.FindItem(label)
+        menuItem = updateMenu.FindItemById(id)
+        if not menuItem:
+            print>>sys.stderr, _('Error'), 'OnMenuVideoYUV2RGB(): cannot find menu item by id'
+            return
+        if menuItem.GetKind() == wx.ITEM_RADIO:
+            menuItem.Check()
+        else:
+            menuItem.Check(not getattr(self, value))
+
 
         refresh = False
         AVI = self.currentScript.AVI
@@ -10905,17 +10965,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if AVI:
                 refresh = AVI.IsYUV
 
-        """
-        # GPo, Bt2020 only tv range
-        if (self.matrix[0] == '2020' or self.matrix[1] == '2020') and  \
-           (self.matrix[0] == 'pc' or self.matrix[1] == 'pc'):
-            if lastMenu:
-                TVItemCheck(lastMenu)
-            if updateMenu:
-                TVItemCheck(updateMenu)
-            self.matrix[1] = 'tv'
-        """
-
         if refresh:
             for index in xrange(self.scriptNotebook.GetPageCount()):
                 script = self.scriptNotebook.GetPage(index)
@@ -10931,9 +10980,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         vidmenus = [self.videoWindow.contextMenu, self.GetMenuBar().GetMenu(2)]
         id = event.GetId()
         for vidmenu in vidmenus:
-            #menu = vidmenu.FindItemById(vidmenu.FindItem(_('Display options'))).GetSubMenu()
-            #menu = menu.FindItemById(menu.FindItem(_('Bit &depth'))).GetSubMenu()
-            menu = vidmenu.FindItemById(vidmenu.FindItem(_('Bit &depth'))).GetSubMenu()
+            menu = vidmenu.FindItemById(vidmenu.FindItem(_('&Display'))).GetSubMenu()
+            menu = menu.FindItemById(menu.FindItem(_('Bit &depth'))).GetSubMenu()
             menuItem = menu.FindItemById(id)
             if menuItem:
                 menuItem.Check()
@@ -12036,7 +12084,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.ShowVideoFrame(frame)
 
     def OnPlayButtonContextMenu(self, event): # GPo 2020
-
         def OnSelectDropFrames(event):
             if self.playing_video:
                 self.PlayPauseVideo(refreshFrame=False)
@@ -12051,7 +12098,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.play_drop = False
             if self.playing_video == '':
                 self.PlayPauseVideo()
-
         def AddDropFrameItems(menu):
             nr = 2
             for i in range(5):
@@ -12059,10 +12105,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.Bind(wx.EVT_MENU, OnSelectDropFrames, id=id)
                 menu.Append(id, str(nr), kind=wx.ITEM_CHECK)
                 menu.Check(id, self.play_drop==nr)
-                if nr < 4:
-                    nr += 2
+                if nr < 4: nr += 2
                 else: nr += 4
-
         def OnVideoPlayHalfSpeed(event):
             if self.playing_video:
                 self.PlayPauseVideo(refreshFrame=False)
@@ -12070,7 +12114,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.play_speed_factor = 0.5
             if self.playing_video == '':
                 self.PlayPauseVideo()
-
         popup = wx.Menu()
         dropMenu = wx.Menu()
         # Loop
@@ -12103,7 +12146,29 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         popup.Append(id, _('Maximum speed'), kind=wx.ITEM_CHECK)
         popup.Check(id, self.play_speed_factor == 'max')
         self.Bind(wx.EVT_MENU, self.OnMenuVideoPlayMax, id=id)
+        self.PopupMenu(popup)
+        popup.Destroy()
 
+    def OnButtonFrameStepContextMenu(self, event):
+        def OnSetSelection(event):
+            item = popup.FindItemById(event.GetId())
+            label = item.GetLabel()
+            idx = 0
+            if label == _('Custom unit'): idx = 3
+            elif label == _('1 Minute'): idx = 2
+            elif label == _('1 Second'): idx = 1
+            self.options['buttonjumpchoice'] = idx
+        def AddItem(label, check):
+            id = wx.NewId()
+            popup.Append(id, _(label), kind=wx.ITEM_CHECK)
+            popup.Check(id, check)
+            self.Bind(wx.EVT_MENU, OnSetSelection, id=id)
+        idx = self.options['buttonjumpchoice']
+        popup = wx.Menu()
+        AddItem('Custom unit', idx==3)
+        AddItem('1 Minute', idx==2)
+        AddItem('1 Second', idx==1)
+        AddItem('1 Frame', idx==0)
         self.PopupMenu(popup)
         popup.Destroy()
 
@@ -12400,8 +12465,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     script.lastFramenum = None
 
             if script.group is not None and script.group == self.oldGroup:
-                script.videoXY = None
-                script.videoZoom = None
+                #script.videoXY = None
+                #script.videoZoom = None
                 forcePlaying = True
                 if self.options['applygroupoffsets']:
                     offset = script.group_frame - self.oldGroupFrame
@@ -12415,7 +12480,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 script.lastFramenum = None
 
             # GPo, reset video zoom and pos if in group or zoomwindow
-            if (script.lastFramenum == None) or not self.saveViewPos or self.zoomwindow:
+            if (script.lastFramenum == None) or not self.saveViewPos or self.zoomwindowfit:
                 script.videoXY = None
                 script.videoZoom = None
 
@@ -12426,8 +12491,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
             if not bmSet:
                 bmSet = SetBookmarks()
+
             if self.zoomwindow:
-                forcePlaying = self.ShowVideoFrame(forceLayout=True, focus=False, scroll=None, forceCursor=True) and forcePlaying
+                forcePlaying = self.ShowVideoFrame(forceLayout=True, focus=False, scroll=script.videoXY, forceCursor=True) and forcePlaying
             else:
                 if (script.videoZoom != None) and ((script.AVI.Width, script.AVI.Height) == self.oldVideoSize):
                     self.zoomfactor = script.videoZoom
@@ -12549,7 +12615,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.oldVideoSize = (oldScript.AVI.Width, oldScript.AVI.Height)
 
                 # GPo, save display pos and zoom
-                if not self.zoomwindow:
+                if not self.zoomwindowfit:
                     oldScript.videoXY = self.videoWindow.GetViewStart()
                     oldScript.videoZoom = self.zoomfactor
             else:
@@ -12772,10 +12838,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.middleDownScript = False
             if (self.options['middlemousefunc'] == 'show video frame') and (self.currentScript.GetTextLength() > 5):
                 forceRefresh = self.ScriptChanged() or not self.previewOK()
+                """
                 if forceRefresh or not self.previewWindowVisible:
                     self.ShowVideoFrame_CheckPreview(forceRefresh=forceRefresh)
                 else:
                     self.HidePreviewWindow()
+                """
+                self.ShowVideoFrame_CheckPreview(forceRefresh=forceRefresh)
             else:
                 self.InsertSource()
 
@@ -13437,15 +13506,16 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             return
         for slider in self.GetVideoSliderList():
             slider.ToggleSelectionMode(0)
+            slider.SetBookmarkHilighting(False)
         self.trimDialog.Hide()
-        self.videoSlider.SetBookmarkHilighting(False)
         if insertMode == 2:
             self.ShowVideoFrame()
 
     def OnTrimDialogCancel(self, event):
         self.trimDialog.Hide()
         self.OnTrimDialogClear(event)
-        self.videoSlider.SetBookmarkHilighting(False)
+        for slider in self.GetVideoSliderList():
+            slider.SetBookmarkHilighting(False)
         if self.previewWindowVisible:
             self.ShowVideoFrame()
 
@@ -15977,11 +16047,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     # set the tab selections dict
     def SetSelectionsDict(self, selDict):
-        self.selectionsDict.clear()
-        if selDict:
-            self.selectionsDict.update(selDict)
-        sliderList = self.GetVideoSliderList()
-        for slider in sliderList:
+        for slider in self.GetVideoSliderList():
             slider.childSelectionsDict = selDict # set tab selectionsDict as children
             slider._Refresh(True)
 
@@ -16125,11 +16191,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         elif bmtype in (1,2):
             for slider in sliderList:
                 slider.SetBookmark(value, bmtype, refresh=refreshProgram)
-            #~return
         else:
-            bookmarks = self.GetBookmarkFrameList()
             for slider in sliderList:
-                if value in bookmarks:
+                if value in slider.bookmarks:
                     self.DeleteFrameBookmark(value, 0, refreshProgram=refreshProgram)
                     color = wx.BLACK
                 else:
@@ -16161,13 +16225,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         sliderList = self.GetVideoSliderList()
         for slider in sliderList:
                 slider.RemoveAllSelections(refresh=refresh)
-        """
-        sliderList = self.GetVideoSliderList()
-        self.selectionsDict.clear()
-        for slider in sliderList:
-            slider.selections = None
-            slider.Refresh()
-        """
+
     def SetSelectionPoint(self, bmtype):
         if bmtype not in (1,2):
             return
@@ -16779,12 +16837,16 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             return False
         if index > nTabs - 1:
             return False
+
+        """ wx 2.9 dont like Thaw
         if not self.separatevideowindow:
             self.scriptNotebook.SetSelection(index)
         else:
-            self.Freeze()
+            self.Freeze() wx.2.9 dont like it
             self.scriptNotebook.SetSelection(index)
             self.Thaw()
+        """
+        self.scriptNotebook.SetSelection(index)
         return True
 
     def ShowFunctionDefinitionDialog(self, functionName=None, functionArgs=None):
@@ -17262,12 +17324,15 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if self.separatevideowindow:
             if self.options['allowresize'] and not self.videoDialog.IsMaximized():
                 wA, hA = self.videoDialog.GetSize()
+                """ GPo ?
                 if self.currentScript.sliderWindowShown:
                     wslider = -self.currentScript.lastSplitSliderPos
                 else:
                     wslider = self.videoSplitter.GetMinimumPaneSize() + 5
-                wB = (w + 2*self.xo + 20) + (wslider) + self.toggleSliderWindowButton.GetSize()[0] + 5
-                hB = (h + 2*self.yo) + 75# + (200)
+                """
+                wslider = self.videoSplitter.GetMinimumPaneSize() + 5
+                wB = (w + 2*self.xo + 5) + (wslider) + self.toggleSliderWindowButton.GetSize()[0] + 5
+                hB = (h + 2*self.yo) + 95# + (200)
                 winpos = self.videoDialog.GetPosition()
                 imonitor = max(0, wx.Display.GetFromPoint(winpos))
                 display = wx.Display(imonitor)
@@ -17284,7 +17349,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     pos = self.videoDialog.GetPosition()
                     if (pos[0]+size[0]>wC) or (pos[1]+size[1]>hC):
                         self.videoDialog.Center()
-            #self.UpdateProgramTitle()
+
+            #~self.UpdateProgramTitle()
             self.UpdateScriptTabname(self.currentScript)
             self.videoDialog.Show()
             return
@@ -17428,6 +17494,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             offsetFrames = offset * int(round(script.AVI.Framerate * 60))
         elif units in ('hr', 'hours'):
             offsetFrames = offset * int(round(script.AVI.Framerate * 60 * 60))
+        else: offsetFrames = offset
         framenum = offsetFrames + self.videoSlider.GetValue()
         self.ShowVideoFrame(framenum, wrap=False, script=script, focus=focus,forceCursor=self.ScriptChanged(script))
         if self.playing_video == '':
@@ -17441,7 +17508,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         current_frame = self.GetFrameNumber()
         clip = self.currentScript.AVI
         bmDict = self.GetBookmarkFrameList(copy=True) # !! copy=True otherwise you change the bookmarks !!
-        bmDict.update(self.selectionsDict)  # add selections
+        bmDict.update(self.videoSlider.selectionsDict)  # add selections
         if clip is not None:
             if not bmtype:
                 bookmarkValues = [value for value in bmDict.keys()  # goto all
@@ -17512,6 +17579,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             except TypeError:
                 pass
 
+    # GPo, call back for avi clip
+    def AVICallBack(self, ident, nr):
+        if ident == 'preview':
+            wx.CallAfter(self.OnMenuPreviewFilter, index=nr)
+
     def UpdateScriptAVI(self, script=None, forceRefresh=False, keep_env=None,
                         prompt=True, showCursor=True):
         cursor = False
@@ -17579,7 +17651,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                             self.getCleanText(scripttxt), filename, workdir=workdir, env=env,
                             fitHeight=fitHeight, fitWidth=fitWidth, oldFramecount=oldFramecount,
                             matrix=self.matrix, interlaced=self.interlaced, swapuv=self.swapuv,
-                            bit_depth=self.bit_depth)
+                            bit_depth=self.bit_depth,callBack=self.AVICallBack)
 
                     if not script.AVI.initialized:
                         if self.customHandler > 0:      # GPo
@@ -17641,8 +17713,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if self.cropDialog.IsShown():
                 self.PaintCropWarnings()
             self.SetVideoStatusText()
-            #if self.playing_video == '':
-                #wx.CallAfter(self.PlayPauseVideo)   # GPo 2018 CallAfter
+            if self.playing_video == '':
+                wx.CallAfter(self.PlayPauseVideo)   # GPo 2018 CallAfter
         return boolNewAVI
 
     def ScriptChanged(self, script=None, return_styledtext=False):
@@ -17659,19 +17731,16 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             script.DoubleStarAsString = True    # enable it if needed
             script.OnStyleNeeded(None, True)    # and update the style
         styledtxt = []
-        cont = False
         for i in range(0, len(scripttxt), 2):
             style = ord(scripttxt[i+1]) & 31
             if style in script.commentStyle \
             or (style == script.STC_AVS_DEFAULT and scripttxt[i] in ' \t\n'):
                 continue
-
             styledtxt.append(scripttxt[i])
             styledtxt.append(style)
         script_changed = styledtxt != script.previewtxt
         if return_styledtext:
             return script_changed, styledtxt
-        #print(str(script_changed))
         return script_changed
 
     """
@@ -17938,8 +18007,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             (_('Toggle all folds'), '', self.OnSliderLabelToggleAllFolds, ''),
             (_('General settings...'), '', self.OnSliderLabelSettings, ''),
             (''),
-            (_('Clear all auto fold status'), '', self.OnSliderResetAllFoldOrders, 'Only with "Restore last or fold"'),
-            (_('Slider update immediately'), '', self.OnSliderToggleUpdateMode, _('Only with preview filter /**avsp_filter'), wx.ITEM_CHECK, False),
+            (_('Clear all auto fold status'), '', self.OnSliderResetAllFoldOrders, ''),
+            (_('Set same width for all'), '', self.OnSliderWindowsSameWidth, ''),
+            (_('Slider update immediately'), '', self.OnSliderToggleUpdateMode, '', wx.ITEM_CHECK, False),
             (''),
             (_('Update sliders'), '', self.OnSliderUpdate, ''),
         ]
@@ -18353,18 +18423,21 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             slider.lastValue = slider.GetValue()
             event.Skip()
         def OnLeftUpUserSlider(event):
+            lv = slider.lastValue # GPo new
             slider.lastValue = slider.GetValue()
-            UserSliderVideoUpdateNew(slider)
+            if lv != slider.lastValue:
+                UserSliderVideoUpdateNew(slider)
             event.Skip()
         #@AsyncCallWrapper
         def OnMoveUserSlider(event):
             if self.options['autosliderupdatedirectly']:
                 if slider.lastValue != slider.GetValue(): # disable move event on mouse up
-                    slider.lastValue = slider.GetValue()
-                    if self.currentScript.previewFilterIdx > 0:
+                    #~slider.lastValue = slider.GetValue()
+                    if (self.currentScript.previewFilterIdx > 0) and not wx.GetKeyState(wx.WXK_CONTROL):
+                        slider.lastValue = slider.GetValue() # GPo new
                         #self.IdleCallDict['onmoveuserslider'] = UserSliderVideoUpdateNew(slider)
                         wx.CallAfter(UserSliderVideoUpdateNew, slider)
-                        #self.videoWindow.Refresh()
+                        #UserSliderVideoUpdateNew(slider)
             event.Skip()
 
         slider.Bind(wx.EVT_LEFT_UP, OnLeftUpUserSlider)
@@ -18390,7 +18463,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         leftCtrl.SetUseFocusIndicator(False)
         def OnLeftTimer(event):
             wx.Yield()
-            directly = self.options['autosliderupdatedirectly']
+            directly =  (self.currentScript.previewFilterIdx > 0) and self.options['autosliderupdatedirectly']
             if leftCtrl.up:
                 leftTimer.Stop()
                 if leftCtrl.HasCapture():
@@ -18428,7 +18501,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         rightCtrl.SetUseFocusIndicator(False)
         def OnRightTimer(event):
             wx.Yield()
-            directly = self.options['autosliderupdatedirectly']
+            directly =  (self.currentScript.previewFilterIdx > 0) and self.options['autosliderupdatedirectly']
             if rightCtrl.up:
                 rightTimer.Stop()
                 if rightCtrl.HasCapture():
@@ -18874,6 +18947,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.SlidersClearFolds()
         self.OnSliderUpdate(None)
 
+    def OnSliderWindowsSameWidth(self, event):
+        pos = self.videoSplitter.GetSashPosition()
+        for i in range(self.scriptNotebook.GetPageCount()):
+            self.scriptNotebook.GetPage(i).lastSplitSliderPos = pos
+
     def OnSliderToggleUpdateMode(self, event):
         self.options['autosliderupdatedirectly'] = not self.options['autosliderupdatedirectly']
 
@@ -19146,7 +19224,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             w = None
         return (w, h)
     """
-
+    """
     def GetFitWindowSize(self):
         wA, hA = self.videoWindow.GetSize()
         w, h = wA - 2 * self.xo, hA - 2 * self.yo
@@ -19189,6 +19267,65 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 else:
                     w = abs(splitpos) - (2 * self.xo + 5 + self.mainSplitter.GetSashSize()/2 +
                                          self.toggleSliderWindowButton.GetSize()[0])
+        if h < 4: h = None
+        if w < 4: w = None
+        return (w, h)
+    """
+    def GetFitWindowSize(self):
+        wA, hA = self.videoWindow.GetSize()
+        #wc, hc = self.videoWindow.GetClientSize()
+        w, h = wA - 2 * self.xo, hA - 2 * self.yo
+        sbarH = self.videoWindow.HasScrollbar(wx.HORIZONTAL)
+
+        if not self.separatevideowindow:
+            if self.zoomwindow and not self.previewWindowVisible:
+                w = h = None
+            else:
+                if self.previewWindowVisible:
+                    if self.zoomwindowfill: # try do elemenate the gap if scrollbar bottom not visible
+                        if self.mainSplitter.GetSplitMode() == wx.SPLIT_HORIZONTAL:
+                            splitpos = (self.mainSplitter.GetSashPosition() - self.mainSplitter.GetClientSize()[1])
+                            h = abs(splitpos) - (2 * self.yo + 5 + self.mainSplitter.GetSashSize()/2)
+                            #h = hc - (2 * self.yo)
+                            if not self.splitView and self.currentScript.AVI:
+                                factor = float(float(self.currentScript.AVI.DisplayHeight) / h)
+                                if self.currentScript.AVI.DisplayWidth / factor > wA - \
+                                        (self.toggleSliderWindowButton.GetSize()[0] + 4):
+                                    h -= wx.SystemSettings.GetMetric(wx.SYS_VSCROLL_X) - 2
+                            else:
+                                h -= wx.SystemSettings.GetMetric(wx.SYS_VSCROLL_X) - 2
+                        else:
+                            h -= wx.SystemSettings.GetMetric(wx.SYS_VSCROLL_X) - 2
+                        if h < 4: h = None
+                        if w < 4: w = None
+                        return (w, h)
+                    else:
+                        splitpos = self.mainSplitter.GetSashPosition() - self.mainSplitter.GetClientSize() \
+                                   [self.mainSplitter.GetSplitMode() == wx.SPLIT_HORIZONTAL]
+
+                # can be wrong if not preview visible
+                elif self.currentScript.lastSplitVideoPos is not None:
+                    splitpos = self.currentScript.lastSplitVideoPos
+                elif isinstance(self.oldLastSplitVideoPos, int): #is not None:
+                    splitpos = self.oldLastSplitVideoPos
+                else:
+                    splitpos = self.GetMainSplitterNegativePosition()
+
+                if self.mainSplitter.GetSplitMode() == wx.SPLIT_HORIZONTAL:
+                    h = abs(splitpos) - (2 * self.yo + 5 + self.mainSplitter.GetSashSize()/2)
+                else:
+                    w = abs(splitpos) - (2 * self.xo + 5 + self.mainSplitter.GetSashSize()/2 +
+                                         self.toggleSliderWindowButton.GetSize()[0])
+
+        elif self.zoomwindowfill: # seperate video window
+            if not self.splitView and self.currentScript.AVI:
+                factor = float(float(self.currentScript.AVI.DisplayHeight) / h)
+                if self.currentScript.AVI.DisplayWidth / factor > wA - \
+                        (self.toggleSliderWindowButton.GetSize()[0] + 4):
+                    h -= wx.SystemSettings.GetMetric(wx.SYS_VSCROLL_X) - 2
+            else:
+                h -= wx.SystemSettings.GetMetric(wx.SYS_VSCROLL_X) - 2
+
         if h < 4: h = None
         if w < 4: w = None
         return (w, h)

@@ -13,6 +13,19 @@ import dpi
 intPPI = dpi.intPPI
 tuplePPI = dpi.tuplePPI
 
+# Open a file or directory with its associate program
+def startfile(path, prefer_dir=True):
+    '''Open a file or directory with its associate program
+
+    'prefer_dir': If True, ensure to open a dir and not an executable with
+    the same name on Windows (ignore PATHEXT)
+    '''
+    if os.name == 'nt':
+        if prefer_dir and os.path.isdir(path):  path += os.sep
+        os.startfile(path)
+    else:
+        os.system('xdg-open "{0}"'.format(path))
+
 class CompressVideoDialog(wx.Dialog):
     def __init__(self, parent, inputname='', framecount=None, framerate=None, framewidth=None, frameheight=None):
         wx.Dialog.__init__(self, parent, wx.ID_ANY, _('Encode video'))
@@ -103,7 +116,7 @@ class CompressVideoDialog(wx.Dialog):
             staticText = wx.StaticText(self, wx.ID_ANY, label)
             textCtrl = wx.TextCtrl(self, size=(intPPI(300),-1))
             textCtrl.Bind(wx.EVT_TEXT, self.OnTextChangeCommandLine)
-            button = wx.Button(self, wx.ID_ANY, '...', size=(intPPI(0),-1), name=key)
+            button = wx.Button(self, wx.ID_ANY, '...', size=(intPPI(30),-1), name=key)
             self.Bind(wx.EVT_BUTTON, handler, button)
             self.ctrlDict[key] = textCtrl
             gridSizer.Add(staticText, 0, wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL)
@@ -762,6 +775,7 @@ class CompressVideoOptionsDialog(wx.Dialog):
     def __init__(self, parent):
         wx.Dialog.__init__(self, parent, wx.ID_ANY, _('Configure options'))
         dpi.SetFontPPI(self)
+        self.parent = parent
         self.options = parent.options.copy()
         self.ctrlDict = {}
         self.CreateInterface()
@@ -843,6 +857,11 @@ class CompressVideoOptionsDialog(wx.Dialog):
             gridSizer.Add(textCtrl2, 0, wx.EXPAND)
             tabSizer = wx.BoxSizer(wx.VERTICAL)
             tabSizer.Add(gridSizer, 0, wx.EXPAND|wx.ALL, int5)
+
+            button = wx.Button(tabPanel, wx.ID_ANY, os.path.splitext(name)[0] + '.presets')
+            self.Bind(wx.EVT_BUTTON, self.OnOpenPresets, button)
+            tabSizer.Add(button, 0,  wx.ALIGN_LEFT|wx.ALIGN_BOTTOM)
+
             tabPanel.SetSizer(tabSizer)
         # Standard buttons
         okay  = wx.Button(self, wx.ID_OK, _('OK'))
@@ -887,6 +906,14 @@ class CompressVideoOptionsDialog(wx.Dialog):
             self.options['exe_options'][key]['extra'] = self.ctrlDict[key][1].GetValue()
         self.options['priority'] = self.ctrlDict['priority'].GetStringSelection()
         return self.options
+
+    def OnOpenPresets(self, event):
+        button = event.GetEventObject()
+        presets = os.path.join(self.parent.GetParent().toolsfolder, button.GetLabel())
+        if not os.path.isfile(presets):
+            wx.MessageBox(_('Presets file not found:\n') + presets)
+        if os.path.isdir(self.parent.GetParent().toolsfolder):
+            startfile(self.parent.GetParent().toolsfolder, True)
 
 class BitrateCalcDialog(wx.Dialog):
     def __init__(self, parent, defaultdir=''):

@@ -40,7 +40,6 @@ import sys
 import os
 import ctypes
 import re
-import wx
 
 x86_64 = sys.maxsize > 2**32
 if x86_64:
@@ -130,9 +129,10 @@ class AvsClipBase:
 
     def __init__(self, script, filename='', workdir='', env=None, fitHeight=None,
                  fitWidth=None, oldFramecount=240, display_clip=True, reorder_rgb=False,
-                 matrix=['auto', 'tv'], interlaced=False, swapuv=False, bit_depth=None):
+                 matrix=['auto', 'tv'], interlaced=False, swapuv=False, bit_depth=None, callBack=None):
         # Internal variables
         self.initialized = False
+        self.callBack = callBack
         self.name = filename
         self.error_message = None
         self.current_frame = -1
@@ -351,14 +351,13 @@ class AvsClipBase:
             print(u"AviSynth clip created successfully: '{0}'".format(self.name))
 
     def __del__(self):
+        self.preview_filter = False
         if self.initialized:
             self.display_frame = None
-            self.preview_filter = False
             self.src_frame = None
             self.display_clip = None
             self.env.set_var("avsp_raw_clip", None)
             self.env.set_var("avsp_filter_clip", None)
-            self.preview_filter = False
             self.clip = None
             if __debug__:
                 print(u"Deleting allocated video memory for '{0}'".format(self.name))
@@ -405,13 +404,17 @@ class AvsClipBase:
         return True
 
     def CreateDisplayClip(self, matrix=['auto', 'tv'], interlaced=None, swapuv=False, bit_depth=None):
+        if self.preview_filter:
+            self.preview_filter = False
+            if self.callBack is not None:
+                self.callBack('preview', 0)
+            else:
+                self.env.set_var("avsp_filter_clip", None)
         self.current_frame = -1
         self.display_clip = self.clip
         self.RGB48 = False
         self.bit_depth = bit_depth
-        if self.preview_filter:
-            self.preview_filter = False
-            self.env.set_var("avsp_filter_clip", None)
+
         if bit_depth:
             try:
                 if bit_depth == 'rgb48': # TODO
@@ -475,21 +478,11 @@ class AvsClipBase:
         return True
 
     def CreateFilterClip(self, args=''):
-        def Error(err):
-            self.env.set_var("avsp_filter_clip", None)
-            if wx.IsBusy():
-                wx.EndBusyCursor()
-            wx.MessageBox(err, "Preview filter")
-
+        err = ''
+        self.preview_filter = False
         if not args or not self.clip or self.error_message is not None:
-            return
-        """
-        try:
-            if isinstance(self.env.get_var("avsp_filter_clip"), avisynth.AVS_Clip):
-                self.env.set_var("avsp_filter_clip", None)
-        except:
-            pass
-        """
+            return None, ''
+
         self.env.set_var("avsp_filter_clip", None)
         self.env.set_var("avsp_filter_clip", self.clip)
 
@@ -501,37 +494,54 @@ class AvsClipBase:
                 err = self.env.get_error()
                 if not err:
                     err = "Preview filter error: Not a clip"
-                Error(err)
-            return
+            self.env.set_var("avsp_filter_clip", None)
+            return None, err
         if not isinstance(clip, avisynth.AVS_Clip):
             if self.error_message is None:
-                Error("Preview filter error: Not a clip")
-            return
+                err = "Preview filter error: Not a clip"
+            self.env.set_var("avsp_filter_clip", None)
+            return None, err
+
         vi = clip.get_video_info()
         if (vi.width != self.DisplayWidth) or (vi.height != self.DisplayHeight):
             clip = None
-            Error("Preview filter error: \nPreview-Clip must have the same width and height")
-            return
+            err = "Preview filter error: \nPreview-Clip must have the same width and height"
+            self.env.set_var("avsp_filter_clip", None)
+            return None, err
 
         args = [clip, self.matrix, self.interlaced]
         try:
             clip = self.env.invoke("ConvertToRGB32", args)
         except:
-            Error("Preview filter error: ConvertToRGB failed")
+            err = "Preview filter error: ConvertToRGB failed"
             clip = None
-            return
+            self.env.set_var("avsp_filter_clip", None)
+            return None, err
         if not isinstance(clip, avisynth.AVS_Clip):
-            Error("Preview filter error: ConvertToRGB failed")
-            return
+            err = "Preview filter error: ConvertToRGB failed"
+            self.env.set_var("avsp_filter_clip", None)
+            return None, err
         vi = clip.get_video_info()
-        if (vi.width != self.DisplayWidth) or (vi.height != self.DisplayHeight):
+        if vi.num_frames != self.Framecount:
             clip = None
-            Error("Preview filter error: \nPreview-Clip must have the same width and height")
-            return
+            err = "Preview filter error: \nPreview-Clip length different"
+            self.env.set_var("avsp_filter_clip", None)
+            return None, err
+
+        framenr = self.current_frame
+        frame = clip.get_frame(framenr)
+        err = clip.get_error()
+        if err:
+            clip = None
+            frame = None
+            return None, err
+
         self.preview_filter = True
         self.display_clip = clip
-        self.current_frame = -1
-        return True
+        self.display_frame = frame
+        self.display_pitch = self.display_frame.get_pitch()
+        self.pBits = self.display_frame.get_read_ptr()
+        return True, ''
 
     def KillFilterClip(self):
         self.preview_filter = False
