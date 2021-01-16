@@ -7175,7 +7175,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             (_('Misc 2'),
                 ((_('AvsPmod DPI scaling *'), wxp.OPT_ELEM_SEP, '', _('Beta: some elements may be not scaled'), dict(adjust_width=True) ), ),
                 ((_('DPI scaling overall only manually*'), wxp.OPT_ELEM_CHECK, 'ppiscalingmanually', _('Do not do overall DPI scaling automatically'), dict() ), ),
-                ((_('DPI scaling overall:*'), wxp.OPT_ELEM_SPIN, 'ppiscalingoverall', _('Adjust dpi scaling overall (10 % steps). For 150 % DPI set value 5'), dict(min_val=0, max_val=10) ), ),
+                ((_('DPI scaling overall:*'), wxp.OPT_ELEM_SPIN, 'ppiscalingoverall', _('Adjust dpi scaling overall (10 % steps). For 150 % DPI set value 5'), dict(min_val=0, max_val=20) ), ),
                 ((_('DPI scaling main tabs:*'), wxp.OPT_ELEM_SPIN, 'ppiscalingscripttabs', _('Additional adjust the script window tabs (10 % steps)'), dict(min_val=0, val=0, max_val=10) ), ),
                 ((_('DPI scaling video controls:*'), wxp.OPT_ELEM_SPIN, 'ppiscalingvideocontrols', _('Additional adjust the video controls (10 % steps)'), dict(min_val=0, val=0, max_val=10) ), ),
                 ((_('DPI scaling statusbar:*'), wxp.OPT_ELEM_SPIN, 'ppiscalingstatusbar', _('Additional adjust the statusbar (10 % steps)'), dict(min_val=0, val=0, max_val=10) ), ),
@@ -8027,7 +8027,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         ),
                     ),
                     (''),
-                    (_('Enable preview filter sliders'), '', self.OnMenuBlockCommendAsString, _('Enable block commend /** showing as string. Filters must written to script'), wx.ITEM_CHECK, self.options['doublestarasstring']),
+                    (_('Enable preview filter sliders'), '', self.OnMenuBlockCommendAsString, _('Enable block commend /** showing as string.'), wx.ITEM_CHECK, self.options['doublestarasstring']),
                     ),
                 ),
                 (_('Split View on/off'), '', self.OnMenuSplitView, _('Shows the selected and optional the next or previous tab in one view (video width and height must be the same)')),
@@ -9992,7 +9992,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.ShowVideoOffset(offset, units=unit)
         else:
             if event is not None and event.GetEventObject() in self.videoControlWidgets and self.previewWindowVisible:
-                self.ShowVideoOffset(offeset, units=unit, focus=False)
+                self.ShowVideoOffset(offset, units=unit, focus=False)
                 self.currentScript.SetFocus()
             else:
                 self.ShowVideoOffset(offset, units=unit)
@@ -20354,11 +20354,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if self.options['usetabimages']:
             if self.options['multilinetab']:
                 rows = self.scriptNotebook.GetRowCount()
-            if self.FindFocus() == self.videoWindow:
+            if (self.FindFocus() == self.videoWindow) or self.separatevideowindow:
                 for i in xrange(min(self.scriptNotebook.GetPageCount(), 10)):
                     self.scriptNotebook.SetPageImage(i, i)
             else:
-                #~ il = self.scriptNotebook.GetImageList()
                 for i in xrange(self.scriptNotebook.GetPageCount()):
                     self.scriptNotebook.SetPageImage(i, -1)
             if self.options['multilinetab']:

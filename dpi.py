@@ -47,9 +47,7 @@ class DPI():
             return 1.0
         if self.dpiAware:
             return self.ppi_factor
-        pw, ph = wx.ScreenDC().GetPPI()
-        if ph < 110:
-            ph = 96.0
+
         try:
             ctypes.windll.shcore.SetProcessDpiAwareness(2) # Win 10 (mode 2) monitor v2 (win10 sizes the non client areas)
             self.dpiAware = True
@@ -62,6 +60,10 @@ class DPI():
             except:
                 pass
         if self.dpiAware:
+            #pw, ph = wx.ScreenDC().GetPPI()
+            pw, ph = wx.GetDisplayPPI()
+            if ph < 110:
+                ph = 96.0
             try:
                 self.ppi_factor = float(ph / 96.0)
             except:
