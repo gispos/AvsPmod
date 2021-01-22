@@ -16,7 +16,7 @@
 
 # Übersetzt von Henrik . AvsP 2.0.1  Danke für die Hilfe, besonders LigH ,doxville,Brother John, Selur und Rippraff !
 
-version = "2.6.6.0"
+version = "2.6.6.3"
 
 messages = {
     "AviSynth script" : u"", # New in v2.3.0
@@ -313,11 +313,13 @@ messages = {
     "type string (filename)" : u"Eingabe string  (Dateiname)",
     "Create placeholders for arguments which have no database information" : u"Platzhalter für Argumente erstellen, die keine Datenbankinformationen haben",
     "undocumented" : u"Undokumentiert",
+    "Button show/hide applies to all tabs" : u"", # New in v2.6.6.3
+    "Or press Ctrl when you click the button." : u"", # New in v2.6.6.3
     "Determines which filters will initially have hidden arguments in the slider window" : u"Stellt zuerst fest, welche Filter versteckt Argumente im Schiebereglerfenster haben",
     "Fold all" : u"Alle eingeklappen",
     "Fold non-numbers" : u"Nichtnumerische eingeklappen",
     "Fold none" : u"Alle ausgeklappen",
-    "Fold or restore last status" : u"Einklappen oder letzten Status herstellen", # New in v2.6.6.0
+    "Fold or restore last status" : u"Einklappen oder letzten Status herstellen",
     "Fold startup setting" : u"Filterparameter Ein-/Ausklappen",
     "Filter exclusion list:" : u"Filterausschlußliste",
     "Specify filters never to build automatic sliders for" : u"Spezifiziert Filter, für die kein automatischer Schieberegler erstellt wird.",
@@ -396,7 +398,7 @@ messages = {
     "minutes" : u"Minuten", 
     "seconds" : u"Sekunden",
     "frames" : u"Einzelbilder",
-    "Misc 2" : u"Sonstiges 2", # New in v2.6.6.0
+    "Misc 2" : u"Sonstiges 2",
     "AvsPmod DPI scaling *" : u"", # New in v2.6.6.0
     "Beta: some elements may be not scaled" : u"", # New in v2.6.6.0
     "DPI scaling overall only manually*" : u"", # New in v2.6.6.0
@@ -586,7 +588,7 @@ messages = {
     "Toggle current fold" : u"", # New in v2.2.1
     "Toggle the fold point On/OFF at the current line" : u"", # New in v2.2.1
     "Toggle all fold points On/OFF" : u"", # New in v2.2.1
-    "Toggle all folds" : u"Alle Ein oder Ausklappen",
+    "Toggle all folds" : u"Alle Ein-Ausklappen",
     "Toggle text wrap" : u"Umschalten Zeilenumbruch",
     "Toggle text wrap On/OFF" : u"", # New in v2.5.1.06
     "&AviSynth function" : u"", # New in v2.2.1
@@ -722,6 +724,7 @@ messages = {
     "Shrink preview image to previous zoom level. Not work under 'Fill window' or 'Fit inside window'" : u"", # New in v2.2.1
     "Antialiasing" : u"", # New in v2.6.6.0
     "If zoom not 100 %, the preview is drawing antialiased" : u"", # New in v2.6.6.0
+    "&Display" : u"", # New in v2.6.6.3
     "&Flip" : u"", # New in v2.2.1
     "Flip video preview upside down" : u"", # New in v2.2.1
     "Flip video preview from left to right" : u"", # New in v2.2.1
@@ -796,7 +799,7 @@ messages = {
     "Write all to script" : u"", # New in v2.6.6.0
     "Write to script" : u"", # New in v2.6.6.0
     "Write Preview filter to script" : u"", # New in v2.6.6.0
-    "Enable block commend /** showing as string. Filters must written to script" : u"", # New in v2.6.6.0
+    "Enable block commend /** showing as string." : u"", # New in v2.6.6.3
     "Enable preview filter sliders" : u"", # New in v2.6.6.0
     "Shows the selected and optional the next or previous tab in one view (video width and height must be the same)" : u"", # New in v2.6.6.0
     "Split View on/off" : u"", # New in v2.6.6.0
@@ -804,6 +807,7 @@ messages = {
     "Toggle extended left move" : u"Umschalten erweiteter linker Bereich",
     "Save/Restore last view position and zoom factor on tab change" : u"", # New in v2.6.6.0
     "Save view pos on tab change" : u"", # New in v2.5.1.18
+    "Additional" : u"", # New in v2.6.6.3
     "Show/Hide the preview" : u"", # New in v2.2.1
     "Toggle the video preview" : u"Umschalten Video Vorschaufunktion",
     "Switch focus between the video preview and the text editor" : u"Schalten des Fokus zwischen der Video-Vorschaufunktion und dem Texteditor",
@@ -861,7 +865,7 @@ messages = {
     "Avisynth help" : u"Avisynth Hilfe",
     "Open the avisynth help html" : u"Öffne Avisynth-HTML-Hilfe",
     "Open the Preview filter examples" : u"", # New in v2.6.6.0
-    "Preview filter example" : u"", # New in v2.6.6.0
+    "Preview filter example" : u"Vorschau Filter Beispiel", # New in v2.6.6.0
     "Open Avisynth plugins folder" : u"", # New in v2.2.1
     "Open the avisynth plugins folder, or the last folder from which a plugin was loaded" : u"", # New in v2.3.1
     "DPI Info" : u"", # New in v2.6.6.0
@@ -870,8 +874,8 @@ messages = {
     "Open the changelog file" : u"", # New in v2.4.1
     "About this program" : u"Über dieses Programm",
     "About AvsPmod" : u"", # New in v2.2.1
-    "Previous frame" : u"Vorheriges Einzelbild",
-    "Next frame" : u"Nächstes Einzelbild",
+    "Jump back. Right click for options" : u"", # New in v2.6.6.3
+    "Jump forward. Right click for options" : u"", # New in v2.6.6.3
     "Play/pause video. Right click for options." : u"", # New in v2.6.6.0
     "Run the script with an external program" : u"Starte Skript mit einem externen Programm",
     "Run the selected tool" : u"Starten des ausgewählten Werkzeugs",
@@ -1044,6 +1048,9 @@ messages = {
     "This program is freeware under the GPL license." : u"Dieses Programm ist Freeware unter der GPL Lizenz.",
     "Drop frames" : u"", # New in v2.4.0
     "Half speed" : u"", # New in v2.6.6.0
+    "Custom unit" : u"", # New in v2.6.6.3
+    "1 Minute" : u"", # New in v2.6.6.3
+    "1 Second" : u"", # New in v2.6.6.3
     "bookmark highlight color..." : u"", # New in v2.6.3.5
     "selection highlight color..." : u"", # New in v2.6.3.5
     "bell at bookmarks" : u"", # New in v2.5.1.18
@@ -1092,7 +1099,7 @@ messages = {
     "Program zoom" : u"Programm-Zoom",
     "Bookmark title" : u"", # New in v2.4.0
     "Note: The \"\\t\\t\" or \"\\T\\T\" is used to separate the left and right portions of the status bar\n         message." : u"", # New in v2.3.0
-    "Slider update immediately" : u"Sofortige Schieberegler Aktualisierung", # New in v2.6.6.0
+    "Slider update immediately" : u"Sofortige Schieberegler Aktualisierung",
     "A macro is still running. Close anyway?" : u"", # New in v2.3.0
     "Save changes before closing?" : u"Änderungen vor dem Beenden speichern?",
     "Cannot create a new tab while crop editor is open!" : u"Kein neuer Tab kann erstellt werden,solange der Crop-Editor geöfnnet ist!",
@@ -1141,9 +1148,9 @@ messages = {
     "Invalid slider text: slider label already exists" : u"Ungültiger Schiebereglertext: Bezeichnung des Schiebereglers existiert schon",
     "Invalid slider text: invalid number" : u"Ungültiger Schiebereglertext: Ungültige Nummer",
     "General settings..." : u"Allgemeine Einstellungen...",
-    "Clear all auto fold status" : u"Ein-Ausklapp Status zurücksetzten", # New in v2.6.6.0
-    "Only with preview filter /**avsp_filter" : u"", # New in v2.6.6.0
-    "Update sliders" : u"Schieberegler aktualisieren", # New in v2.6.6.0
+    "Clear all auto fold status" : u"Ein-Ausklapp Status zurücksetzen",
+    "Set same width for all tabs" : u"Gleiche Breite für alle Tabs", # New in v2.6.6.3
+    "Update sliders" : u"Schieberegler aktualisieren",
     "Reset to initial value: %(value_formatted)s" : u"Zurückstellen zum Ausgangswert %(value_formatted)s",
     "Reset to initial value: %(value2_formatted)s" : u"", # New in v2.2.1
     "Reset to default value: %(value_formatted)s" : u"", # New in v1.4.0
@@ -1279,10 +1286,11 @@ messages = {
     "Automatically compute bitrate value on startup" : u"Den Bitraten Wert automatisch berechnen beim Start",
     "Automatically compute pixel aspect ratio from d2v on startup" : u"Pixel-Längenverhältnis von d2v beim Start automatisch berechnen",
     "Append batch commands to the avs script as comments" : u"Batch-Kommandos zum avs Index als Anmerkungen anfügen",
-    "Add output file to new tab" : u"", # New in v2.6.3.5
+    "Add output file to new tab" : u"Neuen Tab mit Ausgabedatei erstellen", # New in v2.6.3.5
     "Encoder priority:" : u"Encoderpriorität:",
     "Path to %(name)s:" : u"Pfad zu %(name)s:",
     "Extra arguments:" : u"Extra Argumente:",
+    "Presets file not found:\n" : u"Vorlage Datei nicht gefunden:\n", # New in v2.6.6.3
     "Bitrate Calculator" : u"Bitrate Calculator ",
     "Output info" : u"Ausgabeinfo",
     "Total size:" : u"Größe total",

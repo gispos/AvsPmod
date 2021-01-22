@@ -4514,6 +4514,18 @@ int "SS"=2,
 bool "CP"=True
 )
 
+SCurve3(
+string "name"="curve",
+int "low"=0 (0 to 254),
+int "a1"=68 (1 to 254),
+int "a2"=68 (1 to 254),
+int "b1"=128 (1 to 254),
+int "b2"=128 (1 to 254),
+int "c1"=168 (1 to 254),
+int "c2"=168 (1 to 254),
+int "high"=255 (0 to 255)
+)
+
 SeeSaw(
 clip,
 [clip "denoised"],
@@ -4578,6 +4590,39 @@ bool "lsb_out"=False,
 bool "Show"=False,
 [float "Str"=1.0 (0.0 to 8.0)],
 [float "Amp"=0.0625 (0.0000 to 1.0000)]
+)
+
+SmoothCurveC3(
+clip,
+string "Ycurve"="Ycurve",
+int "Y_Low"=0 (0 to 255),
+int "y_a1"=64 (1 to 254),
+int "y_a2"=64 (1 to 254),
+int "y_b1"=128 (1 to 254),
+int "y_b2"=128 (1 to 254),
+int "y_c1"=168 (1 to 254),
+int "y_c2"=168 (1 to 254),
+int "Y_High"=255 (0 to 255),
+string "Ucurve"="Ucurve",
+int "U_Low"=0 (0 to 255),
+int "u_a1"=64 (1 to 254),
+int "u_a2"=64 (1 to 254),
+int "u_b1"=128 (1 to 254),
+int "u_b2"=128 (1 to 254),
+int "u_c1"=168 (1 to 254),
+int "u_c2"=168 (1 to 254),
+int "U_High"=255 (0 to 255),
+string "Vcurve"="Vcurve",
+int "V_Low"=0 (0 to 255),
+int "v_a1"=64 (1 to 254),
+int "v_a2"=64 (1 to 254),
+int "v_b1"=128 (1 to 254),
+int "v_b2"=128 (1 to 254),
+int "v_c1"=168 (1 to 254),
+int "v_c2"=168 (1 to 254),
+int "V_High"=255 (0 to 255),
+int "mode"=100 (0 to 100),
+bool "debug"=False
 )
 
 Soothe(

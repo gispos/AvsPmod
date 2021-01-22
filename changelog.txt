@@ -12,6 +12,14 @@ GPo source: https://github.com/gispos/AvsPmod
 GPo releases: https://github.com/gispos/AvsPmod/releases
 
 --------------------------
+Version 2.6.6.3 [2021-01-22] GPo
+--------------------------
+* Slider window and sliders revised
+* The preview filter index is displayed on the right in the status bar
+* Fixed bug with selections (trim) marks
+* A few other changes
+
+--------------------------
 Version 2.6.6.2 [2021-01-16] GPo
 --------------------------
 * Automatic calculation of the DPI factor changed. (I can't test it and I hope it works)
