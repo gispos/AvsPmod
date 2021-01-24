@@ -12,6 +12,12 @@ GPo source: https://github.com/gispos/AvsPmod
 GPo releases: https://github.com/gispos/AvsPmod/releases
 
 --------------------------
+Version 2.6.6.4 [2021-01-24] GPo
+--------------------------
+* Resize filters can now be used in the preview filter (nice for SmoothLevel, SmoothCurve debug mode)
+* Bugfix DPI scaling
+
+--------------------------
 Version 2.6.6.3 [2021-01-22] GPo
 --------------------------
 * Slider window and sliders revised

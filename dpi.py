@@ -60,8 +60,8 @@ class DPI():
             except:
                 pass
         if self.dpiAware:
-            #pw, ph = wx.ScreenDC().GetPPI()
-            pw, ph = wx.GetDisplayPPI()
+            pw, ph = wx.ScreenDC().GetPPI()
+            #pw, ph = wx.GetDisplayPPI()
             if ph < 110:
                 ph = 96.0
             try:

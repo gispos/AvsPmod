@@ -501,14 +501,14 @@ class AvsClipBase:
                 err = "Preview filter error: Not a clip"
             self.env.set_var("avsp_filter_clip", None)
             return None, err
-
+        """ # GPo, new
         vi = clip.get_video_info()
         if (vi.width != self.DisplayWidth) or (vi.height != self.DisplayHeight):
             clip = None
             err = "Preview filter error: \nPreview-Clip must have the same width and height"
             self.env.set_var("avsp_filter_clip", None)
             return None, err
-
+        """
         args = [clip, self.matrix, self.interlaced]
         try:
             clip = self.env.invoke("ConvertToRGB32", args)
@@ -535,6 +535,9 @@ class AvsClipBase:
             clip = None
             frame = None
             return None, err
+        # GPo, new
+        #self.DisplayWidth = vi.width
+        #self.DisplayHeight = vi.height
 
         self.preview_filter = True
         self.display_clip = clip
@@ -905,6 +908,22 @@ if os.name == 'nt':
             CreateBitmapInfoHeader(self.display_clip, self.bmih)
             self.pInfo = ctypes.pointer(self.bmih)
             return True
+
+        # GPo, can removed, but then the filter clip must have the same dimensions as the display clip before
+        def CreateFilterClip(self, *args, **kwargs):
+            # get dimensions before create
+            #vi = self.display_clip.get_video_info()
+            ret, err = AvsClipBase.CreateFilterClip(self, *args, **kwargs)
+            if not ret:
+                return ret, err
+            # if dimensions changed, we need new bitmap header (it's a bit faster do not create it always)
+            vi = self.display_clip.get_video_info()
+            if vi.width != self.DisplayWidth or vi.height != self.DisplayHeight:
+                self.DisplayWidth, self.DisplayHeight = vi.width, vi.height
+                self.bmih = BITMAPINFOHEADER()
+                CreateBitmapInfoHeader(self.display_clip, self.bmih)
+                self.pInfo = ctypes.pointer(self.bmih)
+            return True, ''
 
         def _ConvertToRGB(self):
             if not self.IsRGB32: # bug in avisynth v2.6 alphas with ConvertToRGB24

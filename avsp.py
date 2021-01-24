@@ -5220,7 +5220,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if not self.options['ppidisabled']:
             DPI = dpi.DPI()
             self.ppi_factor = DPI.GetPPIFactor()
-            self.setPPIFactor()
+        self.setPPIFactor()
         # all dialogs fit inside display and greate scrollbars if needed
         wx.Dialog.EnableLayoutAdaptation(True)
 
@@ -6780,8 +6780,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.installed_plugins_filternames = set()
         self.installed_avsi_filternames = set()
         self.dllnameunderscored = set()
-        #doublefuncList = [] # GPo
-
         # get version info
         try:
             env = avisynth.AVS_ScriptEnvironment(3)
@@ -6853,10 +6851,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     pluginfuncList.append((long_name, 2))
                     self.plugin_shortnames[short_name.lower()].append(long_name.lower())
 
-                # GPo, test multi func
-                #~if long_name.lower() in self.installed_plugins_filternames:
-                    #~doublefuncList.append(dllname + '.dll - ' + short_name)
-                #
                 self.installed_plugins_filternames.add(long_name.lower())
                 if dllname.count('_'):
                     self.dllnameunderscored.add(dllname.lower())
@@ -6865,8 +6859,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 funclist += pluginfuncList
             if baddllnameList and self.options['dllnamewarning']:
                 self.IdleCall.append((self.ShowWarningOnBadNaming, (baddllnameList, ), {}))
-            #~if doublefuncList and self.options['doublefuncnamewarning']:
-                #~self.IdleCall.append((self.ShowWarningOnBadNaming, (doublefuncList, True), {}))
 
         # autoloaded avsi files
         try:
@@ -7177,7 +7169,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             (_('Misc 2'),
                 ((_('AvsPmod DPI scaling *'), wxp.OPT_ELEM_SEP, '', _('Beta: some elements may be not scaled'), dict(adjust_width=True) ), ),
                 ((_('DPI scaling overall only manually*'), wxp.OPT_ELEM_CHECK, 'ppiscalingmanually', _('Do not do overall DPI scaling automatically'), dict() ), ),
-                ((_('DPI scaling overall:*'), wxp.OPT_ELEM_SPIN, 'ppiscalingoverall', _('Adjust dpi scaling overall (10 % steps). For 150 % DPI set value 5'), dict(min_val=0, max_val=20) ), ),
+                ((_('DPI scaling overall manually:*'), wxp.OPT_ELEM_SPIN, 'ppiscalingoverall', _('Manually adjust dpi scaling overall (10 % steps). For 150 % DPI set value 5'), dict(min_val=0, max_val=20) ), ),
                 ((_('DPI scaling main tabs:*'), wxp.OPT_ELEM_SPIN, 'ppiscalingscripttabs', _('Additional adjust the script window tabs (10 % steps)'), dict(min_val=0, val=0, max_val=10) ), ),
                 ((_('DPI scaling video controls:*'), wxp.OPT_ELEM_SPIN, 'ppiscalingvideocontrols', _('Additional adjust the video controls (10 % steps)'), dict(min_val=0, val=0, max_val=10) ), ),
                 ((_('DPI scaling statusbar:*'), wxp.OPT_ELEM_SPIN, 'ppiscalingstatusbar', _('Additional adjust the statusbar (10 % steps)'), dict(min_val=0, val=0, max_val=10) ), ),
@@ -7212,8 +7204,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if self.options['ppiscalingoverall'] > 0:
                 new_factor += self.options['ppiscalingoverall']/10.0
             self.ppi_factor = new_factor
-        else:
-            new_factor = self.ppi_factor
 
         global ppi_factor
         ppi_factor = self.ppi_factor

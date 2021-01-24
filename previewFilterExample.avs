@@ -7,7 +7,7 @@
         It doesn't make sense to use MCTemporalDenoise in a preview filter. Suitable filters are sharpness, colors or similar filters
         Preview filters are always processed as last filter, but 'prefetch' in the preview area only affects the preview filter. 
         Outside of this, 'prefetch' only affects the source filter.
-        You cannot use resize filters in the preview filters, the source clip size must be the same as the preview filter size. An Error will be shown.
+        The frame count of the preview filter must match the frame count of the source, or an error message is shown.
 
         Up to 5 filter sets can be created, each preview filter set must be declared as follows.
 */
