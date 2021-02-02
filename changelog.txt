@@ -12,6 +12,18 @@ GPo source: https://github.com/gispos/AvsPmod
 GPo releases: https://github.com/gispos/AvsPmod/releases
 
 --------------------------
+Version 2.6.6.5 [2021-01-02] GPo
+--------------------------
+* The filter exclusion list of the sliders has been revised, now also works with multiple identical filters. 
+-- my proposition for exclusion list (trim crop prefetch and 'Your SourceFilters'). The list can be changed options > User sliders
+* The filter exclusion list can be activate or deactivate in the context menu of the sliders.
+* Some changes to preview filter and sliders:
+-- preview filter index is showing on the sliders
+-- the decision for 'use' direct slider update improved (direct update only if slider in current preview filter). 
+* Update database, add 'ffms2_FFMS2', 'GamMac', 'TemporalDegrain2', update 'RGBAdjust', SmoothCurveC3
+* Some other changes
+
+--------------------------
 Version 2.6.6.4 [2021-01-24] GPo
 --------------------------
 * Resize filters can now be used in the preview filter (nice for SmoothLevel, SmoothCurve debug mode)

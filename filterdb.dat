@@ -392,7 +392,7 @@ string "pixel_type"="RGB32" ("YUY2"/ "YV12"/ "YV24"/ "RGB32")
 )
 
 ColorBarsHD(
-int "width"=1288,
+int "width"=1280,
 int "height"=720,
 string "pixel_type"="YV24" ("YV24")
 )
@@ -1061,20 +1061,21 @@ clip
 
 RGBAdjust(
 clip,
-float "r"=1.0 (-255.0 to 255.0),
-float "g"=1.0 (-255.0 to 255.0),
-float "b"=1.0 (-255.0 to 255.0),
-float "a"=1.0 (-255.0 to 255.0),
+float "r"=1.00 (0.00 to 128.00),
+float "g"=1.00 (0.00 to 128.00),
+float "b"=1.00 (0.00 to 128.00),
+float "a"=1.00 (0.00 to 1.00),
 float "rb"=0.0 (-255.0 to 255.0),
-float "gb"=0.0 (-255.0 to 255.0),
-float "bb"=0.0 (-255.0 to 255.0),
-float "ab"=0.0 (-255.0 to 255.0),
+float "gb"=0.0 (-255.0 to 255.00),
+float "bb"=0.0 (-255.0 to 255.00),
+float "ab"=0.0 (-255.0 to 255.00),
 float "rg"=1.00 (0.01 to 10.00),
 float "gg"=1.00 (0.01 to 10.00),
 float "bg"=1.00 (0.01 to 10.00),
 float "ag"=1.00 (0.01 to 10.00),
 bool "analyze"=false,
-[bool "dither"=false]
+bool "dither"=false,
+bool "conditional"=false 
 )
 
 ScriptClip(
@@ -2068,7 +2069,7 @@ int "rffmode"=0 (0 / 1 / 2),
 int "width"=-1,
 int "height"=-1,
 string "resizer"="BICUBIC" ("FAST_BILINEAR"/ "BILINEAR"/ "BICUBIC"/ "X"/ "POINT"/ "AREA"/ "BICUBLIN"/ "GAUSS"/ "SINC"/ "LANCZOS"/ "SPLINE"),
-string "colorspace"="" ("YV12"/ "YUY2"/ "RGB24"/ "RGB32"),
+string "colorspace"="" ("" / "YV12"/ "YUY2"/ "RGB24"/ "RGB32"),
 bool "utf8"=False,
 string "varprefix"="",
 [bool "enable10bithack"=False]
@@ -2080,6 +2081,27 @@ int "width"=-1,
 int "height"=-1,
 string "resizer"="BICUBIC" ("FAST_BILINEAR"/ "BILINEAR"/ "BICUBIC"/ "X"/ "POINT"/ "AREA"/ "BICUBLIN"/ "GAUSS"/ "SINC"/ "LANCZOS"/ "SPLINE"),
 string "colorspace"="" ("YV12"/ "YUY2"/ "RGB24"/ "RGB32")
+)
+
+ffms2_FFMS2(
+string source= ("*.*"),
+int "vtrack"=-1 (-1 to 10),
+int "atrack"=-1 (-2 to 10),
+bool "cache"=True,
+string "cachefile"="" ("*.ffindex"),
+int "fpsnum"=-1 (-1 to 60000),
+int "fpsden"=1 (1 to 1001),
+int "threads"=-1,
+string "timecodes"="" ("*.txt"),
+int "seekmode"=1 (-1 / 0 / 1 / 2 / 3),
+bool "overwrite"=False,
+int "width"=-1,
+int "height"=-1,
+string "resizer"="BICUBIC" ("FAST_BILINEAR"/ "BILINEAR"/ "BICUBIC"/ "X"/ "POINT"/ "AREA"/ "BICUBLIN"/ "GAUSS"/ "SINC"/ "LANCZOS"/ "SPLINE"),
+string "colorspace"="" ("" / "YV12"/ "YV16"/ "YV24"/ "Y8"/ "YUY2"/ "YV411"/ "YUV9"/ "RGB24"/ "RGB32"),
+int "rffmode"=0 (0 / 1 / 2),
+int "adjustdelay"=-1 (-3 / -2 / -1 / 0),
+string "varprefix"="",
 )
 
 FFT3DFilter_FFT3DFilter(
@@ -2186,6 +2208,32 @@ clip,
 float "lambda"=1.1 (0 to 3),
 float "T"=6.0 (0 to 10),
 float "Tuv"=2.0 (0 to 10)
+)
+
+gammac_GamMac(
+clip c,
+int "LockChan"=1 (0 /1/2/-1/-2/-3),
+int "Scale"=1 (0/1/2),
+float "RedMul"=1.00 (0.1 to 10.00),
+float "GrnMul"=1.00 (0.1 to 10.00),
+float "BluMul"=1.00 (0.1 to 10.00),
+float "Th"=0.00 (-1.0 to 1.00),
+float "loTh"=0.00 (-1.0 to 1.00),
+float "hiTh"=0.00 (-1.0 to 1.00),
+float "LockVal"=128.0 (0.1 to 254.0),
+int "RngLim"=11 (1 to 32),
+float "GamMax"=10.00 (1.01 to 10.00),
+clip dc,
+int "x"=20,
+int "y"=20,
+int "w"=-20,
+int "h"=-20,
+int "omin"=0 (0 to 16), 
+int "omax"=255 (235 to 255),
+int "Verbosity"=2 (0/1/2/3/4/5),
+bool "Coords"=false,
+bool "Dither"=false,
+bool "Show"=True
 )
 
 GiCoCu_GiCoCu(
@@ -3491,7 +3539,7 @@ int "radius"=2 (1 to 3),
 int "type"=0 (0 / 1 / 2 / 3 / 4 / 5 / 6),
 int "map"=0 (0 / 1 / 2),
 int "lim"=2 (0 to 256),
-bool "gui"=false
+bool "gui"=False
 )
 
 UnDot_UnDot(
@@ -3539,6 +3587,23 @@ int "amnt"=255 (0 to 255),
 int "uv"=3 (1 / 2 / 3),
 float "scl"=0.25,
 [int "opt"=2 (0 / 1 / 2)]
+)
+
+variableblur_Unsharp(
+clip,
+float "varY"=2.5 (0.1 to 10.0 by 0.1),
+float "varC"=2.5 (0.1 to 10.0 by 0.1),
+float "strength"=0.70 (0.00 to 1.00 by 0.01),
+int "border"=4 (0 to 255),
+bool "integrate"=false,
+int "Y"=3 (0 to 255),
+int "U"=2 (0 to 255),
+int "V"=2 (0 to 255),
+int "gfunc"=-1 (-1 / 0 / 1 / 2 / 3 / 4 / 5 / 6 / 7),
+int "gfuncc"=-1 (-1 / 0 / 1 / 2 / 3 / 4 / 5 / 6 / 7),
+int "pcr"=0 (0 / 1 / 2),
+int "pcrc"=0 (0 / 1 / 2),
+int "nthreads"=1
 )
 
 warpsharp_UnsharpMask(
@@ -4255,7 +4320,7 @@ int "SHmethod"=3,
 int "Slimit"=0,
 int "Sovershoot"=0,
 bool "Tlimit"=true,
-int "Tovershoot"=2,
+int "Tovershoot"=1,
 bool "protect"=false,
 int "cutoff"=64,
 int "threshold"=16,
@@ -4621,8 +4686,16 @@ int "v_b2"=128 (1 to 254),
 int "v_c1"=168 (1 to 254),
 int "v_c2"=168 (1 to 254),
 int "V_High"=255 (0 to 255),
+bool "limiter"=False,
+int "TVrange"=0 (0 / 1 / 2),
 int "mode"=100 (0 to 100),
-bool "debug"=False
+int "interp"=100 (0 to 200),
+[int "dither"=75 (-1 to 100)],
+bool "HQ"=False,
+[int "useMT"=0 (0 to 16)],
+[int "useOPT"=0 (0 / 1 / 2 / 3)],
+[bool "scale"=True],
+bool "debug"=false
 )
 
 Soothe(
@@ -4658,6 +4731,34 @@ int "tolerance"=10 (1 to 256),
 int "expandblur"=0,
 bool "BT601"=false,
 int "blur"=1
+)
+
+TemporalDegrain2(
+clip input,
+int "degrainTR"=1 (1/2/3/4/5),
+[int "degrainPlane"=4 (0/3/4)],
+bool "grainLevel"=true,
+[int "meAlg"=4],
+[int "meAlgPar"],
+[int "meSubpel"],
+[int "meBlksz"], 
+[bool "meTM"=false],
+[int "limitFFT"=1],
+[float "limitSigma"],
+[int "limitBlksz"],
+int "postFFT"=0 (-1/0/1/2/3/4),
+int "postTR"=1 (1/2/3/4/5),
+float "postSigma"=1.0 (0.1 to 5.0),
+int "postDither"=-1,
+[int "knlDevId"=0],
+[float "ppSAD1"],
+[float "ppSAD2"],
+[float "ppSCD1"],
+[int "thSCD2"=130],
+[int "DCT"=0],
+[float "gaussParam"=3.0],
+bool "extraSharp"=false,
+int "fftThreads"=1
 )
 
 TempGaussMC_beta2(

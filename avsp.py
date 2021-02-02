@@ -1925,8 +1925,6 @@ class AvsStyledTextCtrl(stc.StyledTextCtrl):
         fragment = []
         hexfragment = []
         triple_start = None
-        avsp_previewFilter = 0
-        self.AVSP_PREVIEW_FILTER = False
         # vpy hack, remove when VapourSynth is supported (with a custom Python lexer)
         string_delimiters = ['"', "'"] if self.filename.endswith('.vpy') else '"'
         self.StartStyling(pos, 31)
@@ -1938,11 +1936,17 @@ class AvsStyledTextCtrl(stc.StyledTextCtrl):
                 if ch == '#':
                     state = self.STC_AVS_COMMENT
                 elif self.DoubleStarAsString and ch == '/' and unichr(self.GetCharAt(pos+1)) == '*' and unichr(self.GetCharAt(pos+2)) == '*':
-                    avsp_previewFilter = 1
                     flag = True
-                    #line = self.LineFromPosition(pos)
-                    #txt = self.GetLine(line)
-                    #pos += len(txt)
+                    line = self.LineFromPosition(pos)
+                    txt = self.GetLine(line)
+                    if txt.startswith('/**avsp_filter'):
+                        state = self.STC_AVS_PREVIEW_FILTER
+                        self.ColourTo(pos+13, self.STC_AVS_OPERATOR)
+                        pos += len(txt)-1
+                        self.ColourTo(pos, self.STC_AVS_DEFAULT)
+                    else:
+                        pos += 1
+                        state = self.STC_AVS_BLOCKCOMMENT
                 elif ch == '/' and unichr(self.GetCharAt(pos+1)) == '*':
                     pos += 1
                     flag = True
@@ -1996,11 +2000,10 @@ class AvsStyledTextCtrl(stc.StyledTextCtrl):
                     else:
                         self.ColourTo(pos, self.STC_AVS_COMMENT)
                     state = self.STC_AVS_DEFAULT
-            elif (avsp_previewFilter == 1) and ch == '*' and unichr(self.GetCharAt(pos+1)) == '/':
-                    #pos += 1
-                    #flag = None if flag else False
-                    #state = self.STC_AVS_DEFAULT
-                    avsp_previewFilter = 0
+            elif state == self.STC_AVS_PREVIEW_FILTER:
+                    pos -= 1
+                    flag = None if flag else False
+                    state = self.STC_AVS_DEFAULT
             elif state == self.STC_AVS_BLOCKCOMMENT:
                 if isEOD or pos == end:
                     self.ColourTo(pos - 1, self.STC_AVS_BLOCKCOMMENT)
@@ -3368,8 +3371,9 @@ class AvsFunctionDialog(wx.Dialog): # PPI set
 
     def CreateFilterInfoDialog(self, resetargsbutton=True):
         int5 = intPPI(5)
-        int10 = intPPI(10)
-        dlg = wx.Dialog(self, wx.ID_ANY, _('Edit function information'))
+        int10 = intPPI(10)                                               # GPo new, style
+        dlg = wx.Dialog(self, wx.ID_ANY, _('Edit function information'), style=wx.DEFAULT_DIALOG_STYLE|wx.RESIZE_BORDER)
+        dlg.SetMinSize(tuplePPI(380,380))
         SetFontPPI(dlg)
         staticText0 = wx.StaticText(dlg, wx.ID_ANY, _('Name:'))
         textCtrl0 = wx.TextCtrl(dlg, wx.ID_ANY, size=(intPPI(200),-1))
@@ -3398,7 +3402,7 @@ class AvsFunctionDialog(wx.Dialog): # PPI set
             textCtrl0.SetValue(dlg.defaultName)
             textCtrl2.SetValue(dlg.defaultArgs)
         staticText2_5.Bind(wx.EVT_LEFT_DOWN, OnClickSetToDefault)
-        textCtrl2 = wxp.TextCtrl(dlg, wx.ID_ANY, size=tuplePPI(200,200), style=wx.TE_MULTILINE|wx.HSCROLL)
+        textCtrl2 = wxp.TextCtrl(dlg, wx.ID_ANY, size=tuplePPI(200,220), style=wx.TE_MULTILINE|wx.HSCROLL)
         def OnArgsChange(event):
             if checkBox3.IsChecked():
                 name = textCtrl0.GetValue() #dlg.defaultName
@@ -5448,6 +5452,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.oldLastSplitSliderPos = None
         self.oldSliderWindowShown = None
         self.oldBoolSliders = None
+        self.slidersShowExclusionFilters = False
         self.xo = self.yo = 5
         self.saveViewPos = False        # GPo, keep view XY and zoom for each script
         self.tabChangeLoadBookmarks = self.options['tabsbookmarksfromscript']
@@ -7128,7 +7133,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 ((_('undocumented'), wxp.OPT_ELEM_CHECK, 'autoslidermakeunknown', _('Create placeholders for arguments which have no database information'), dict(ident=20) ), ),
                 ((_('Button show/hide applies to all tabs'), wxp.OPT_ELEM_CHECK, 'allsliderwindowshideshow', _('Or press Ctrl when you click the button.'), dict() ), ),
                 ((_('Fold startup setting'), wxp.OPT_ELEM_RADIO, 'autosliderstartfold', _('Determines which filters will initially have hidden arguments in the slider window'), dict(dimensions=2, choices=[(_('Fold all'), 0),(_('Fold none'), 1), (_('Fold non-numbers'), 2), (_('Fold or restore last status'), 3) ]) ), ),
-                ((_('Filter exclusion list:'), wxp.OPT_ELEM_STRING, 'autosliderexclusions', _('Specify filters never to build automatic sliders for'), dict() ), ),
+                ((_('Filter exclusion list:'), wxp.OPT_ELEM_STRING, 'autosliderexclusions', _('Specify filters never to build automatic sliders for. Use a space as separator.\nYou can toggle it in the slider context menu.'), dict() ), ),
             ),
             (_('Save/Load'),
                 ((_('Save session for next launch'), wxp.OPT_ELEM_CHECK, 'startupsession', _('Automatically save the session on shutdown and load on next startup'), dict() ), ),
@@ -10236,14 +10241,14 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         wx.MessageBox(err, "Preview filter")
                         script.display_clip_refresh_needed = True
                         self.refreshAVI = True #updateUserSliders
-                    self.ShowVideoFrame(userScrolling= not updateUserSliders)
+                    self.ShowVideoFrame(userScrolling = not updateUserSliders)
                 else:
                     #lKey = 0
                     updateState(0)
                     if script.AVI is not None and script.AVI.preview_filter:
                         script.AVI.KillFilterClip()
                         #self.refreshAVI = updateUserSliders
-                        self.ShowVideoFrame(userScrolling= not updateUserSliders)
+                        self.ShowVideoFrame(userScrolling = not updateUserSliders)
             else:
                 #lKey = 0
                 updateState(0) # bevor showing the frame, it's better to update the State
@@ -10279,7 +10284,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if lines:
             for line in lines:
                 if found:
-                    if line.startswith('*/'):
+                    if line.lstrip().startswith('*/'):
                         found = False
                         arg = arg.strip()
                         if arg:
@@ -10288,7 +10293,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         arg = ''
                         continue
                     arg += line + '\n'
-                elif line.startswith('/*avsp_filter') or line.startswith('/**avsp_filter'):
+                elif line.startswith('/**avsp_filter') or line.startswith('/*avsp_filter'):
                     ident = line.strip()
                     ident = ident[:50] # max 50 chars
                     found = True
@@ -10473,6 +10478,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     def OnMenuTest(self, event):
         pass
+        """
+        self.SetDoubleBuffered(False)
+        self.mainSplitter.SetDoubleBuffered(False)
+        self.videoSplitter.SetDoubleBuffered(False)
+        self.videoPane.SetDoubleBuffered(False)
+        self.videoWindow.SetDoubleBuffered(False)
+        """
 
     def OnMenuTest2(self, event):
         pass
@@ -16240,9 +16252,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.MacroSetBookmark(frame for frame in bookmarkList if frame >= 0)
 
     def DeleteAllSelections(self, refresh=True):
-        sliderList = self.GetVideoSliderList()
-        for slider in sliderList:
-                slider.RemoveAllSelections(refresh=refresh)
+        for slider in self.GetVideoSliderList():
+            slider.RemoveAllSelections(refresh=refresh)
 
     def SetSelectionPoint(self, bmtype):
         if bmtype not in (1,2):
@@ -17294,14 +17305,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                 addon = pixelInfo
                     self.SetVideoStatusText(framenum, primary=primary, addon=addon, addon0=addon0)
 
+            """
             if boolNewAVI:
-                pass
-                """
                 if script.previewFilterIdx == 0 and script.lastpreviewFilterIdx > 0: # also filter was set so set it again
                     wx.CallAfter(self.OnMenuPreviewFilter, None, script.lastpreviewFilterIdx)
                 elif script.previewFilterIdx != 0:
                     self.OnMenuPreviewFilter(None, 0)
-                """
+            """
 
             # Store video information (future use)
             self.oldWidth = videoWidth
@@ -17998,15 +18008,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     def SliderRestoreFolds(self):
         script = self.currentScript
-        if not script.SliderFoldsBackup:
-            return
         for item in script.sliderToggleLabels:
             label = item.GetLabel().strip(' -+')
             if label in script.SliderFoldsBackup:
                 state = bool(script.SliderFoldsBackup[label])
                 self.ToggleSliderFold(item, fold=not state, refresh=True, scroll=False)
             else:
-                self.ToggleSliderFold(item, fold=False, refresh=True, scroll=True) # Expand new filter
+                self.ToggleSliderFold(item, fold=True, refresh=True, scroll=True) # Expand new filter
 
     def SlidersClearFolds(self, clearAll=True):
         if clearAll:
@@ -18018,13 +18026,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     def createAutoUserSliders(self, script):
         script.sliderWindow.Freeze()
-        #sliderWindow_lastViewStart = script.sliderWindow.GetViewStart()
         script.sliderSizerNew.Clear(deleteWindows=True)
         script.sliderToggleLabels = []
         menuInfoGeneral = [
             (_('Edit filter database'), '', self.OnSliderLabelEditDatabase, ''),
             (''),
             (_('Toggle all folds'), '', self.OnSliderLabelToggleAllFolds, ''),
+            (_('Toggle exclusions filters'), '', self.OnSliderToggleExclusionsFilters, ''),
             (_('General settings...'), '', self.OnSliderLabelSettings, ''),
             (''),
             (_('Clear all auto fold status'), '', self.OnSliderResetAllFoldOrders, ''),
@@ -18035,12 +18043,18 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         ]
 
         menuGeneral = self.createMenu(menuInfoGeneral)
-        exclusionList = self.options['autosliderexclusions'].lower().split()
+        if self.slidersShowExclusionFilters:
+            exclusionList = []
+        else:
+            exclusionList = self.options['autosliderexclusions'].lower().split()
         row = 0
-        for filterName, filterInfo in script.autoSliderInfo:
-            if filterName.lower() in exclusionList:
+        #for filterName, filterInfo in script.autoSliderInfo:
+        for filterName, filterInfo, extraInfo in script.autoSliderInfo: #GPo new extraInfo if previewFilter
+            filterN = filterName.lower() if filterName.find(' (') < 0 else filterName.lower().split(' (')[0] # GPo
+            if filterN in exclusionList:
                 continue
             separator = None
+            filterName += extraInfo
             for info, enteredName, enteredValue, argIndex in filterInfo:
                 # Parse the argument info entered into the script
                 splitEnteredValue = enteredValue.split('=')
@@ -18194,17 +18208,19 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         # Fold according to user set preference
         # GPo 2020, restore last folds
         foldLevel = self.options['autosliderstartfold']
-        if (foldLevel == 3) and script.SliderFoldsBackup:
-            self.SliderRestoreFolds()
+        if foldLevel == 3:
+            if script.SliderFoldsBackup:
+                self.SliderRestoreFolds()
+            else:
+                for item in script.sliderToggleLabels:
+                    self.ToggleSliderFold(item, fold=True, refresh=False)
+                self.foldAllSliders = False
             self.SliderSaveCurrentFolds()
-            #self.foldAllSliders = False
-        else:
-            foldLevel = 0
-
-        if foldLevel == 0:
+        elif foldLevel == 0:
             # Fold all filters
             for item in script.sliderToggleLabels:
                 self.ToggleSliderFold(item, fold=True, refresh=False)
+
             self.foldAllSliders = False
         elif foldLevel == 1:
             # Fold none, don't need to do anything
@@ -18429,35 +18445,36 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             mod=mod,
             onscroll=lambda event: valTxtCtrl.SetLabel(strTemplate % slider.GetValue())
         )
-        slider.filterName = filterName
         slider.argName = labelTxt
         slider.script = script
         slider.argIndex = argIndex
         slider.lastValue = slider.GetValue()
+        if filterName and filterName.find(' - P') > -1:
+            idx = filterName[-1]
+            slider.prevFilterIdx = int(idx) if idx.isdigit() else -2
+        else:
+            slider.prevFilterIdx = -2
+        slider.filterName = filterName
         # Slider event binding
         def UserSliderVideoUpdateNew(slider):
             # Create the new arg text
             newVal = slider.GetValueAsString()
+            slider.lastValue = slider.GetValue()
             self.SetNewAvsValue(slider, newVal)
         def OnLeftDownUserSlider(event):
-            slider.lastValue = slider.GetValue()
+            #slider.lastValue = slider.GetValue()
             event.Skip()
         def OnLeftUpUserSlider(event):
-            lv = slider.lastValue # GPo new
-            slider.lastValue = slider.GetValue()
-            if lv != slider.lastValue:
+            if slider.lastValue != slider.GetValue():
                 UserSliderVideoUpdateNew(slider)
             event.Skip()
         #@AsyncCallWrapper
         def OnMoveUserSlider(event):
             if self.options['autosliderupdatedirectly']:
                 if slider.lastValue != slider.GetValue(): # disable move event on mouse up
-                    #~slider.lastValue = slider.GetValue()
-                    if (self.currentScript.previewFilterIdx > 0) and not wx.GetKeyState(wx.WXK_CONTROL):
-                        slider.lastValue = slider.GetValue() # GPo new
-                        #self.IdleCallDict['onmoveuserslider'] = UserSliderVideoUpdateNew(slider)
-                        wx.CallAfter(UserSliderVideoUpdateNew, slider)
-                        #UserSliderVideoUpdateNew(slider)
+                    if (self.currentScript.previewFilterIdx == slider.prevFilterIdx) and not wx.GetKeyState(wx.WXK_CONTROL):
+                    #if (self.currentScript.previewFilterIdx > 0) and not wx.GetKeyState(wx.WXK_CONTROL):
+                        UserSliderVideoUpdateNew(slider) # GPo, do not use call after!! or IdleCall!! AvsPmod crash if previewFilter !!
             event.Skip()
 
         slider.Bind(wx.EVT_LEFT_UP, OnLeftUpUserSlider)
@@ -18481,8 +18498,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         leftCtrl = wxButtons.GenBitmapButton(parent, wx.ID_ANY, self.bmpLeftTriangle, size=tuplePPI(16,16))
         leftCtrl.SetBezelWidth(1)
         leftCtrl.SetUseFocusIndicator(False)
+        """
         def OnLeftTimer(event):
-            directly =  (self.currentScript.previewFilterIdx > 0) and self.options['autosliderupdatedirectly']
+            directly = (self.currentScript.previewFilterIdx == slider.prevFilterIdx) and self.options['autosliderupdatedirectly']
             if leftCtrl.up:
                 leftTimer.Stop()
                 if leftCtrl.HasCapture():
@@ -18496,6 +18514,14 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     UserSliderVideoUpdateNew(slider)
             if event:
                 event.Skip()
+        """
+        def OnLeftTimer(event):
+            directly = (self.currentScript.previewFilterIdx == slider.prevFilterIdx) and self.options['autosliderupdatedirectly']
+            newvalue = slider.Decrement()
+            valTxtCtrl.SetLabel(strTemplate % newvalue)
+            if directly:
+                UserSliderVideoUpdateNew(slider)
+            event.Skip()
         leftTimer = wx.Timer(leftCtrl)
         leftCtrl.Bind(wx.EVT_TIMER, OnLeftTimer)
         def OnButtonDecLeftDown(event):
@@ -18510,16 +18536,21 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if self.fc is not None:
                 self.fc.Stop()
             leftTimer.Stop()
-            wx.CallAfter(OnLeftTimer, None)
+            #if leftCtrl.HasCapture():
+                #leftCtrl.ReleaseMouse()
+            valTxtCtrl.SetLabel(strTemplate % slider.GetValue())
             event.Skip()
+            if slider.lastValue != slider.GetValue():
+                UserSliderVideoUpdateNew(slider)
         leftCtrl.Bind(wx.EVT_LEFT_DOWN, OnButtonDecLeftDown)
         leftCtrl.Bind(wx.EVT_LEFT_UP, OnButtonDecLeftUp)
         leftCtrl.Bind(wx.EVT_MOUSE_CAPTURE_LOST, self.OnMouseCaptureLost)
         rightCtrl = wxButtons.GenBitmapButton(parent, wx.ID_ANY, self.bmpRightTriangle, size=tuplePPI(16,16))
         rightCtrl.SetBezelWidth(1)
         rightCtrl.SetUseFocusIndicator(False)
+        """
         def OnRightTimer(event):
-            directly =  (self.currentScript.previewFilterIdx > 0) and self.options['autosliderupdatedirectly']
+            directly = (self.currentScript.previewFilterIdx == slider.prevFilterIdx) and self.options['autosliderupdatedirectly']
             if rightCtrl.up:
                 rightTimer.Stop()
                 if rightCtrl.HasCapture():
@@ -18533,6 +18564,15 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     UserSliderVideoUpdateNew(slider)
             if event:
                 event.Skip()
+        """
+        def OnRightTimer(event):
+            directly = (self.currentScript.previewFilterIdx == slider.prevFilterIdx) and self.options['autosliderupdatedirectly']
+            newvalue = slider.Increment()
+            valTxtCtrl.SetLabel(strTemplate % newvalue)
+            if directly:
+                slider.lastValue = slider.GetValue()
+                UserSliderVideoUpdateNew(slider)
+            event.Skip()
         rightTimer = wx.Timer(rightCtrl)
         rightCtrl.Bind(wx.EVT_TIMER, OnRightTimer)
         def OnButtonIncLeftDown(event):
@@ -18547,8 +18587,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if self.fc is not None:
                 self.fc.Stop()
             rightTimer.Stop()
-            wx.CallAfter(OnRightTimer, None)
+            #if rightCtrl.HasCapture():
+                #rightCtrl.ReleaseMouse()
+            valTxtCtrl.SetLabel(strTemplate % slider.GetValue())
             event.Skip()
+            if slider.lastValue != slider.GetValue():
+                UserSliderVideoUpdateNew(slider)
         rightCtrl.Bind(wx.EVT_LEFT_DOWN, OnButtonIncLeftDown)
         rightCtrl.Bind(wx.EVT_LEFT_UP, OnButtonIncLeftUp)
         rightCtrl.Bind(wx.EVT_MOUSE_CAPTURE_LOST, self.OnMouseCaptureLost)
@@ -18863,6 +18907,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         return labelTxtCtrl
 
     def SetNewAvsValue(self, control, newValue, refreshvideo=True):
+        if self.playing_video:     # GPo 2020
+            self.PlayPauseVideo(refreshFrame=True)
+
         script = control.script
         argText, posA, posB = self.GetArgTextAndPos(control)
         if argText is None:
@@ -18872,18 +18919,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         script.SetTargetEnd(posB)
         script.ReplaceTarget(newValue)
 
-        keep_env = False
-        scriptChanged = self.ScriptChanged(script)
         if refreshvideo:
-            keep_env = script.lastpreviewFilterIdx == 0  and not scriptChanged
-
-        if refreshvideo:
-            if self.playing_video:     # GPo 2020
-                self.PlayPauseVideo(refreshFrame=True)
-            if script.lastpreviewFilterIdx > 0 and not scriptChanged:
-                self.OnMenuPreviewFilter(None, script.lastpreviewFilterIdx, updateUserSliders=False)
+            scriptChanged = self.ScriptChanged(script)
+            if script.previewFilterIdx > 0 and not scriptChanged:
+                self.OnMenuPreviewFilter(None, script.previewFilterIdx, updateUserSliders=False)
                 #wx.CallAfter(self.OnMenuPreviewFilter,None, script.lastpreviewFilterIdx, updateUserSliders=False)
             else:
+                keep_env = script.lastpreviewFilterIdx == 0  and not scriptChanged
                 self.refreshAVI = True
                 self.ShowVideoFrame(forceRefresh=scriptChanged, userScrolling=True, keep_env=keep_env, forceCursor=scriptChanged)
 
@@ -18899,7 +18941,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             except ValueError:
                 return (None, None, None)
         else:
-            filterName = slider.filterName
+            splitFilterName = slider.filterName.split(' - P', 1) # GPo new
+            if len(splitFilterName) == 2:
+                filterName = splitFilterName[0].strip()
+            else: filterName = slider.filterName
             iFilter = 1
         startpos = 0
         for i in range(iFilter):
@@ -18971,6 +19016,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     def OnSliderToggleUpdateMode(self, event):
         self.options['autosliderupdatedirectly'] = not self.options['autosliderupdatedirectly']
+
+    def OnSliderToggleExclusionsFilters(self, event):
+        self.slidersShowExclusionFilters = not self.slidersShowExclusionFilters
+        self.createAutoUserSliders(self.currentScript)
+        #wx.CallAfter(self.OnMenuBlockCommendAsString_UpdateSliders)
 
     def addAvsSliderSeparatorNew(self, script, label='', menu=None, row=None, sizer=None):
         if sizer is None:
@@ -19116,10 +19166,20 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         nameDict = {}
         posA = posB = 0
         lastpos = script.GetTextLength()
+        prevFilter = ''
+        prevFilterIdx = 0
         while posB < lastpos:
             posB = script.WordEndPosition(posA, 1)
             word = script.GetTextRange(posA, posB)
             #~ if word.lower() in script.keywords:
+            # GPo new
+            if prevFilterIdx < 6:
+                if prevFilter and script.GetLine(script.LineFromPosition(posA)).lstrip().startswith('*/'):
+                    prevFilter = ''
+                elif word == 'avsp_filter' and script.GetLine(script.LineFromPosition(posA)).startswith('/**avsp_filter'):
+                    prevFilterIdx += 1
+                    prevFilter = ' - P'+ str(prevFilterIdx)
+
             if script.GetStyleAt(posA) in script.keywordStyleList:
                 filterInfo = self.GetFilterArgMatchedInfo(script, posA)
                 if filterInfo is not None:
@@ -19131,7 +19191,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         nameDict[wordlower] += 1
                         filterName = '%s (%i)' % (word, nameDict[wordlower])
                     if filterInfo:
-                        autoSliderInfo.append((filterName,filterInfo))
+                        #autoSliderInfo.append((filterName,filterInfo))
+                        autoSliderInfo.append((filterName,filterInfo,prevFilter)) # GPo new
             posA = posB+1
         script.autoSliderInfo = autoSliderInfo
 

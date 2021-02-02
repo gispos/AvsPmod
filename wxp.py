@@ -336,8 +336,11 @@ class ArgsPosterThread:
     def Stop(self):
         self.keepGoing = False
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.connect(('localhost', self.app.port))
-        sock.close()
+        try:
+            sock.connect(('localhost', self.app.port))
+            sock.close()
+        except:
+            pass
 
     def IsRunning(self):
         return self.running
@@ -1166,7 +1169,6 @@ class OptionsDialog(wx.Dialog):
             nb = self.nb = Notebook(self, wx.ID_ANY, style=wx.NO_BORDER,
                                     invert_scroll=invert_scroll)
 
-            #nb.SetDoubleBuffered(True) # bug in wx radioboxes not drawing
         for tabInfo in dlgInfo:
             if notebook:
                 tabPanel = wx.Panel(nb, wx.ID_ANY)
@@ -1568,7 +1570,6 @@ class OptionsDialog(wx.Dialog):
         self.SetSizer(dlgSizer)
         dlgSizer.SetSizeHints(self)
         dlgSizer.Layout()
-        #self.DoLayoutAdaptation() # GPo, fit inside display and greate scrollbars if needed (set global in avsp)
         # Misc
         okay.SetDefault()
         if starText and self.starText is not None:

@@ -139,6 +139,8 @@ class AvsClipBase:
         self.pBits = None
         self.display_clip = None
         self.preview_filter = False
+        self.preview_filter_args = ''
+        self.preview_filter_idx = 0
         self.ptrY = self.ptrU = self.ptrV = None
         # Avisynth script properties
         self.Width = -1
@@ -352,6 +354,8 @@ class AvsClipBase:
 
     def __del__(self):
         self.preview_filter = False
+        self.preview_filter_args = ''
+        self.preview_filter_idx = 0
         if self.initialized:
             self.display_frame = None
             self.src_frame = None
@@ -477,16 +481,16 @@ class AvsClipBase:
             return self.CreateErrorClip(display_clip_error=True)
         return True
 
-    def CreateFilterClip(self, args=''):
+    def CreateFilterClip(self, f_args='', idx=0):
         err = ''
         self.preview_filter = False
-        if not args or not self.clip or self.error_message is not None:
+        if not f_args or not self.clip or self.error_message is not None:
             return None, ''
 
         self.env.set_var("avsp_filter_clip", None)
         self.env.set_var("avsp_filter_clip", self.clip)
 
-        args = ('avsp_filter_clip\n' + args)
+        args = ('avsp_filter_clip\n' + f_args)
         try:
             clip = self.env.invoke("Eval", args)
         except:
@@ -501,14 +505,6 @@ class AvsClipBase:
                 err = "Preview filter error: Not a clip"
             self.env.set_var("avsp_filter_clip", None)
             return None, err
-        """ # GPo, new
-        vi = clip.get_video_info()
-        if (vi.width != self.DisplayWidth) or (vi.height != self.DisplayHeight):
-            clip = None
-            err = "Preview filter error: \nPreview-Clip must have the same width and height"
-            self.env.set_var("avsp_filter_clip", None)
-            return None, err
-        """
         args = [clip, self.matrix, self.interlaced]
         try:
             clip = self.env.invoke("ConvertToRGB32", args)
@@ -534,12 +530,12 @@ class AvsClipBase:
         if err:
             clip = None
             frame = None
+            self.env.set_var("avsp_filter_clip", None)
             return None, err
-        # GPo, new
-        #self.DisplayWidth = vi.width
-        #self.DisplayHeight = vi.height
 
         self.preview_filter = True
+        self.preview_filter_args = f_args
+        self.preview_filter_idx = idx
         self.display_clip = clip
         self.display_frame = frame
         self.display_pitch = self.display_frame.get_pitch()
@@ -548,6 +544,8 @@ class AvsClipBase:
 
     def KillFilterClip(self):
         self.preview_filter = False
+        self.preview_filter_args = ''
+        self.preview_filter_idx = 0
         if not self.initialized:
             return
         try:
@@ -911,8 +909,6 @@ if os.name == 'nt':
 
         # GPo, can removed, but then the filter clip must have the same dimensions as the display clip before
         def CreateFilterClip(self, *args, **kwargs):
-            # get dimensions before create
-            #vi = self.display_clip.get_video_info()
             ret, err = AvsClipBase.CreateFilterClip(self, *args, **kwargs)
             if not ret:
                 return ret, err
@@ -940,12 +936,7 @@ if os.name == 'nt':
                 return True
             return False
 
-
-        # GPo, on x64 gets an error if pitch > row_size and high prefetch is used,
-        # ctypes 'long int too long to convert' in ctypes.memmove
-        # fixed with ubyte, but is memmove necessary...
-        """
-        def DrawFrame(self, frame, dc=None, offset=(0,0), size=None):
+        def DrawFrame(self, frame, dc=None, offset=(0,0), size=None, srcXY=(0,0)):
             if not self._GetFrame(frame):
                 return
             if dc:
@@ -960,16 +951,15 @@ if os.name == 'nt':
                     pBits = self.pBits
                 else:
                     buf = ctypes.create_string_buffer(self.display_pitch * self.DisplayHeight)
-                    #pBits = ctypes.addressof(buf)
                     pBits = ctypes.cast(buf, ctypes.POINTER(ctypes.c_ubyte))  # GPo
                     ctypes.memmove(pBits, self.pBits, self.display_pitch * (self.DisplayHeight - 1) + row_size)
 
                 DrawDibDraw(handleDib[0], hdc, offset[0], offset[1], w, h,
-                            self.pInfo, pBits, 0, 0, w, h, 0)
+                            self.pInfo, pBits, srcXY[0], srcXY[1], w, h, 0)
                 return True
-        """
 
-        # GPo, I see visual no differenze is pitch greater then row_size
+        """
+        # GPo, not good
         def DrawFrame(self, frame, dc=None, offset=(0,0), size=None, srcXY=(0,0)):
             if not self._GetFrame(frame):
                 return
@@ -983,7 +973,7 @@ if os.name == 'nt':
                 DrawDibDraw(handleDib[0], hdc, offset[0], offset[1], w, h,
                             self.pInfo, self.pBits, srcXY[0], srcXY[1], w, h, 0)
                 return True
-
+        """
 
 # Use generical wxPython drawing support on other platforms
 else:
