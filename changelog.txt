@@ -12,7 +12,15 @@ GPo source: https://github.com/gispos/AvsPmod
 GPo releases: https://github.com/gispos/AvsPmod/releases
 
 --------------------------
-Version 2.6.6.5 [2021-01-02] GPo
+Version 2.6.6.6 [2021-02-06] GPo
+--------------------------
+* Added predefined 'Default dark' editor theme  
+* Also added slider window custom theme colors
+-- program options > user slider > 'Enable slider window custom theme colors'
+-- the colors can be set under otions > Fonts and colors > 'Advanced 2'
+
+--------------------------
+Version 2.6.6.5 [2021-02-02] GPo
 --------------------------
 * The filter exclusion list of the sliders has been revised, now also works with multiple identical filters. 
 -- my proposition for exclusion list (trim crop prefetch and 'Your SourceFilters'). The list can be changed options > User sliders

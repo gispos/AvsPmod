@@ -4478,6 +4478,7 @@ class SliderPlus(wx.Panel):
 
     def _DefineBrushes(self):
         self.colorBackground = self.GetBackgroundColour() # GPo
+        #self.colorBackground = (43,43,43)
         colorHighlight = wx.SystemSettings.GetColour(wx.SYS_COLOUR_3DLIGHT)
         colorHighlight2 = wx.SystemSettings.GetColour(wx.SYS_COLOUR_3DHILIGHT)
         colorShadow = wx.SystemSettings.GetColour(wx.SYS_COLOUR_3DSHADOW)
@@ -4498,7 +4499,16 @@ class SliderPlus(wx.Panel):
                 self.brushWindowBackground = wx.Brush(self.colorBackground)
         else:
             self.brushWindowBackground = wx.Brush(self.colorBackground)
+        # test
+        """
+        colorHighlight = (130,130,130)
+        colorHighlight2 = (100,100,100)
+        colorShadow = (100,100,100)
+        colorDarkShadow = (123,123,123)
+        colorWindow = (43,43,43)
+        colorHandle = (100,100,100)
         ###
+        """
         self.penBackground = wx.Pen(colorWindow)
         self.brushBackground = wx.Brush(colorWindow)
         self.penShadow = wx.Pen(colorShadow)
@@ -6037,6 +6047,47 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 'linenumber': 'face:{mono},fore:#555555,back:#C0C0C0',
                 'foldmargin': 'fore:#555555,back:#%02X%02X%02X' % rgb,
                 'scrapwindow': 'face:{mono},size:10,fore:#0000AA,back:#F5EF90',
+                'sliderwindow': 'fore:#DDD5D0,back:#2B2B2B',
+                'sliderwindowtextctrl': 'fore:#EBEBEB,back:#353535',
+                'sliderwindowdefvalue': 'fore:#FFFD37,bold',
+            },
+            _('Default dark'): {
+                'monospaced': 'face:{mono},size:10',
+                'default': 'face:{sans},size:10,fore:#dcdccc,back:#2b2b2b',
+                'comment': 'face:{serif},size:9,fore:#9eb69e,back:#2b2b2b',
+                'blockcomment': 'face:{serif},size:9,fore:#9eb69e,back:#2b2b2b',
+                'endcomment': 'face:{sans},size:10,fore:#7f9f7f,back:#2b2b2b',
+                'number': 'face:{mono},size:10,fore:#8cd0d3,back:#2b2b2b',
+                'badnumber': 'face:{mono},size:10,fore:#e89393,back:#3f3f3f',
+                'string': 'face:{mono},size:10,fore:#d7aaaa,back:#2b2b2b',
+                'stringtriple': 'face:{mono},size:10,fore:#d7aaaa,back:#2b2b2b',
+                'stringeol': 'face:{mono},size:10,fore:#ecbcbc,back:#41363c',
+                'operator': 'face:{sans},size:10,fore:#f0efd0,back:#2b2b2b,bold',
+                'assignment': 'face:{sans},size:10,fore:#dcdccc,back:#2b2b2b,bold',
+                'clipproperty': 'face:{sans},size:10,fore:#afbcbc,back:#2b2b2b,bold',
+                'internalfunction': 'face:{sans},size:10,fore:#c0bed1,back:#2b2b2b,bold',
+                'internalfilter': 'face:{sans},size:10,fore:#7696eb,back:#2b2b2b,bold',
+                'externalfilter': 'face:{sans},size:10,fore:#c987ae,back:#2b2b2b,bold',
+                'userdefined': 'face:{sans},size:10,fore:#d6993f,back:#2b2b2b,bold',
+                'unknownfunction': 'face:{sans},size:10,fore:#e89393,back:#3f3f3f,bold',
+                'parameter': 'face:{sans},size:10,fore:#bcbcb4,back:#2b2b2b',
+                'datatype': 'face:{sans},size:10,fore:#dfdfbf,back:#2b2b2b',
+                'calltiphighlight': 'fore:#dcdccc',
+                'calltip': 'fore:#a0a094,back:#434443',
+                'keyword': 'face:{sans},size:10,fore:#eedda8,back:#2b2b2b,bold',
+                'miscword': 'face:{sans},size:10,fore:#f0dfaf,back:#444444,bold',
+                'userslider': 'face:{sans},size:10,fore:#ffcfaf,back:#2b2b2b',
+                'cursor': 'fore:#8faf9f',
+                'bracelight': 'face:{sans},size:10,fore:#93b3a3,back:#3f3f3f,bold',
+                'badbrace': 'face:{sans},size:10,fore:#e89393,back:#3f3f3f,bold',
+                'highlight': 'fore:#00ff00,back:#555555',
+                'highlightline': 'back:#000000',
+                'linenumber': 'face:{mono},size:10,fore:#9fafaf,back:#262626',
+                'foldmargin': 'fore:#93b3a3,back:#333333',
+                'scrapwindow': 'face:{mono},size:10,fore:#dcdccc,back:#434443',
+                'sliderwindow': 'fore:#ddd5d0,back:#2b2b2b',
+                'sliderwindowtextctrl': 'fore:#EBEBEB,back:#353535',
+                'sliderwindowdefvalue': 'fore:#FFFD37,bold',
             },
             # Based, with some minor changes, on Solarized <http://ethanschoonover.com/solarized>
             _('Solarized light'): {
@@ -6073,6 +6124,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 'linenumber': 'face:{mono},fore:{solarized_base1},back:{solarized_base2}',
                 'foldmargin': 'fore:{solarized_base1},back:{solarized_base2}',
                 'scrapwindow': 'face:{mono},size:10,fore:{solarized_base01},back:{solarized_base2}',
+                'sliderwindow': 'fore:#DDD5D0,back:#2B2B2B',
+                'sliderwindowtextctrl': 'fore:#EBEBEB,back:#353535',
+                'sliderwindowdefvalue': 'fore:#FFFD37,bold',
             },
             _('Solarized dark'): {
                 'monospaced': 'face:{mono},size:10',
@@ -6108,6 +6162,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 'linenumber': 'face:{mono},fore:{solarized_base01},back:{solarized_base02}',
                 'foldmargin': 'fore:{solarized_base01},back:{solarized_base02}',
                 'scrapwindow': 'face:{mono},size:10,fore:{solarized_base1},back:{solarized_base02}',
+                'sliderwindow': 'fore:#DDD5D0,back:#2B2B2B',
+                'sliderwindowtextctrl': 'fore:#EBEBEB,back:#353535',
+                'sliderwindowdefvalue': 'fore:#FFFD37,bold',
             },
             # Based on Zenburn <http://slinky.imukuppi.org/zenburnpage/>
             _('Zenburn'): {
@@ -6144,8 +6201,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 'linenumber': 'face:{mono},fore:{zenburn_linenumber_fore},back:{zenburn_linenumber_back}',
                 'foldmargin': 'fore:{zenburn_fold_fore},back:{zenburn_fold_back}',
                 'scrapwindow': 'face:{mono},size:10,fore:{zenburn_normal_fore},back:{zenburn_currentline_back}',
+                'sliderwindow': 'fore:#DDD5D0,back:#2B2B2B',
+                'sliderwindowtextctrl': 'fore:#EBEBEB,back:#353535',
+                'sliderwindowdefvalue': 'fore:#FFFD37,bold',
             },
         }
+        #self.x_defaultTextStyle = dict(self.defaulttextstylesDict['Default'].copy()) # for test
         for values in self.defaulttextstylesDict.itervalues():
             for key, value in values.items():
                 values[key] = value.format(**locals_dict)
@@ -6256,6 +6317,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'use_customvideobackground': False,
             'videobackground': (0, 0, 0),
             'customvideobackground': (0, 0, 0),
+            #'sliderwndfore' : (255, 255, 255),
+            #'sliderwndback' : (43, 43, 43),
+            #'sliderwnddefvalue': (255, 253, 54)
             'errormessagefont': ('Arial', 24, '$FF0000', '', (0, 0, 0)),  # GPo fontColor
             'cropminx': 16,
             'cropminy': 16,
@@ -6281,6 +6345,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'autoslidermakeunknown': True,
             'autosliderexclusions': '',
             'autosliderupdatedirectly': False, # GPo
+            'sliderwindowcustomtheme': False,
             #'sliderseperatorcheckbox': True,
             # MISC OPTIONS
             'lang': 'eng',
@@ -7132,6 +7197,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 ((_('type string (filename)'), wxp.OPT_ELEM_CHECK, 'autoslidermakestringfilename', _('Create filename pickers for string filename arguments'), dict(ident=20) ), ),
                 ((_('undocumented'), wxp.OPT_ELEM_CHECK, 'autoslidermakeunknown', _('Create placeholders for arguments which have no database information'), dict(ident=20) ), ),
                 ((_('Button show/hide applies to all tabs'), wxp.OPT_ELEM_CHECK, 'allsliderwindowshideshow', _('Or press Ctrl when you click the button.'), dict() ), ),
+                ((_('Enable slider window custom color theme'), wxp.OPT_ELEM_CHECK, 'sliderwindowcustomtheme', _("Custom colors can be set under 'Options->Font and colors->Advanced 2'\nNot visible slider windows needed refresh."), dict() ), ),
                 ((_('Fold startup setting'), wxp.OPT_ELEM_RADIO, 'autosliderstartfold', _('Determines which filters will initially have hidden arguments in the slider window'), dict(dimensions=2, choices=[(_('Fold all'), 0),(_('Fold none'), 1), (_('Fold non-numbers'), 2), (_('Fold or restore last status'), 3) ]) ), ),
                 ((_('Filter exclusion list:'), wxp.OPT_ELEM_STRING, 'autosliderexclusions', _('Specify filters never to build automatic sliders for. Use a space as separator.\nYou can toggle it in the slider context menu.'), dict() ), ),
             ),
@@ -7178,7 +7244,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 ((_('DPI scaling main tabs:*'), wxp.OPT_ELEM_SPIN, 'ppiscalingscripttabs', _('Additional adjust the script window tabs (10 % steps)'), dict(min_val=0, val=0, max_val=10) ), ),
                 ((_('DPI scaling video controls:*'), wxp.OPT_ELEM_SPIN, 'ppiscalingvideocontrols', _('Additional adjust the video controls (10 % steps)'), dict(min_val=0, val=0, max_val=10) ), ),
                 ((_('DPI scaling statusbar:*'), wxp.OPT_ELEM_SPIN, 'ppiscalingstatusbar', _('Additional adjust the statusbar (10 % steps)'), dict(min_val=0, val=0, max_val=10) ), ),
-                ((_('Disable DPI awareness*'), wxp.OPT_ELEM_CHECK, 'ppidisabled', _('Disable AvsPmod DPI Aware. Program is zoomed by the system and set values.'), dict() ), ),
+                ((_('Disable DPI awareness*'), wxp.OPT_ELEM_CHECK, 'ppidisabled', _('Only disable it if you using 100% system zoom. Program is zoomed by the system and set DPI values.'), dict() ), ),
             ),
         )
 
@@ -8429,6 +8495,57 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.parent = parent
             self.app = app
             self.Bind(wx.EVT_SIZE, _OnSize)
+            self.foreTextCtrl = None
+            self.backTextCtrl = None
+            self.foreDefValue = None
+            self.boldDefValue = None
+            self.customTheme = self.app.options['sliderwindowcustomtheme']
+            if self.customTheme:
+                self.SetThemeColors()
+
+        def SetSystemColors(self):
+            self.customTheme = False
+            self.SetBackgroundColour(wx.SystemSettings.GetColour(wx.SYS_COLOUR_WINDOW))
+            self.SetForegroundColour(wx.SystemSettings.GetColour(wx.SYS_COLOUR_WINDOWTEXT))
+
+        def SetThemeColors(self):
+            try:
+                attr = self.app.options['textstyles']['sliderwindow'].split(',')
+                for i in xrange(len(attr)):
+                    s = attr[i]
+                    if s.startswith('fore'):
+                        hex = s.split('#')[1]
+                        r,g,b = tuple(int(hex[i:i+2], 16) for i in (0, 2 ,4))
+                        self.SetForegroundColour(wx.Colour(r,g,b))
+                    elif s.startswith('back'):
+                        hex = s.split('#')[1]
+                        r,g,b = tuple(int(hex[i:i+2], 16) for i in (0, 2 ,4))
+                        self.SetBackgroundColour(wx.Colour(r, g, b))
+                attr = self.app.options['textstyles']['sliderwindowtextctrl'].split(',')
+                for i in xrange(len(attr)):
+                    s = attr[i]
+                    if s.startswith('fore'):
+                        hex = s.split('#')[1]
+                        r,g,b = tuple(int(hex[i:i+2], 16) for i in (0, 2 ,4))
+                        self.foreTextCtrl = wx.Colour(r,g,b)
+                    elif s.startswith('back'):
+                        hex = s.split('#')[1]
+                        r,g,b = tuple(int(hex[i:i+2], 16) for i in (0, 2 ,4))
+                        self.backTextCtrl = wx.Colour(r, g, b)
+                attr = self.app.options['textstyles']['sliderwindowdefvalue'].split(',')
+                for i in xrange(len(attr)):
+                    s = attr[i]
+                    if s.startswith('fore'):
+                        hex = s.split('#')[1]
+                        r,g,b = tuple(int(hex[i:i+2], 16) for i in (0, 2 ,4))
+                        self.foreDefValue = wx.Colour(r,g,b)
+                    elif s.startswith('bold'):
+                        self.boldDefValue = True
+            except:
+                self.SetSystemColors()
+                return
+            self.customTheme = True
+            return True
 
     def createScriptWindow(self):
         # Create the instance of the window                         # GPo 2020, size,pos wx 2.9
@@ -10479,11 +10596,15 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     def OnMenuTest(self, event):
         pass
         """
-        self.SetDoubleBuffered(False)
-        self.mainSplitter.SetDoubleBuffered(False)
-        self.videoSplitter.SetDoubleBuffered(False)
-        self.videoPane.SetDoubleBuffered(False)
-        self.videoWindow.SetDoubleBuffered(False)
+        defDict = self.x_defaultTextStyle
+        s = ''
+        tDict = self.options['textstyles'].copy()
+        for i, key in enumerate(defDict):
+            s += "'" + str(key) + "': '" + tDict[key] + "',\n"
+
+        afile = 'E:\Temp\MyColors.txt'
+        with open(afile, 'w') as f:
+            f.write(s)
         """
 
     def OnMenuTest2(self, event):
@@ -11560,7 +11681,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     ((_('Current line highlight:'), 'highlightline', _('Highlight the line that the caret is currently in')), 'highlightline'),
                     (_('Fold margin:'), 'foldmargin'),
                     (_('Scrap window'), 'scrapwindow'),
-
+                ),
+            ),
+            (_('Advanced 2'),
+                (
+                    (_('Slider window'), 'sliderwindow'),
+                    (_('Slider window text field'), 'sliderwindowtextctrl'),
+                    (_('Slider window default value'), 'sliderwindowdefvalue'),
                 ),
             )
         )
@@ -11591,6 +11718,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 return
 
         extra = None # adds a single CheckBox, (label, options_dict_key, tooltip)
+
+        # GPo only for clean up the options
+        """
+        for key in self.options['textstyles'].keys():
+            if self.options['textstyles'][key] == 'sliderwindow':
+                del self.options['textstyles'][key]
+        """
         if exOptions:
             wx.MessageBox(_('Settings have been read from backup file\n'),
                              _('Information'), style=wx.OK|wx.ICON_INFORMATION)
@@ -11607,8 +11741,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             for index in xrange(self.scriptNotebook.GetPageCount()):
                 script = self.scriptNotebook.GetPage(index)
                 script.SetUserOptions()
+                if self.options['sliderwindowcustomtheme']:
+                    script.sliderWindow.SetThemeColors()
+
             self.SetMinimumScriptPaneSize()
             self.scrapWindow.Style()
+            if self.currentSliderWindow.customTheme:
+                self.OnSliderUpdate(None) # Update only the current sliderWindow
             #if readExOptions:
                 #self.OnMenuOptionsFontsAndColorsWriteBackup(None)
         else:
@@ -17992,6 +18131,172 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         script.SetFocus()
         wx.MessageBox(msg, _('Warning'))
 
+    def addAvsSlider(self, script, labelTxt, minValue, maxValue, value, nDecimal, mod=None, row=None, sizer=None):
+        if minValue is None or maxValue is None or value is None or nDecimal is None:
+            return
+        if sizer is None:
+            sizer = script.sliderSizer
+        parent = script.sliderWindow
+        isRescaled = False
+        if not mod:
+            if labelTxt[-1] == '+':
+                minValue2 = 0
+                mod = (maxValue - minValue) / 100.
+                isRescaled = True
+            elif labelTxt[-1] == '-':
+                minValue2 = -100
+                mod = (maxValue - minValue) / 200.
+                isRescaled = True
+        if isRescaled:
+            def Rescale(val):
+                return minValue2 + (val - minValue)/mod
+        # Construct the format string based on nDecimal
+        strTemplate = '%.'+str(nDecimal)+'f'
+        strTemplate2 = '(%.'+str(nDecimal)+'f)'
+        def OnScroll(event):
+            value = slider.GetValue()
+            valTxtCtrl.SetLabel(strTemplate % value)
+            if isRescaled:
+                valTxtCtrl2.SetLabel(strTemplate2 % Rescale(value))
+        # Create the slider
+        slider = wxp.Slider(parent, wx.ID_ANY,
+            value, minValue, maxValue,
+            size=(intPPI(50),-1),
+            style=wx.SL_BOTH,
+            name=labelTxt,
+            nDecimal=nDecimal,
+            mod=mod,
+            #~ onscroll= lambda event: valTxtCtrl.SetLabel(strTemplate % slider.GetValue())
+            onscroll = OnScroll,
+        )
+        # Slider event binding
+        slider.Bind(wx.EVT_LEFT_UP, self.OnLeftUpUserSlider)
+        # Create the static text labels
+        labelTxtCtrl = wx.StaticText(parent, wx.ID_ANY, labelTxt)
+        minTxtCtrl = wx.StaticText(parent, wx.ID_ANY, strTemplate % minValue)
+        maxTxtCtrl = wx.StaticText(parent, wx.ID_ANY, strTemplate % maxValue)
+        valTxtCtrl = wx.StaticText(parent, wx.ID_ANY, strTemplate % value)
+        valTxtCtrl.SetForegroundColour(wx.BLUE)
+        valTxtCtrl.SetCursor(wx.StockCursor(wx.CURSOR_HAND))
+        value_formatted = strTemplate % value
+        valTxtCtrl.SetToolTip(wx.ToolTip(_('Reset to initial value: %(value_formatted)s') % locals()))
+        if isRescaled:
+            minTxtCtrl2 = wx.StaticText(parent, wx.ID_ANY, strTemplate2 % minValue2)
+            minTxtCtrlSizer = wx.BoxSizer(wx.VERTICAL)
+            minTxtCtrlSizer.Add(minTxtCtrl, 0, wx.ALIGN_CENTER)
+            minTxtCtrlSizer.Add(minTxtCtrl2, 0, wx.ALIGN_CENTER)
+            maxTxtCtrl2 = wx.StaticText(parent, wx.ID_ANY, strTemplate2 % Rescale(maxValue))
+            maxTxtCtrlSizer = wx.BoxSizer(wx.VERTICAL)
+            maxTxtCtrlSizer.Add(maxTxtCtrl, 0, wx.ALIGN_CENTER)
+            maxTxtCtrlSizer.Add(maxTxtCtrl2, 0, wx.ALIGN_CENTER)
+            value2_formatted = strTemplate2 % Rescale(value)
+            valTxtCtrl2 = wx.StaticText(parent, wx.ID_ANY, value2_formatted)
+            valTxtCtrlSizer = wx.BoxSizer(wx.VERTICAL)
+            valTxtCtrlSizer.Add(valTxtCtrl, 0, wx.EXPAND)
+            valTxtCtrlSizer.Add(valTxtCtrl2, 0, wx.EXPAND)
+            valTxtCtrl2.SetForegroundColour(wx.RED)
+            valTxtCtrl2.SetCursor(wx.StockCursor(wx.CURSOR_HAND))
+            valTxtCtrl2.SetToolTip(wx.ToolTip(_('Reset to initial value: %(value2_formatted)s') % locals()))
+        def OnTextLeftDown(event):
+            valTxtCtrl.SetLabel(value_formatted)
+            if isRescaled:
+                valTxtCtrl2.SetLabel(value2_formatted)
+            slider.SetValue(value)
+            self.UserSliderVideoUpdate(slider)
+        valTxtCtrl.Bind(wx.EVT_LEFT_DOWN, OnTextLeftDown)
+        if isRescaled:
+            valTxtCtrl2.Bind(wx.EVT_LEFT_DOWN, OnTextLeftDown)
+        leftCtrl = wxButtons.GenBitmapButton(parent, wx.ID_ANY, self.bmpLeftTriangle, size=tuplePPI(16,16))
+        leftCtrl.SetBezelWidth(1)
+        leftCtrl.SetUseFocusIndicator(False)
+        def OnLeftTimer(event):
+            if leftCtrl.up:
+                leftTimer.Stop()
+                if leftCtrl.HasCapture():
+                    leftCtrl.ReleaseMouse()
+                self.UserSliderVideoUpdate(slider)
+            else:
+                newvalue = slider.Decrement()
+                valTxtCtrl.SetLabel(strTemplate % newvalue)
+                if isRescaled:
+                    valTxtCtrl2.SetLabel(strTemplate2 % Rescale(newvalue))
+            if event:
+                event.Skip()
+        leftTimer = wx.Timer(leftCtrl)
+        leftCtrl.Bind(wx.EVT_TIMER, OnLeftTimer)
+        def OnButtonDecLeftDown(event):
+            newvalue = slider.Decrement()
+            valTxtCtrl.SetLabel(strTemplate % newvalue)
+            if isRescaled:
+                valTxtCtrl2.SetLabel(strTemplate2 % Rescale(newvalue))
+            if wx.GetKeyState(wx.WXK_CONTROL):
+                self.fc = wx.CallLater(400, leftTimer.Start, 500)
+            else:
+                self.fc = wx.CallLater(300, leftTimer.Start, 100)
+            event.Skip()
+        def OnButtonDecLeftUp(event):
+            if self.fc is not None:
+                self.fc.Stop()
+            leftTimer.Stop()
+            wx.CallAfter(OnLeftTimer, None)
+            event.Skip()
+        leftCtrl.Bind(wx.EVT_LEFT_DOWN, OnButtonDecLeftDown)
+        leftCtrl.Bind(wx.EVT_LEFT_UP, OnButtonDecLeftUp)
+        leftCtrl.Bind(wx.EVT_MOUSE_CAPTURE_LOST, self.OnMouseCaptureLost)
+        rightCtrl = wxButtons.GenBitmapButton(parent, wx.ID_ANY, self.bmpRightTriangle, size=tuplePPI(16,16))
+        rightCtrl.SetBezelWidth(1)
+        rightCtrl.SetUseFocusIndicator(False)
+        def OnRightTimer(event):
+            if rightCtrl.up:
+                rightTimer.Stop()
+                if rightCtrl.HasCapture():
+                    rightCtrl.ReleaseMouse()
+                self.UserSliderVideoUpdate(slider)
+            else:
+                newvalue = slider.Increment()
+                valTxtCtrl.SetLabel(strTemplate % newvalue)
+                if isRescaled:
+                    valTxtCtrl2.SetLabel(strTemplate2 % Rescale(newvalue))
+            if event:
+                event.Skip()
+        rightTimer = wx.Timer(rightCtrl)
+        rightCtrl.Bind(wx.EVT_TIMER, OnRightTimer)
+        def OnButtonIncLeftDown(event):
+            newvalue = slider.Increment()
+            valTxtCtrl.SetLabel(strTemplate % newvalue)
+            if isRescaled:
+                valTxtCtrl2.SetLabel(strTemplate2 % Rescale(newvalue))
+            if wx.GetKeyState(wx.WXK_CONTROL):
+                self.fc = wx.CallLater(400, rightTimer.Start, 500)
+            else:
+                self.fc = wx.CallLater(300, rightTimer.Start, 100)
+            event.Skip()
+        def OnButtonIncLeftUp(event):
+            if self.fc is not None:
+                self.fc.Stop()
+            rightTimer.Stop()
+            wx.CallAfter(OnRightTimer, None)
+            event.Skip()
+        rightCtrl.Bind(wx.EVT_LEFT_DOWN, OnButtonIncLeftDown)
+        rightCtrl.Bind(wx.EVT_LEFT_UP, OnButtonIncLeftUp)
+        rightCtrl.Bind(wx.EVT_MOUSE_CAPTURE_LOST, self.OnMouseCaptureLost)
+        # Add the elements to the sliderSizer
+        sizer.Add(labelTxtCtrl, (row,0), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, intPPI(10))
+        if isRescaled:
+            sizer.Add(minTxtCtrlSizer, (row,1), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_RIGHT)
+        else:
+            sizer.Add(minTxtCtrl, (row,1), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_RIGHT)
+        sizer.Add(leftCtrl, (row,2), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL|wx.LEFT, intPPI(5))
+        sizer.Add(slider, (row,3), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL|wx.EXPAND)
+        sizer.Add(rightCtrl, (row,4), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, intPPI(5))
+        if isRescaled:
+            sizer.Add(maxTxtCtrlSizer, (row,5), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, intPPI(10))
+            sizer.Add(valTxtCtrlSizer, (row,6), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 0)
+        else:
+            sizer.Add(maxTxtCtrl, (row,5), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, intPPI(10))
+            sizer.Add(valTxtCtrl, (row,6), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 0)
+
+
     ###################
     #### auto sliders
     ###################
@@ -18240,178 +18545,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         #script.sliderWindow.Scroll(sliderWindow_lastViewStart)
         script.sliderWindow.Thaw()
 
-
-    def addAvsSlider(self, script, labelTxt, minValue, maxValue, value, nDecimal, mod=None, row=None, sizer=None):
-        if minValue is None or maxValue is None or value is None or nDecimal is None:
-            return
-        if sizer is None:
-            sizer = script.sliderSizer
-        parent = script.sliderWindow
-        isRescaled = False
-        if not mod:
-            if labelTxt[-1] == '+':
-                minValue2 = 0
-                mod = (maxValue - minValue) / 100.
-                isRescaled = True
-            elif labelTxt[-1] == '-':
-                minValue2 = -100
-                mod = (maxValue - minValue) / 200.
-                isRescaled = True
-        if isRescaled:
-            def Rescale(val):
-                return minValue2 + (val - minValue)/mod
-        # Construct the format string based on nDecimal
-        strTemplate = '%.'+str(nDecimal)+'f'
-        strTemplate2 = '(%.'+str(nDecimal)+'f)'
-        def OnScroll(event):
-            value = slider.GetValue()
-            valTxtCtrl.SetLabel(strTemplate % value)
-            if isRescaled:
-                valTxtCtrl2.SetLabel(strTemplate2 % Rescale(value))
-        # Create the slider
-        slider = wxp.Slider(parent, wx.ID_ANY,
-            value, minValue, maxValue,
-            size=(intPPI(50),-1),
-            style=wx.SL_BOTH,
-            name=labelTxt,
-            nDecimal=nDecimal,
-            mod=mod,
-            #~ onscroll= lambda event: valTxtCtrl.SetLabel(strTemplate % slider.GetValue())
-            onscroll = OnScroll,
-        )
-        # Slider event binding
-        slider.Bind(wx.EVT_LEFT_UP, self.OnLeftUpUserSlider)
-        # Create the static text labels
-        labelTxtCtrl = wx.StaticText(parent, wx.ID_ANY, labelTxt)
-        minTxtCtrl = wx.StaticText(parent, wx.ID_ANY, strTemplate % minValue)
-        maxTxtCtrl = wx.StaticText(parent, wx.ID_ANY, strTemplate % maxValue)
-        valTxtCtrl = wx.StaticText(parent, wx.ID_ANY, strTemplate % value)
-        valTxtCtrl.SetForegroundColour(wx.BLUE)
-        valTxtCtrl.SetCursor(wx.StockCursor(wx.CURSOR_HAND))
-        value_formatted = strTemplate % value
-        valTxtCtrl.SetToolTip(wx.ToolTip(_('Reset to initial value: %(value_formatted)s') % locals()))
-        if isRescaled:
-            minTxtCtrl2 = wx.StaticText(parent, wx.ID_ANY, strTemplate2 % minValue2)
-            minTxtCtrlSizer = wx.BoxSizer(wx.VERTICAL)
-            minTxtCtrlSizer.Add(minTxtCtrl, 0, wx.ALIGN_CENTER)
-            minTxtCtrlSizer.Add(minTxtCtrl2, 0, wx.ALIGN_CENTER)
-            maxTxtCtrl2 = wx.StaticText(parent, wx.ID_ANY, strTemplate2 % Rescale(maxValue))
-            maxTxtCtrlSizer = wx.BoxSizer(wx.VERTICAL)
-            maxTxtCtrlSizer.Add(maxTxtCtrl, 0, wx.ALIGN_CENTER)
-            maxTxtCtrlSizer.Add(maxTxtCtrl2, 0, wx.ALIGN_CENTER)
-            value2_formatted = strTemplate2 % Rescale(value)
-            valTxtCtrl2 = wx.StaticText(parent, wx.ID_ANY, value2_formatted)
-            valTxtCtrlSizer = wx.BoxSizer(wx.VERTICAL)
-            valTxtCtrlSizer.Add(valTxtCtrl, 0, wx.EXPAND)
-            valTxtCtrlSizer.Add(valTxtCtrl2, 0, wx.EXPAND)
-            valTxtCtrl2.SetForegroundColour(wx.RED)
-            valTxtCtrl2.SetCursor(wx.StockCursor(wx.CURSOR_HAND))
-            valTxtCtrl2.SetToolTip(wx.ToolTip(_('Reset to initial value: %(value2_formatted)s') % locals()))
-        def OnTextLeftDown(event):
-            valTxtCtrl.SetLabel(value_formatted)
-            if isRescaled:
-                valTxtCtrl2.SetLabel(value2_formatted)
-            slider.SetValue(value)
-            self.UserSliderVideoUpdate(slider)
-        valTxtCtrl.Bind(wx.EVT_LEFT_DOWN, OnTextLeftDown)
-        if isRescaled:
-            valTxtCtrl2.Bind(wx.EVT_LEFT_DOWN, OnTextLeftDown)
-        leftCtrl = wxButtons.GenBitmapButton(parent, wx.ID_ANY, self.bmpLeftTriangle, size=tuplePPI(16,16))
-        leftCtrl.SetBezelWidth(1)
-        leftCtrl.SetUseFocusIndicator(False)
-        def OnLeftTimer(event):
-            if leftCtrl.up:
-                leftTimer.Stop()
-                if leftCtrl.HasCapture():
-                    leftCtrl.ReleaseMouse()
-                self.UserSliderVideoUpdate(slider)
-            else:
-                newvalue = slider.Decrement()
-                valTxtCtrl.SetLabel(strTemplate % newvalue)
-                if isRescaled:
-                    valTxtCtrl2.SetLabel(strTemplate2 % Rescale(newvalue))
-            if event:
-                event.Skip()
-        leftTimer = wx.Timer(leftCtrl)
-        leftCtrl.Bind(wx.EVT_TIMER, OnLeftTimer)
-        def OnButtonDecLeftDown(event):
-            newvalue = slider.Decrement()
-            valTxtCtrl.SetLabel(strTemplate % newvalue)
-            if isRescaled:
-                valTxtCtrl2.SetLabel(strTemplate2 % Rescale(newvalue))
-            if wx.GetKeyState(wx.WXK_CONTROL):
-                self.fc = wx.CallLater(400, leftTimer.Start, 500)
-            else:
-                self.fc = wx.CallLater(300, leftTimer.Start, 100)
-            event.Skip()
-        def OnButtonDecLeftUp(event):
-            if self.fc is not None:
-                self.fc.Stop()
-            leftTimer.Stop()
-            wx.CallAfter(OnLeftTimer, None)
-            event.Skip()
-        leftCtrl.Bind(wx.EVT_LEFT_DOWN, OnButtonDecLeftDown)
-        leftCtrl.Bind(wx.EVT_LEFT_UP, OnButtonDecLeftUp)
-        leftCtrl.Bind(wx.EVT_MOUSE_CAPTURE_LOST, self.OnMouseCaptureLost)
-        rightCtrl = wxButtons.GenBitmapButton(parent, wx.ID_ANY, self.bmpRightTriangle, size=tuplePPI(16,16))
-        rightCtrl.SetBezelWidth(1)
-        rightCtrl.SetUseFocusIndicator(False)
-        def OnRightTimer(event):
-            if rightCtrl.up:
-                rightTimer.Stop()
-                if rightCtrl.HasCapture():
-                    rightCtrl.ReleaseMouse()
-                self.UserSliderVideoUpdate(slider)
-            else:
-                newvalue = slider.Increment()
-                valTxtCtrl.SetLabel(strTemplate % newvalue)
-                if isRescaled:
-                    valTxtCtrl2.SetLabel(strTemplate2 % Rescale(newvalue))
-            if event:
-                event.Skip()
-        rightTimer = wx.Timer(rightCtrl)
-        rightCtrl.Bind(wx.EVT_TIMER, OnRightTimer)
-        def OnButtonIncLeftDown(event):
-            newvalue = slider.Increment()
-            valTxtCtrl.SetLabel(strTemplate % newvalue)
-            if isRescaled:
-                valTxtCtrl2.SetLabel(strTemplate2 % Rescale(newvalue))
-            if wx.GetKeyState(wx.WXK_CONTROL):
-                self.fc = wx.CallLater(400, rightTimer.Start, 500)
-            else:
-                self.fc = wx.CallLater(300, rightTimer.Start, 100)
-            event.Skip()
-        def OnButtonIncLeftUp(event):
-            if self.fc is not None:
-                self.fc.Stop()
-            rightTimer.Stop()
-            wx.CallAfter(OnRightTimer, None)
-            event.Skip()
-        rightCtrl.Bind(wx.EVT_LEFT_DOWN, OnButtonIncLeftDown)
-        rightCtrl.Bind(wx.EVT_LEFT_UP, OnButtonIncLeftUp)
-        rightCtrl.Bind(wx.EVT_MOUSE_CAPTURE_LOST, self.OnMouseCaptureLost)
-        # Add the elements to the sliderSizer
-        sizer.Add(labelTxtCtrl, (row,0), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, intPPI(10))
-        if isRescaled:
-            sizer.Add(minTxtCtrlSizer, (row,1), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_RIGHT)
-        else:
-            sizer.Add(minTxtCtrl, (row,1), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_RIGHT)
-        sizer.Add(leftCtrl, (row,2), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL|wx.LEFT, intPPI(5))
-        sizer.Add(slider, (row,3), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL|wx.EXPAND)
-        sizer.Add(rightCtrl, (row,4), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, intPPI(5))
-        if isRescaled:
-            sizer.Add(maxTxtCtrlSizer, (row,5), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, intPPI(10))
-            sizer.Add(valTxtCtrlSizer, (row,6), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 0)
-        else:
-            sizer.Add(maxTxtCtrl, (row,5), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, intPPI(10))
-            sizer.Add(valTxtCtrl, (row,6), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 0)
-
     def addAvsSliderSeparator(self, script, label='', row=None, sizer=None):
         if sizer is None:
             sizer = script.sliderSizer
         parent = script.sliderWindow
-        color1 = wx.SystemSettings.GetColour(wx.SYS_COLOUR_3DSHADOW)
-        color2 = wx.SystemSettings.GetColour(wx.SYS_COLOUR_3DHILIGHT)
         # Add a separator
         tempsizer = wx.BoxSizer(wx.VERTICAL)
         if row == 0: border = 0
@@ -18433,6 +18570,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if sizer is None:
             sizer = script.sliderSizer
         parent = script.sliderWindow
+        int5 = intPPI(5)
+        int10 = intPPI(10)
         # Construct the format string based on nDecimal
         strTemplate = '%.'+str(nDecimal)+'f'
         # Create the slider
@@ -18486,7 +18625,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         minTxtCtrl = wx.StaticText(parent, wx.ID_ANY, strTemplate % minValue)
         maxTxtCtrl = wx.StaticText(parent, wx.ID_ANY, strTemplate % maxValue)
         valTxtCtrl = wx.StaticText(parent, wx.ID_ANY, strTemplate % value)
-        valTxtCtrl.SetForegroundColour(wx.BLUE)
+        font = valTxtCtrl.GetFont()
+        font.SetWeight(wx.FONTWEIGHT_BOLD)
+        valTxtCtrl.SetFont(font)
+        if self.currentSliderWindow.customTheme:
+            valTxtCtrl.SetForegroundColour(self.currentSliderWindow.foreDefValue)
+        else:
+            valTxtCtrl.SetForegroundColour(wx.BLUE)
         valTxtCtrl.SetCursor(wx.StockCursor(wx.CURSOR_HAND))
         value_formatted = strTemplate % defaultValue
         valTxtCtrl.SetToolTip(wx.ToolTip(_('Reset to default value: %(value_formatted)s') % locals()))
@@ -18496,25 +18641,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             UserSliderVideoUpdateNew(slider)
         valTxtCtrl.Bind(wx.EVT_LEFT_DOWN, OnTextLeftDown)
         leftCtrl = wxButtons.GenBitmapButton(parent, wx.ID_ANY, self.bmpLeftTriangle, size=tuplePPI(16,16))
-        leftCtrl.SetBezelWidth(1)
+        leftCtrl.SetBezelWidth(intPPI(1))
         leftCtrl.SetUseFocusIndicator(False)
-        """
-        def OnLeftTimer(event):
-            directly = (self.currentScript.previewFilterIdx == slider.prevFilterIdx) and self.options['autosliderupdatedirectly']
-            if leftCtrl.up:
-                leftTimer.Stop()
-                if leftCtrl.HasCapture():
-                    leftCtrl.ReleaseMouse()
-                valTxtCtrl.SetLabel(strTemplate % slider.GetValue())
-                UserSliderVideoUpdateNew(slider)
-            else:
-                newvalue = slider.Decrement()
-                valTxtCtrl.SetLabel(strTemplate % newvalue)
-                if directly:
-                    UserSliderVideoUpdateNew(slider)
-            if event:
-                event.Skip()
-        """
         def OnLeftTimer(event):
             directly = (self.currentScript.previewFilterIdx == slider.prevFilterIdx) and self.options['autosliderupdatedirectly']
             newvalue = slider.Decrement()
@@ -18548,23 +18676,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         rightCtrl = wxButtons.GenBitmapButton(parent, wx.ID_ANY, self.bmpRightTriangle, size=tuplePPI(16,16))
         rightCtrl.SetBezelWidth(1)
         rightCtrl.SetUseFocusIndicator(False)
-        """
-        def OnRightTimer(event):
-            directly = (self.currentScript.previewFilterIdx == slider.prevFilterIdx) and self.options['autosliderupdatedirectly']
-            if rightCtrl.up:
-                rightTimer.Stop()
-                if rightCtrl.HasCapture():
-                    rightCtrl.ReleaseMouse()
-                valTxtCtrl.SetLabel(strTemplate % slider.GetValue())
-                UserSliderVideoUpdateNew(slider)
-            else:
-                newvalue = slider.Increment()
-                valTxtCtrl.SetLabel(strTemplate % newvalue)
-                if directly:
-                    UserSliderVideoUpdateNew(slider)
-            if event:
-                event.Skip()
-        """
         def OnRightTimer(event):
             directly = (self.currentScript.previewFilterIdx == slider.prevFilterIdx) and self.options['autosliderupdatedirectly']
             newvalue = slider.Increment()
@@ -18597,16 +18708,15 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         rightCtrl.Bind(wx.EVT_LEFT_UP, OnButtonIncLeftUp)
         rightCtrl.Bind(wx.EVT_MOUSE_CAPTURE_LOST, self.OnMouseCaptureLost)
         # Add the elements to the sliderSizer
-        sizer.Add(labelTxtCtrl, (row,0), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT|wx.LEFT, intPPI(10))
+        sizer.Add(labelTxtCtrl, (row,0), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT|wx.LEFT, int10)
         sizer.Add(minTxtCtrl, (row,1), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_RIGHT)
-        sizer.Add(leftCtrl, (row,2), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL|wx.LEFT, intPPI(5))
+        sizer.Add(leftCtrl, (row,2), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL|wx.LEFT, int5)
         sizer.Add(slider, (row,3), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL|wx.EXPAND)
-        sizer.Add(rightCtrl, (row,4), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, intPPI(5))
-        sizer.Add(maxTxtCtrl, (row,5), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, intPPI(10))
-        sizer.Add(valTxtCtrl, (row,6), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 0)
+        sizer.Add(rightCtrl, (row,4), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT, int5)
+        sizer.Add(maxTxtCtrl, (row,5), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, int10)
+        sizer.Add(valTxtCtrl, (row,6), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, intPPI(2)) # litle space right
         separator.controls += [labelTxtCtrl, minTxtCtrl, leftCtrl, slider, rightCtrl, maxTxtCtrl, valTxtCtrl]
         separator.hasNumericalSlider = True
-
 
     def ValidateAvsSliderInputs(self, strDef, strMin, strMax, strMod):
         # Returns (error type, error message)
@@ -18666,7 +18776,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if mod > (maxValue - minValue):
                 return (0, _('The difference between the min and max must be greater than %(mod)s!') % locals(), None)
         return (None, None, (defValue, minValue, maxValue, modValue))
-
+    """
     def addAvsBooleanRadio(self, script, argname, value, defaultValue, row, separator, filterName, argIndex):
         parent = script.sliderWindow
         sizer = script.sliderSizerNew
@@ -18704,6 +18814,54 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         radioSizer = wx.BoxSizer(wx.HORIZONTAL)
         radioSizer.Add(radioButtonTrue, 0, wx.TOP|wx.BOTTOM|wx.RIGHT, intPPI(5))
         radioSizer.Add(radioButtonFalse, 0, wx.ALL, intPPI(5))
+        # Add the elements to the slider sizer
+        sizer.Add(labelTxtCtrl, (row,0), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT|wx.LEFT, intPPI(10))
+        sizer.Add(radioSizer, (row, 1), (1,6), wx.ALIGN_CENTER_VERTICAL)
+        separator.controls += [labelTxtCtrl, radioSizer]
+    """
+    def addAvsBooleanRadio(self, script, argname, value, defaultValue, row, separator, filterName, argIndex):
+        parent = script.sliderWindow
+        sizer = script.sliderSizerNew
+        int5 = intPPI(5)
+        # Create window elements
+        labelTxtCtrl = self.MakeArgNameStaticText(parent, argname, filterName, script, argIndex)
+        radioButtonTrue = wx.RadioButton(parent, wx.ID_ANY, '', style=wx.RB_GROUP, size=(-1,-1))
+        radioButtonFalse = wx.RadioButton(parent, wx.ID_ANY, '', size=(-1,-1))
+        if value:
+            radioButtonTrue.SetValue(True)
+        else:
+            radioButtonFalse.SetValue(True)
+        def OnRadioButton(event):
+            button = event.GetEventObject()
+            if button == radioButtonTrue:
+                newVal = 'true'
+            else:
+                newVal = 'false'
+            self.SetNewAvsValue(button, newVal)
+            event.Skip()
+        for ctrl in (radioButtonTrue, radioButtonFalse):
+            ctrl.filterName = filterName
+            ctrl.argName = argname
+            ctrl.script = script
+            ctrl.argIndex = argIndex
+            ctrl.Bind(wx.EVT_RADIOBUTTON, OnRadioButton)
+        # Make labels, radio doesn't change foregroundcolor
+        labeltrue = wx.StaticText(parent, wx.ID_ANY, 'true')
+        labelfalse = wx.StaticText(parent, wx.ID_ANY, 'false')
+        if defaultValue is not None:
+            if defaultValue.lower() == 'true':
+                font = labeltrue.GetFont()
+                font.SetUnderlined(True)
+                labeltrue.SetFont(font)
+            else:
+                font = labelfalse.GetFont()
+                font.SetUnderlined(True)
+                labelfalse.SetFont(font)
+        radioSizer = wx.BoxSizer(wx.HORIZONTAL)
+        radioSizer.Add(radioButtonTrue, 0, wx.TOP|wx.BOTTOM|wx.LEFT, int5)
+        radioSizer.Add(labeltrue, 1, wx.TOP|wx.BOTTOM|wx.RIGHT, int5)
+        radioSizer.Add(radioButtonFalse, 0, wx.TOP|wx.BOTTOM|wx.LEFT, int5)
+        radioSizer.Add(labelfalse, 1, wx.TOP|wx.BOTTOM|wx.RIGHT, int5)
         # Add the elements to the slider sizer
         sizer.Add(labelTxtCtrl, (row,0), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT|wx.LEFT, intPPI(10))
         sizer.Add(radioSizer, (row, 1), (1,6), wx.ALIGN_CENTER_VERTICAL)
@@ -18797,6 +18955,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         choiceBox.script = script
         choiceBox.argIndex = argIndex
         choiceBox.Bind(wx.EVT_CHOICE, OnChoice)
+        if self.currentSliderWindow.customTheme:
+            choiceBox.SetBackgroundColour(self.currentSliderWindow.backTextCtrl)
+            choiceBox.SetForegroundColour(self.currentSliderWindow.foreTextCtrl)
         # Add the elements to the slider sizer
         sizer.Add(labelTxtCtrl, (row,0), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT|wx.LEFT, intPPI(10))
         sizer.Add(choiceBox, (row, 1), (1,6), wx.ALIGN_CENTER_VERTICAL)
@@ -18808,7 +18969,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         # Create window elements
         extList = [s.strip() for s in extList if not s.strip().startswith('*.*')]
         labelTxtCtrl = self.MakeArgNameStaticText(parent, argname, filterName, script, argIndex)
-        textCtrl = wx.TextCtrl(parent, wx.ID_ANY, value, style=wx.TE_PROCESS_ENTER)
+        textCtrl = wx.TextCtrl(parent, wx.ID_ANY, value, style=wx.TE_PROCESS_ENTER|wx.BORDER_SIMPLE)
+        if self.currentSliderWindow.customTheme:
+            textCtrl.SetBackgroundColour(self.currentSliderWindow.backTextCtrl)
+            textCtrl.SetForegroundColour(self.currentSliderWindow.foreTextCtrl)
         browseButton = wx.Button(parent, wx.ID_ANY, '...', size=(intPPI(20), -1))
         def OnTextChange(event):
             script.oldAutoSliderInfo = None
@@ -18868,8 +19032,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         sizer = script.sliderSizerNew
         # Create window elements
         labelTxtCtrl = self.MakeArgNameStaticText(parent, argname, filterName, script, argIndex)
-
-        textCtrl = wx.TextCtrl(parent, wx.ID_ANY, strValue, style=wx.TE_PROCESS_ENTER)
+        if self.currentSliderWindow.customTheme:
+            textCtrl = wx.TextCtrl(parent, wx.ID_ANY, strValue, style=wx.TE_PROCESS_ENTER|wx.BORDER_SIMPLE)
+            textCtrl.SetBackgroundColour(self.currentSliderWindow.backTextCtrl)
+            textCtrl.SetForegroundColour(self.currentSliderWindow.foreTextCtrl)
+        else:
+            textCtrl = wx.TextCtrl(parent, wx.ID_ANY, strValue, style=wx.TE_PROCESS_ENTER)
         def OnTextChange(event):
             self.SetNewAvsValue(textCtrl, textCtrl.GetValue(), refreshvideo=False)
             event.Skip()
@@ -18883,7 +19051,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         textCtrl.script = script
         textCtrl.argIndex = argIndex
 
-        sizer.Add(labelTxtCtrl, (row,0), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT|wx.LEFT, 10)
+        sizer.Add(labelTxtCtrl, (row,0), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT|wx.LEFT, intPPI(10))
         sizer.Add(textCtrl, (row,1), (1,6), wx.ALIGN_CENTER_VERTICAL|wx.EXPAND)
         separator.controls += [labelTxtCtrl, textCtrl]
 
@@ -19026,8 +19194,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if sizer is None:
             sizer = script.sliderSizer
         parent = script.sliderWindow
-        color1 = wx.SystemSettings.GetColour(wx.SYS_COLOUR_3DSHADOW)
-        color2 = wx.SystemSettings.GetColour(wx.SYS_COLOUR_3DHILIGHT)
         # Add a separator
         tempsizer = wx.BoxSizer(wx.VERTICAL)
         if row == 0: border = 0 if wx.VERSION < (2, 9) else intPPI(5)
@@ -20485,6 +20651,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                 startPageIndex=startPageIndex,
                                 invert_scroll=self.options['invertscrolling'])
         self.options['exitstatus'] = 1  # GPo 2020, set default
+        sliderwindowcustomtheme = self.options['sliderwindowcustomtheme']
         ID = dlg.ShowModal()
 
         # Set the data
@@ -20567,6 +20734,14 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         script.SliderFoldsBackup = {}
                         script.toggleTagSizer.Clear(deleteWindows=True)
                         script.sliderSizerNew.Clear(deleteWindows=True)
+                elif sliderwindowcustomtheme != self.options['sliderwindowcustomtheme']:
+                    for i in range(self.scriptNotebook.GetPageCount()):
+                        script = self.scriptNotebook.GetPage(i)
+                        if self.options['sliderwindowcustomtheme']:
+                            script.sliderWindow.SetThemeColors()
+                        else:
+                            script.sliderWindow.SetSystemColors()
+                    self.OnSliderUpdate(None)
         else:
             dlg.Destroy()
 

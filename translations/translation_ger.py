@@ -16,7 +16,7 @@
 
 # Übersetzt von Henrik . AvsP 2.0.1  Danke für die Hilfe, besonders LigH ,doxville,Brother John, Selur und Rippraff !
 
-version = "2.6.6.3"
+version = "2.6.6.6"
 
 messages = {
     "AviSynth script" : u"", # New in v2.3.0
@@ -162,6 +162,7 @@ messages = {
     "Translation updated" : u"", # New in v2.3.0
     "%s translation file updated.  No new messages to translate." : u"", # New in v2.3.0
     "%s language couldn't be loaded" : u"", # New in v2.3.0
+    "Default dark" : u"", # New in v2.6.6.6
     "Solarized light" : u"", # New in v2.5.1 r452
     "Solarized dark" : u"", # New in v2.5.1 r452
     "Zenburn" : u"", # New in v2.5.1 r452
@@ -315,6 +316,8 @@ messages = {
     "undocumented" : u"Undokumentiert",
     "Button show/hide applies to all tabs" : u"", # New in v2.6.6.3
     "Or press Ctrl when you click the button." : u"", # New in v2.6.6.3
+    "Custom colors can be set under 'Options->Font and colors->Advanced 2'\nNot visible slider windows needed refresh." : u"", # New in v2.6.6.6
+    "Enable slider window custom color theme" : u"", # New in v2.6.6.6
     "Determines which filters will initially have hidden arguments in the slider window" : u"Stellt zuerst fest, welche Filter versteckt Argumente im Schiebereglerfenster haben",
     "Fold all" : u"Alle eingeklappen",
     "Fold non-numbers" : u"Nichtnumerische eingeklappen",
@@ -322,7 +325,7 @@ messages = {
     "Fold or restore last status" : u"Einklappen oder letzten Status herstellen",
     "Fold startup setting" : u"Filterparameter Ein-/Ausklappen",
     "Filter exclusion list:" : u"Filterausschlußliste",
-    "Specify filters never to build automatic sliders for" : u"Spezifiziert Filter, für die kein automatischer Schieberegler erstellt wird.",
+    "Specify filters never to build automatic sliders for. Use a space as separator.\nYou can toggle it in the slider context menu." : u"", # New in v2.6.6.6
     "Save/Load" : u"", # New in v2.2.1
     "Automatically save the session on shutdown and load on next startup" : u"Automatisches speichern bei Sessionende und laden beim nächsten Start",
     "Save session for next launch" : u"Speichere Session für den nächsten Start",
@@ -403,16 +406,16 @@ messages = {
     "Beta: some elements may be not scaled" : u"", # New in v2.6.6.0
     "DPI scaling overall only manually*" : u"", # New in v2.6.6.0
     "Do not do overall DPI scaling automatically" : u"", # New in v2.6.6.0
-    "Adjust dpi scaling overall (10 % steps). For 150 % DPI set value 5" : u"", # New in v2.6.6.0
-    "DPI scaling overall:*" : u"", # New in v2.6.6.0
+    "DPI scaling overall manually:*" : u"", # New in v2.6.6.6
+    "Manually adjust dpi scaling overall (10 % steps). For 150 % DPI set value 5" : u"", # New in v2.6.6.6
     "Additional adjust the script window tabs (10 % steps)" : u"", # New in v2.6.6.0
     "DPI scaling main tabs:*" : u"", # New in v2.6.6.0
     "Additional adjust the video controls (10 % steps)" : u"", # New in v2.6.6.0
     "DPI scaling video controls:*" : u"", # New in v2.6.6.0
     "Additional adjust the statusbar (10 % steps)" : u"", # New in v2.6.6.0
     "DPI scaling statusbar:*" : u"", # New in v2.6.6.0
-    "Disable AvsPmod DPI Aware. Program is zoomed by the system and set values." : u"", # New in v2.6.6.0
     "Disable DPI awareness*" : u"", # New in v2.6.6.0
+    "Only disable it if you using 100% system zoom. Program is zoomed by the system and set DPI values." : u"", # New in v2.6.6.6
     "Add tab to group" : u"", # New in v2.5.0
     "Extend selection to line down position" : u"", # New in v2.2.1
     "Scroll down" : u"", # New in v2.2.1
@@ -865,7 +868,7 @@ messages = {
     "Avisynth help" : u"Avisynth Hilfe",
     "Open the avisynth help html" : u"Öffne Avisynth-HTML-Hilfe",
     "Open the Preview filter examples" : u"", # New in v2.6.6.0
-    "Preview filter example" : u"Vorschau Filter Beispiel", # New in v2.6.6.0
+    "Preview filter example" : u"Vorschau Filter Beispiel",
     "Open Avisynth plugins folder" : u"", # New in v2.2.1
     "Open the avisynth plugins folder, or the last folder from which a plugin was loaded" : u"", # New in v2.3.1
     "DPI Info" : u"", # New in v2.6.6.0
@@ -1017,6 +1020,10 @@ messages = {
     "Highlight the line that the caret is currently in" : u"Zeile mit Einschaltungszeichen hervorheben",
     "Fold margin:" : u"", # New in v2.2.1
     "Scrap window" : u"", # New in v2.2.1
+    "Advanced 2" : u"", # New in v2.6.6.6
+    "Slider window" : u"", # New in v2.6.6.6
+    "Slider window text field" : u"", # New in v2.6.6.6
+    "Slider window default value" : u"", # New in v2.6.6.6
     "Information" : u"Information",
     "Settings have been read from backup file\n" : u"", # New in v2.5.1.18
     "File extension shouldn't contain dots!" : u"", # New in v2.5.1 r452
@@ -1063,7 +1070,6 @@ messages = {
     "Cannot switch tabs while crop editor is open!" : u"Kann keine Tabs schalten,weil der Cropeditor noch geöffnet ist",
     "Cannot switch tabs while trim editor is open!" : u"Tabs können nicht geschaltet werden,solange der Trim editor geöffnet ist.",
     "Invalid crop values detected.  Continue?" : u"Unzulässige Crop-Werte ermittelt. Weitermachen?",
-    "You must create at least one frame selection first!" : u"Zumindestens eine Bildauswahl muß gemacht werden.",
     "Select autocomplete keywords" : u"", # New in v2.2.1
     "select all" : u"", # New in v2.2.1
     "select none" : u"", # New in v2.2.1
@@ -1147,12 +1153,13 @@ messages = {
     "Invalid slider text: bad modulo label" : u"Ungültiger Schiebereglertext: Fehl modulo Kennzeichnung",
     "Invalid slider text: slider label already exists" : u"Ungültiger Schiebereglertext: Bezeichnung des Schiebereglers existiert schon",
     "Invalid slider text: invalid number" : u"Ungültiger Schiebereglertext: Ungültige Nummer",
-    "General settings..." : u"Allgemeine Einstellungen...",
-    "Clear all auto fold status" : u"Ein-Ausklapp Status zurücksetzen",
-    "Set same width for all tabs" : u"Gleiche Breite für alle Tabs", # New in v2.6.6.3
-    "Update sliders" : u"Schieberegler aktualisieren",
     "Reset to initial value: %(value_formatted)s" : u"Zurückstellen zum Ausgangswert %(value_formatted)s",
     "Reset to initial value: %(value2_formatted)s" : u"", # New in v2.2.1
+    "Toggle exclusions filters" : u"Ein/Aus Ausschluss Filterliste", # New in v2.6.6.6
+    "General settings..." : u"Allgemeine Einstellungen...",
+    "Clear all auto fold status" : u"Ein-Ausklapp Status zurücksetzen",
+    "Set same width for all tabs" : u"Gleiche Breite für alle Tabs",
+    "Update sliders" : u"Schieberegler neu initialisieren",
     "Reset to default value: %(value_formatted)s" : u"", # New in v1.4.0
     "Invalid hexadecimal color!" : u"Ungültiger hexadecimal Farbwert",
     "Must specify a max value!" : u"Ein Maximalwert muß spezifiziert werden!",
@@ -1286,11 +1293,11 @@ messages = {
     "Automatically compute bitrate value on startup" : u"Den Bitraten Wert automatisch berechnen beim Start",
     "Automatically compute pixel aspect ratio from d2v on startup" : u"Pixel-Längenverhältnis von d2v beim Start automatisch berechnen",
     "Append batch commands to the avs script as comments" : u"Batch-Kommandos zum avs Index als Anmerkungen anfügen",
-    "Add output file to new tab" : u"Neuen Tab mit Ausgabedatei erstellen", # New in v2.6.3.5
+    "Add output file to new tab" : u"Neuen Tab mit Ausgabedatei erstellen",
     "Encoder priority:" : u"Encoderpriorität:",
     "Path to %(name)s:" : u"Pfad zu %(name)s:",
     "Extra arguments:" : u"Extra Argumente:",
-    "Presets file not found:\n" : u"Vorlage Datei nicht gefunden:\n", # New in v2.6.6.3
+    "Presets file not found:\n" : u"Vorlage Datei nicht gefunden:\n",
     "Bitrate Calculator" : u"Bitrate Calculator ",
     "Output info" : u"Ausgabeinfo",
     "Total size:" : u"Größe total",
