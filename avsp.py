@@ -66,11 +66,12 @@ import subprocess, shlex
 import socket
 
 # thread module was deprecated in python 3.
-try:
-    import thread
-except:
-    pass
+#try:
+    #import thread
+#except:
+    #pass
 import threading
+from threading import Thread
 import time
 
 try:
@@ -135,9 +136,9 @@ import wx
 from wx import stc
 import wx.lib.buttons as wxButtons
 import wx.lib.colourselect as colourselect
-#import colourselect_dpi as colourselect
 import wxp
 import dpi
+#import Queue as queue
 
 from icons import AvsP_icon, next_icon, play_icon, pause_icon, external_icon, \
                   skip_icon, spin_icon, ok_icon, smile_icon, question_icon, \
@@ -1122,7 +1123,10 @@ class AvsStyledTextCtrl(stc.StyledTextCtrl):
     def GetFilterMatchedArgs(self, startwordpos, calltip=None):
         if calltip is None:
             filterName = self.GetTextRange(startwordpos, self.WordEndPosition(startwordpos, 1))
-            calltip = self.avsfilterdict[filterName.lower()][0].split('\n\n')[0]
+            if filterName:
+                calltip = self.avsfilterdict[filterName.lower()][0].split('\n\n')[0]
+            else:
+                return [] # GPo 2020
         # Get both argument lists
         filterCalltipArgInfo = self.GetFilterCalltipArgInfo(calltip=calltip)
         filterScriptArgInfo = self.GetFilterScriptArgInfo(startwordpos, calltip=calltip)
@@ -4485,7 +4489,7 @@ class SliderPlus(wx.Panel):
         colorDarkShadow = wx.SystemSettings.GetColour(wx.SYS_COLOUR_3DDKSHADOW)
         colorWindow = colorHighlight2#wx.SystemSettings.GetColour(wx.SYS_COLOUR_WINDOW)
         colorHandle = wx.SystemSettings.GetColour(wx.SYS_COLOUR_BTNFACE)
-        r,g,b = colorHandle.Red(), colorHandle.Green(), colorHandle.Blue()
+        #r,g,b = colorHandle.Red(), colorHandle.Green(), colorHandle.Blue()
         colorHandle2 = wx.SystemSettings.GetColour(wx.SYS_COLOUR_BTNHIGHLIGHT)
         colorGrayText = wx.SystemSettings.GetColour(wx.SYS_COLOUR_GRAYTEXT)
         # GPo 2020
@@ -4499,16 +4503,20 @@ class SliderPlus(wx.Panel):
                 self.brushWindowBackground = wx.Brush(self.colorBackground)
         else:
             self.brushWindowBackground = wx.Brush(self.colorBackground)
+
         # test
         """
-        colorHighlight = (130,130,130)
-        colorHighlight2 = (100,100,100)
-        colorShadow = (100,100,100)
-        colorDarkShadow = (123,123,123)
-        colorWindow = (43,43,43)
-        colorHandle = (100,100,100)
+        colorHighlight = (100,100,100)
+        colorHighlight2 = (140,140,140)
+        colorShadow = (130,130,130)
+        colorDarkShadow = (100,100,100)
+        colorWindow = (63,63,63)
+        colorHandle = (180,180,40)
+        colorHandle2 = (200,200,80)
         ###
         """
+        colorBookmarks = (0,0,0)
+
         self.penBackground = wx.Pen(colorWindow)
         self.brushBackground = wx.Brush(colorWindow)
         self.penShadow = wx.Pen(colorShadow)
@@ -4521,6 +4529,8 @@ class SliderPlus(wx.Panel):
         self.brushHandle2 = wx.Brush(colorHandle2)
         self.penGrayText = wx.Pen(colorGrayText)
         self.brushGrayText = wx.Brush(colorGrayText)
+        self.penBookmarks = wx.Pen(colorBookmarks)
+        self.brushBookmarks = wx.Brush(colorBookmarks)
 
     def _OnLeftDown(self, event):
         def StopPlaying():  # GPo 2020
@@ -4657,7 +4667,8 @@ class SliderPlus(wx.Panel):
         # draw the bookmark triangles
         dc.SetPen(self.penWindowBackground)
         if boolEnabled:
-            dc.SetBrush(wx.BLACK_BRUSH)
+            #dc.SetBrush(wx.BLACK_BRUSH)
+            dc.SetBrush(self.brushBookmarks)
         else:
             dc.SetBrush(self.brushGrayText)
         wT = self.wT
@@ -4674,7 +4685,8 @@ class SliderPlus(wx.Panel):
             if value in self.titleDict:
                 dc.SetBrush(wx.BLUE_BRUSH)
             else:
-                dc.SetBrush(wx.BLACK_BRUSH)
+                #dc.SetBrush(wx.BLACK_BRUSH)
+                dc.SetBrush(self.brushBookmarks)
             p1 = wx.Point(pixelpos, h-wT/2)
             p2 = wx.Point(pixelpos-wT/4, h)
             p3 = wx.Point(pixelpos+wT/4, h)
@@ -4682,7 +4694,8 @@ class SliderPlus(wx.Panel):
             lastpixelpos = pixelpos
 
         # draw the selection marks
-        dc.SetBrush(wx.BLACK_BRUSH)
+        #dc.SetBrush(wx.BLACK_BRUSH)
+        dc.SetBrush(self.brushBookmarks)
         for value, bmtype in self.selectionsDict.items():
             if (value > self.maxValue) or (value < self.minValue):
                 continue
@@ -4692,14 +4705,16 @@ class SliderPlus(wx.Panel):
                 p2 = wx.Point(pixelpos-wT/2, h)
                 p3 = wx.Point(pixelpos, h)
                 dc.DrawPolygon((p1, p2, p3))
-                dc.SetPen(wx.BLACK_PEN)
+                #dc.SetPen(wx.BLACK_PEN)
+                dc.SetPen(self.penBookmarks)
                 dc.DrawLine(pixelpos, h-1, pixelpos+wT/4, h-1)
                 dc.SetPen(self.penWindowBackground)
             elif bmtype == 2:
                 p2 = wx.Point(pixelpos, h)
                 p3 = wx.Point(pixelpos+wT/2, h)
                 dc.DrawPolygon((p1, p2, p3))
-                dc.SetPen(wx.BLACK_PEN)
+                #dc.SetPen(wx.BLACK_PEN)
+                dc.SetPen(self.penBookmarks)
                 dc.DrawLine(pixelpos, h-1, pixelpos-wT/4, h-1)
                 dc.SetPen(self.penWindowBackground)
 
@@ -5142,6 +5157,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.x86_64 = sys.maxsize > 2**32
         self.calltipstemporal = False  # GPo, disable/enable calltip
         self.playing_video = False     # GPo, moved, HidePreviewWindow calls self.StopPlayback on createWindowElements
+        self.PlayThread = None
         # GPo, init WndProc
         self.customHandler = 0
         if os.name == 'nt':
@@ -6047,7 +6063,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 'linenumber': 'face:{mono},fore:#555555,back:#C0C0C0',
                 'foldmargin': 'fore:#555555,back:#%02X%02X%02X' % rgb,
                 'scrapwindow': 'face:{mono},size:10,fore:#0000AA,back:#F5EF90',
-                'sliderwindow': 'fore:#DDD5D0,back:#2B2B2B',
+                'sliderwindow': 'fore:#E4DEDA,back:#2B2B2B',
                 'sliderwindowtextctrl': 'fore:#EBEBEB,back:#353535',
                 'sliderwindowdefvalue': 'fore:#FFFD37,bold',
             },
@@ -6085,7 +6101,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 'linenumber': 'face:{mono},size:10,fore:#9fafaf,back:#262626',
                 'foldmargin': 'fore:#93b3a3,back:#333333',
                 'scrapwindow': 'face:{mono},size:10,fore:#dcdccc,back:#434443',
-                'sliderwindow': 'fore:#ddd5d0,back:#2b2b2b',
+                'sliderwindow': 'fore:#E4DEDA,back:#2b2b2b',
                 'sliderwindowtextctrl': 'fore:#EBEBEB,back:#353535',
                 'sliderwindowdefvalue': 'fore:#FFFD37,bold',
             },
@@ -6124,7 +6140,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 'linenumber': 'face:{mono},fore:{solarized_base1},back:{solarized_base2}',
                 'foldmargin': 'fore:{solarized_base1},back:{solarized_base2}',
                 'scrapwindow': 'face:{mono},size:10,fore:{solarized_base01},back:{solarized_base2}',
-                'sliderwindow': 'fore:#DDD5D0,back:#2B2B2B',
+                'sliderwindow': 'fore:#E4DEDA,back:#2B2B2B',
                 'sliderwindowtextctrl': 'fore:#EBEBEB,back:#353535',
                 'sliderwindowdefvalue': 'fore:#FFFD37,bold',
             },
@@ -6162,46 +6178,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 'linenumber': 'face:{mono},fore:{solarized_base01},back:{solarized_base02}',
                 'foldmargin': 'fore:{solarized_base01},back:{solarized_base02}',
                 'scrapwindow': 'face:{mono},size:10,fore:{solarized_base1},back:{solarized_base02}',
-                'sliderwindow': 'fore:#DDD5D0,back:#2B2B2B',
-                'sliderwindowtextctrl': 'fore:#EBEBEB,back:#353535',
-                'sliderwindowdefvalue': 'fore:#FFFD37,bold',
-            },
-            # Based on Zenburn <http://slinky.imukuppi.org/zenburnpage/>
-            _('Zenburn'): {
-                'monospaced': 'face:{mono},size:10',
-                'default': 'face:{sans},size:10,fore:{zenburn_normal_fore},back:{zenburn_normal_back}',
-                'comment': 'face:{serif},size:9,fore:{zenburn_comment},back:{zenburn_normal_back},italic',
-                'blockcomment': 'face:{serif},size:9,fore:{zenburn_comment},back:{zenburn_normal_back},italic',
-                'endcomment': 'face:{sans},size:10,fore:{zenburn_comment},back:{zenburn_normal_back}',
-                'number': 'face:{mono},size:10,fore:{zenburn_number},back:{zenburn_normal_back}',
-                'badnumber': 'face:{mono},size:10,fore:{zenburn_bad},back:{zenburn_normal_back}',
-                'string': 'face:{mono},size:10,fore:{zenburn_string},back:{zenburn_normal_back}',
-                'stringtriple': 'face:{mono},size:10,fore:{zenburn_string},back:{zenburn_normal_back}',
-                'stringeol': 'face:{mono},size:10,fore:{zenburn_stringeol_fore},back:{zenburn_stringeol_back}',
-                'operator': 'face:{sans},size:10,fore:{zenburn_operator},back:{zenburn_normal_back},bold',
-                'assignment': 'face:{sans},size:10,fore:{zenburn_normal_fore},back:{zenburn_normal_back},bold',
-                'clipproperty': 'face:{sans},size:10,fore:{zenburn_clipproperty},back:{zenburn_normal_back},bold',
-                'internalfunction': 'face:{sans},size:10,fore:{zenburn_internalfunction},back:{zenburn_normal_back},bold',
-                'internalfilter': 'face:{sans},size:10,fore:{zenburn_internalfilter},back:{zenburn_normal_back},bold',
-                'externalfilter': 'face:{sans},size:10,fore:{zenburn_externalfilter},back:{zenburn_normal_back},bold',
-                'userdefined': 'face:{sans},size:10,fore:{zenburn_userdefined},back:{zenburn_normal_back},bold',
-                'unknownfunction': 'face:{sans},size:10,fore:{zenburn_bad},back:{zenburn_normal_back},bold',
-                'parameter': 'face:{sans},size:10,fore:{zenburn_low_fore},back:{zenburn_normal_back}',
-                'datatype': 'face:{sans},size:10,fore:{zenburn_datatype},back:{zenburn_normal_back}',
-                'calltip': 'fore:{zenburn_low_fore},back:{zenburn_currentline_back}',
-                'calltiphighlight': 'fore:{zenburn_normal_fore}',
-                'keyword': 'face:{sans},size:10,fore:{zenburn_keyword},back:{zenburn_normal_back},bold',
-                'miscword': 'face:{sans},size:10,fore:{zenburn_keyword},back:{zenburn_normal_back},bold',
-                'userslider': 'face:{sans},size:10,fore:{zenburn_define},back:{zenburn_normal_back}',
-                'cursor': 'fore:{zenburn_cursor_back}',
-                'bracelight': 'face:{sans},size:10,fore:{zenburn_fold_fore},back:{zenburn_normal_back},bold',
-                'badbrace': 'face:{sans},size:10,fore:{zenburn_bad},back:{zenburn_normal_back},bold',
-                'highlight': 'fore:{zenburn_normal_fore},back:{zenburn_select_back}',
-                'highlightline': 'back:{zenburn_currentline_back}',
-                'linenumber': 'face:{mono},fore:{zenburn_linenumber_fore},back:{zenburn_linenumber_back}',
-                'foldmargin': 'fore:{zenburn_fold_fore},back:{zenburn_fold_back}',
-                'scrapwindow': 'face:{mono},size:10,fore:{zenburn_normal_fore},back:{zenburn_currentline_back}',
-                'sliderwindow': 'fore:#DDD5D0,back:#2B2B2B',
+                'sliderwindow': 'fore:#E4DEDA,back:#2B2B2B',
                 'sliderwindowtextctrl': 'fore:#EBEBEB,back:#353535',
                 'sliderwindowdefvalue': 'fore:#FFFD37,bold',
             },
@@ -6361,6 +6338,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'mouseauxdown': 'tab change',            # GPo 2020
             'playfastfunc': True,                    # GPo 2020
             'playloop': False,                       # GPo 2020
+            'playbackthread': True,                  # GPo 2020, beta if true use separate thread for playback
             'bookmarktotrim': False,                 # GPo 2020
             'doublestarasstring': True,              # GPo 2020
             'bookmarkshilightcolor': wx.Colour(233,122,122),   # GPo
@@ -7284,6 +7262,15 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     def createWindowElements(self):
         # Create the program's status bar
         statusBar = self.CreateStatusBar(2)
+        # GPo new test
+        """
+        statusBar = wx.StatusBar(self)
+        statusBar.SetFieldsCount(2)
+        self.SetStatusBar(statusBar)
+        statusBar.SetForegroundColour(wx.Colour(240,240,240))
+        statusBar.SetBackgroundColour(wx.Colour(43,43,43))
+        staticText = wx.StaticText(statusBar,wx.ID_ANY, label='', pos=wx.DefaultPosition, size=wx.DefaultSize)
+        """
         if self.ppi_factor > 1 or self.options['ppiscalingstatusbar'] > 0:
             i = self.options['ppiscalingstatusbar']
             if i > 0:
@@ -7354,6 +7341,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 event.Skip()
             self.videoDialog.Bind(wx.EVT_SIZING, OnVideoDialogResizeEnd)
             parent = self.videoDialog
+
         self.videoPane = wx.Panel(parent, wx.ID_ANY)
         self.videoSplitter = wx.SplitterWindow(self.videoPane, wx.ID_ANY, style=wx.SP_3DSASH|wx.SP_NOBORDER|wx.SP_LIVE_UPDATE)
 
@@ -7958,6 +7946,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     (''),
                     (_('Play loop'), '', self.OnMenuVideoPlayLoop, _('Play loop between trim editor first selection start and end frame'), wx.ITEM_CHECK, self.options['playloop']),
                     (_('Use faster playback routine'), '', self.OnMenuVideoPlayFunc, _('0 % to 38 % faster playback, depending on CPU load'), wx.ITEM_CHECK, self.options['playfastfunc']),
+                    (_('Use separate thread'), '', self.OnMenuVideoSeparateThread, _('Beta, use a separate thread for playback'), wx.ITEM_CHECK, self.options['playbackthread']),
                     ),
                 ),
                 (''),
@@ -11453,6 +11442,16 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         #self.UpdateVideoMenuItem(_('Play video'), _('Use faster playback routine'), self.play_fastFunc)
         self.UpdateVideoMenuItems()
 
+    def OnMenuVideoSeparateThread(self, event):
+        if self.playing_video:
+            self.PlayPauseVideo(refreshFrame=False)
+            self.playing_video = ''
+        self.options['playbackthread'] = event.IsChecked()
+        self.UpdateVideoMenuItem(_('Play video'), _('Use separate thread'), event.IsChecked())
+        #self.UpdateVideoMenuItems()
+        if self.playing_video == '':
+            self.PlayPauseVideo()
+
     def OnMenuSaveViewPos(self, event):
         self.saveViewPos = not self.saveViewPos
         # GPo, not needed, handled in MenuBar and show context menu
@@ -13937,6 +13936,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             item = win.contextMenu.FindItemById(id)
             if item:
                 item.Check(self.options['autosliderupdatedirectly'])
+        id = win.contextMenu.FindItem(_('Enable/disable filter'))
+        if id != wx.NOT_FOUND:
+            item = win.contextMenu.FindItemById(id)
+            if item:
+                sp = win.GetLabel().split(' - P')
+                item.Enable(len(sp)==2)
+
         pos = win.ScreenToClient(event.GetPosition())
         try:
             win.PopupMenu(win.contextMenu, pos)
@@ -18334,6 +18340,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         script.sliderSizerNew.Clear(deleteWindows=True)
         script.sliderToggleLabels = []
         menuInfoGeneral = [
+            #(_('Enable/disable filter'), '', self.OnSliderFilterOnOff, ''),
             (_('Edit filter database'), '', self.OnSliderLabelEditDatabase, ''),
             (''),
             (_('Toggle all folds'), '', self.OnSliderLabelToggleAllFolds, ''),
@@ -18833,6 +18840,17 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             radioButtonFalse.SetValue(True)
         def OnRadioButton(event):
             button = event.GetEventObject()
+            # Check if label clicked
+            if button == labeltrue:
+                button = radioButtonTrue
+                if button.GetValue() == True:
+                    return
+                button.SetValue(True)
+            elif button == labelfalse:
+                button = radioButtonFalse
+                if button.GetValue() == True:
+                    return
+                button.SetValue(True)
             if button == radioButtonTrue:
                 newVal = 'true'
             else:
@@ -18847,7 +18865,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             ctrl.Bind(wx.EVT_RADIOBUTTON, OnRadioButton)
         # Make labels, radio doesn't change foregroundcolor
         labeltrue = wx.StaticText(parent, wx.ID_ANY, 'true')
+        labeltrue.Bind(wx.EVT_LEFT_UP, OnRadioButton)
         labelfalse = wx.StaticText(parent, wx.ID_ANY, 'false')
+        labelfalse.Bind(wx.EVT_LEFT_UP, OnRadioButton)
         if defaultValue is not None:
             if defaultValue.lower() == 'true':
                 font = labeltrue.GetFont()
@@ -19078,10 +19098,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if self.playing_video:     # GPo 2020
             self.PlayPauseVideo(refreshFrame=True)
 
-        script = control.script
         argText, posA, posB = self.GetArgTextAndPos(control)
         if argText is None:
             return
+        script = control.script
         # Create the new arg text, GPo keep env gets Error with preview filter
         script.SetTargetStart(posA)
         script.SetTargetEnd(posB)
@@ -19164,15 +19184,82 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     def OnSliderUpdate(self, event):
         wx.CallAfter(self.OnMenuBlockCommendAsString_UpdateSliders)
 
-    # Check seperator boxes
-    """
+    def EnableDisableFilter(self, name, script):
+        # only for filters in the priewFilter
+        s = name.split('- P', 1)
+        if len(s) != 2:
+            return
+        prevIdx = s[1][:1]
+        if not prevIdx.isdigit():
+            return
+        prevIdx = int(prevIdx)
+        splitFilterName = name.split('(', 1)
+        prefix = ''
+        if len(splitFilterName) == 2:
+            filterName = splitFilterName[0].strip()
+            iFilter = splitFilterName[1].split(')')[0]
+            if splitFilterName[1].find('>') > -1:
+                prefix = '#>'
+            try:
+                iFilter = int(iFilter)
+            except ValueError:
+                return
+        else:
+            splitFilterName = name.split(' - P', 1)
+            if len(splitFilterName) == 2:
+                filterName = splitFilterName[0]
+                if splitFilterName[1].find('>') > -1:
+                    prefix = '#>'
+            else:
+                return
+            iFilter = 1
+        # find the pviewFilter index
+        startpos = 0
+        for i in range(prevIdx):
+            startpos = script.FindText(startpos, script.GetTextLength(), '/**avsp_filter', stc.STC_FIND_WHOLEWORD)
+            if startpos == -1:
+                return
+            startpos += 1
+        # now find the filter with the correct index (iFilter), skip disabled filters
+        i = 0
+        while i < iFilter:
+            startpos = script.FindText(startpos, script.GetTextLength(), filterName, stc.STC_FIND_WHOLEWORD)
+            if startpos == -1:
+                return
+            i += 1
+            if not script.GetStyleAt(startpos) in script.keywordStyleList: # skip disabled filters with the same name ( dec i )
+                s = script.GetTextRange(startpos-3, startpos)
+                if s[1:3] != '#>' and s != '#>.': # do not skip if filter in sliders (#> = disabled) and check '.' joined filters
+                    i -= 1
+            startpos += 1
+
+        # enable/disable the filter
+        if prefix:
+            # hack for 'filter().filter()'
+            s = script.GetTextRange(startpos-4, startpos-1)
+            if s == '#>.':
+                startpos -= 1
+            script.SetTargetStart(startpos-3)
+            script.SetTargetEnd(startpos-1)
+            script.ReplaceTarget('')
+        else:
+            if script.GetTextRange(startpos-2, startpos-1) == '.':
+                startpos -= 1
+            script.InsertText(startpos-1, '#>')
+        return True
+
     def OnSliderFilterOnOff(self, event):
+        # only for filters in the priewFilter
         script = self.currentScript
         ctrl = self.lastContextMenuWin
+        fold = ctrl.GetLabel()[:2]
         name = ctrl.GetLabel().lstrip(' -+')
-        self.EnableDisableFilter(name, script)
-        wx.CallAfter(self.SliderShowVideoFrame, True, True, script)
-    """
+        if self.EnableDisableFilter(name, script):
+            if name[len(name)-1:len(name)] == '>':
+                ctrl.SetLabel(fold+name.rstrip('>'))
+            else: ctrl.SetLabel(fold+name+'>')
+            wx.CallAfter(self.SliderShowVideoFrame, True, True, script)
+
     def OnSliderResetAllFoldOrders(self, event):
         self.SlidersClearFolds()
         self.OnSliderUpdate(None)
@@ -19320,9 +19407,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     def OnSliderLabelSettings(self, event):
         self.ShowOptions(startPageIndex=4)
 
-    def OnSliderLabelModifySliderProperties(self, event):
-        ctrl = self.lastContextMenuWin
-
     def GetAutoSliderInfo(self, script, scripttxt=None):
         script.OnStyleNeeded(None, forceAll=True)
         autoSliderInfo = []
@@ -19339,10 +19423,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             word = script.GetTextRange(posA, posB)
             #~ if word.lower() in script.keywords:
             # GPo new
-            if prevFilterIdx < 6:
+            if prevFilterIdx < 5:
                 if prevFilter and script.GetLine(script.LineFromPosition(posA)).lstrip().startswith('*/'):
                     prevFilter = ''
-                elif word == 'avsp_filter' and script.GetLine(script.LineFromPosition(posA)).startswith('/**avsp_filter'):
+                elif word[:11] == 'avsp_filter' and script.GetLine(script.LineFromPosition(posA)).startswith('/**avsp_filter'):
                     prevFilterIdx += 1
                     prevFilter = ' - P'+ str(prevFilterIdx)
 
@@ -19357,10 +19441,120 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         nameDict[wordlower] += 1
                         filterName = '%s (%i)' % (word, nameDict[wordlower])
                     if filterInfo:
-                        #autoSliderInfo.append((filterName,filterInfo))
-                        autoSliderInfo.append((filterName,filterInfo,prevFilter)) # GPo new
+                        autoSliderInfo.append((filterName,filterInfo,prevFilter))
             posA = posB+1
         script.autoSliderInfo = autoSliderInfo
+
+    """
+    def GetAutoSliderInfo(self, script, scripttxt=None):
+        script.OnStyleNeeded(None, forceAll=True)
+        autoSliderInfo = []
+        if script.AVI.IsErrorClip() or not self.options['autoslideron']:
+            script.autoSliderInfo = []
+            return
+        nameDict = {}
+        posA = posB = 0
+        lastpos = script.GetTextLength()
+        prevFilter = ''
+        prevFilterIdx = 0
+        func = False
+        while posB < lastpos:
+            posB = script.WordEndPosition(posA, 1)
+            word = script.GetTextRange(posA, posB)
+            #~ if word.lower() in script.keywords:
+            # GPo new
+            if prevFilterIdx < 5:
+                if prevFilter:
+                    # end of preview filter
+                    if script.GetLine(script.LineFromPosition(posA)).lstrip().startswith('*/'):
+                        prevFilter = ''
+                    # add a disabled preview filter to sliders
+                    elif script.GetTextRange(posA, posA+2) == '#>':
+                        if script.GetTextRange(posA, posA+3) == '#>.':
+                            posA += 3
+                        else:
+                            posA += 2
+                        posB = script.WordEndPosition(posA, 1)
+                        word = script.GetTextRange(posA, posB)
+                        func = True
+
+                elif word[:11] == 'avsp_filter' and script.GetLine(script.LineFromPosition(posA)).startswith('/**avsp_filter'):
+                    prevFilterIdx += 1
+                    prevFilter = ' - P'+ str(prevFilterIdx)
+
+            if script.GetStyleAt(posA) in script.keywordStyleList or func:
+                preFilter = prevFilter if not func else ' - P'+ str(prevFilterIdx) + '>'
+                func = False
+                filterInfo = self.GetFilterArgMatchedInfo(script, posA)
+                if filterInfo is not None:
+                    wordlower = word.lower()
+                    if not wordlower in nameDict:
+                        nameDict[wordlower] = 1
+                        filterName = word
+                    else:
+                        nameDict[wordlower] += 1
+                        filterName = '%s (%i)' % (word, nameDict[wordlower])
+                    if filterInfo:
+                        autoSliderInfo.append((filterName,filterInfo,preFilter)) # GPo new
+            posA = posB+1
+            func = False
+        script.autoSliderInfo = autoSliderInfo
+    """
+    """
+    def GetAutoSliderInfo(self, script, scripttxt=None):
+        script.OnStyleNeeded(None, forceAll=True)
+        autoSliderInfo = []
+        if script.AVI.IsErrorClip() or not self.options['autoslideron']:
+            script.autoSliderInfo = []
+            return
+        nameDict = {}
+        posA = posB = 0
+        lastpos = script.GetTextLength()
+        prevFilter = ''
+        prevFilterIdx = 0
+        while posB < lastpos:
+            func = False
+            posB = script.WordEndPosition(posA, 1)
+            word = script.GetTextRange(posA, posB)
+            #~ if word.lower() in script.keywords:
+            # GPo new
+            if prevFilterIdx < 5:
+                if prevFilter:
+                    # end of preview filter
+                    if script.GetLine(script.LineFromPosition(posA)).lstrip().startswith('*/'):
+                        prevFilter = ''
+                    # add a disabled preview filter to sliders
+                    elif posB < lastpos -3:
+                        ch = script.GetTextRange(posA, posA+3)
+                        if ch == '#>.':
+                            posA += 3
+                            func = True
+                        elif ch[:2] == '#>':
+                            posA += 2
+                            func = True
+                        if func:
+                            posB = script.WordEndPosition(posA, 1)
+                            word = script.GetTextRange(posA, posB)
+                elif word[:11] == 'avsp_filter' and script.GetLine(script.LineFromPosition(posA)).startswith('/**avsp_filter'):
+                    prevFilterIdx += 1
+                    prevFilter = ' - P'+ str(prevFilterIdx)
+
+            if script.GetStyleAt(posA) in script.keywordStyleList or func:
+                preFilter = prevFilter if not func else ' - P'+ str(prevFilterIdx) + '>'
+                filterInfo = self.GetFilterArgMatchedInfo(script, posA)
+                if filterInfo is not None:
+                    wordlower = word.lower()
+                    if not wordlower in nameDict:
+                        nameDict[wordlower] = 1
+                        filterName = word
+                    else:
+                        nameDict[wordlower] += 1
+                        filterName = '%s (%i)' % (word, nameDict[wordlower])
+                    if filterInfo:
+                        autoSliderInfo.append((filterName,filterInfo,preFilter)) # GPo new
+            posA = posB+1
+        script.autoSliderInfo = autoSliderInfo
+    """
 
     def GetFilterArgMatchedInfo(self, script, startwordpos):
         filterMatchedArgs = script.GetFilterMatchedArgs(startwordpos)
@@ -19520,7 +19714,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         wA, hA = self.videoWindow.GetSize()
         #wc, hc = self.videoWindow.GetClientSize()
         w, h = wA - 2 * self.xo, hA - 2 * self.yo
-        sbarH = self.videoWindow.HasScrollbar(wx.HORIZONTAL)
+        #sbarH = self.videoWindow.HasScrollbar(wx.HORIZONTAL)
 
         if not self.separatevideowindow:
             if self.zoomwindow and not self.previewWindowVisible:
@@ -19922,7 +20116,148 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     labelCtrl.SetForegroundColour(wx.NullColour)
             labelCtrl.Refresh()
 
+    # GPo, with a real thread
+    def PlayPauseVideo2(self, debug_stats=False, refreshFrame=True):
+        """Play/pause the preview clip"""
+        if self.playing_video:
+            self.playing_video = False  # set to false bevor self.ShowVideoFrameFast
+            # self.PlayThread.join() not working properly and lock 'Stop' aparently not needed
+            if self.PlayThread:
+                self.PlayThread.Stop = True
+            time.sleep(0.1)
+            self.PlayThread = None
+            self.zoom_antialias = self.options['zoom_antialias']
+            if refreshFrame:
+                self.ShowVideoFrameFast(self.currentframenum)  # GPo 2020, leave it call fast, fast checks errors
+                self.ResetZoomAntialias()
+            self.play_button.SetBitmapLabel(self.bmpPlay)
+            self.play_button.Refresh()
+            if self.separatevideowindow:
+                self.play_button2.SetBitmapLabel(self.bmpPlay)
+                self.play_button2.Refresh()
+        elif self.ShowVideoFrame(focus=False, forceLayout=True, forceCursor=self.ScriptChanged(self.currentScript)) \
+                and not self.currentScript.AVI.IsErrorClip():
+            script = self.currentScript
+            self.loop_start = self.loop_end = -1
+            if self.options['playloop'] and not self.trimDialog.IsShown() and script.AVI.Framecount > 3:
+                # Play loop
+                prev = self.ValueInSliderSelection(self.currentframenum)
+                if prev == None:
+                    prev = False
+                start, stop = self.GetNextSliderSelection(self.currentframenum, True, prev)
+                if start is not None:
+                    if script.AVI.Framecount -3 > start: # else out of visible range
+                        self.loop_end = min(stop, script.AVI.Framecount -1)
+                        self.loop_start = min(start, self.loop_end -3)
+
+            if self.currentframenum == script.AVI.Framecount - 1:
+                # GPo 2020, continue playing from loop_start or frame 0
+                fr = self.loop_start if self.loop_start > -1 else 0
+                if not self.ShowVideoFrame(framenum=fr, focus=False, forceLayout=True, forceCursor=self.ScriptChanged(script)) \
+                    or self.currentScript.AVI.IsErrorClip():
+                    return
+            self.playing_video = True
+            self.zoom_antialias = False
+            self.play_button.SetBitmapLabel(self.bmpPause)
+            self.play_button.Refresh()
+            self.frameTextCtrl.SetForegroundColour(wx.BLACK) # GPo, for fast func
+            if self.separatevideowindow:
+                self.play_button2.SetBitmapLabel(self.bmpPause)
+                self.play_button2.Refresh()
+                self.frameTextCtrl2.SetForegroundColour(wx.BLACK) # GPo, for fast func
+
+            if self.play_speed_factor == 'max':
+                self.interval = 0
+            else:
+                interval = 1000 / (script.AVI.Framerate * self.play_speed_factor) # 25.0 fps = 40 ms
+                self.interval = float(interval/1000) # convert for time.time() = 0.04
+
+            # GPo new, set the drop count out of the play routine make a int, it's faster
+            if self.play_drop == True:
+                self.drop_count = 1
+            elif self.play_drop > 1:
+                self.drop_count = self.play_drop
+            else:
+                self.drop_count = 0
+
+            self.play_initial_frame = self.currentframenum
+            self.play_initial_time = time.time() - 0.0001 # at first run div zero
+
+            def playback():
+                if not self.playing_video:
+                    if self.PlayThread:
+                        self.PlayThread.Stop = True
+                    return
+
+                startTime = time.time()
+
+                fps = float(max(self.currentframenum - self.play_initial_frame, 1.0)) / (startTime - self.play_initial_time)
+                sfps = 'fps ' + '{:4.2f}'.format(fps) + ' '
+
+                if (self.drop_count == 1) and self.play_speed_factor != 'max':
+                    frame = self.play_initial_frame
+                    increment = int(round(1000 * (startTime - self.play_initial_time) / self.interval))
+                else:
+                    frame = self.currentframenum + self.drop_count
+                    increment = 1
+                    if self.loop_start > -1:  # GPo 2020. play loop
+                        if (frame + 1 >= self.loop_end) or (frame + 1 < self.loop_start):
+                            # check for next selection
+                            start, stop = self.GetNextSliderSelection(frame+1, True, False)
+                            if start is not None:
+                                if script.AVI.Framecount -3 > start:
+                                    self.loop_end = min(stop, script.AVI.Framecount -1)
+                                    self.loop_start = min(start, self.loop_end -3)
+                                    frame = self.loop_start -1
+                                    self.play_initial_frame = frame
+                                    self.play_initial_time = time.time()
+                                else:
+                                    self.loop_start = self.loop_end = -1
+                            else:
+                                self.loop_start = self.loop_end = -1
+
+                if self.play_fastFunc:
+                    if not self.ShowVideoFrameFast(frame + increment, sfps):
+                        if self.playing_video: self.PlayPauseVideo()
+                        return
+                else:
+                    if not self.ShowVideoFrame(frame + increment, check_playing=True, focus=False, addon0=sfps):
+                        if self.playing_video: self.PlayPauseVideo()
+                        return
+
+                if self.currentframenum >= script.AVI.Framecount - 1:
+                    # GPo 2020, play loop
+                    if (self.loop_start > -1) and (self.loop_start < script.AVI.Framecount - 3)\
+                        and (self.loop_end <= script.AVI.Framecount-1): #continue, new lop_start is in the next run set
+                        wx.Yield()
+                    else:
+                        if self.options['playloop'] and (self.videoSlider.maxValue - self.videoSlider.minValue > 1): # play also loop
+                            self.PlayPauseVideo()
+                            if self.ShowVideoFrame(self.videoSlider.minValue):
+                                wx.CallAfter(self.PlayPauseVideo)
+                        else:
+                            if self.playing_video: self.PlayPauseVideo()
+                            return
+
+                while self.playing_video and (time.time() < (startTime + self.interval)):
+                    wx.Yield()
+
+            class PlayBackThread(threading.Thread):
+                def __init__(self):
+                    threading.Thread.__init__(self)
+                    self.Stop = False
+                    self.daemon = True
+                    self.start()
+                def run(self):
+                    while not self.Stop: # Hm.. running wel without lock the var Stop
+                        playback()
+
+            self.PlayThread = PlayBackThread()
+
     def PlayPauseVideo(self, debug_stats=False, refreshFrame=True):
+        if self.options['playbackthread']: # for testphase
+            self.PlayPauseVideo2(debug_stats, refreshFrame)
+            return
         """Play/pause the preview clip"""
         if self.playing_video:
             self.zoom_antialias = self.options['zoom_antialias']
@@ -19972,22 +20307,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.play_button2.Refresh()
                 self.frameTextCtrl2.SetForegroundColour(wx.BLACK) # GPo, for fast func
 
-            """
-            if self.play_speed_factor == 'max':
-                interval = 1.0 # use a timer anyway to avoid GUI refreshing issues
-            else:
-                interval = 1000 / (script.AVI.Framerate * self.play_speed_factor)
-            """
-
             #GPo testing, seems good.
             if self.play_speed_factor == 'max':
                 interval = 1.0   # use a timer anyway to avoid GUI refreshing issues
                 self.interval = 0.0
-                #interval_fast = 1.0
             else:
                 interval = 1000 / (script.AVI.Framerate * self.play_speed_factor)
                 self.interval = float(interval/1000)
-                #interval_fast = self.interval/2 # double the interval, seems not needed,
 
             # GPo new, set the drop count out of the play routine make a int, it's faster
             if self.play_drop == True:
@@ -20003,6 +20329,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     """"Callback for a Windows Multimedia timer"""
                     if not self.playing_video:
                         self.zoom_antialias = self.options['zoom_antialias']
+                        self.timeKillEvent(self.play_timer_id)
+                        self.timeEndPeriod(self.play_timer_resolution)
                         return
 
                     # GPo 2020, for smoother playback
@@ -20049,10 +20377,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     if self.play_fastFunc:
                         # GPo 2020, use fast func
                         if not AsyncCall(self.ShowVideoFrameFast, frame + increment, sfps).Wait():
+                            if self.playing_video: self.PlayPauseVideo()
                             return
                     else:
                         if not AsyncCall(self.ShowVideoFrame, frame + increment,
                                      check_playing=True, focus=False, addon0=sfps).Wait():
+                            if self.playing_video: self.PlayPauseVideo()
                             return
 
                     if self.currentframenum >= script.AVI.Framecount - 1:
@@ -20116,8 +20446,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         self.play_timer_resolution, self.callback_c, factor, periodic)
 
                 WindowsTimer(interval, playback_timer)
-                # testing, double interval
-                #~WindowsTimer(interval_fast, playback_timer)
 
             else: # wx.Timer on *nix.  There's some pending events issues
                 # TODO: fix/replace wx.Timer

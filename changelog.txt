@@ -12,6 +12,21 @@ GPo source: https://github.com/gispos/AvsPmod
 GPo releases: https://github.com/gispos/AvsPmod/releases
 
 --------------------------
+Version 2.6.6.7 [2021-02-13] GPo
+--------------------------
+* New playback function Video > Play video > 'Use separate thread' 
+- Is switched on as standard, deactivate in case of problems or to compare.
+- So far the playback runs asynchronously in the main thread, if the function is activated, a separate thread is used for it. 
+-
+- The advantages are an immediate reaction to input from the mouse or keyboard. 
+- Disadvantages:
+-- Python threads behave differently than I am usually used to, therefore I can not yet estimate whether there are further disadvantages or even insurmountable problems.
+-- Unexpectedly! So far it's been going smoothly for me.
+-----
+* Fixed, I think: The playback continues if avisynth does not return a frame. (in both playback routines)
+* Fixed, slider window radio button labels now react to a mouse click (went lost through custom colors)
+
+--------------------------
 Version 2.6.6.6 [2021-02-06] GPo
 --------------------------
 * Added predefined 'Default dark' editor theme  
