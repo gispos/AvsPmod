@@ -138,7 +138,7 @@ import wx.lib.buttons as wxButtons
 import wx.lib.colourselect as colourselect
 import wxp
 import dpi
-#import Queue as queue
+import Queue as queue
 
 from icons import AvsP_icon, next_icon, play_icon, pause_icon, external_icon, \
                   skip_icon, spin_icon, ok_icon, smile_icon, question_icon, \
@@ -182,38 +182,24 @@ class AvsFilterDict(collections.MutableMapping):
 # Custom styled text control for avisynth language
 class AvsStyledTextCtrl(stc.StyledTextCtrl):
     (
-    STC_AVS_DEFAULT, STC_AVS_COMMENT, STC_AVS_ENDCOMMENT, STC_AVS_PREVIEW_FILTER,
+    STC_AVS_DEFAULT, STC_AVS_COMMENT, STC_AVS_ENDCOMMENT,
+    STC_AVS_PREVIEWFILTER, STC_AVS_PREVIEWFILTER_END,
     STC_AVS_BLOCKCOMMENT, STC_AVS_NUMBER, STC_AVS_NUMBERBAD,
     STC_AVS_OPERATOR, STC_AVS_STRING, STC_AVS_STRINGEOL,
     STC_AVS_TRIPLE, STC_AVS_COREFILTER, STC_AVS_PLUGIN,
     STC_AVS_CLIPPROPERTY, STC_AVS_USERFUNCTION, STC_AVS_UNKNOWNFUNCTION,
     STC_AVS_USERSLIDER, STC_AVS_SCRIPTFUNCTION, STC_AVS_PARAMETER,
     STC_AVS_ASSIGN, STC_AVS_KEYWORD, STC_AVS_MISCWORD,
-    STC_AVS_DATATYPE, STC_AVS_IDENTIFIER) = range(24)
-    def __init__(self, parent, app, id=wx.ID_ANY, pos=wx.DefaultPosition, size=wx.DefaultSize, style=wx.SIMPLE_BORDER,
-            #~ filterDict=None,
-            #~ filterPresetDict=None,
-            #~ keywordLists=None,
-            #~ autocomplete=True,
-            #~ autoparentheses=1,
-            #~ usestringeol=False,
-            #~ calltips=True,
-            #~ frequentcalltips=True,
-            #~ usetabs=False,
-            #~ tabwidth=4,
-            #~ highlightline=False,
-            #~ highlightlinecolor=(232,232,255),
-            #~ wrap=False,
-            #~ numlinechars=0,
-            #~ usemonospacedfont=False,
-            #~ textstyles=None,
-            ):
+    STC_AVS_DATATYPE, STC_AVS_IDENTIFIER) = range(25)
+    def __init__(self, parent, app, id=wx.ID_ANY, pos=wx.DefaultPosition, size=wx.DefaultSize, style=wx.SIMPLE_BORDER):
         stc.StyledTextCtrl.__init__(self, parent, id, pos, size, style)
         self.app = app
         self.styleInfo = {
             self.STC_AVS_DEFAULT: ('default', ''),
             self.STC_AVS_COMMENT: ('comment', ',eol'),
             self.STC_AVS_ENDCOMMENT: ('endcomment', ''),
+            self.STC_AVS_PREVIEWFILTER: ('operator', ''),
+            self.STC_AVS_PREVIEWFILTER_END: ('operator',''),
             self.STC_AVS_BLOCKCOMMENT: ('blockcomment', ''),
             self.STC_AVS_NUMBER: ('number', ''),
             self.STC_AVS_STRING: ('string', ''),
@@ -238,8 +224,7 @@ class AvsStyledTextCtrl(stc.StyledTextCtrl):
             stc.STC_STYLE_BRACEBAD: ('badbrace', ''),
             self.STC_AVS_NUMBERBAD: ('badnumber', ''),
 
-            self.STC_AVS_DATATYPE: ('datatype', ''),
-            self.STC_AVS_PREVIEW_FILTER : ('previewFilter', '')
+            self.STC_AVS_DATATYPE: ('datatype', '')
 
         }
 
@@ -273,7 +258,8 @@ class AvsStyledTextCtrl(stc.StyledTextCtrl):
             self.STC_AVS_USERFUNCTION,
             self.STC_AVS_SCRIPTFUNCTION,
         )
-        self.commentStyle = [self.STC_AVS_COMMENT, self.STC_AVS_BLOCKCOMMENT, self.STC_AVS_ENDCOMMENT]
+        self.commentStyle = [self.STC_AVS_COMMENT, self.STC_AVS_BLOCKCOMMENT, self.STC_AVS_ENDCOMMENT,
+                self.STC_AVS_PREVIEWFILTER, self.STC_AVS_PREVIEWFILTER_END]
         self.nonBraceStyles = [
             self.STC_AVS_COMMENT,
             self.STC_AVS_ENDCOMMENT,
@@ -282,6 +268,8 @@ class AvsStyledTextCtrl(stc.StyledTextCtrl):
             self.STC_AVS_TRIPLE,
             self.STC_AVS_STRINGEOL,
             self.STC_AVS_USERSLIDER,
+            self.STC_AVS_PREVIEWFILTER,
+            self.STC_AVS_PREVIEWFILTER_END,
         ]
         self.stc_attr = ( # 'eol' not supported in html export
             ('bold', 'italic', 'underline'),
@@ -1925,6 +1913,7 @@ class AvsStyledTextCtrl(stc.StyledTextCtrl):
             prev_flag = True
         else:
             prev_flag = None
+        #pFilter = False
         self.endstyled = pos = start
         fragment = []
         hexfragment = []
@@ -1939,22 +1928,46 @@ class AvsStyledTextCtrl(stc.StyledTextCtrl):
             if state == self.STC_AVS_DEFAULT:
                 if ch == '#':
                     state = self.STC_AVS_COMMENT
-                elif self.DoubleStarAsString and ch == '/' and unichr(self.GetCharAt(pos+1)) == '*' and unichr(self.GetCharAt(pos+2)) == '*':
-                    flag = True
-                    line = self.LineFromPosition(pos)
-                    txt = self.GetLine(line)
-                    if txt.startswith('/**avsp_filter'):
-                        state = self.STC_AVS_PREVIEW_FILTER
-                        self.ColourTo(pos+13, self.STC_AVS_OPERATOR)
-                        pos += len(txt)-1
-                        self.ColourTo(pos, self.STC_AVS_DEFAULT)
-                    else:
-                        pos += 1
-                        state = self.STC_AVS_BLOCKCOMMENT
-                elif ch == '/' and unichr(self.GetCharAt(pos+1)) == '*':
-                    pos += 1
-                    flag = True
+                elif ch == '*' and unichr(self.GetCharAt(pos+1)) == '*' and unichr(self.GetCharAt(pos+2)) == '/': # GPo
+                    #pFilter = False
+                    state = self.STC_AVS_PREVIEWFILTER_END
+                    pos += 2
+                elif ch == '*' and unichr(self.GetCharAt(pos+1)) == '/': # GPo
                     state = self.STC_AVS_BLOCKCOMMENT
+                    pos -= 1
+                    #self.ColourTo(pos + 1, self.STC_AVS_BLOCKCOMMENT)
+                    #pos += 1
+                    #state = self.STC_AVS_DEFAULT
+                    """
+                    elif ch == '/' and unichr(self.GetCharAt(pos+1)) == '*' and unichr(self.GetCharAt(pos+2)) == '*':
+                        line = self.LineFromPosition(pos)
+                        txt = self.GetLine(line)
+                        if txt.startswith('/**avsp_filter'):
+                            state = self.STC_AVS_PREVIEWFILTER
+                            #pFilter = True
+                            pos += len(txt)-3
+                        else:
+                            pos += 1
+                            flag = True
+                            state = self.STC_AVS_BLOCKCOMMENT
+                    """
+                elif ch == '/' and unichr(self.GetCharAt(pos+1)) == '*':
+                    # GPo
+                    if unichr(self.GetCharAt(pos+2)) == '*':
+                        line = self.LineFromPosition(pos)
+                        txt = self.GetLine(line)
+                        if txt.startswith('/**avsp_filter'):
+                            state = self.STC_AVS_PREVIEWFILTER
+                            #pFilter = True
+                            pos += len(txt)-3
+                        else:
+                            pos += 1
+                            flag = True
+                            state = self.STC_AVS_BLOCKCOMMENT
+                    else: # org
+                        pos += 1
+                        flag = True
+                        state = self.STC_AVS_BLOCKCOMMENT
                 elif ch in string_delimiters:
                     self.ColourTo(pos-1, state)
                     if unichr(self.GetCharAt(pos+1)) in string_delimiters and unichr(self.GetCharAt(pos+2)) in string_delimiters:
@@ -1997,6 +2010,7 @@ class AvsStyledTextCtrl(stc.StyledTextCtrl):
                         self.ColourTo(pos - 1, self.STC_AVS_DEFAULT)
                     else:
                         self.ColourTo(pos, self.STC_AVS_DEFAULT)
+
             elif state == self.STC_AVS_COMMENT:
                 if isEOL:
                     if isEOD:
@@ -2004,9 +2018,20 @@ class AvsStyledTextCtrl(stc.StyledTextCtrl):
                     else:
                         self.ColourTo(pos, self.STC_AVS_COMMENT)
                     state = self.STC_AVS_DEFAULT
-            elif state == self.STC_AVS_PREVIEW_FILTER:
-                    pos -= 1
-                    flag = None if flag else False
+            elif state == self.STC_AVS_PREVIEWFILTER_END: # GPo
+                #pFilter = False
+                if isEOL:
+                    if isEOD:
+                        self.ColourTo(pos-1, self.STC_AVS_PREVIEWFILTER_END)
+                    else:
+                        self.ColourTo(pos, self.STC_AVS_PREVIEWFILTER_END)
+                    state = self.STC_AVS_DEFAULT
+            elif state == self.STC_AVS_PREVIEWFILTER: # GPo
+                if isEOL:
+                    if isEOD:
+                        self.ColourTo(pos - 1, self.STC_AVS_PREVIEWFILTER)
+                    else:
+                        self.ColourTo(pos, self.STC_AVS_PREVIEWFILTER)
                     state = self.STC_AVS_DEFAULT
             elif state == self.STC_AVS_BLOCKCOMMENT:
                 if isEOD or pos == end:
@@ -2760,7 +2785,7 @@ class STCPrintout(wx.Printout):
 # Dialog for scrap window
 class ScrapWindow(wx.Dialog): # PPI Font Size set under Font and Colors
     def __init__(self, parent, title=_('Scrap Window'), pos=wx.DefaultPosition, size=tuplePPI(250,250)):
-        style = wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER
+        style = wx.DEFAULT_DIALOG_STYLE | wx.STAY_ON_TOP | wx.RESIZE_BORDER
         wx.Dialog.__init__(self, parent, wx.ID_ANY, title, pos, size, style=style)
         self.parent = parent
         # Create the stc control
@@ -5157,7 +5182,14 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.x86_64 = sys.maxsize > 2**32
         self.calltipstemporal = False  # GPo, disable/enable calltip
         self.playing_video = False     # GPo, moved, HidePreviewWindow calls self.StopPlayback on createWindowElements
-        self.PlayThread = None
+        #self.PlayThread = None
+        self.Thread_List = []
+        self.AppClosing = False
+        #
+        #self.tb_icon = wx.lib.adv.TaskBarIcon()
+        #icon = wx.Icon(sys.executable + ";0", wx.BITMAP_TYPE_ICO)
+        #self.tb_icon.SetIcon(icon, "tooltip")
+        #
         # GPo, init WndProc
         self.customHandler = 0
         if os.name == 'nt':
@@ -5230,9 +5262,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.optionsMacros = {}
         else:
             self.optionsMacros = {}
-        #self.optionsFilters = ({'previewfilters': {1:'\n/**avsp_filter\n# put here your preview \
-                                #filters\nsharpen(0.4)\n# the next here\n*/\n'},}
-                             # )
         if os.path.isfile(self.optionsPreviewFiltersFilename):
             try:
                 with open(self.optionsPreviewFiltersFilename, 'rb') as f:
@@ -5484,8 +5513,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.tabChangeLoadBookmarks = self.options['tabsbookmarksfromscript']
         self.OnMenuTabChangeLoadBookmarks(None) # enable/disable 'Clear tab bookmarks' menu
         self.play_speed_factor = 1.0
-        self.play_drop = False          # GPo 2018 change to False
-        self.play_fastFunc = self.options['playfastfunc']
+        self.play_drop = False
+        #self.play_fastFunc = self.options['playfastfunc']
+        self.UseAviThread = self.options['avithread'] # GPo, use thread for load/unload clip, read frame
         self.getPixelInfo = False
         self.sliderOpenString = '[<'
         self.sliderCloseString = '>]'
@@ -5530,18 +5560,31 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.videoStatusBarInfo = self.options['videostatusbarinfo']
         self.videoStatusBarInfoParsed, self.showVideoPixelInfo = self.ParseVideoStatusBarInfo(self.videoStatusBarInfo)
         self.foldAllSliders = True
-        self.matrix = ['auto', 'tv']
         self.interlaced = self.swapuv = self.bit_depth = False
         self.flip = []
         self.titleEntry = None
         self.colour_data.FromString(self.options['colourdata'])
         # Events
         self.Bind(wx.EVT_CLOSE, self.OnClose)
-        self.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self.OnNotebookPageChanged) # GPo, why not scriptNotebook ??
+        self.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self.OnNotebookPageChanged)
         self.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGING, self.OnNotebookPageChanging)
-        #self.scriptNotebook.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self.OnNotebookPageChanged)
-        #self.scriptNotebook.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGING, self.OnNotebookPageChanging)
-
+        #leave it, if progress is shown LayoutVideoWindows doesn't work if self Iconized and no event skip called
+        def OnIconize(event):
+            event.Skip()
+        self.Bind(wx.EVT_ICONIZE, OnIconize)
+        """
+        def OnShow(event):
+            try:
+                print('On Show')
+            except:
+                pass
+            event.Skip()
+        self.Bind(wx.EVT_SHOW, OnShow)
+        def OnModalDialogClosed(event):
+            print('Modal Close')
+            event.Skip()
+        self.Bind(wx.EVT_WINDOW_MODAL_DIALOG_CLOSED, OnModalDialogClosed)
+        """
         if not self.separatevideowindow:
             def OnSize(event):
                 if self.zoomwindow and self.previewWindowVisible:
@@ -5619,6 +5662,24 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if self.IdleCall:
                 func, args, kwargs = self.IdleCall.pop() # GPo, fire from last to first entry
                 func(*args, **kwargs)
+            """
+            # For thread test only
+            if len(self.Thread_List) > 0:
+                tcount = 0
+                tclipcount = 0
+                count = len(self.Thread_List)
+                for i in reversed(xrange(count)):
+                    t,q = self.Thread_List[i]
+                    if t.isAlive():
+                        if q is not None:
+                            tclipcount += 1
+                        else:
+                            tcount += 1
+                    else:
+                        del self.Thread_List[i]
+                if tcount or tclipcount > 0:
+                    print('\nActive Threads\nClip threads: {0}\nFrame threads: {1}'.format(tclipcount, tcount))
+            """
 
         self.Bind(wx.EVT_IDLE, OnIdle)
 
@@ -5740,23 +5801,23 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if self.options['periodicbackup']:
             self.backupTimer.Start(self.options['periodicbackup'] * 60000)
 
-        # GPo 2020, block SetVideoStatusText for a certain period (
-        class StatusbarTimer(wx.Timer):
-            def __init__(self, parent):
-                wx.Timer.__init__(self)
-                self.parent = parent
-            def Notify(self):
-                self.Stop()
-                self.parent.blockStatusbar = False
-
-        self.StatusbarTimer = StatusbarTimer(self)
-
-
-    def StatusbarTimer_Start(self, ms=3000, txt=''):
+    # GPo 2020, block SetVideoStatusText for a certain period
+    def StatusbarTimer_Start(self, ms=3000, txt='', bellcount=0):
+        def OnTimerEnd():
+            self.blockStatusbar = False
+        if self.blockStatusbar:
+            wx.CallLater(1000, self.StatusbarTimer_Start, ms, txt, bellcount)
+            return
         self.blockStatusbar = True
         if txt:
             self.GetStatusBar().SetStatusText(txt)
-        self.StatusbarTimer.Start(ms)
+        if bellcount > 1:
+            for i in xrange(bellcount):
+                wx.Bell()
+                time.sleep(0.3)
+        elif bellcount > 0:
+            wx.Bell()
+        wx.CallLater(ms, OnTimerEnd)
 
 #### GPo 2018 WndProc messages
 
@@ -5821,10 +5882,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             idx = self.FindTabByName(s, False)
             if idx > -1:
                 script = self.scriptNotebook.GetPage(idx)
+                if self.AviThread_Running(script):
+                    return 0
                 if idx == self.scriptNotebook.GetSelection():
                     self.HidePreviewWindow()
                     self.SetVideoStatusText()
-                script.AVI = None
+                self.AviFree(script)
                 self.UpdateScriptTabname(script)
         elif ide == 4: # find and close tab
             s = ctypes.wstring_at(pCDS.contents.lpData)
@@ -6066,6 +6129,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 'sliderwindow': 'fore:#E4DEDA,back:#2B2B2B',
                 'sliderwindowtextctrl': 'fore:#EBEBEB,back:#353535',
                 'sliderwindowdefvalue': 'fore:#FFFD37,bold',
+                'sliderwindowextrabtn1': 'fore:#ADB7A4',
             },
             _('Default dark'): {
                 'monospaced': 'face:{mono},size:10',
@@ -6104,6 +6168,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 'sliderwindow': 'fore:#E4DEDA,back:#2b2b2b',
                 'sliderwindowtextctrl': 'fore:#EBEBEB,back:#353535',
                 'sliderwindowdefvalue': 'fore:#FFFD37,bold',
+                'sliderwindowextrabtn1': 'fore:#ADB7A4',
             },
             # Based, with some minor changes, on Solarized <http://ethanschoonover.com/solarized>
             _('Solarized light'): {
@@ -6143,6 +6208,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 'sliderwindow': 'fore:#E4DEDA,back:#2B2B2B',
                 'sliderwindowtextctrl': 'fore:#EBEBEB,back:#353535',
                 'sliderwindowdefvalue': 'fore:#FFFD37,bold',
+                'sliderwindowextrabtn1': 'fore:#ADB7A4',
             },
             _('Solarized dark'): {
                 'monospaced': 'face:{mono},size:10',
@@ -6181,6 +6247,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 'sliderwindow': 'fore:#E4DEDA,back:#2B2B2B',
                 'sliderwindowtextctrl': 'fore:#EBEBEB,back:#353535',
                 'sliderwindowdefvalue': 'fore:#FFFD37,bold',
+                'sliderwindowextrabtn1': 'fore:#ADB7A4',
             },
         }
         #self.x_defaultTextStyle = dict(self.defaulttextstylesDict['Default'].copy()) # for test
@@ -6294,9 +6361,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'use_customvideobackground': False,
             'videobackground': (0, 0, 0),
             'customvideobackground': (0, 0, 0),
-            #'sliderwndfore' : (255, 255, 255),
-            #'sliderwndback' : (43, 43, 43),
-            #'sliderwnddefvalue': (255, 253, 54)
             'errormessagefont': ('Arial', 24, '$FF0000', '', (0, 0, 0)),  # GPo fontColor
             'cropminx': 16,
             'cropminy': 16,
@@ -6308,6 +6372,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'enableframepertab_same': True,
             'applygroupoffsets': True,
             'offsetbookmarks': False,
+            'readmatrix': True, # GPo, read the BT. type (601,709) from source
             # AUTOSLIDER OPTIONS
             'keepsliderwindowhidden': False,
             'autoslideron': True,
@@ -6336,11 +6401,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'warnscriptbookmarksdif': True,          # GPo 2020
             'middlemousefunc': 'show video frame',   # GPo 2020
             'mouseauxdown': 'tab change',            # GPo 2020
-            'playfastfunc': True,                    # GPo 2020
+            #'playfastfunc': True,                    # GPo 2020
             'playloop': False,                       # GPo 2020
             'playbackthread': True,                  # GPo 2020, beta if true use separate thread for playback
+            'avithread': True,                       # GPo 2020, beta if true use separate thread for loading and freeing the clip and frame
             'bookmarktotrim': False,                 # GPo 2020
-            'doublestarasstring': True,              # GPo 2020
             'bookmarkshilightcolor': wx.Colour(233,122,122),   # GPo
             'selectionshilightcolor': wx.Colour(110,110,204),  # GPo 2020
             'savemarkedavs': True,
@@ -7344,7 +7409,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         self.videoPane = wx.Panel(parent, wx.ID_ANY)
         self.videoSplitter = wx.SplitterWindow(self.videoPane, wx.ID_ANY, style=wx.SP_3DSASH|wx.SP_NOBORDER|wx.SP_LIVE_UPDATE)
-
         f = self.options['ppiscalingvideocontrols']
         if f > 0:
             f = f/10.0
@@ -7398,30 +7462,15 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         # MainSplitter, splitter for script and videoWindow
         def OnMainSplitterLeftDown(event):
-            """
-            pos = event.GetPosition()[self.mainSplitter.GetSplitMode() == wx.SPLIT_HORIZONTAL]
-            if pos > self.mainSplitter.GetMinimumPaneSize():
-                self.clicked_on_divider = True
-            else:
-                self.clicked_on_divider = False
-            """
-
             if self.FindFocus() == self.titleEntry:
                 self.scriptNotebook.SetFocus()
             event.Skip()
         self.mainSplitter.Bind(wx.EVT_LEFT_DOWN, OnMainSplitterLeftDown)
 
         def OnMainSplitterPosChanged(event): # mouse left up
-            """
-            if self.clicked_on_divider:
-                self.clicked_on_divider = False
-            """
-
             self.SaveLastSplitVideoPos()
             if self.zoomwindow:
                 self.ShowVideoFrame(forceLayout=True, focus=False)
-            #self.ResetZoomAntialias() # fires also ShowVideoFrame
-            # end old self.clicked_on_divider
             event.Skip()
         self.mainSplitter.Bind(wx.EVT_LEFT_UP, OnMainSplitterPosChanged)
         self.mainSplitter.Bind(wx.EVT_MOUSE_CAPTURE_LOST, self.OnMouseCaptureLost) # GPo 2020
@@ -7440,7 +7489,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.SaveLastSplitVideoPos()
             self.ResetZoomAntialias()
             if self.zoomfactor != 1 or self.zoomwindow:
-                self.ShowVideoFrame(forceLayout=self.zoomwindow,focus=False)
+                self.ShowVideoFrame(forceLayout=self.zoomfactor != 1,focus=False)
             event.Skip()
         self.videoSplitter.Bind(wx.EVT_LEFT_UP, OnVideoSplitterPosChanged)
         #~ self.videoSplitter.Bind(wx.EVT_SPLITTER_SASH_POS_CHANGED, OnVideoSplitterPosChanged)
@@ -7702,35 +7751,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 (_('show title'), '', self.UpdateBookmarkMenu, _('Show bookmarks with title'), wx.ITEM_CHECK, True),
             )
         )
-        """ no short cuts!
-        self.menuPreviewFilter = self.createMenu(
-            (
-            (_('None'), '', self.OnMenuPreviewFilter, _('Preview filter off'), wx.ITEM_RADIO, True),
-            (_('1'), '', self.OnMenuPreviewFilter, _('Preview filter 1'), wx.ITEM_RADIO, False),
-            (_('2'), '', self.OnMenuPreviewFilter, _('Preview filter 2'), wx.ITEM_RADIO, False),
-            (_('3'), '', self.OnMenuPreviewFilter, _('Preview filter 3'), wx.ITEM_RADIO, False),
-            (_('4'), '', self.OnMenuPreviewFilter, _('Preview filter 4'), wx.ITEM_RADIO, False),
-            (_('5'), '', self.OnMenuPreviewFilter, _('Preview filter 5'), wx.ITEM_RADIO, False),
-            (''),
-            (_('Save preview filters'), '', self.OnMenuSavePreviewFilters, _('Save preview filters for later use')),
-            (_('Write all to script'), '', self.OnMenuRestoreAllPreviewFilters, _('Write all preview filters to script')),
-            (_('Write to script'),
-                (
-                (_('1'), '', self.OnMenuRestorePreviewFilter, _('Write Preview filter to script')),
-                (_('2'), '', self.OnMenuRestorePreviewFilter, _('Write Preview filter to script')),
-                (_('3'), '', self.OnMenuRestorePreviewFilter, _('Write Preview filter to script')),
-                (_('4'), '', self.OnMenuRestorePreviewFilter, _('Write Preview filter to script')),
-                (_('5'), '', self.OnMenuRestorePreviewFilter, _('Write Preview filter to script')),
-                ),
-            ),
-            ),
-        )
-        """
         self.yuv2rgbDict = {
             _('Resolution-based'): 'auto',
             _('BT.709'): '709',
             _('BT.601'): '601',
-           # _('BT.2020 TV'): '2020',
             _('TV levels'): 'tv',
             _('PC levels'): 'pc',
             _('Progressive'): 'Progressive',
@@ -7944,9 +7968,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     (_('Normal speed'), 'Shift+Numpad /', self.OnMenuVideoPlayNormal, _('Set the playback speed to the script frame rate')),
                     (_('Maximum speed'), 'Shift+Numpad *', self.OnMenuVideoPlayMax, _('Play the video as fast as possible without dropping frames')),
                     (''),
-                    (_('Play loop'), '', self.OnMenuVideoPlayLoop, _('Play loop between trim editor first selection start and end frame'), wx.ITEM_CHECK, self.options['playloop']),
-                    (_('Use faster playback routine'), '', self.OnMenuVideoPlayFunc, _('0 % to 38 % faster playback, depending on CPU load'), wx.ITEM_CHECK, self.options['playfastfunc']),
-                    (_('Use separate thread'), '', self.OnMenuVideoSeparateThread, _('Beta, use a separate thread for playback'), wx.ITEM_CHECK, self.options['playbackthread']),
+                    (_('Play loop'), '', self.OnMenuVideoPlayLoop, _('Loop playback for trim editor selections or at the end of the clip'), wx.ITEM_CHECK, self.options['playloop']),
+                    #(_('Use faster playback routine'), '', self.OnMenuVideoPlayFunc, _('0 % to 38 % faster playback, depending on CPU load'), wx.ITEM_CHECK, self.options['playfastfunc']),
+                    (_('Use separate thread'), '', self.OnMenuVideoSeparateThread, _('Use a separate thread for playback. If avisynth threads used, playback uses also threads'), wx.ITEM_CHECK, self.options['playbackthread']),
                     ),
                 ),
                 (''),
@@ -8000,16 +8024,21 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         (
                         (reverseMatrixDict['swapuv'], '', self.OnMenuVideoYUV2RGB, _('Swap chroma channels (U and V)'), wx.ITEM_CHECK, False),
                         (''),
-                        (reverseMatrixDict['auto'], '', self.OnMenuVideoYUV2RGB, _('Use BT.709 coefficients for HD, BT.601 for SD (default)'), wx.ITEM_RADIO, True),
+                        (_('Read from source or script'), '', self.OnMenuReadMatrix, _('Get the coefficients from source or script, if the matrix available'), wx.ITEM_CHECK, self.options['readmatrix']),
+                        (reverseMatrixDict['auto'], '', self.OnMenuVideoYUV2RGB, _('Use BT.709 coefficients for HD, BT.601 for SD'), wx.ITEM_RADIO, False),
                         (reverseMatrixDict['709'], '', self.OnMenuVideoYUV2RGB, _('Use BT.709 coefficients'), wx.ITEM_RADIO, False),
                         (reverseMatrixDict['601'], '', self.OnMenuVideoYUV2RGB, _('Use BT.601 coefficients'), wx.ITEM_RADIO, False),
-                        #(reverseMatrixDict['2020'], '', self.OnMenuVideoYUV2RGB, _('Use BT.2020 coefficients'), wx.ITEM_RADIO, False),  # GPo
                         (''),
                         (reverseMatrixDict['tv'], '', self.OnMenuVideoYUV2RGB, _('Use limited range (default)'), wx.ITEM_RADIO, True),
                         (reverseMatrixDict['pc'], '', self.OnMenuVideoYUV2RGB, _('Use full range'), wx.ITEM_RADIO, False),
                         (''),
                         (reverseMatrixDict['Progressive'], '', self.OnMenuVideoYUV2RGB, _('For YV12 only, assume it is progressive (default)'), wx.ITEM_RADIO, True),
                         (reverseMatrixDict['Interlaced'], '', self.OnMenuVideoYUV2RGB, _('For YV12 only, assume it is interlaced'), wx.ITEM_RADIO, False),
+                        (''),
+                        (_('Current matrix to script'), '', self.OnMenuMatrixToScript, _('Write the current matrix to script. If no matrix found this matrix is used')),
+                        (_('Read the matrix now'), '', self.OnMenuReadMatrixNow, _('Try to get the matrix from source or script')),
+                        (''),
+                        (_('Globally to default'), '', self.OnMenuResetDisplayProps, _('Reset all scripts to Resolution-based')),
                         ),
                     ),
                     (_('Bit &depth'),
@@ -8078,8 +8107,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         (_('5'), 'Alt+Numpad 5', self.OnMenuRestorePreviewFilter, _('Write Preview filter to script'),wx.ITEM_NORMAL,None,'', 15),
                         ),
                     ),
-                    (''),
-                    (_('Enable preview filter sliders'), '', self.OnMenuBlockCommendAsString, _('Enable block commend /** showing as string.'), wx.ITEM_CHECK, self.options['doublestarasstring']),
                     ),
                 ),
                 (_('Split View on/off'), '', self.OnMenuSplitView, _('Shows the selected and optional the next or previous tab in one view (video width and height must be the same)')),
@@ -8103,13 +8130,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     (_('External tool arg2'), '', self.OnMenuExternalToolArg2, _('Run the current script with an external program and arg2')),
                     ),
                 ),
-                #(''),
                 (_('Video information'), '', self.OnMenuVideoInfo, _('Show information about the video in a dialog box')),
             ),
             (_('&Options'),
                 (_('Always on top'), '', self.OnMenuOptionsAlwaysOnTop, _('Keep this window always on top of others'), wx.ITEM_CHECK, self.options['alwaysontop']),
                 (_('Video preview always on top'), '', self.OnMenuOptionsPreviewAlwaysOnTop, _('If the video preview is detached, keep it always on top of other windows'), wx.ITEM_CHECK, self.options['previewalwaysontop']),
                 (_('Disable video preview'), '', self.OnMenuOptionsDisablePreview, _('If checked, the video preview will not be shown under any circumstances'), wx.ITEM_CHECK, self.options['disablepreview']),
+                (_('Access Avisynth in threads'), '', self.OnMenuOptionsAviThread, _('Use threads when accessing avisynth (load/release clip and get frame)'), wx.ITEM_CHECK, self.options['avithread']),
                 (''),
                 (_('Associate .avs files with AvsPmod'), '', self.OnMenuOptionsAssociate, _('Configure this computer to open .avs files with AvsP when double-clicked. Run again to disassociate')),
                 (''),
@@ -8137,9 +8164,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 (_('Open Avisynth plugins folder'), '', self.OnMenuHelpAvisynthPlugins, _('Open the avisynth plugins folder, or the last folder from which a plugin was loaded')),
                 (''),
                 (_('DPI Info'), '', self.OnMenuDPIInfo, _('DPI information')),
+                (_('Active video thread count'), '', self.OnMenuTest, _('Prints the active running thread count. Normaly 0')),
+                (''),
                 (_('Changelog'), '', self.OnMenuHelpChangelog, _('Open the changelog file')),
                 (_('About AvsPmod'), '', self.OnMenuHelpAbout, _('About this program')),
-                #(_('Test 1'), '', self.OnMenuTest, _('Test')),
                 #(_('Test 2'), '', self.OnMenuTest2, _('Test2')),
             ),
         )
@@ -8473,21 +8501,32 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     # GPo 2021
     class sliderWindowEx(wx.ScrolledWindow):
-        def __init__(self, parent, app, id=wx.ID_ANY, pos=(0,0), size=(10,10), style=wx.STATIC_BORDER|wx.TAB_TRAVERSAL):
+        #def __init__(self, parent, app, id=wx.ID_ANY, pos=(0,0), size=(10,10), style=wx.STATIC_BORDER|wx.TAB_TRAVERSAL|wx.FULL_REPAINT_ON_RESIZE):
+        #def __init__(self, parent, app, id=wx.ID_ANY, pos=(0,0), size=(10,10), style=wx.STATIC_BORDER|wx.CLIP_CHILDREN):
+        def __init__(self, parent, app, id=wx.ID_ANY, pos=(0,0), size=(10,10), style=wx.STATIC_BORDER|wx.NO_FULL_REPAINT_ON_RESIZE|wx.CLIP_CHILDREN):
             wx.ScrolledWindow.__init__(self, parent, id, pos=pos, size=size, style=style)
             SetFontPPI(self)
             self.SetDoubleBuffered(True)
+            # if not wx.FULL_REPAINT_ON_RESIZE set, we must repaint it self on resize if double buffered
             def _OnSize(event):
+                #self.app.IdleCallDict['sliderWindowRefresh'] = self.Refresh()
                 self.Refresh()
-                self.Update()
+                #self.Update()
                 event.Skip()
+            self.Bind(wx.EVT_SIZE, _OnSize)
             self.parent = parent
             self.app = app
-            self.Bind(wx.EVT_SIZE, _OnSize)
             self.foreTextCtrl = None
             self.backTextCtrl = None
             self.foreDefValue = None
             self.boldDefValue = None
+            self.foreExtraBtn1 = None
+            def OnMouseAux1Down(event):
+                self.app.GotoNextBookmark(reverse=True, forceCursor=True)
+            def OnMouseAux2Down(event):
+                self.app.GotoNextBookmark(reverse=False, forceCursor=True)
+            self.Bind(wx.EVT_MOUSE_AUX1_DOWN, OnMouseAux1Down)
+            self.Bind(wx.EVT_MOUSE_AUX2_DOWN, OnMouseAux2Down)
             self.customTheme = self.app.options['sliderwindowcustomtheme']
             if self.customTheme:
                 self.SetThemeColors()
@@ -8530,6 +8569,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         self.foreDefValue = wx.Colour(r,g,b)
                     elif s.startswith('bold'):
                         self.boldDefValue = True
+                attr = self.app.options['textstyles']['sliderwindowextrabtn1'].split(',')
+                for i in xrange(len(attr)):
+                    s = attr[i]
+                    if s.startswith('fore'):
+                        hex = s.split('#')[1]
+                        r,g,b = tuple(int(hex[i:i+2], 16) for i in (0, 2 ,4))
+                        self.foreExtraBtn1 = wx.Colour(r,g,b)
             except:
                 self.SetSystemColors()
                 return
@@ -8569,8 +8615,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         scriptWindow.SliderFoldsBackup = {} # GPo
         scriptWindow.previewFilterIdx = 0       # GPo actice index
         scriptWindow.lastpreviewFilterIdx = 0   # GPo does not reset
-        scriptWindow.lastpreviewFilterCount = 0 # GPo last count in previewFilterDict
-        scriptWindow.DoubleStarAsString = self.options['doublestarasstring'] # GPo set /** as string
+        scriptWindow.AviThread = None
+        scriptWindow.ClipThread = None
+        scriptWindow.FrameThread = None
+        scriptWindow.matrix = ['auto', 'tv']
         scriptWindow.snapShots = {
             'shot1': [-1, None, ""],        # GPo: FrameNr, Bitmap, script
             'shot2': [-1, None, ""]
@@ -8579,7 +8627,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             scriptWindow.contextMenu = self.menuBackups[0] if self.menuBackups else self.GetMenuBar().GetMenu(1)
         except AttributeError:
             pass
-        #~scriptWindow.sliderWindow = wx.ScrolledWindow(self.videoSplitter, wx.ID_ANY, pos=(0,0), size=(10,10), style=wx.STATIC_BORDER|wx.TAB_TRAVERSAL)
+        #scriptWindow.sliderWindow = wx.ScrolledWindow(self.videoSplitter, wx.ID_ANY, pos=(0,0), size=(10,10), style=wx.STATIC_BORDER|wx.TAB_TRAVERSAL)
         #~SetFontPPI(scriptWindow.sliderWindow)
         # GPo 2020, sliderWindowEx
         scriptWindow.sliderWindow = self.sliderWindowEx(self.videoSplitter, self)
@@ -9029,7 +9077,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 menu = x_menu.FindItemById(menu_id)
                 menu.Check(self.saveViewPos)
                 # then the video menu and update
-                self.UpdatePreviewFilterMenu(self.ParseScriptPreviewFilters(notFoundGetSelfDict=True))
+                self.UpdatePreviewFilterMenu(self.ParseScriptPreviewFilters())
 
         event.Skip()
 
@@ -10175,6 +10223,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         dlg = self.cropDialog
         if dlg.IsShown():
             return
+        self.StopPlayback()
         # GPo 2018
         self.extended_move = False
         self.splitView = False
@@ -10269,10 +10318,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                             return
                         wx.BeginBusyCursor()
                         try:
-                            script.AVI.display_clip.get_frame(self.currentframenum)
+                            re = self.GetAviDisplayFrame(script, self.currentframenum)
+                            if not re and self.currentScript == script:
+                                self.HidePreviewWindow()
+                            #script.AVI.display_clip.get_frame(self.currentframenum)
                         finally:
                             wx.EndBusyCursor()
-                        if script.AVI.display_clip.get_error() is None:
+                        if re and script.AVI.display_clip.get_error() is None:
                             self.splitView = True
                         else: wx.Bell()
                     else: wx.Bell()
@@ -10284,7 +10336,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     def ResetPreviewFilter(self, setIdx=0):
         setIdx = min(setIdx, 5) # max menu filter item count
         if setIdx < 1:
-            self.UpdateVideoMenuItem(_('Preview filter'), _('None'), True)
+            self.UpdateVideoMenuItem(_('Preview filter'), _('None'),'', True)
         else:
             self.UpdateVideoSubMenuByPosition(_('Preview filter'), setIdx, True)
         self.currentScript.previewFilterIdx = setIdx
@@ -10315,11 +10367,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if lKey > 5:
             return
 
+        ret = None
         script = self.currentScript
         lastIdx = max(min(script.previewFilterIdx, 5), 0)
-        ret = None
-        self.previewFilterDict.clear()
-        #previewFilterText = self.previewFilterText
+        self.previewFilterDict.clear() # GPo new
 
         # if preview not OK force show video frame, or we cannot put the preview
         if lKey > 0 and not self.previewOK(script):
@@ -10328,8 +10379,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         # find and count the script preview filters, else KillFilter
         if lKey > 0 and self.previewOK:
-
-            self.ParseScriptPreviewFilters(None, True)
+            self.ParseScriptPreviewFilters(None)
             if self.previewFilterDict:
                 maxKey = min(len(self.previewFilterDict), 5) # max 5 menu items, select max the last
                 lKey = min(lKey, maxKey)
@@ -10338,11 +10388,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 #previewFilterText = arg
                 if arg:
                     wx.BeginBusyCursor()
-                    #ret = script.AVI.CreateFilterClip(arg)
                     ret, err = script.AVI.CreateFilterClip(arg)
                     updateState(lKey)
                     wx.EndBusyCursor()
-                    #if wx.IsBusy(): # On error CreateFilterClip close the cursor, so check it
                     if err:
                         wx.MessageBox(err, "Preview filter")
                         script.display_clip_refresh_needed = True
@@ -10353,30 +10401,23 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     updateState(0)
                     if script.AVI is not None and script.AVI.preview_filter:
                         script.AVI.KillFilterClip()
-                        #self.refreshAVI = updateUserSliders
                         self.ShowVideoFrame(userScrolling = not updateUserSliders)
             else:
                 #lKey = 0
                 updateState(0) # bevor showing the frame, it's better to update the State
-
         else:
             #lKey = 0 # kill the filter from preview
             updateState(0)
             if script.AVI is not None and script.AVI.preview_filter:
                 script.AVI.KillFilterClip()
             if self.previewOK:
-                #self.refreshAVI = updateUserSliders
                 self.ShowVideoFrame(userScrolling= not updateUserSliders)
 
-        if updateUserSliders and \
-                (len(self.previewFilterDict) != script.lastpreviewFilterCount):
-                    self.OnMenuBlockCommendAsString_UpdateSliders()
-        script.lastpreviewFilterCount = len(self.previewFilterDict)
-        #self.previewFilterText = previewFilterText
+        if updateUserSliders:
+            self.UpdateUserSliders()
         self.SetVideoStatusText()
 
-    #@AsyncCallWrapper
-    def ParseScriptPreviewFilters(self, filterDict=None, notFoundGetSelfDict=False):
+    def ParseScriptPreviewFilters(self, filterDict=None):
         if filterDict is None:
             self.previewFilterDict.clear()
             filterDict = self.previewFilterDict
@@ -10390,7 +10431,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if lines:
             for line in lines:
                 if found:
-                    if line.lstrip().startswith('*/'):
+                    if line.lstrip().startswith('**/'):
                         found = False
                         arg = arg.strip()
                         if arg:
@@ -10399,12 +10440,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         arg = ''
                         continue
                     arg += line + '\n'
-                elif line.startswith('/**avsp_filter') or line.startswith('/*avsp_filter'):
+                elif line.startswith('/**avsp_filter'):
                     ident = line.strip()
                     ident = ident[:50] # max 50 chars
                     found = True
-        #if not filterDict and notFoundGetSelfDict:
-            #filterDict.update(self.optionsPreviewFilters['previewfilters']) # self.previewFilterDict)
         return filterDict
 
     def ComparePreviewFilterDict(self, filterDict=None):
@@ -10492,14 +10531,14 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         shortCut = '\t'+ shortCut[1]
                     if (maxIdx >= i) and (i+cr in filterDict):
                         label, arg = filterDict[i+cr]
-                        if label == '/*avsp_filter':
-                            label = str(i+cr) + ' ' + label[2:20]
+                        #~if label == '/*avsp_filter':
+                            #~label = str(i+cr) + ' ' + label[2:20]
+                        #~else:
+                        le = 3 if label.startswith('/**') else 2
+                        if len(label) > 19:
+                            label = str(i+cr) + ' ' + label[11+le:60]
                         else:
-                            le = 3 if label.startswith('/**') else 2
-                            if len(label) > 19:
-                                label = str(i+cr) + ' ' + label[11+le:60]
-                            else:
-                                label = str(i+cr) + ' ' + label[le:50]
+                            label = str(i+cr) + ' ' + label[le:50]
                     else:
                         label = str(i+cr)
                     menuItem.SetItemLabel(label+shortCut)
@@ -10521,69 +10560,67 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         else:
                             shortCut = '\t'+ shortCut[1]
 
-
-    def OnMenuBlockCommendAsString_UpdateSliders(self, event=None):
-        self.OnMenuBlockCommendAsString(event=None, updateOnlySliders=True)
-
-    def OnMenuBlockCommendAsString(self, event=None, updateOnlySliders=False):
+    def UpdateUserSliders(self, forceUpdate=False):
         script = self.currentScript
-        if not updateOnlySliders:
-            lines = script.GetText().split('\n')
-            self.options['doublestarasstring'] = not self.options['doublestarasstring']
-            enabled = self.options['doublestarasstring']
-            if enabled:
-                for x, line in enumerate(lines):
-                    if line.startswith('/*avsp_filter'):
-                        self.InsertText('*', script.PositionFromLine(x)+2)
-            else:
-                pass
-                """ # chnage or not.. ?
-                for x, line in enumerate(lines):
-                    if line.startswith('/**avsp_filter'):
-                        script.SetTargetStart(script.PositionFromLine(x)+1)
-                        script.SetTargetEnd(script.PositionFromLine(x)+2)
-                        script.ReplaceTarget('')
-                """
-            script.DoubleStarAsString = enabled
-            script.OnStyleNeeded(None, forceAll=True)
-
-        self.UpdateVideoMenuItem(_('Enable preview filter sliders'),'', self.options['doublestarasstring'])
-
-        # Update slider window sliders
-        if not script.AVI or script.AVI.IsErrorClip() or not self.options['autoslideron']:
+        if not self.previewOK(script) or not self.options['autoslideron']:
             return
+
         scripttxt = script.GetText()
         isError = False
+        needRefresh = False
 
         # get the slider infos
         self.UpdateScriptTagProperties(script, scripttxt)
         self.GetAutoSliderInfo(script, scripttxt)
-
         toggleTagNames = [a for a,b in script.toggleTags]
         oldToggleTagNames = [a for a,b in script.oldToggleTags]
         # force the update
-        script.oldSliderTexts = oldToggleTagNames = script.oldAutoSliderInfo = None
+        if forceUpdate:
+            script.oldSliderTexts = oldToggleTagNames = script.oldAutoSliderInfo = None
         if toggleTagNames != oldToggleTagNames:
             self.createToggleTagCheckboxes(script)
+            needRefresh = True
         if script.autoSliderInfo != script.oldAutoSliderInfo:
             self.createAutoUserSliders(script)
+            needRefresh = True
         if script.sliderTexts != script.oldSliderTexts:
             if not self.createUserSliders(script):
                 isError = True
-        script.videoSidebarSizer.Layout()
-        script.sliderWindow.FitInside()
-        if script.sliderWindowShown is True:
-            script.sliderWindow.Refresh()
-        # set the old values or ShowVideoFrame force update the sliders
-        script.oldSliderTexts = script.sliderTexts
-        script.oldAutoSliderInfo = script.autoSliderInfo
-        script.oldToggleTags = script.toggleTags
+            else: needRefresh = True
+        if needRefresh:
+            script.sliderWindow.Freeze()
+            script.videoSidebarSizer.Layout()
+            script.sliderWindow.FitInside()
+            script.sliderWindow.Thaw()
+            # set the old values or ShowVideoFrame force update the sliders
+            script.oldSliderTexts = script.sliderTexts
+            script.oldAutoSliderInfo = script.autoSliderInfo
+            script.oldToggleTags = script.toggleTags
         # on error close the slider window
         if isError:
             self.HideSliderWindow()
+            return
+        return needRefresh
 
     def OnMenuTest(self, event):
-        pass
+        # For thread test only
+        tcount = 0
+        tclipcount = 0
+        count = len(self.Thread_List)
+        for i in reversed(xrange(count)):
+            t,q = self.Thread_List[i]
+            if t.isAlive():
+                if t.name == 'clip':
+                    tclipcount += 1
+                else:
+                    tcount += 1
+            else:
+                del self.Thread_List[i]
+        #for th in threading.enumerate():
+            #if th.name == 'avisynth':
+        print('\nActive Threads\nClip threads: {0}\nFrame threads: {1}'.format(tclipcount, tcount))
+
+
         """
         defDict = self.x_defaultTextStyle
         s = ''
@@ -10598,6 +10635,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     def OnMenuTest2(self, event):
         pass
+
+    def ShowFreeMemory(self):
+        mem = max(wx.GetFreeMemory()/1024/1024, 0)
+        if mem < 2048:
+            wx.CallAfter(self.StatusbarTimer_Start, 4000, 'Free Memory: {} MB'.format(mem) , 1)
 
     def OnMenuTakeSnapShot1(self, event):
         script = self.currentScript
@@ -10638,7 +10680,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             else:
                 if bmp:
                     self.snapShotIdx = 1 if self.snapShotIdx in [0,2] else 0
+                    self.zoom_antialias = '' # disable draw 'Snapshot'
                     self.videoWindow.Refresh()
+                    self.ResetZoomAntialias() # now draw 'Snapshot'
                 else:
                     self.snapShotIdx = 0
                     dlg = wx.MessageDialog(self, _('No Bitmap available, but you can restore the script from snapshot.'+
@@ -10660,7 +10704,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             else:
                 if bmp:
                     self.snapShotIdx = 2 if self.snapShotIdx in [0,1] else 0
+                    self.zoom_antialias = ''
                     self.videoWindow.Refresh()
+                    self.ResetZoomAntialias()
                 else:
                     self.snapShotIdx = 0
                     dlg = wx.MessageDialog(self, _('No Bitmap available, but you can restore the script from snapshot.'+
@@ -10957,7 +11003,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     def ResetZoomAntialias(self, forceYield=True, enabledWnd=None):
         if self.options['zoom_antialias']:
-            if self.zoomfactor != 1 or self.zoomwindow:
+            if self.zoomfactor != 1:
                 if forceYield:
                     self.Refresh()
                     self.Update()
@@ -11011,6 +11057,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         """
 
     def OnMenuVideoFlip(self, event):
+        if self.AviThread_Running(self.currentScript):
+            if event:
+                event.Veto()
+            return
         menuitem = None
         id = event.GetId()
         vidmenus = [self.videoWindow.contextMenu, self.GetMenuBar().GetMenu(2)]
@@ -11039,6 +11089,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.videoWindow.Refresh()
 
     def OnMenuVideoYUV2RGB(self, event):
+        script = self.currentScript
+        if self.AviThread_Running(script):
+            if event:
+                event.Veto()
+            return
         id = event.GetId()
         value = ''
         vidmenus = [self.videoWindow.contextMenu, self.GetMenuBar().GetMenu(2)]
@@ -11066,9 +11121,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         else:
             menuItem.Check(not getattr(self, value))
 
-
         refresh = False
-        AVI = self.currentScript.AVI
+
+        AVI = script.AVI
         if value == 'swapuv':
             self.swapuv = not self.swapuv
             if AVI:
@@ -11079,18 +11134,114 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 refresh = AVI.IsYV12
         else:
             if value in ('tv', 'pc'):
-                self.matrix[1] = value
+                script.matrix[1] = value
             elif value != '':
-                self.matrix[0] = value
+                script.matrix[0] = value
             if AVI:
                 refresh = AVI.IsYUV
 
         if refresh:
-            for index in xrange(self.scriptNotebook.GetPageCount()):
-                script = self.scriptNotebook.GetPage(index)
-                script.display_clip_refresh_needed = True
-            if self.previewWindowVisible:
+            script.display_clip_refresh_needed = True
+            if self.previewWindowVisible and self.previewOK():
                 self.ShowVideoFrame(forceRefresh=False, focus=self.options['focusonrefresh'])
+
+    def OnMenuReadMatrix(self, event):
+        script = self.currentScript
+        self.options['readmatrix'] = not self.options['readmatrix']
+
+    def OnMenuResetDisplayProps(self, event):
+        for index in xrange(self.scriptNotebook.GetPageCount()):
+            script = self.scriptNotebook.GetPage(index)
+            if self.AviThread_Running(script):
+                continue
+            script.display_clip_refresh_needed = True
+            script.matrix = ['auto', 'tv']
+
+        self.swapuv = False
+        self.interlaced = False
+        #self.options['readmatrix'] = True
+        #self.UpdateVideoMenuItem(_('Display'), _('YUV -> RGB'), _('Read from source'), True)
+        self.UpdateVideoMenuItem(_('Display'), _('YUV -> RGB'), _('Resolution-based'), True)
+        self.UpdateVideoMenuItem(_('Display'), _('YUV -> RGB'), _('TV levels'), True)
+        self.UpdateVideoMenuItem(_('Display'), _('YUV -> RGB'), _('Progressive'), True)
+        self.UpdateVideoMenuItem(_('Display'), _('YUV -> RGB'), _('Swap UV'), False)
+        if self.previewWindowVisible and self.previewOK():
+            self.ShowVideoFrame(forceRefresh=False, focus=self.options['focusonrefresh'])
+
+    def MatrixFromScript(self, script):
+        pos = script.FindText(0, script.GetTextLength(), '#avsp_matrix:', stc.STC_FIND_WHOLEWORD)
+        if pos > -1:
+            s = script.GetTextRange(pos+13, pos+19).lower().strip()
+            if s in ('tv601','tv709', 'pc601', 'pc709'):
+                return [s[2:5], s[:2]]
+        return None
+
+    def OnMenuMatrixToScript(self, event):
+        script = self.currentScript
+        if script.matrix[0] == 'auto':
+            if self.previewOK:
+                s = '709' if (script.AVI.DisplayWidth > 1024 or script.AVI.DisplayHeight > 576) else '601'
+            else: s = '709'
+        else:
+            s = script.matrix[0]
+        pos = script.FindText(0, script.GetTextLength(), '#avsp_matrix:', stc.STC_FIND_WHOLEWORD)
+        if pos > -1:
+            sm = script.GetTextRange(pos+13, pos+19).strip()
+            if sm.lower() in ('tv601','tv709', 'pc601', 'pc709'):
+                script.SetTargetStart(pos+13)
+                script.SetTargetEnd(pos+19)
+                script.ReplaceTarget(' ' + matrix[1] + s)
+            else:
+                self.InsertText(' ' + script.matrix[1] + s, pos=pos+13)
+        else:
+            pos = None if script.GetLine(script.CurrentLine).strip() == '' else 0
+            self.InsertText('#avsp_matrix: ' + script.matrix[1] + s + '\n', pos=pos)
+
+    def OnMenuReadMatrixNow(self, event):
+        def _getMatrix(script, q):
+            matrix = script.AVI.GetMatrix(False)
+            q.put(matrix)
+
+        script = self.currentScript
+        if not self.previewOK():
+            wx.MessageBox(_('Cannot read the matrix. Clip not initialized'), style=wx.ICON_ERROR|wx.OK)
+            return
+        if self.UseAviThread:
+            src_matrix = None
+            q = queue.Queue()
+            th = threading.Thread(target=_getMatrix, args=(script, q,))
+            th.daemon = True
+            th.name = 'frame'
+            script.AviThread = th
+            th.start()
+            th.join(10)
+            if th.isAlive():
+                self.TH_WaitForFrame(script, th, self.currentframenum)
+            else: script.AviThread = None
+            try:
+                src_matrix = q.get(True, 0.1)
+            except:
+                pass
+        else:
+            src_matrix = script.AVI.GetMatrix(False)
+        if not src_matrix:
+            src_matrix = self.MatrixFromScript(script)
+            ss = 'from script'
+        else: ss = 'from source'
+        if not src_matrix:
+            s = 'Matrix not found'
+            script.matrix = ['auto', 'tv']
+            matrix = [_('Resolution-based'), _('TV levels')]
+        else:
+            script.matrix = src_matrix[:]
+            matrix = [_('BT.' + src_matrix[0]),_(src_matrix[1].upper() + ' levels')]
+            s = 'Matrix read {0}: {1}, {2}'.format(ss, matrix[0], matrix[1])
+
+        self.UpdateVideoMenuItem(_('Display'), _('YUV -> RGB'), matrix[0], True)
+        self.UpdateVideoMenuItem(_('Display'), _('YUV -> RGB'), matrix[1], True)
+        script.display_clip_refresh_needed = True
+        if self.ShowVideoFrame():
+            self.StatusbarTimer_Start(5000, s)
 
     def OnMenuVideoBitDepth(self, event):
         if self.cropDialog.IsShown():
@@ -11121,7 +11272,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 for index in xrange(self.scriptNotebook.GetPageCount()):
                     script = self.scriptNotebook.GetPage(index)
                     script.display_clip_refresh_needed = True
-                if self.previewWindowVisible:
+                if self.previewWindowVisible and self.previewOK:
                     self.ShowVideoFrame(forceRefresh=False, focus=self.options['focusonrefresh'])
             else:
                 updateMenu = menu
@@ -11213,23 +11364,30 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                             id = submenu.FindItem(_('Play loop'))
                             if id != wx.NOT_FOUND:
                                 submenu.Check(id, self.options['playloop'])
+                            """
                             id = submenu.FindItem(_('Use faster playback routine'))
                             if id != wx.NOT_FOUND:
                                 submenu.Check(id, self.play_fastFunc)
+                            """
                     else:
                         vidmenu.Check(id, check)
 
-
-    def UpdateVideoMenuItem(self, menu, submenu, checked):
+    def UpdateVideoMenuItem(self, menu, submenu1, submenu2, checked):
         vidmenus = [self.videoWindow.contextMenu, self.GetMenuBar().GetMenu(2)]
         for vidmenu in vidmenus:
             id = vidmenu.FindItem(menu)
             if id != wx.NOT_FOUND:
-                if submenu:
+                if submenu1:
                     sm = vidmenu.FindItemById(id).GetSubMenu()
                     if sm:
-                        id = sm.FindItem(submenu)
+                        id = sm.FindItem(submenu1)
                         if id != wx.NOT_FOUND:
+                            if submenu2:
+                                sm =  sm.FindItemById(id).GetSubMenu()
+                                if sm:
+                                    id = sm.FindItem(submenu2)
+                                    if id == wx.NOT_FOUND:
+                                        return
                             sm.Check(id, checked)
                 else:
                     vidmenu.Check(id, checked)
@@ -11276,13 +11434,28 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     def OnMenuVideoHide(self, event):
         self.HidePreviewWindow()
 
+    def AviThread_Running(self, script, prompt=True):
+        if script.AviThread and script.AviThread.isAlive():
+            script.AviThread.join(1)
+            if not script.AviThread.isAlive():
+                return False
+            if prompt:
+                base,name = os.path.split(script.filename)
+                if not name:
+                    name = base
+                wx.MessageBox(_(u'Avisynth not returned thread still running.\n{0}').format(name))
+            return True
+        return False
+
     def OnMenuVideoReleaseMemory(self, event):
         self.HidePreviewWindow()
         for index in xrange(self.scriptNotebook.GetPageCount()):
             script = self.scriptNotebook.GetPage(index)
             for key in script.snapShots.keys():
                 script.snapShots[key][1] = None # Releas only the bitmap ?
-            script.AVI = None
+            if self.AviThread_Running(script):
+                continue
+            self.AviFree(script)
             script.previewFilterIdx = 0
             script.lastpreviewFilterIdx = 0
         self.ResetPreviewFilter()
@@ -11293,22 +11466,24 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.splitView = False
         self.snapShotIdx = 0
         script = self.currentScript
+        if self.AviThread_Running(script):
+            return
         shown = self.previewWindowVisible
+        self.HidePreviewWindow()
+        for key in script.snapShots.keys():
+            script.snapShots[key][1] = None # Releas only the bitmap ?
+        script.lastpreviewFilterIdx = 0
+        self.ResetPreviewFilter()
+        self.AviFree(script)
         self.Freeze()
         try:
-            self.HidePreviewWindow()
-            for key in script.snapShots.keys():
-                script.snapShots[key][1] = None # Releas only the bitmap ?
-            script.AVI = None
-            script.lastpreviewFilterIdx = 0
-            self.ResetPreviewFilter()
             self.UpdateScriptTabname(script) # GPo
             self.SetVideoStatusText()
             if shown:
                 # now pick the first script that is initialized
                 for index in xrange(self.scriptNotebook.GetPageCount()):
                     script = self.scriptNotebook.GetPage(index)
-                    if (script != None) and (script.AVI != None) and not script.display_clip_refresh_needed:
+                    if self.previewOK(script):
                         self.SelectTab(index)
                         self.ShowVideoFrame(script=script)
                         break
@@ -11323,7 +11498,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 script = self.scriptNotebook.GetPage(index)
                 for key in script.snapShots.keys():
                     script.snapShots[key][1] = None
-                script.AVI = None
+                if self.AviThread_Running(script):
+                    continue
+                self.AviFree(script)
                 script.previewFilterIdx = 0
                 script.lastpreviewFilterIdx = 0
 
@@ -11430,24 +11607,25 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     def OnMenuVideoPlayLoop(self, event):
         self.options['playloop'] = event.IsChecked()
-        #self.UpdateVideoMenuItem(_('Play video'), _('Play loop'), self.options['playloop'])
+        #self.UpdateVideoMenuItem(_('Play video'), _('Play loop'),'', self.options['playloop'])
         self.UpdateVideoMenuItems()
         if self.playing_video:
             self.PlayPauseVideo(refreshFrame=False)
             self.PlayPauseVideo()
-
+    """
     def OnMenuVideoPlayFunc(self, event):
         self.play_fastFunc = event.IsChecked()
         self.options['playfastfunc'] = self.play_fastFunc
-        #self.UpdateVideoMenuItem(_('Play video'), _('Use faster playback routine'), self.play_fastFunc)
+        #self.UpdateVideoMenuItem(_('Play video'), _('Use faster playback routine'), '', self.play_fastFunc)
         self.UpdateVideoMenuItems()
+    """
 
     def OnMenuVideoSeparateThread(self, event):
         if self.playing_video:
             self.PlayPauseVideo(refreshFrame=False)
             self.playing_video = ''
         self.options['playbackthread'] = event.IsChecked()
-        self.UpdateVideoMenuItem(_('Play video'), _('Use separate thread'), event.IsChecked())
+        self.UpdateVideoMenuItem(_('Play video'), _('Use separate thread'), '', event.IsChecked())
         #self.UpdateVideoMenuItems()
         if self.playing_video == '':
             self.PlayPauseVideo()
@@ -11455,7 +11633,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     def OnMenuSaveViewPos(self, event):
         self.saveViewPos = not self.saveViewPos
         # GPo, not needed, handled in MenuBar and show context menu
-        #self.UpdateVideoMenuItem(_('Save view pos on tab change'), '', self.saveViewPos)
+        #self.UpdateVideoMenuItem(_('Save view pos on tab change'), '', '', self.saveViewPos)
 
     def OnMenuAutoHidePreview(self, event):
         self.autoHidePreview = event.IsChecked()
@@ -11687,6 +11865,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     (_('Slider window'), 'sliderwindow'),
                     (_('Slider window text field'), 'sliderwindowtextctrl'),
                     (_('Slider window default value'), 'sliderwindowdefvalue'),
+                    (_('Slider window extras (Snapshot)'), 'sliderwindowextrabtn1'),
                 ),
             )
         )
@@ -11831,6 +12010,15 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             for ctrl in self.videoControlWidgets:
                 ctrl.Enable()
                 ctrl.Refresh()
+
+    def OnMenuOptionsAviThread(self, event):
+        if self.playing_video:
+            self.PlayPauseVideo()
+            self.playing_video = ''
+        self.options['avithread'] = event.IsChecked()
+        self.UseAviThread = self.options['avithread']
+        if self.playing_video == '':
+            self.PlayPauseVideo()
 
     def OnMenuOptionsMonospaceFont(self, event):
         id = event.GetId()
@@ -12558,6 +12746,18 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.SetSelectionsDict(self.currentScript.selections) # set selections
             return True
 
+        def UpdateMenus(script):
+            self.UpdateScriptTabname(script)
+            matrix = script.matrix[0]
+            level = _(script.matrix[1].upper() + ' levels')
+            if matrix == 'auto':
+                matrix = _('Resolution-based')
+            else:
+                matrix = _('BT.' + matrix)
+            self.UpdateVideoMenuItem(_('Display'), _('YUV -> RGB'), matrix, True)
+            self.UpdateVideoMenuItem(_('Display'), _('YUV -> RGB'), level, True)
+
+
         # Get the newly selected script
         currIndex = event.GetSelection()
         oldIndex =  event.GetOldSelection()
@@ -12566,7 +12766,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.refreshAVI = True
         self.snapShotIdx = 0
         forceShow = False
-        #print('after pagechange')
 
         # Check split View
         if self.splitView:
@@ -12586,26 +12785,28 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         bmSet = False # bookmarks not set, its nicer to set bookmarks after show frame
         forcePlaying = False
         self.ResetPreviewFilter(script.previewFilterIdx) # GPo, set the filter menu item index
+        threadRunning = self.AviThread_Running(script)
 
         oldSliderWindow = self.currentSliderWindow
         newSliderWindow = script.sliderWindow
         oldSliderWindow.Hide()
         self.currentSliderWindow = newSliderWindow
 
-        if self.autoHidePreview:
+        if not threadRunning and self.autoHidePreview:
             if self.previewWindowVisible and script.AVI is None:
                 self.HidePreviewWindow()
             elif not self.previewWindowVisible and script.AVI is not None:
                 forceShow = True
 
         # Determine whether to hide the preview or not
-        if self.previewWindowVisible:
+        if self.previewWindowVisible or threadRunning:
             forceRefresh = False
-
-            if self.UpdateScriptAVI(script, forceRefresh=forceRefresh, prompt=True) is None:
+            if threadRunning or (self.UpdateScriptAVI(script, forceRefresh=forceRefresh, prompt=True) is None):
                 self.HidePreviewWindow()
                 SetBookmarks()
                 self.splitView = False
+                self.playing_video = False
+                UpdateMenus(script)
                 return False
 
             if ((script.AVI.Width, script.AVI.Height) == self.oldVideoSize):
@@ -12705,9 +12906,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             pass
         else:
             script.SetFocus()
-        #self.UpdateProgramTitle()
-        self.UpdateScriptTabname(self.currentScript)
+
         self.oldlinenum = None
+
+        wx.CallAfter(UpdateMenus, script)
 
         if forcePlaying:
             wx.CallAfter(self.PlayPauseVideo)
@@ -12726,6 +12928,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.currentScript.videoXY = None
             self.currentScript.videoZoom = None
 
+        if self.playing_video:
+            self.PlayPauseVideo(refreshFrame=True)
+            self.playing_video = ''
+
         if self.cropDialog.IsShown():
             wx.MessageBox(_('Cannot switch tabs while crop editor is open!'), _('Error'), style=wx.OK|wx.ICON_ERROR)
             event.Veto()
@@ -12733,16 +12939,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             wx.MessageBox(_('Cannot switch tabs while trim editor is open!'), _('Error'), style=wx.OK|wx.ICON_ERROR)
             event.Veto()
 
-        if self.playing_video:
-            self.PlayPauseVideo(refreshFrame=False)
-            self.playing_video = ''
-
         if self.FindFocus() == self.videoWindow:
             self.boolVideoWindowFocused = True
         else:
             self.boolVideoWindowFocused = False
-
-        #print('bevor pagechange')
 
         # GPo, why not self.currentScript ?
         oldSelectionIndex = event.GetOldSelection()
@@ -12757,6 +12957,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         if self.tabChangeLoadBookmarks:
             self.DeleteAllFrameBookmarks(bmtype=0) # GPo new
+
         if self.previewWindowVisible:
             if oldSelectionIndex >= 0:
                 if oldScript.lastSplitVideoPos is not None:
@@ -12787,7 +12988,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     resetViewPos()
             else: resetViewPos()
         else: resetViewPos()
-
 
     def OnMiddleDownNotebook(self, event):
         ipage = self.scriptNotebook.HitTest(event.GetPosition())[0]
@@ -12924,7 +13124,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.scriptNotebook.SetCursor(wx.StockCursor(wx.CURSOR_NO_ENTRY))
         else:
             self.scriptNotebook.SetCursor(wx.StockCursor(wx.CURSOR_DEFAULT))
-
 
     def OnMouseWheelNotebook(self, event):
         '''Rotate between tabs'''
@@ -13071,6 +13270,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         oldInfo = (self.oldWidth, self.oldHeight, self.oldFramecount)
         for index in r:
             script = self.scriptNotebook.GetPage(index)
+            if self.AviThread_Running(script):
+                continue
             if (tab_groups and group == script.group) and (index != self.scriptNotebook.GetSelection()):
                 self.SelectTab(index)
                 return True
@@ -13333,6 +13534,23 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.GotoNextBookmark(reverse=reverse, forceCursor=True, bmtype=[3])
             else:
                 self.GotoNextBookmark(reverse=reverse, forceCursor=True)
+        def GetNextPageIndex(reverse):
+            curr = self.scriptNotebook.GetSelection()
+            if reverse:
+                for i in reversed(xrange(0, curr)):
+                    if i != curr and self.previewOK(self.scriptNotebook.GetPage(i)):
+                        return True, i
+                for i in reversed(xrange(curr, self.scriptNotebook.GetPageCount())):
+                    if i != curr and self.previewOK(self.scriptNotebook.GetPage(i)):
+                        return True, i
+            else:
+                for i in xrange(curr, self.scriptNotebook.GetPageCount()):
+                    if i != curr and self.previewOK(self.scriptNotebook.GetPage(i)):
+                        return True, i
+                for i in xrange(0, curr):
+                    if self.previewOK(self.scriptNotebook.GetPage(i)):
+                        return True, i
+            return False, curr
 
         CTRL = wx.GetKeyState(wx.WXK_CONTROL)
         SHIFT = wx.GetKeyState(wx.WXK_SHIFT)
@@ -13342,7 +13560,14 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if self.options['mouseauxdown'] == 'tab change':
             if (self.scriptNotebook.GetPageCount() > 1) and not event.LeftIsDown() and not CTRL and not SHIFT and not ALT:
                 if not self.previewWindowVisible or not self.ScrollSimilarTabsOrTabGroups(val):
-                    self.SelectTab(None, val)
+                    if self.autoHidePreview:
+                        new,idx = GetNextPageIndex(not isAux2)
+                        if new:
+                            self.SelectTab(idx)
+                        else:
+                            x_GotoBookmark(not isAux2)
+                    else:
+                        self.SelectTab(None, val)
             else:
                 x_GotoBookmark(not isAux2)
 
@@ -13436,6 +13661,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         newOriginY = ymax
                     self.zoom_antialias = False
                     videoWindow.Scroll(newOriginX, newOriginY)
+
                 else:
                     self.zoom_antialias = self.options['zoom_antialias']
                     if videoWindow.HasCapture():
@@ -13451,6 +13677,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         self.SetVideoStatusText()
                     else:
                         self.SetVideoStatusText(addon=pixelInfo)#'%s%s, %s' % (' '*5,xystring, colorstring))
+        if event:
+            event.Skip()
 
     # GPo, use it for IdleCall e.g OnScrollVideoWindow
     def OnAfterScrollVideoWindow(self):
@@ -13474,7 +13702,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 pass
             self.videoWindow.SetCursor(wx.StockCursor(wx.CURSOR_DEFAULT))
         if event.LeftIsDown() and not self.cropDialog.IsShown() and \
-            (self.zoomfactor != 1 or self.zoomwindow) and self.options['zoom_antialias']:
+            (self.zoomfactor != 1) and self.options['zoom_antialias']:
                 self.zoom_antialias = True
                 self.videoWindow.Refresh()
                 wx.YieldIfNeeded()
@@ -13489,7 +13717,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.videoWindow.SetCursor(wx.StockCursor(wx.CURSOR_DEFAULT))
         if not self.cropDialog.IsShown():
             self.zoom_antialias = self.options['zoom_antialias']
-            if (self.zoomfactor != 1 or self.zoomwindow) and self.zoom_antialias:
+            if (self.zoomfactor != 1) and self.zoom_antialias:
                 self.videoWindow.Refresh()
         event.Skip()
 
@@ -13813,6 +14041,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             ('%RGB', _('Pixel rgb color (cursor based)')),
             ('%YUV', _('Pixel yuv color (cursor based)')),
             ('%CLR', _('Pixel color (auto-detect colorspace)')),
+            ('%DYR', _('Display YUV -> RGB conversion')),
             ('%Z', _('Program zoom')),
             ('%BM', _('Bookmark title')),
             ),
@@ -13919,7 +14148,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if x_id != wx.NOT_FOUND:
             menu = win.contextMenu.FindItemById(x_id)
             menu.Check(self.saveViewPos)
-        self.UpdatePreviewFilterMenu(self.ParseScriptPreviewFilters(notFoundGetSelfDict=True))
+        self.UpdatePreviewFilterMenu(self.ParseScriptPreviewFilters())
         try:
             win.PopupMenu(win.contextMenu, pos)
         except AttributeError:
@@ -14093,22 +14322,30 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 return
         except AttributeError:
             pass
+
+        self.StopPlayback()
         # Check if macros are still running
+        macroShown = clipShown = False
         for thread in threading.enumerate():
-            if thread.name == 'MacroThread':
+            if thread.name == 'MacroThread' and not macroShown:
+                macroShown = True
                 dlg = wx.MessageDialog(self, _('A macro is still running. Close anyway?'),
                                        _('Warning'), wx.OK|wx.CANCEL|wx.ICON_EXCLAMATION)
                 ID = dlg.ShowModal()
                 dlg.Destroy()
                 if ID == wx.ID_CANCEL:
                     return
-                break
-        # Stop playback
-        self.StopPlayback()
+            elif thread.name == 'clip' and not clipShown:
+                clipShown = True
+                dlg = wx.MessageDialog(self, _('A clip thread is still running. Close anyway?'),
+                                       _('Warning'), wx.OK|wx.CANCEL|wx.ICON_EXCLAMATION)
+                ID = dlg.ShowModal()
+                dlg.Destroy()
+                if ID == wx.ID_CANCEL:
+                    return
 
         # Save scripts if necessary
         frame = self.GetFrameNumber()
-        previewvisible = self.previewWindowVisible
         if self.separatevideowindow:
             if self.videoDialog.IsIconized():
                 self.videoDialog.Iconize(False)
@@ -14118,12 +14355,15 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             else: self.options['maximized2'] = False
 
         self.HidePreviewWindow()
+        previewvisible = self.previewWindowVisible
+
         if self.IsIconized():
             self.Iconize(False)
         if self.cropDialog.IsShown():
             self.OnCropDialogCancel(None)
         if self.trimDialog.IsShown():
             self.OnTrimDialogCancel(None)
+        currIndex = self.scriptNotebook.GetSelection()
         if self.options['promptexitsave']:
             for index in xrange(self.scriptNotebook.GetPageCount()):
                 script = self.scriptNotebook.GetPage(index)
@@ -14138,10 +14378,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     if (ID == wx.ID_YES and not self.SaveScript(script.filename, index) or
                         ID == wx.ID_CANCEL):
                         return
+
         # Save the session
         if self.backupTimer.IsRunning():
             self.backupTimer.Stop()
         if self.options['startupsession'] or restart:
+            self.scriptNotebook.SetSelection(currIndex)
             self.SaveSession(self.lastSessionFilename, saverecentdir=False,
                 frame=frame, previewvisible=previewvisible)
         self.options['last_preview_placement'] = self.mainSplitter.GetSplitMode()
@@ -14191,15 +14433,14 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             f.close()
         # Clean up
         wx.TheClipboard.Flush()
-        for index in xrange(self.scriptNotebook.GetPageCount()):
-            script = self.scriptNotebook.GetPage(index)
-            script.AVI = None
+        self.AppClosing = True # GPo do not use threads for releasing clips
         pyavs.ExitRoutines()
         if self.boolSingleInstance:
             self.argsPosterThread.Stop()
         self.Destroy()
         if restart:
-            os.execl(sys.executable, '"{}"'.format(sys.executable), *sys.argv)
+            if os.name == 'nt':
+                os.execl(sys.executable, '"{}"'.format(sys.executable), *sys.argv)
 
     @AsyncCallWrapper
     def NewTab(self, copyselected=True, copytab=False, text='', select=True, insertnext=False):
@@ -14268,6 +14509,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 scriptWindow.lastLength = self.currentScript.lastLength
                 #~scriptWindow.bookmarks.update(self.currentScript.bookmarks)
                 scriptWindow.bookmarks = self.GetBookmarkDict()
+                scriptWindow.matrix = list(self.currentScript.matrix)
                 scriptWindow.selections.update(self.currentScript.selections)
                 if select:
                     scriptWindow.lastSplitVideoPos = self.currentScript.lastSplitVideoPos  # GPo 2020, if copy keep the splitters
@@ -14345,7 +14587,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     def OpenFile(self, filename='', default='', f_encoding=None, eol=-1, workdir=None,
                  scripttext=None, setSavePoint=True, splits=None, framenum=None,
                  last_length=None, group=-1, group_frame=None, bookmarks=None, snapshots=None,
-                 selections=None,
+                 selections=None, matrix=None,
                  hidePreview=False, loadBookmarks=True):
         r'''OpenFile(filename='', default='')
 
@@ -14424,10 +14666,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 if loadBookmarks: # no Session
                     script = self.scriptNotebook.GetPage(indexCur)
                     script.bookmarks = self.GetBookmarkDict()
-                    #lastBookmarks = script.bookmarks
-                    #lastSelections = dict(script.selections)
-                    #self.DeleteAllFrameBookmarks(None)
-                    #script.selections.update(lastSelections)
 
                 forceSetBookmarks = False
                 # If script already exists in a tab, select it
@@ -14505,6 +14743,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     script.SetSavePoint()
                 if snapshots is not None:
                     self.GetSnapShotFromSession(script, snapshots)
+                if matrix is not None:
+                    script.matrix = matrix
 
                 if hidePreview and self.previewWindowVisible:
                     self.HidePreviewWindow()
@@ -14728,6 +14968,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         script, index = self.getScriptAtIndex(index)
         if script is None:
             return False
+        if self.AviThread_Running(script):
+            return False
         if self.splitView:
             self.splitView = False
             if self.previewWindowVisible:
@@ -14749,12 +14991,15 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.SaveScript(script.filename, index)
 
         # Save last state
+        if not self.AppClosing:
+            if not self.AviFree(script):
+                return False
         self.lastClosed = self.GetTabInfo(index)
         # Delete the tab from the notebook
         self.snapShotIdx = 0
         for key in script.snapShots.keys():
             script.snapShots[key] = [-1, None, ""]
-        script.AVI = None
+
         script.lastFramenum = None # GPo, disable OnPageChanged
 
         # If only 1 tab, make another
@@ -14904,7 +15149,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         text = self.cleanToggleTags(text)
         return text
 
-    def GetEncodedText(self, txt, bom=False):
+    def GetEncodedText(self, txt, bom=False, forceUtf8=False):
         '''Prepare a script's text for saving it to file
 
         Prefer system's encoding to utf-8, just in case other applications
@@ -14920,7 +15165,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 script.eol == 'crlf' or script.eol is None and os.name == 'nt'):
             txt = txt.replace('\n', '\r\n')
 
+        if forceUtf8:
+            script.encoding = 'utf-8-sig'
+            bom = False # Python writes the bom if it doesn't exist
+
         # try current encoding, else filesystem's
+        encoded = False # GPo 2021
         try:
             encoded_txt = txt.encode(script.encoding)
             encoded = True
@@ -14941,13 +15191,18 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         # fallback to utf-8
         if not encoded:
             script.encoding = 'utf8'
-            encoded_txt = txt.encode(script.encoding)
+            bom = False # GPo 2021
+            try:
+                encoded_txt = txt.encode(script.encoding)
+            except UnicodeEncodeError:
+                encoded_txt = txt
 
         # Add BOM
         if bom:
-            if script.encoding == 'utf-8-sig':
-                encoded_txt = codecs.BOM_UTF8 + encoded_txt
-            elif script.encoding == 'utf-16-le':
+            if script.encoding == 'utf-8-sig': # GPo added bom to bom, also check for bom
+                if not encoded_txt.startswith(codecs.BOM_UTF8):
+                    encoded_txt = codecs.BOM_UTF8 + encoded_txt
+            if script.encoding == 'utf-16-le':
                 encoded_txt = codecs.BOM_UTF16_LE + encoded_txt
             elif script.encoding == 'utf-16-be':
                 encoded_txt = codecs.BOM_UTF16_BE + encoded_txt
@@ -14955,6 +15210,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 encoded_txt = codecs.BOM_UTF32_LE + encoded_txt
             elif script.encoding == 'utf-32-be':
                 encoded_txt = codecs.BOM_UTF32_BE + encoded_txt
+
+        #if encoded_txt.startswith(codecs.BOM_UTF8):
+            #encoded_txt = encoded_txt.replace(codecs.BOM_UTF8, '', 1)
 
         return encoded_txt
 
@@ -15178,12 +15436,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             except:
                 return
 
-            """
-            if self.options['hidepreview'] or self.options['paranoiamode'] or (startup and self.options['exitstatus']):
-                previewWindowVisible = False
-            else:
-                previewWindowVisible = session['previewWindowVisible']
-            """
             session['previewWindowVisible'] = False # GPo
             previewWindowVisible = False # GPo
             if backup:
@@ -15241,46 +15493,17 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.scriptNotebook.SetSelection(selectedIndex)
             self.tabChangeLoadBookmarks = tbc
 
-            # GPo, load script bookmarks into the time line
-            """
-            bCount = -1
-            index = self.scriptNotebook.GetSelection()
-            script = self.scriptNotebook.GetPage(index)
-            if (selectedIndex is not None) and (selectedIndex != index):
-                # must save and restore the bookmarks before tab change
-                saveBM = dict(script.bookmarks)
-                self.scriptNotebook.SetSelection(selectedIndex)
-                script.bookmarks = None
-                script.bookmarks = saveBM
-                if selectedIndex in loadList:
-                    bCount = len(self.GetBookmarkDict())
-            elif index in loadList:
-                if self.options['bookmarksfromscript']:
-                    bCount = self.OnMenuBookmarksFromScript()
-                if bCount <= 0:
-                    bCount = self.SetTabBookmarks(script.bookmarks)
-                self.SetSelectionsDict(script.selections)
-            if bCount > -1:
-                wx.CallAfter(self.GetStatusBar().SetStatusText, _('%d Bookmarks imported') % bCount)
-            """
             bCount = -1
             script = self.currentScript
-            #if self.tabChangeLoadBookmarks:
+
             if self.options['bookmarksfromscript']:
                 bCount = self.OnMenuBookmarksFromScript()
             if bCount <= 0:
                 bCount = self.SetTabBookmarks(script.bookmarks)
             self.SetSelectionsDict(script.selections)
-            """
-            else:
-                self.SetTabBookmarks(lastBookmarks)
-                script.selctions.clear()
-                script.selections.update(lastSelections)
-                self.SetSelectionsDict(script.selections)
-            """
+
             if bCount > -1:
                 wx.CallAfter(self.GetStatusBar().SetStatusText, _('%d Bookmarks imported') % bCount)
-            # script bookmarks end
 
             # Change preview placement if needed
             if session.get('preview_placement', wx.SPLIT_HORIZONTAL) != self.mainSplitter.GetSplitMode():
@@ -15301,20 +15524,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if session.get('saveViewPos'):
                 self.saveViewPos = session['saveViewPos']
 
-            # Set the bookmarks, GPo, disabled, on session load always the script bookmarks
-            """
-            if script.bookmarks and self.tabChangeLoadBookmarks:
-                pass
-            else:
-                if 'bookmarks' in session:
-                    if startup:
-                        if self.options['loadstartupbookmarks']:
-                            self.SetBookmarkFrameList(session['bookmarks'])
-                    else:
-                        self.SetBookmarkFrameList(session['bookmarks'])
-                    if 'titleDict' in session:
-                        self.titleDict.update(session['titleDict'].items())
-            """
             # Save the recent dir
             if saverecentdir:
                 dirname = os.path.dirname(filename)
@@ -15330,7 +15539,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if compat:
             nItems = len(item)
             defaults = (None, None, None, None, None, 0, 'latin1', '', {})
-            name, selected, text, hash, splits, current_frame, f_encoding, workdir, bookmarks, snapshots, selections= item + defaults[nItems:]
+            name, selected, text, hash, splits, current_frame, f_encoding, workdir, bookmarks, snapshots, selections, matrix= item + defaults[nItems:]
             item = locals()
         scriptname = item['name']
         dirname, basename = os.path.split(scriptname)
@@ -15362,7 +15571,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                               framenum=item['current_frame'], last_length=item.get('last_length'),
                               group=item.get('group', -1), group_frame=item.get('group_frame'),
                               bookmarks=item.get('bookmarks'), snapshots=item.get('snapshots'),
-                              selections=item.get('selections'),
+                              selections=item.get('selections'), matrix=item.get('matrix'),
                               hidePreview=hidePreview, loadBookmarks=loadBookmarks)
         if reload and index is not None:
             # index is None -> the script was already loaded, different to this other version
@@ -15461,7 +15670,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     hash=hash, splits=splits, current_frame=script.lastFramenum,
                     last_length=script.lastLength, f_encoding=script.encoding, eol=script.eol,
                     workdir=script.workdir, group=script.group, group_frame=script.group_frame,
-                    bookmarks=bookmarks, snapshots=snapshots, selections=selections)
+                    bookmarks=bookmarks, snapshots=snapshots, selections=selections, matrix=script.matrix)
 
     def SaveImage(self, filename='', frame=None, silent=False, index=None, avs_clip=None, default='', quality=None, depth=None, resetFormat=False):
         script, index = self.getScriptAtIndex(index)
@@ -16777,6 +16986,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             frame = self.videoSlider.GetValue()
         v = script.AVI
         # read ffms global variables
+        """ # GPo disabled
         try:
             ffms_encodedframetype, ffms_sourcetime = v.ffms_info_cache[self.currentframenum]
         except KeyError:
@@ -16799,8 +17009,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     raise
                 ffms_sourcetime = ''
             v.ffms_info_cache[self.currentframenum] = ffms_encodedframetype, ffms_sourcetime
+        """
         framerate = v.Framerate
         framecount = v.Framecount
+        dmatrix = v.matrix if v.matrix_found else '*' + v.matrix
         time = self.FormatTime(frame/framerate)
         totaltime = self.FormatTime(framecount/framerate)
         bookmarktitle = self.titleDict.get(frame, '')
@@ -16872,8 +17084,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             ('%AR', '{aspectratio}'),
             ('%FB', '{fieldframebased}'),
             ('%PS', '{parityshort}'),
-            ('%EFT', '{ffms_encodedframetype}'),
-            ('%ST', '{ffms_sourcetime}'),
+            #('%EFT', '{ffms_encodedframetype}'),
+            #('%ST', '{ffms_sourcetime}'),
             ('%BM', '{bookmarktitle}'),
             ('%W', '{width}'),
             ('%H', '{height}'),
@@ -16881,6 +17093,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             ('%T', '{time}'),
             ('%P', '{parity}'),
             ('%Z', '{zoom}'),
+            ('%DYR', '{dmatrix}'),
         ]
         for key, item in keyList:
             info = info.replace(key, item)
@@ -17099,6 +17312,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     # GPo, for zoom layout bugfix, for wx. 2.93 not needed (issues with other funcs)
     def fix_zoom(self, zoom ):
+        return zoom
+        """ only for wx versions < 2.9 needed
         if wx.VERSION >= (2,9):
             return zoom
         k = int(1000.0 / zoom) # integer value
@@ -17108,11 +17323,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if  k2 == k:
                 return new_zoom
             new_zoom -= 0.0000001
+        """
 
     def previewOK(self, script=None):
         if script is None:
             script = self.currentScript
-        if script.AVI is None:
+        if script.AVI is None or self.AviThread_Running(script, prompt=False):
             return False
         error = script.AVI.IsErrorClip()\
                 or script.AVI.error_message is not None\
@@ -17124,26 +17340,68 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if forceRefresh is None:
             forceRefresh = self.ScriptChanged(self.currentScript)
         if not forceRefresh and (self.currentScript.previewFilterIdx > 0) and not self.ComparePreviewFilterDict(): # then update the slider
-            self.OnMenuPreviewFilter(None, self.currentScript.previewFilterIdx)
-            self.IdleCallDict['CommendAsString_UpdateSliders'] = self.OnMenuBlockCommendAsString_UpdateSliders()
+            self.OnMenuPreviewFilter(None, self.currentScript.previewFilterIdx, updateUserSliders=False)
+            self.IdleCallDict['UpdateUserSliders'] = self.UpdateUserSliders()
         else:
             if forceRefresh and (self.currentScript.previewFilterIdx > 0): # script is changed then set preview off
                 self.ResetPreviewFilter()
             self.ShowVideoFrame(forceCursor=forceRefresh and self.options['refreshpreview'], resize=resize, scroll=scroll)
         self.ResetZoomAntialias()
 
-    # GPo 2020, only for play thread
+    class FrameThread(threading.Thread):
+        def __init__(self, script):
+            threading.Thread.__init__(self)
+            self.setDaemon(True)
+            self.script = script
+            self.exitEvent = threading.Event()
+            self.startEvent = threading.Event()
+            self.resultEvent = threading.Event()
+            self.Lock = threading.RLock()
+            self.start()
+        def Start(self, nr):
+            self.nr = nr
+            self.startEvent.set()
+        def Reset(self):
+            self.resultEvent.clear()
+        def Exit(self):
+            self.exitEvent.set()
+            self.startEvent.set()
+        def run(self):
+            while not self.exitEvent.isSet():
+                self.startEvent.wait()
+                if not self.exitEvent.isSet():
+                    try:
+                        self.script.AVI.get_display_frame(self.nr)
+                    except:
+                        pass
+                    self.Lock.acquire()
+                    self.resultEvent.set()
+                    self.startEvent.clear()
+                    self.Lock.release()
+
+    #self.PlayThread_stopEvent = threading.Event()
+    #self.PlayThread_returnEvent = threading.Event()
+    #self.PlayThread = PlayBackThread(self, self.PlayThread_stopEvent, self.PlayThread_returnEvent)
+
+
+
+    # GPo 2020, only for playback
     # for initial values must call ShowVideoFrame bevor and after
-    def ShowVideoFrameFast(self, framenum, addon0='', forceShow=False): # forceShow experimental
-        script = self.currentScript
+    def ShowVideoFrameFast(self, framenum, addon0='', threaded=True, forceShow=False): # forceShow experimental
+        def GetFrame(script, framenum):
+            try:
+                script.AVI.display_clip.get_frame(framenum)
+            except:
+                pass
 
         if not self.playing_video and not forceShow:
             if self.previewOK:
-                self.ShowVideoFrame(forceLayout=True)
-            return False
+                return self.ShowVideoFrame(forceLayout=True)
+            return
 
-        #if script.oldSliderTexts != script.sliderTexts:
-            #return False
+        script = self.currentScript
+        if self.AviThread_Running(script, prompt=False):
+            return
 
         self.currentframenum = framenum
         self.videoSlider.SetValue(framenum)
@@ -17152,7 +17410,28 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if self.separatevideowindow:
             self.frameTextCtrl2.Replace(0, -1, str(framenum))
 
-        script.AVI.display_clip.get_frame(framenum)
+        # GPo new, get frame threaded
+        if threaded:
+            th = threading.Thread(target=GetFrame, args=(script, framenum,))
+            th.daemon = True
+            script.AviThread = th
+            th.start()
+            _t = time.time() + 9.0
+            while th.isAlive() and time.time() <= _t:
+                #pass
+                wx.MicroSleep(1)
+                #th.join(0.000001)
+                #time.sleep(0.000001)
+                #wx.Yield()
+
+            if th.isAlive() and self.playing_video:
+                if not self.TH_WaitForFrame(script, th, framenum):
+                    return
+            if not self.playing_video:
+                return
+        else:
+            script.AVI.display_clip.get_frame(framenum)
+
         error = script.AVI.display_clip.get_error()
         if error is not None:
             self.HidePreviewWindow()  # stop also playback
@@ -17189,14 +17468,20 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         script.lastFramenum = framenum
         self.SetVideoStatusText(framenum, primary=True, addon0=addon0)
+        if threaded:
+            return not th.isAlive() # disable also playback if thread still running
         return True
 
     def ShowVideoFrame(self, framenum=None, forceRefresh=False, wrap=True, script=None,
                        userScrolling=False, keep_env=None, forceLayout=False, doLayout=True,
                        resize=None, scroll=None, focus=True, adjust_handle=False,
                        check_playing=False, forceCursor=False, addon0=''):
-        if check_playing and not self.playing_video:
-            return
+        # thread get frame
+        def GetFrame(script, framenum):
+            script.AVI.display_clip.get_frame(framenum)
+
+        #if check_playing and not self.playing_video:
+            #return
         # Exit if disable preview option is turned on
         if self.options['disablepreview']:
             self.ResetPreviewFilter()
@@ -17205,6 +17490,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         # Update the script AVI
         if script is None:
             script = self.currentScript
+        # Check thread still alive
+        if self.AviThread_Running(script, prompt=False):
+            return
+
         if script.AVI is None:
             forceRefresh = True
             forceCursor = True
@@ -17214,8 +17503,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             wx.SetCursor(wx.StockCursor(wx.CURSOR_WAIT))
         try:
             boolNewAVI = self.UpdateScriptAVI(script, forceRefresh, keep_env=keep_env, showCursor=self.options['refreshpreview'] and not forceCursor)
-                #~ wx.MessageBox(_('Error loading the script'), _('Error'), style=wx.OK|wx.ICON_ERROR)
             if boolNewAVI is None:
+                if self.UseAviThread:
+                    self.HidePreviewWindow()
                 self.UpdateScriptTabname(self.currentScript) # GPo
                 self.ResetPreviewFilter()
                 return False
@@ -17282,38 +17572,26 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.frameTextCtrl2.SetForegroundColour(color)
                 self.frameTextCtrl2.Replace(0, -1, str(framenum))
 
+            # get the frame from avisynth
+            if script.AVI.current_frame == framenum: # make it faster don't use thread (sliders and other funcs that uses ShowFrame)
+                script.AVI.display_clip.get_frame(framenum)
+            elif self.UseAviThread:
+                if not self.GetAviDisplayFrame(script, framenum): # then user cancel the thread
+                    self.HidePreviewWindow()
+                    if forceCursor:                 # GPo 2018
+                        wx.SetCursor(wx.StockCursor(wx.CURSOR_DEFAULT))
+                    return False
+            else:
+                script.AVI.display_clip.get_frame(framenum)
+
             # Check for errors when retrieving the frame before updating the gui
-            script.AVI.display_clip.get_frame(framenum)
             error = script.AVI.display_clip.get_error()
             if error is not None:
                 self.HidePreviewWindow()
                 if forceCursor:                 # GPo 2018
                     wx.SetCursor(wx.StockCursor(wx.CURSOR_DEFAULT))
                 ID = wx.MessageBox(u'\n\n'.join((_('Error requesting frame {number}').format(number=framenum),
-                              error)), _('Error'), style=wx.OK|wx.CANCEL|wx.ICON_ERROR)
-                if ID == wx.CANCEL:
-                    saved = False
-                    try:
-                        saved = self.SaveSession(os.path.join(self.programdir, '_LastErrorSession.ses'), previewvisible=False)
-                    except:
-                        pass
-
-                    if not saved:
-                         wx.MessageBox(_('Error: cannot save the Session'), _('Error'), style=wx.OK|wx.ICON_ERROR)
-                    else:
-                        ID = wx.MessageBox('Session is saved as _LastErrorSession.ses\n\n' +
-                                            'Trying do freeing the scripts memory?',
-                                            _('Question'), style=wx.OK|wx.CANCEL|wx.ICON_QUESTION)
-                        if ID == wx.OK:
-                            # not helpful ?, avspmod freeze ?
-                            for index in xrange(self.scriptNotebook.GetPageCount()):
-                                try:
-                                    script = self.scriptNotebook.GetPage(index)
-                                    script.AVI = None
-                                    self.UpdateScriptTabname(script) # GPo
-                                except:
-                                    pass
-                            #~self.ExitProgram()
+                              error)), _('Error'), style=wx.OK|wx.ICON_ERROR)
                 return False
 
             self.videoPaneSizer.Layout()
@@ -17426,7 +17704,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             else:
                 # GPo, antialias
                 if (self.zoomfactor != 1 or self.zoomwindow) and self.zoom_antialias: # and not self.playing_video:
-                    self.IdleCallDict['self.videoWindow.Refresh'] = self.videoWindow.Refresh # only one refresh
+                    self.IdleCallDict['videoWindowRefresh'] = self.videoWindow.Refresh # only one refresh
 
             if doFocusScript:
                 script.SetFocus()
@@ -17439,7 +17717,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     if self.playing_video:
                         self.SetVideoStatusText(framenum, primary=True, addon0=addon0)
                     else:
-                        self.IdleCallDict['self.OnMouseMotionVideoWindow'] = self.OnMouseMotionVideoWindow
+                        self.IdleCallDict['OnMouseMotionVideoWindow'] = self.OnMouseMotionVideoWindow
                 else:
                     primary = self.FindFocus() == self.videoWindow
                     addon = ''
@@ -17449,6 +17727,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                             if pixelInfo[1] is not None:
                                 addon = pixelInfo
                     self.SetVideoStatusText(framenum, primary=primary, addon=addon, addon0=addon0)
+            if boolNewAVI:
+                self.ShowFreeMemory()
 
             """
             if boolNewAVI:
@@ -17473,37 +17753,32 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         return True
 
     def LayoutVideoWindows(self, w=None, h=None, resize=True, forcefit=False, forceRefresh=False):
+        script = self.currentScript
         if w is None:
-            w = int(self.currentScript.AVI.DisplayWidth * self.zoomfactor)
+            w = int(script.AVI.DisplayWidth * self.zoomfactor)
         if h is None:
-            h = int(self.currentScript.AVI.DisplayHeight * self.zoomfactor)
+            h = int(script.AVI.DisplayHeight * self.zoomfactor)
         # Show or hide slider window
         if True:
-            boolSliders = bool(self.currentScript.sliderTexts or self.currentScript.sliderProperties or self.currentScript.toggleTags or self.currentScript.autoSliderInfo)
+            boolSliders = bool(script.sliderTexts or script.sliderProperties or script.toggleTags or script.autoSliderInfo)
             if boolSliders:
-                self.toggleSliderWindowButton.Enable()
-                if self.currentScript.sliderWindowShown:
-                    self.currentScript.sliderWindow.Show()
-                    self.ShowSliderWindow(self.currentScript)
 
+                self.toggleSliderWindowButton.Enable()
+                if script.sliderWindowShown:
+                    script.sliderWindow.Show()
+                    self.ShowSliderWindow(script)
                 else:
-                    if forceRefresh and not self.videoSplitter.IsSplit() and not self.options['keepsliderwindowhidden'] and not self.currentScript.userHidSliders:
+                    if forceRefresh and not self.videoSplitter.IsSplit() and not self.options['keepsliderwindowhidden'] and not script.userHidSliders:
                         self.ToggleSliderWindow()
                     else:
-                        self.HideSliderWindow(self.currentScript)
+                        self.HideSliderWindow(script)
             else:
-                self.currentScript.sliderWindowShown = True
+                script.sliderWindowShown = True
                 self.ToggleSliderWindow()
                 self.toggleSliderWindowButton.Disable()
         if self.separatevideowindow:
             if self.options['allowresize'] and not self.videoDialog.IsMaximized():
                 wA, hA = self.videoDialog.GetSize()
-                """ GPo ?
-                if self.currentScript.sliderWindowShown:
-                    wslider = -self.currentScript.lastSplitSliderPos
-                else:
-                    wslider = self.videoSplitter.GetMinimumPaneSize() + 5
-                """
                 wslider = self.videoSplitter.GetMinimumPaneSize() + 5
                 wB = (w + 2*self.xo + 5) + (wslider) + self.toggleSliderWindowButton.GetSize()[0] + 5
                 hB = (h + 2*self.yo) + 95# + (200)
@@ -17525,14 +17800,14 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         self.videoDialog.Center()
 
             #~self.UpdateProgramTitle()
-            self.UpdateScriptTabname(self.currentScript)
+            self.UpdateScriptTabname(script)
             self.videoDialog.Show()
             return
         if not self.IsMaximized() and self.options['allowresize'] and resize:
             # Resize the window as necessary
             wA, hA = self.GetSize()
-            if self.currentScript.sliderWindowShown:
-                wslider = -self.currentScript.lastSplitSliderPos
+            if script.sliderWindowShown:
+                wslider = -script.lastSplitSliderPos
             else:
                 wslider = self.videoSplitter.GetMinimumPaneSize() + 5
             wB = (w + 2*self.xo + 20) + (wslider) + self.toggleSliderWindowButton.GetSize()[0] + 5
@@ -17685,9 +17960,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         bmDict.update(self.videoSlider.selectionsDict)  # add selections
         if clip is not None:
             if not bmtype:
-                bookmarkValues = [value for value in bmDict.keys()  # goto all
-                                  if value < clip.Framecount]
-            elif not 3 in bmtype:                                   # goto bmtype (0,1,2)
+                bookmarkValues = [value for value in bmDict.keys() if value < clip.Framecount] # goto all
+            elif not 3 in bmtype:                                                              # goto bmtype (0,1,2)
                 bookmarkValues = [value for value, btype in bmDict.items()
                                     if (btype in bmtype) or (isinstance(btype, basestring) and 0 in bmtype) and value < clip.Framecount]
             else:
@@ -17697,7 +17971,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if not bmtype:
                 bookmarkValues = [value for value in bmDict.keys()]
             elif not 3 in bmtype:
-                bookmarkValues = [value for value, btype in bmDict if (btype in bmtype) or (isinstance(btype, basestring) and 0 in bmtype)]
+                bookmarkValues = [value for value, btype in bmDict.items() if (btype in bmtype) or (isinstance(btype, basestring) and 0 in bmtype)]
             else:
                 bookmarkValues = [value for value, btype in self.GetBookmarkFrameList().items()
                                     if value in self.titleDict]
@@ -17754,13 +18028,251 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 pass
 
     # GPo, call back for avi clip
-    def AVICallBack(self, ident, nr):
+    def AVICallBack(self, ident, value, framenr=-1):
         if ident == 'preview':
-            wx.CallAfter(self.OnMenuPreviewFilter, index=nr)
+            wx.CallAfter(self.OnMenuPreviewFilter, index=value)
+        return True
+
+    def AviFree(self, script):
+
+        def _avifree(script):
+            try:
+                script.AVI = None
+            except:
+                wx.CallAfter(_print, 'Error while releasing clip.')
+
+        if not script.AVI:
+            return True
+        # if avisynth in progress we cannot release the clip also return
+        if self.AviThread_Running(script, prompt=not self.AppClosing):
+            if self.AppClosing:
+                return True
+            return
+
+        # Don't use thread if app on closing
+        if not self.AppClosing and self.UseAviThread:
+            #q = queue.Queue()
+            th = threading.Thread(target=_avifree, args=(script,))
+            th.daemon = True
+            script.AviThread = th
+            th.name = 'clip'
+            th.start()
+            th.join(10)
+            if th.isAlive():
+                self.Enable(False)
+                i = 0
+                msgShown = False
+                msg = _('Waiting for Avisynth, thread still running.\n' +
+                        'This dialog is automatically closed when avisynth returns.\n' +
+                        'If you abort this process, you should restart the program!')
+
+                progress = wx.ProgressDialog(_('Waiting for avisynth release memory'),'',10,self,
+                                style=wx.PD_ELAPSED_TIME|wx.PD_CAN_ABORT|wx.PD_APP_MODAL|wx.PD_APP_MODAL)
+                try:
+                    while th.isAlive():
+                        c,s = progress.Pulse()
+                        if not c:
+                            if i > 15: break
+                            else:
+                                msgShown = True
+                                progress.Pulse(msg)
+                        if not msgShown and i > 10:
+                            msgShown = True
+                            progress.Pulse(msg)
+                        i += 1
+                        th.join(0.5)
+                finally:
+                    #self.DeletePendingEvents()
+                    self.Enable(True)
+                    progress.Destroy()
+
+                if th.isAlive():
+                    self.StatusbarTimer_Start(3000, _('Clip not released. Memory still allocated.'))
+                    return False
+                script.AviThread = None
+                self.StatusbarTimer_Start(3000, _('Clip successful released'))
+            else:
+                script.AviThread = None
+                #self.StatusbarTimer_Start(3000, _('Clip successful released'))
+        else:
+            script.AVI = None
+            script.AviThread = None
+        return True
+    """
+    class CustomDialog(wx.lib.sized_controls.SizedDialog):
+
+        def __init__(self, *args, **kwargs):
+            super(CustomDialog, self).__init__(*args, **kwargs)
+            pane = self.GetContentsPane()
+
+            static_line = wx.StaticLine(pane, style=wx.LI_HORIZONTAL)
+            static_line.SetSizerProps(border=(('all', 0)), expand=True)
+
+            pane_btns = sized_controls.SizedPanel(pane)
+            pane_btns.SetSizerType('horizontal')
+            pane_btns.SetSizerProps(align='center')
+
+            button_ok = wx.Button(pane_btns, ID_GMAIL, label='Gmail')
+            button_ok.Bind(wx.EVT_BUTTON, self.on_button)
+
+            button_ok = wx.Button(pane_btns, ID_OUTLOOK, label='Outlook')
+            button_ok.Bind(wx.EVT_BUTTON, self.on_button)
+
+            self.Fit()
+
+        def on_button(self, event):
+            if self.IsModal():
+                self.EndModal(event.EventObject.Id)
+            else:
+                self.Close()
+    """
+
+    """
+    def wxProcessEvents(self):
+        # this version uses the new Phoenix API
+        # Get app
+
+        app = wx.App.Get()
+
+        # Keep reference of old eventloop instance
+        old = wx.EventLoopBase.GetActive()
+        # Create new eventloop and process
+        eventLoop = app.GetTraits().CreateEventLoop()
+        wx.EventLoopActivator(eventLoop)
+        while eventLoop.Pending():
+            eventLoop.Dispatch()
+        # Process idle
+        eventLoop.ProcessIdle() # otherwise frames do not close
+        # Set back the original
+        wx.EventLoopActivator(old)
+    """
 
     def UpdateScriptAVI(self, script=None, forceRefresh=False, keep_env=None,
                         prompt=True, showCursor=True):
-        cursor = False
+        """
+        def _createDisplayClip(script):
+            script.AVI.CreateDisplayClip(matrix=self.matrix, interlaced=self.interlaced,
+                            swapuv=self.swapuv, bit_depth=self.bit_depth, readmatrix=self.options['readmatrix'])
+        def TH_CreateDisplayClip(script):
+            th = threading.Thread(target=_createDisplayClip, args=(script,))
+            th.daemon = True
+            th.start()
+            th.join(10)
+            return not th.isAlive()
+        """
+
+        def _getClip(script,scripttxt,filename,workdir,env,fitHeight,fitWidth,oldFramecount,matrix,interlaced,swapuv,bit_depth,callBack,readmatrix,q,rq):
+            scr_filename = script.filename
+            AVI = None
+            try:
+                AVI = pyavs.AvsClip(
+                                scripttxt, filename, workdir=workdir, env=env,
+                                fitHeight=fitHeight, fitWidth=fitWidth, oldFramecount=oldFramecount,
+                                matrix=matrix, interlaced=interlaced, swapuv=swapuv,
+                                bit_depth=bit_depth,callBack=callBack,readmatrix=readmatrix)
+                time.sleep(0.05) # wait a little, give priority to the main thread
+            except:
+                q.put(AVI)
+                return
+
+            re = rq.get(block=True, timeout=4)
+            if not re:
+                q.put(AVI)
+                return
+
+            if isinstance(AVI,  pyavs.AvsClipBase):
+                try:
+                    AVI = None
+                    wx.CallAfter(self.StatusbarTimer_Start, 5000, _(u'Abandoned clip released: "{0}"').format(scr_filename), bellcount=3)
+                except:
+                    pass
+
+        def TH_GetClip(script,scripttxt,filename,workdir,env,fitHeight,fitWidth,oldFramecount,matrix,interlaced,swapuv,bit_depth,callBack,readmatrix):
+            p,f = os.path.split(filename)
+            if not f: f = p
+            self.GetStatusBar().SetStatusText(_('Initialize clip: ' + f))
+            AVI = None
+            q = queue.Queue()
+            rq = queue.LifoQueue()
+            rq.put(False)
+            try:
+                th = threading.Thread(target=_getClip, args=(script,scripttxt,filename,workdir,env,fitHeight,fitWidth,
+                                        oldFramecount,matrix,interlaced,swapuv,bit_depth,callBack,readmatrix,q,rq,))
+                if not isinstance(th, threading.Thread):
+                    raise
+                th.daemon = True
+                th.name = 'clip'
+                script.AviThread = th
+                th.start()
+            except:
+                wx.MessageBox(_('Error creating the clip thread.\n'+
+                        'Options->Access Avisynth in threads should be deaktivated.\n'+
+                        'Then restart the program.'), style=wx.OK|wx.ICON_ERROR)
+                return
+            #self.Enable(False)
+            disabler = wx.WindowDisabler(True)
+            th.join(10)
+            try:
+                try:
+                    AVI = q.get(block=False, timeout=1)
+                except:
+                   pass # no clip returned
+                # if not th.isAlive() and not clip returned then avisynth load dll error must be
+                # handle the dll error later
+                if AVI is None and th.isAlive():
+                    i = 0
+                    msgShown = False
+                    msg = _('Waiting for Avisynth, thread still running.\n' +
+                            'This dialog is automatically closed when avisynth returns.\n' +
+                            'If you abort this process, you should restart the program!\n')
+
+                    progress = wx.ProgressDialog(_('Waiting for avisynth clip'),'',10,self,
+                                    style=wx.PD_ELAPSED_TIME|wx.PD_CAN_ABORT|wx.PD_APP_MODAL)
+                    try:
+                        while th.isAlive():
+                            c,s = progress.Pulse()
+                            if not c:
+                                if i > 10: break
+                                else:
+                                    msgShown = True
+                                    progress.Pulse(msg)
+                            if not msgShown and i > 10:
+                                msgShown = True
+                                progress.Pulse(msg)
+                            i += 1
+                            th.join(0.5)
+                    finally:
+                        progress.Destroy()
+                    try:
+                        AVI = q.get(block=False, timeout=1)
+                    except:
+                        pass
+
+                    if th.isAlive():
+                        rq.put(True) # flag for thread (release the clip)
+                        #print('thread added')
+                        self.Thread_List.append((th,q))
+            finally:
+                #self.Enable(True)
+                disabler = False
+                if not th.isAlive():
+                    script.AviThread = None
+                if not AVI or (AVI and AVI.IsErrorClip()):
+                    self.GetStatusBar().SetStatusText(_('Error: Clip not initialized'))
+                #self.DeletePendingEvents()
+                return AVI
+
+        def CheckMatrix(script):
+            if self.options['readmatrix']:
+                if script.AVI and not script.AVI.IsErrorClip() and script.AVI.matrix_found:
+                    script.matrix = script.AVI.matrix_found[:]
+
+                if script.matrix[0] != lastmatrix[0] or script.matrix[1] != lastmatrix[1]:
+                    s1 = _('BT.' + script.matrix[0])
+                    s2 = _(script.matrix[1].upper() + ' levels')
+                    self.UpdateVideoMenuItem(_('Display'), _('YUV -> RGB'), s1, True)
+                    self.UpdateVideoMenuItem(_('Display'), _('YUV -> RGB'), s2, True)
+
         try:
             if not script:
                 script = self.currentScript
@@ -17771,26 +18283,23 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     if script == self.scriptNotebook.GetPage(index):
                         break
 
-            updateDisplayClip = False
+            lastmatrix = script.matrix[:]
             if script.AVI is None:
                 self.firstToggled = forceRefresh = True
 
             boolNewAVI = False
             if self.refreshAVI and self.options['refreshpreview'] or forceRefresh:
-                fitHeight = fitWidth = None
                 if not script.previewtxt:
                     script.Colourise(0, script.GetTextLength())
                 if forceRefresh or self.ScriptChanged(script):
+                    # Backup the current session if paranoia mode is on
+                    if self.options['paranoiamode']:
+                        self.SaveSession(self.lastSessionFilename, saverecentdir=False, previewvisible=False)
                     if self.playing_video:
                         self.PlayPauseVideo(refreshFrame=False)
                         self.playing_video = ''
                     script.display_clip_refresh_needed = False
                     scripttxt = script.GetText()
-                    # Replace any user-inserted sliders (defined with self.regexp)
-                    # Backup the current session if paranoia mode is on
-                    if self.options['paranoiamode']:
-                        self.SaveSession(self.lastSessionFilename, saverecentdir=False, previewvisible=False)
-
                     sDirname = os.path.dirname(script.filename)
                     sBasename = self.scriptNotebook.GetPageText(index)
                     filename = os.path.join(sDirname, sBasename)
@@ -17804,35 +18313,58 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         oldWidth, oldHeight = script.AVI.DisplayWidth, script.AVI.DisplayHeight
                         boolOldAVI = True
                         env = script.AVI.env if keep_env else None
-                    if updateDisplayClip and False:
-                        script.AVI.CreateDisplayClip(fitHeight, fitWidth)
-                    else:
-                        workdir_exp = self.ExpandVars(self.options['workdir'])
-                        if (self.options['useworkdir'] and self.options['alwaysworkdir']
-                            and os.path.isdir(workdir_exp)):
-                                workdir = workdir_exp
-                        else:
-                            workdir = script.workdir
-                        # vpy hack, remove when VapourSynth is supported
-                        if os.name == 'nt' and filename.endswith('.vpy'):
-                            self.SaveScript(filename)
 
-                        if showCursor:
-                            cursor = True
-                            wx.BeginBusyCursor()
-                        script.AVI = None
+                    if self.AviThread_Running(script):
+                        return None
+                    script.AviThread = None
+
+                    workdir_exp = self.ExpandVars(self.options['workdir'])
+                    if (self.options['useworkdir'] and self.options['alwaysworkdir']
+                        and os.path.isdir(workdir_exp)):
+                            workdir = workdir_exp
+                    else:
+                        workdir = script.workdir
+                    # vpy hack, remove when VapourSynth is supported
+                    if os.name == 'nt' and filename.endswith('.vpy'):
+                        self.SaveScript(filename)
+
+                    if showCursor and not wx.IsBusy():
+                        wx.BeginBusyCursor()
+
+                    if not self.AviFree(script):
+                        if wx.IsBusy():
+                            wx.EndBusyCursor()
+                        return None
+
+                    readmatrix =  self.options['readmatrix']
+                    if readmatrix:
+                        matrix = self.MatrixFromScript(script)
+                        if matrix:
+                            script.matrix = matrix
+
+                    if self.UseAviThread:
+                        script.AVI = TH_GetClip(script, self.getCleanText(scripttxt), filename,
+                            workdir=workdir, env=env, fitHeight=None, fitWidth=None,
+                            oldFramecount=oldFramecount, matrix=script.matrix, interlaced=self.interlaced,
+                            swapuv=self.swapuv, bit_depth=self.bit_depth, callBack=self.AVICallBack,
+                            readmatrix=readmatrix)
+                        if script.AVI is None:
+                            if self.customHandler > 0:
+                                self.PostMessage(self.customHandler, self.AVSP_VID_SIZE, 0, 0)
+                            return None
+                    else:
                         script.AVI = pyavs.AvsClip(
                             self.getCleanText(scripttxt), filename, workdir=workdir, env=env,
-                            fitHeight=fitHeight, fitWidth=fitWidth, oldFramecount=oldFramecount,
-                            matrix=self.matrix, interlaced=self.interlaced, swapuv=self.swapuv,
-                            bit_depth=self.bit_depth,callBack=self.AVICallBack)
+                            fitHeight=None, fitWidth=None, oldFramecount=oldFramecount,
+                            matrix=script.matrix, interlaced=self.interlaced, swapuv=self.swapuv,
+                            bit_depth=self.bit_depth,callBack=self.AVICallBack,
+                            readmatrix=readmatrix)
 
                     if not script.AVI.initialized:
-                        if self.customHandler > 0:      # GPo
+                        if self.customHandler > 0:
                             self.PostMessage(self.customHandler, self.AVSP_VID_SIZE, 0, 0)
                         if prompt:
-                            if showCursor:
-                                cursor = False
+                            if wx.IsBusy():
                                 wx.EndBusyCursor()
                             wx.SetCursor(wx.StockCursor(wx.CURSOR_DEFAULT))
                             # end
@@ -17847,35 +18379,42 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                 )
                                 s2 = '\n'.join(textwrap.wrap(s2, 70))
                             wx.MessageBox('%s\n\n%s' % (s1, s2), _('Error'), style=wx.OK|wx.ICON_ERROR)
-                        script.AVI = None
+                        if script.AVI and isinstance(script.AVI,  pyavs.AvsClipBase):
+                            self.AviFree(script)
+                        else: script.AVI = None
                         return None
 
+                    boolNewAVI = True
+                    CheckMatrix(script)
                     # Update the script tag properties
                     self.UpdateScriptTagProperties(script, scripttxt)
                     self.GetAutoSliderInfo(script, scripttxt)
                     script.previewtxt = self.ScriptChanged(script, return_styledtext=True)[1]
-                    boolNewAVI = True
 
+                # end new AVi
                 if script == self.currentScript:
                     self.refreshAVI = False
 
+            # end refresh Avi
             if script.display_clip_refresh_needed and not boolNewAVI:
                 script.display_clip_refresh_needed = False
                 oldWidth, oldHeight = script.AVI.DisplayWidth, script.AVI.DisplayHeight
                 boolOldAVI = True
-                if not cursor and showCursor:
-                    cursor = True
+                if not wx.IsBusy() and showCursor:
                     wx.BeginBusyCursor()
-                ok = script.AVI.CreateDisplayClip(matrix=self.matrix, interlaced=self.interlaced,
-                                                  swapuv=self.swapuv, bit_depth=self.bit_depth)
+                # normaly without risk, thread also not needed
+                ok = script.AVI.CreateDisplayClip(matrix=script.matrix, interlaced=self.interlaced,
+                                                  swapuv=self.swapuv, bit_depth=self.bit_depth, readmatrix=self.options['readmatrix'])
+                #ok = TH_CreateDisplayClip(script)
                 if ok:
                     boolNewAVI = True
+                    CheckMatrix(script)
                 else:
                     return None
         finally:
             if script == self.currentScript:      # GPo 2020
                 self.CalculateZoomFitFill()
-            if cursor:
+            if wx.IsBusy():
                wx.EndBusyCursor()
 
         if boolNewAVI:
@@ -17893,66 +18432,31 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     def ScriptChanged(self, script=None, return_styledtext=False):
         """Compare scripts including style, but excluding comment/newline/space"""
-        #if self.options['doublestarasstring']:
-            #return self.ScriptChangedEx(script, return_styledtext)
         if script is None:
             script = self.currentScript
-        if self.options['doublestarasstring']:
-            script.DoubleStarAsString = False   # disable /** as string, so only the script text is compared
-            script.OnStyleNeeded(None, True)    # update the style
         scripttxt = script.GetStyledText(0, script.GetTextLength())
-        if self.options['doublestarasstring']:
-            script.DoubleStarAsString = True    # enable it if needed
-            script.OnStyleNeeded(None, True)    # and update the style
         styledtxt = []
+        pFilter = False
         for i in range(0, len(scripttxt), 2):
             style = ord(scripttxt[i+1]) & 31
+
+            if pFilter:
+                if style == script.STC_AVS_PREVIEWFILTER_END:
+                    pFilter = False
+                continue
+
             if style in script.commentStyle \
             or (style == script.STC_AVS_DEFAULT and scripttxt[i] in ' \t\n'):
+                if style == script.STC_AVS_PREVIEWFILTER:
+                    pFilter = True
                 continue
+
             styledtxt.append(scripttxt[i])
             styledtxt.append(style)
         script_changed = styledtxt != script.previewtxt
         if return_styledtext:
             return script_changed, styledtxt
         return script_changed
-
-    """
-    # if previe filter sliders enabled /** isn't anymore a block comment start
-    # also check here for script change
-    def ScriptChangedEx(self, script=None, return_styledtext=False):
-        if script is None:
-            script = self.currentScript
-        scripttxt = script.GetStyledText(0, script.GetTextLength())
-        styledtxt = []
-        i = 0
-        while i < len(scripttxt)-2:
-            style = ord(scripttxt[i+1]) & 31
-            if style in script.commentStyle \
-            or (style == script.STC_AVS_DEFAULT and scripttxt[i] in ' \t\n'):
-                i += 1
-                continue
-            if (style == script.STC_AVS_DEFAULT) and \
-                scripttxt[i] == '/' and scripttxt[i+1] == '*' and (i < len(scrittext)-16):
-                if scripttext[i:14] in ('/**avsp_filter', ' /**avsp_filte'):
-                    x == i+15
-                    for xx in range(x, len(scripttxt)-x-4):
-                        if scripttext[xx] == '*' and scripttxt[xx+1] == '/':
-                            i == xx
-                            break
-                    i += 1
-                    continue
-
-            styledtxt.append(scripttxt[i])
-            styledtxt.append(style)
-            i += 1
-
-        script_changed = styledtxt != script.previewtxt
-        if return_styledtext:
-            return script_changed, styledtxt
-        #print(str(script_changed))
-        return script_changed
-        """
 
     #####################
     #### User sliders
@@ -18023,7 +18527,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         scriptChanged = self.ScriptChanged(script)
 
         if script.lastpreviewFilterIdx > 0 and not scriptChanged:
-            self.OnMenuPreviewFilter(None, script.lastpreviewFilterIdx)
+            self.OnMenuPreviewFilter(None, script.lastpreviewFilterIdx, updateUserSliders=False)
         else:
             if not selfrefreshAVI or selfrefreshAVI is None:
                 selfrefreshAVI = False
@@ -18310,7 +18814,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     # also saved on ToggleSliderFold
     def SliderSaveCurrentFolds(self):
         script = self.currentScript
-        #script.SliderFoldsBackup = {} keep it for the whole session
         if not script.sliderToggleLabels:
             return
         for item in script.sliderToggleLabels:
@@ -18319,14 +18822,19 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     def SliderRestoreFolds(self):
         script = self.currentScript
-        for item in script.sliderToggleLabels:
+        i = -1
+        count = len(script.sliderToggleLabels)-1
+        for x, item in enumerate(script.sliderToggleLabels):
             label = item.GetLabel().strip(' -+')
             if label in script.SliderFoldsBackup:
                 state = bool(script.SliderFoldsBackup[label])
-                self.ToggleSliderFold(item, fold=not state, refresh=True, scroll=False)
+                if state: # count the refreshes and do not refresh if count > 10 (refresh is slow, but restores without flicker)
+                    i += 1
+                self.ToggleSliderFold(item, fold=not state, refresh=(state and i < 11) or (x == count), scroll=False) # refresh on last item reduce flicker. Strange.
             else:
-                self.ToggleSliderFold(item, fold=True, refresh=True, scroll=True) # Expand new filter
+                self.ToggleSliderFold(item, fold=True, refresh=False, scroll=False)
 
+    """ # Not used
     def SlidersClearFolds(self, clearAll=True):
         if clearAll:
             for i in range(self.scriptNotebook.GetPageCount()):
@@ -18334,7 +18842,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 script.SliderFoldsBackup = {}
         else:
             self.currentScript.SliderFoldsBackup = {}
-
+    """
     def createAutoUserSliders(self, script):
         script.sliderWindow.Freeze()
         script.sliderSizerNew.Clear(deleteWindows=True)
@@ -18347,7 +18855,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             (_('Toggle exclusions filters'), '', self.OnSliderToggleExclusionsFilters, ''),
             (_('General settings...'), '', self.OnSliderLabelSettings, ''),
             (''),
-            (_('Clear all auto fold status'), '', self.OnSliderResetAllFoldOrders, ''),
+            #(_('Clear all auto fold status'), '', self.OnSliderResetAllFoldOrders, ''),
             (_('Set same width for all tabs'), '', self.OnSliderWindowsSameWidth, ''),
             (_('Slider update immediately'), '', self.OnSliderToggleUpdateMode, '', wx.ITEM_CHECK, False),
             (''),
@@ -18360,6 +18868,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         else:
             exclusionList = self.options['autosliderexclusions'].lower().split()
         row = 0
+        addSnapshotPanel = True
+
         #for filterName, filterInfo in script.autoSliderInfo:
         for filterName, filterInfo, extraInfo in script.autoSliderInfo: #GPo new extraInfo if previewFilter
             filterN = filterName.lower() if filterName.find(' (') < 0 else filterName.lower().split(' (')[0] # GPo
@@ -18507,6 +19017,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if row == 0:
             script.autoSliderInfo = []
         else:
+            if addSnapshotPanel:
+                separator = self.addAvsSliderSeparatorNew(script, label='Snapshot', menu=menuGeneral, row=row, sizer=script.sliderSizerNew)
+                row += 1
+                self.addAvsSnapshotPanel(script, separator, row)
+                row += 1
             # Add a spacer
             height = 0
             if script.sliderTexts != []:
@@ -18532,7 +19047,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             # Fold all filters
             for item in script.sliderToggleLabels:
                 self.ToggleSliderFold(item, fold=True, refresh=False)
-
             self.foldAllSliders = False
         elif foldLevel == 1:
             # Fold none, don't need to do anything
@@ -18671,8 +19185,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if self.fc is not None:
                 self.fc.Stop()
             leftTimer.Stop()
-            #if leftCtrl.HasCapture():
-                #leftCtrl.ReleaseMouse()
             valTxtCtrl.SetLabel(strTemplate % slider.GetValue())
             event.Skip()
             if slider.lastValue != slider.GetValue():
@@ -18705,8 +19217,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if self.fc is not None:
                 self.fc.Stop()
             rightTimer.Stop()
-            #if rightCtrl.HasCapture():
-                #rightCtrl.ReleaseMouse()
             valTxtCtrl.SetLabel(strTemplate % slider.GetValue())
             event.Skip()
             if slider.lastValue != slider.GetValue():
@@ -18783,49 +19293,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if mod > (maxValue - minValue):
                 return (0, _('The difference between the min and max must be greater than %(mod)s!') % locals(), None)
         return (None, None, (defValue, minValue, maxValue, modValue))
-    """
-    def addAvsBooleanRadio(self, script, argname, value, defaultValue, row, separator, filterName, argIndex):
-        parent = script.sliderWindow
-        sizer = script.sliderSizerNew
-        # Create window elements
-        labelTxtCtrl = self.MakeArgNameStaticText(parent, argname, filterName, script, argIndex)
-        radioButtonTrue = wx.RadioButton(parent, wx.ID_ANY, 'true', style=wx.RB_GROUP, size=(-1,intPPI(20)))
-        radioButtonFalse = wx.RadioButton(parent, wx.ID_ANY, 'false', size=(-1,intPPI(20)))
-        if value:
-            radioButtonTrue.SetValue(True)
-        else:
-            radioButtonFalse.SetValue(True)
-        def OnRadioButton(event):
-            button = event.GetEventObject()
-            if button == radioButtonTrue:
-                newVal = 'true'
-            else:
-                newVal = 'false'
-            self.SetNewAvsValue(button, newVal)
-            event.Skip()
-        for ctrl in (radioButtonTrue, radioButtonFalse):
-            ctrl.filterName = filterName
-            ctrl.argName = argname
-            ctrl.script = script
-            ctrl.argIndex = argIndex
-            ctrl.Bind(wx.EVT_RADIOBUTTON, OnRadioButton)
-        if defaultValue is not None:
-            if defaultValue.lower() == 'true':
-                font = radioButtonTrue.GetFont()
-                font.SetUnderlined(True)
-                radioButtonTrue.SetFont(font)
-            else:
-                font = radioButtonFalse.GetFont()
-                font.SetUnderlined(True)
-                radioButtonFalse.SetFont(font)
-        radioSizer = wx.BoxSizer(wx.HORIZONTAL)
-        radioSizer.Add(radioButtonTrue, 0, wx.TOP|wx.BOTTOM|wx.RIGHT, intPPI(5))
-        radioSizer.Add(radioButtonFalse, 0, wx.ALL, intPPI(5))
-        # Add the elements to the slider sizer
-        sizer.Add(labelTxtCtrl, (row,0), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT|wx.LEFT, intPPI(10))
-        sizer.Add(radioSizer, (row, 1), (1,6), wx.ALIGN_CENTER_VERTICAL)
-        separator.controls += [labelTxtCtrl, radioSizer]
-    """
+
+    # for custom colors changed
     def addAvsBooleanRadio(self, script, argname, value, defaultValue, row, separator, filterName, argIndex):
         parent = script.sliderWindow
         sizer = script.sliderSizerNew
@@ -19047,6 +19516,46 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         sizer.Add(browseSizer, (row,1), (1,6), wx.ALIGN_CENTER_VERTICAL|wx.EXPAND)
         separator.controls += [labelTxtCtrl, browseSizer]
 
+    def addAvsSnapshotPanel(self, script, separator, row):
+        #import wx.lib.platebtn as platebtn
+        int5, int10 = intPPI(5), intPPI(10)
+        parent = script.sliderWindow
+        sizer = script.sliderSizerNew
+        btnSnapshot1 = wx.StaticText(parent, wx.ID_ANY, label='Make 1  Show 1')
+        btnSnapshot2 = wx.StaticText(parent, wx.ID_ANY, label='Make 2  Show 2')
+        ctrl = (btnSnapshot1,btnSnapshot2)
+        font = btnSnapshot1.GetFont()
+        font.SetUnderlined(True)
+        font.SetWeight(wx.FONTWEIGHT_BOLD)
+        font.SetPointSize(intPPI(font.GetPointSize()+1))
+        for item in ctrl:
+            item.SetFont(font)
+            item.SetCursor(wx.StockCursor(wx.CURSOR_HAND))
+            if self.currentSliderWindow.customTheme:
+                item.SetForegroundColour(self.currentSliderWindow.foreExtraBtn1)
+        def OnBtnSnapshot1(event):
+            btn = event.GetEventObject()
+            x,y = event.GetPosition()
+            if x < (btn.GetSize()[0] / 2) - 3:
+                self.OnMenuTakeSnapShot1(None)
+            elif x > (btn.GetSize()[0] / 2) + 3:
+                self.OnMenuShowSnapShot1(None)
+        def OnBtnSnapshot2(event):
+            btn = event.GetEventObject()
+            x,y = event.GetPosition()
+            if x < (btn.GetSize()[0] / 2) - 3:
+                self.OnMenuTakeSnapShot2(None)
+            elif x > (btn.GetSize()[0] / 2) + 3:
+                self.OnMenuShowSnapShot2(None)
+        btnSnapshot1.Bind(wx.EVT_LEFT_UP, OnBtnSnapshot1)
+        btnSnapshot2.Bind(wx.EVT_LEFT_UP, OnBtnSnapshot2)
+        btnSizer = wx.BoxSizer(wx.HORIZONTAL)
+        btnSizer.Add(btnSnapshot1, 0, wx.TOP|wx.BOTTOM|wx.LEFT, int5)
+        btnSizer.AddSpacer(10)
+        btnSizer.Add(btnSnapshot2, 0, wx.TOP|wx.BOTTOM|wx.LEFT, int5)
+        sizer.Add(btnSizer, (row,0), (1,7), wx.EXPAND)
+        separator.controls += [btnSizer]
+
     def addAvsGenericArg(self, script, argname, strValue, row, separator, filterName, argIndex):
         parent = script.sliderWindow
         sizer = script.sliderSizerNew
@@ -19070,7 +19579,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         textCtrl.argName = argname
         textCtrl.script = script
         textCtrl.argIndex = argIndex
-
         sizer.Add(labelTxtCtrl, (row,0), wx.DefaultSpan, wx.ALIGN_CENTER_VERTICAL|wx.RIGHT|wx.LEFT, intPPI(10))
         sizer.Add(textCtrl, (row,1), (1,6), wx.ALIGN_CENTER_VERTICAL|wx.EXPAND)
         separator.controls += [labelTxtCtrl, textCtrl]
@@ -19111,7 +19619,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             scriptChanged = self.ScriptChanged(script)
             if script.previewFilterIdx > 0 and not scriptChanged:
                 self.OnMenuPreviewFilter(None, script.previewFilterIdx, updateUserSliders=False)
-                #wx.CallAfter(self.OnMenuPreviewFilter,None, script.lastpreviewFilterIdx, updateUserSliders=False)
             else:
                 keep_env = script.lastpreviewFilterIdx == 0  and not scriptChanged
                 self.refreshAVI = True
@@ -19182,8 +19689,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         return script.GetTextRange(posA, posB), posA, posB
 
     def OnSliderUpdate(self, event):
-        wx.CallAfter(self.OnMenuBlockCommendAsString_UpdateSliders)
+        wx.CallAfter(self.UpdateUserSliders, forceUpdate=True)
 
+    """ Funktioniert, aber andere Filter werden nicht mehr gefunden da sich Index verschiebt
     def EnableDisableFilter(self, name, script):
         # only for filters in the priewFilter
         s = name.split('- P', 1)
@@ -19221,17 +19729,17 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 return
             startpos += 1
         # now find the filter with the correct index (iFilter), skip disabled filters
-        i = 0
-        while i < iFilter:
+        for i in range(iFilter):
             startpos = script.FindText(startpos, script.GetTextLength(), filterName, stc.STC_FIND_WHOLEWORD)
             if startpos == -1:
                 return
-            i += 1
-            if not script.GetStyleAt(startpos) in script.keywordStyleList: # skip disabled filters with the same name ( dec i )
-                s = script.GetTextRange(startpos-3, startpos)
-                if s[1:3] != '#>' and s != '#>.': # do not skip if filter in sliders (#> = disabled) and check '.' joined filters
-                    i -= 1
             startpos += 1
+
+            while script.GetStyleAt(startpos) not in script.keywordStyleList and script.GetTextRange(startpos-3, startpos-1) != '#>':
+                startpos = script.FindText(startpos, script.GetTextLength(), filterName, stc.STC_FIND_WHOLEWORD)
+                if startpos == -1:
+                    return
+                startpos += 1
 
         # enable/disable the filter
         if prefix:
@@ -19247,7 +19755,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 startpos -= 1
             script.InsertText(startpos-1, '#>')
         return True
-
+    """
+    """
     def OnSliderFilterOnOff(self, event):
         # only for filters in the priewFilter
         script = self.currentScript
@@ -19259,10 +19768,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 ctrl.SetLabel(fold+name.rstrip('>'))
             else: ctrl.SetLabel(fold+name+'>')
             wx.CallAfter(self.SliderShowVideoFrame, True, True, script)
-
+    """
+    """
     def OnSliderResetAllFoldOrders(self, event):
         self.SlidersClearFolds()
         self.OnSliderUpdate(None)
+    """
 
     def OnSliderWindowsSameWidth(self, event):
         pos = self.videoSplitter.GetSashPosition()
@@ -19275,7 +19786,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     def OnSliderToggleExclusionsFilters(self, event):
         self.slidersShowExclusionFilters = not self.slidersShowExclusionFilters
         self.createAutoUserSliders(self.currentScript)
-        #wx.CallAfter(self.OnMenuBlockCommendAsString_UpdateSliders)
 
     def addAvsSliderSeparatorNew(self, script, label='', menu=None, row=None, sizer=None):
         if sizer is None:
@@ -19315,18 +19825,19 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     def ToggleSliderFold(self, separator, fold=True, refresh=True, scroll=True):
         sizer = self.currentScript.sliderSizerNew
         parent = separator.GetParent()
+        label = separator.GetLabel().strip(' -+')
         parent.Freeze()
-        if fold:
+        if fold and separator.IsControlsVisible:
             for item in separator.controls:
                 sizer.Hide(item)
-            separator.SetLabel('+ '+separator.GetLabel().strip(' -+'))
+            separator.SetLabel('+ '+ label)
             separator.IsControlsVisible = False
-        else:
+        elif not separator.IsControlsVisible:
             for item in separator.controls:
                 sizer.Show(item)
-            separator.SetLabel(' - '+separator.GetLabel().strip(' -+'))
+            separator.SetLabel(' - '+ label)
             separator.IsControlsVisible = True
-        self.currentScript.SliderFoldsBackup[separator.GetLabel().strip(' -+')] = int(separator.IsControlsVisible)
+        self.currentScript.SliderFoldsBackup[label] = int(separator.IsControlsVisible)
         if refresh:
             sizer.Layout()
             parent.FitInside()
@@ -19339,7 +19850,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     pos = parent.CalcUnscrolledPosition(separator.GetPosition())
                     parent.Scroll(-1, (pos[1]-10)/yscrollpixels)
         parent.Thaw()
-
 
     def createToggleTagCheckboxes(self, script):
         toggleTags = script.toggleTags
@@ -19424,7 +19934,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             #~ if word.lower() in script.keywords:
             # GPo new
             if prevFilterIdx < 5:
-                if prevFilter and script.GetLine(script.LineFromPosition(posA)).lstrip().startswith('*/'):
+                if prevFilter and script.GetLine(script.LineFromPosition(posA)).lstrip().startswith('**/'):
                     prevFilter = ''
                 elif word[:11] == 'avsp_filter' and script.GetLine(script.LineFromPosition(posA)).startswith('/**avsp_filter'):
                     prevFilterIdx += 1
@@ -19466,7 +19976,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if prevFilterIdx < 5:
                 if prevFilter:
                     # end of preview filter
-                    if script.GetLine(script.LineFromPosition(posA)).lstrip().startswith('*/'):
+                    if script.GetLine(script.LineFromPosition(posA)).lstrip().startswith('**/'):
                         prevFilter = ''
                     # add a disabled preview filter to sliders
                     elif script.GetTextRange(posA, posA+2) == '#>':
@@ -19769,37 +20279,16 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if w < 4: w = None
         return (w, h)
 
-    # GPo trying to cancel the process and freeing the memory
     def ErrorMessage_GetFrame(self, script, frame_nr):
         if script.AVI == None:
             return
-        if not frame_nr.isdigit():
+        if not isinstance(frame_nr, int) or frame_nr < 0:
             frame_nr = 0
-        ID = wx.MessageBox(u'\n\n'.join((_('Error requesting frame {number}').format(number=frame_nr),
-                           script.AVI.clip.get_error())), _('Error'), style=wx.OK|wx.CANCEL|wx.ICON_ERROR)
-        if ID == wx.CANCEL:
-            saved = False
-            try:
-                saved = self.SaveSession(os.path.join(self.programdir, '_LastErrorSession.ses'), previewvisible=False)
-            except:
-                pass
-
-            if not saved:
-                 wx.MessageBox(_('Error: can not save the Session'), _('Error'), style=wx.OK|wx.ICON_ERROR)
-            else:
-                ID = wx.MessageBox('Session is saved as _LastErrorSession.ses\n\n' +
-                                    'Trying do freeing the scripts memory?',
-                                    _('Question'), style=wx.OK|wx.CANCEL|wx.ICON_QUESTION)
-                if ID == wx.OK:
-                    # helpful ?, or avspmod freeze
-                    for index in xrange(self.scriptNotebook.GetPageCount()):
-                        try:
-                            script = self.scriptNotebook.GetPage(index)
-                            script.AVI = None
-                            self.UpdateScriptTabname(script) # GPo
-                        except:
-                            pass
-                    #~self.ExitProgram()
+        err = script.AVI.clip.get_error()
+        if not err:
+            err = 'Clip error unknown'
+        wx.MessageBox(u'\n\n'.join((_('Error requesting frame {number}').format(number=frame_nr),
+                           err)), _('Error'), style=wx.OK|wx.ICON_ERROR)
 
     def PaintAVIFrame(self, inputdc, script, frame, shift=True, isPaintEvent=False):
         if script.AVI is None:
@@ -20059,33 +20548,33 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         w = script.AVI.DisplayWidth
         h = script.AVI.DisplayHeight
         if not bmp or (bmp.GetWidth() != w or bmp.GetHeight() != h):
-            """ # do not delete the snap shots ? lets see...
-            if self.snapShotIdx == 1:
-                script.snapShots['shot1'] = [-1, None, ""]
-            else:
-                script.snapShots['shot2'] = [-1, None, ""]
-            """
             self.snapShotIdx = 0
             wx.Bell()
             self.videoWindow.Refresh()
             return
         dc = wx.MemoryDC()
         dc.SelectObject(bmp)
-
-        #dc.SetBrush(wx.CYAN_BRUSH)
-        #dc.DrawPolygon([wx.Point(0,0), wx.Point(16,0), wx.Point(0,16)])
-
         try:
             self.videoWindow.DoPrepareDC(inputdc)
         except:
             self.videoWindow.PrepareDC(inputdc)
 
         x,y = self.videoWindow.GetViewStart()
-        if self.zoomfactor != 1 or self.zoomwindow:
+        if self.zoomfactor != 1:
             if self.zoom_antialias:
                 inputdc = wx.GCDC(inputdc)
             inputdc.SetUserScale(self.zoomfactor, self.zoomfactor)
             inputdc.Blit(0, 0, w, h, dc, 0, 0)
+            if self.zoom_antialias == '': # wait for ResetZoomAntialias
+                return
+            """
+            screendc = wx.ScreenDC()
+            screendc.SetFont(wx.Font(pointSize=12, family=wx.FONTFAMILY_DEFAULT, style=wx.FONTSTYLE_NORMAL, weight=wx.FONTWEIGHT_BOLD))
+            screendc.SetTextForeground(wx.YELLOW)
+            sx, sy = self.videoWindow.GetScreenPosition()
+            screendc.DrawLabel("Snapshot " + str(self.snapShotIdx),(sx+2,sy+2,sx+52,sy+102))
+            screendc.Clear()
+            """
             inputdc.SetUserScale(1, 1)
             inputdc.SetFont(wx.Font(pointSize=12, family=wx.FONTFAMILY_DEFAULT, style=wx.FONTSTYLE_NORMAL, weight=wx.FONTWEIGHT_BOLD))
             inputdc.SetTextForeground(wx.YELLOW)
@@ -20116,164 +20605,102 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     labelCtrl.SetForegroundColour(wx.NullColour)
             labelCtrl.Refresh()
 
-    # GPo, with a real thread
-    def PlayPauseVideo2(self, debug_stats=False, refreshFrame=True):
-        """Play/pause the preview clip"""
-        if self.playing_video:
-            self.playing_video = False  # set to false bevor self.ShowVideoFrameFast
-            # self.PlayThread.join() not working properly and lock 'Stop' aparently not needed
-            if self.PlayThread:
-                self.PlayThread.Stop = True
-            time.sleep(0.1)
-            self.PlayThread = None
-            self.zoom_antialias = self.options['zoom_antialias']
-            if refreshFrame:
-                self.ShowVideoFrameFast(self.currentframenum)  # GPo 2020, leave it call fast, fast checks errors
-                self.ResetZoomAntialias()
-            self.play_button.SetBitmapLabel(self.bmpPlay)
-            self.play_button.Refresh()
-            if self.separatevideowindow:
-                self.play_button2.SetBitmapLabel(self.bmpPlay)
-                self.play_button2.Refresh()
-        elif self.ShowVideoFrame(focus=False, forceLayout=True, forceCursor=self.ScriptChanged(self.currentScript)) \
-                and not self.currentScript.AVI.IsErrorClip():
-            script = self.currentScript
-            self.loop_start = self.loop_end = -1
-            if self.options['playloop'] and not self.trimDialog.IsShown() and script.AVI.Framecount > 3:
-                # Play loop
-                prev = self.ValueInSliderSelection(self.currentframenum)
-                if prev == None:
-                    prev = False
-                start, stop = self.GetNextSliderSelection(self.currentframenum, True, prev)
-                if start is not None:
-                    if script.AVI.Framecount -3 > start: # else out of visible range
-                        self.loop_end = min(stop, script.AVI.Framecount -1)
-                        self.loop_start = min(start, self.loop_end -3)
+    # Use it after first join failed
+    def TH_WaitForFrame(self, script, th, nr):
+        '''
+        Use this bevore you call this routine
+        # th = threading.Thread(target=GetFrame, args=(script, framenum,))
+        # th.daemon = True
+        # script.AviThread = th
+        # th.start()
+        # th.join(10)
+        # TH_WaitForFrame()
+        '''
+        if th.isAlive():
+            i = 0
+            msgShown = False
+            msg = _('Waiting for Avisynth, thread still running.\n' +
+                    'This dialog is automatically closed when avisynth returns.\n' +
+                    'If you abort this process, you should restart the program !')
 
-            if self.currentframenum == script.AVI.Framecount - 1:
-                # GPo 2020, continue playing from loop_start or frame 0
-                fr = self.loop_start if self.loop_start > -1 else 0
-                if not self.ShowVideoFrame(framenum=fr, focus=False, forceLayout=True, forceCursor=self.ScriptChanged(script)) \
-                    or self.currentScript.AVI.IsErrorClip():
-                    return
-            self.playing_video = True
-            self.zoom_antialias = False
-            self.play_button.SetBitmapLabel(self.bmpPause)
-            self.play_button.Refresh()
-            self.frameTextCtrl.SetForegroundColour(wx.BLACK) # GPo, for fast func
-            if self.separatevideowindow:
-                self.play_button2.SetBitmapLabel(self.bmpPause)
-                self.play_button2.Refresh()
-                self.frameTextCtrl2.SetForegroundColour(wx.BLACK) # GPo, for fast func
-
-            if self.play_speed_factor == 'max':
-                self.interval = 0
-            else:
-                interval = 1000 / (script.AVI.Framerate * self.play_speed_factor) # 25.0 fps = 40 ms
-                self.interval = float(interval/1000) # convert for time.time() = 0.04
-
-            # GPo new, set the drop count out of the play routine make a int, it's faster
-            if self.play_drop == True:
-                self.drop_count = 1
-            elif self.play_drop > 1:
-                self.drop_count = self.play_drop
-            else:
-                self.drop_count = 0
-
-            self.play_initial_frame = self.currentframenum
-            self.play_initial_time = time.time() - 0.0001 # at first run div zero
-
-            def playback():
-                if not self.playing_video:
-                    if self.PlayThread:
-                        self.PlayThread.Stop = True
-                    return
-
-                startTime = time.time()
-
-                fps = float(max(self.currentframenum - self.play_initial_frame, 1.0)) / (startTime - self.play_initial_time)
-                sfps = 'fps ' + '{:4.2f}'.format(fps) + ' '
-
-                if (self.drop_count == 1) and self.play_speed_factor != 'max':
-                    frame = self.play_initial_frame
-                    increment = int(round(1000 * (startTime - self.play_initial_time) / self.interval))
-                else:
-                    frame = self.currentframenum + self.drop_count
-                    increment = 1
-                    if self.loop_start > -1:  # GPo 2020. play loop
-                        if (frame + 1 >= self.loop_end) or (frame + 1 < self.loop_start):
-                            # check for next selection
-                            start, stop = self.GetNextSliderSelection(frame+1, True, False)
-                            if start is not None:
-                                if script.AVI.Framecount -3 > start:
-                                    self.loop_end = min(stop, script.AVI.Framecount -1)
-                                    self.loop_start = min(start, self.loop_end -3)
-                                    frame = self.loop_start -1
-                                    self.play_initial_frame = frame
-                                    self.play_initial_time = time.time()
-                                else:
-                                    self.loop_start = self.loop_end = -1
-                            else:
-                                self.loop_start = self.loop_end = -1
-
-                if self.play_fastFunc:
-                    if not self.ShowVideoFrameFast(frame + increment, sfps):
-                        if self.playing_video: self.PlayPauseVideo()
-                        return
-                else:
-                    if not self.ShowVideoFrame(frame + increment, check_playing=True, focus=False, addon0=sfps):
-                        if self.playing_video: self.PlayPauseVideo()
-                        return
-
-                if self.currentframenum >= script.AVI.Framecount - 1:
-                    # GPo 2020, play loop
-                    if (self.loop_start > -1) and (self.loop_start < script.AVI.Framecount - 3)\
-                        and (self.loop_end <= script.AVI.Framecount-1): #continue, new lop_start is in the next run set
-                        wx.Yield()
-                    else:
-                        if self.options['playloop'] and (self.videoSlider.maxValue - self.videoSlider.minValue > 1): # play also loop
-                            self.PlayPauseVideo()
-                            if self.ShowVideoFrame(self.videoSlider.minValue):
-                                wx.CallAfter(self.PlayPauseVideo)
+            progress = wx.ProgressDialog(_('Waiting for frame {0}'.format(nr)),'',10, self,
+                            style=wx.PD_ELAPSED_TIME|wx.PD_CAN_ABORT|wx.PD_APP_MODAL)
+            try:
+                while th.isAlive():
+                    c,s = progress.Pulse()
+                    if not c:             # user abort
+                        if i > 10: break
                         else:
-                            if self.playing_video: self.PlayPauseVideo()
-                            return
+                            msgShown = True
+                            progress.Pulse(msg)
+                    if not msgShown and i > 10: # show msg
+                        msgShown = True
+                        progress.Pulse(msg)
+                    i += 1
+                    th.join(0.5)
+            finally:
+                progress.Destroy()
+                self.Raise() # bring window to top was dialog shown
 
-                while self.playing_video and (time.time() < (startTime + self.interval)):
-                    wx.Yield()
+            if th.isAlive():
+                self.Thread_List.append((th, None))
+                return False
+        return True
 
-            class PlayBackThread(threading.Thread):
-                def __init__(self):
-                    threading.Thread.__init__(self)
-                    self.Stop = False
-                    self.daemon = True
-                    self.start()
-                def run(self):
-                    while not self.Stop: # Hm.. running wel without lock the var Stop
-                        playback()
+    def GetAviDisplayFrame(self, script, nr, showWarn=True):
+        def GetFrame(script, nr):
+            try:
+                script.AVI.display_clip.get_frame(nr)
+            except:
+                pass
 
-            self.PlayThread = PlayBackThread()
+        # return false if thread running
+        if self.AviThread_Running(script, prompt=showWarn):
+            return False
+        if not self.UseAviThread:
+            script.AVI.display_clip.get_frame(nr)
+            return True
+
+        th = threading.Thread(target=GetFrame, args=(script, nr,))
+        th.daemon = True
+        script.AviThread = th
+        th.start()
+        time.sleep(0.001)
+        if th.isAlive():
+            th.join(10)
+        """
+        We have to block the app to prevent access to the script.
+        Or a lock would have to be set on the script everywhere in the program.
+        An absurdity.
+        """
+        #th.join(10)
+        return self.TH_WaitForFrame(script, th, nr)
 
     def PlayPauseVideo(self, debug_stats=False, refreshFrame=True):
-        if self.options['playbackthread']: # for testphase
-            self.PlayPauseVideo2(debug_stats, refreshFrame)
-            return
         """Play/pause the preview clip"""
         if self.playing_video:
-            self.zoom_antialias = self.options['zoom_antialias']
-            self.playing_video = False  # set to false bevor self.ShowVideoFrameFast
             if os.name == 'nt':
                 self.timeKillEvent(self.play_timer_id)
                 self.timeEndPeriod(self.play_timer_resolution)
             else:
                 self.play_timer.Stop()
-            if refreshFrame:
-                self.ShowVideoFrameFast(self.currentframenum)  # GPo 2020, leave it call fast, fast checks errors
+            self.playing_video = False  # set to false bevor self.ShowVideoFrameFast
+            self.zoom_antialias = self.options['zoom_antialias']
             self.play_button.SetBitmapLabel(self.bmpPlay)
             self.play_button.Refresh()
             if self.separatevideowindow:
                 self.play_button2.SetBitmapLabel(self.bmpPlay)
                 self.play_button2.Refresh()
+            script = self.currentScript
+            try:
+                if self.AviThread_Running(script, prompt=False):
+                    script.AviThread.join(5)
+            except:
+                pass
+            if refreshFrame:
+                self.ShowVideoFrameFast(self.currentframenum)  # GPo 2020, leave it call fast, fast checks errors
+
+        # ? make signal flag if frame thread running e.g self.loadingFrame = threading.Event() if self.loadingFrame.set()
         elif self.ShowVideoFrame(focus=False, forceLayout=True, forceCursor=self.ScriptChanged(self.currentScript)) \
                 and not self.currentScript.AVI.IsErrorClip():
             script = self.currentScript
@@ -20322,6 +20749,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.drop_count = self.play_drop
             else:
                 self.drop_count = 0
+            threaded = self.options['playbackthread'] or self.UseAviThread
 
             if os.name == 'nt': # default Windows resolution is ~10 ms
 
@@ -20374,22 +20802,28 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     if debug_stats:
                         print (debug_stats_str)
 
-                    if self.play_fastFunc:
-                        # GPo 2020, use fast func
-                        if not AsyncCall(self.ShowVideoFrameFast, frame + increment, sfps).Wait():
+                    # GPo 2020, use fast func, AsyncCall slow, use now thread for each frame ( 50 % faster ) and without blocking the main thread
+                    if threaded:
+                        if not self.ShowVideoFrameFast(frame + increment, sfps, threaded=True):
                             if self.playing_video: self.PlayPauseVideo()
                             return
+                    elif not AsyncCall(self.ShowVideoFrameFast, frame + increment, sfps, threaded=False).Wait():
+                        if self.playing_video: self.PlayPauseVideo()
+                        return
+                    """
                     else:
                         if not AsyncCall(self.ShowVideoFrame, frame + increment,
                                      check_playing=True, focus=False, addon0=sfps).Wait():
                             if self.playing_video: self.PlayPauseVideo()
                             return
+                    """
 
                     if self.currentframenum >= script.AVI.Framecount - 1:
                         # GPo 2020, play loop
                         if (self.loop_start > -1) and (self.loop_start < script.AVI.Framecount - 3)\
                             and (self.loop_end <= script.AVI.Framecount-1): #continue, new lop_start is in the next run set
-                            wx.Yield()
+                            pass
+                            #wx.Yield()
                         else:
                             if self.options['playloop'] and (self.videoSlider.maxValue - self.videoSlider.minValue > 1): # play also loop
                                 self.PlayPauseVideo()
@@ -20399,7 +20833,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                 self.PlayPauseVideo()
                                 return
                     else:
-                        wx.Yield()
+                        pass
+                        #wx.Yield()
 
                     # GPo 2020, plays smoother
                     while self.playing_video and (time.time() < (startTime + self.interval)):
@@ -20532,12 +20967,14 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                             print (debug_stats_str)
 
                         # GPo 2020, use fast func
+                        """
                         if self.parent.play_fastFunc:
                             if not self.parent.ShowVideoFrameFast(frame + increment):
                                 return
                         else:
-                            if not self.parent.ShowVideoFrame(frame + increment, check_playing=True, focus=False):
-                                return
+                        """
+                        if not self.parent.ShowVideoFrame(frame + increment, check_playing=True, focus=False):
+                            return
 
                         if self.parent.currentframenum == script.AVI.Framecount - 1:
                             self.parent.PlayPauseVideo()

@@ -167,6 +167,7 @@ data_files = [
             'copying.txt',
             'previewFilterExample.txt',
             'previewFilterExample.avs',
+            'readme_threads.txt',
             ]
         ),
         ('lib', lib_extra),

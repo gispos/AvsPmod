@@ -20,20 +20,9 @@
 /**avsp_filter
 Levels(0, 1.000, 255, 0, 255, coring=true)
 Tweak(hue=0.0, sat=1.0, bright=0, cont=1.0, coring=True, sse=False, startHue=0, endHue=360, maxSat=150, minSat=0, interp=16)
-*/
-
-# or 
-
-/*avsp_filter
-sharpen(0.4)
-*/
+**/
 
 /*
-        You can see In the second example (in AvsPmod), the text is still displayed as a block comment and the 'sliders' are not integrated either.
-        So a double star activates the avs syntax and the sliders. Very Nice.
-        
-        !!! for the sliders and for avs syntax highlighting !!!
-        'Video' > 'Preview filter' > 'Enable preview filter sliders' must be checked, otherwise the text will shown without avs syntax.
         The sliders are only updated automatically when a preview filter is selected, or with a normal script update (refresh, reload, etc.)
         There is also the possibility to read only the slider again (slider context menu)	
 
@@ -55,10 +44,10 @@ Sharpen(0.40)
 #UnsharpMask(strength=60, radius=3, threshold=8)
 #TUnSharp(strength=80, thresholdL=6, thresholdU=40, radius=2, type=0, map=0, lim=2, gui=false)
 #SharpenComplex2(str0=2.0, str1=1.125, k0="3 14 3", k1="1 1 1", edgethr=0.2, debug=false)
-*/
+**/
 
 /*
-        If you now open the video menu 'Preview filter', these three filter sets should now be displayed. 
+        If you now open the video menu 'Preview filter', these two filter sets should now be displayed. 
         With a selection one of these filters becomes active. I have defined Ctrl + 'Numpad 0' to 'Numpad 5' to change the filter, change it yourself.
         You can save the filters, 'Preview filter' > 'Save preview filters' , but note! All previously saved filters will be deleted! 
         You can restore all saved or individual sets (will be written into the script at last position).

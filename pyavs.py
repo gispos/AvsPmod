@@ -47,6 +47,8 @@ if x86_64:
 else:
     import avisynth
 import global_vars
+import threading
+import time
 
 try: _
 except NameError:
@@ -129,9 +131,24 @@ class AvsClipBase:
 
     def __init__(self, script, filename='', workdir='', env=None, fitHeight=None,
                  fitWidth=None, oldFramecount=240, display_clip=True, reorder_rgb=False,
-                 matrix=['auto', 'tv'], interlaced=False, swapuv=False, bit_depth=None, callBack=None):
+                 matrix=['auto', 'tv'], interlaced=False, swapuv=False, bit_depth=None,
+                 callBack=None, readmatrix=None):
+
+        def CheckVersion(env):
+            try:
+                if env.check_version(8): self.avisynth_version = 8
+            except: pass
+            if self.avisynth_version is None:
+                try:
+                    if env.check_version(6): self.avisynth_version = 6
+                except: pass
+            if self.avisynth_version is None:
+                self.error_message = 'At least Avisynth version 6 is required'
+                return
+            return True
         # Internal variables
         self.initialized = False
+        self.env = None
         self.callBack = callBack
         self.name = filename
         self.error_message = None
@@ -180,7 +197,16 @@ class AvsClipBase:
         self.HasAudio = None
         self.HasVideo = None
         self.Colorspace = None
-        self.ffms_info_cache = {}
+        #self.ffms_info_cache = {}
+        self.matrix_found = None
+        self.matrix = 'Rec709'
+        self.readmatrix = readmatrix
+        self.Thread = None
+        self.avisynth_version = None
+
+        # threading get frame
+        #self.UseFrameThread = UseFrameThread
+        #self.RunningThreads = []
 
         #self.num_components = None   # not yet needed
         #self.component_size = None
@@ -188,20 +214,28 @@ class AvsClipBase:
 
         # Create the Avisynth script clip
         if env is not None:
-            if isinstance(env, avisynth.AVS_ScriptEnvironment):
-                self.env = env
-            else:
+            if not isinstance(env, avisynth.AVS_ScriptEnvironment):
                 raise TypeError("env must be a PIScriptEnvironment or None")
         else:
             if isinstance(script, avisynth.AVS_Clip):
                 raise ValueError("env must be defined when providing a clip")
             try:
-                self.env = avisynth.AVS_ScriptEnvironment(6)
-            except OSError:
+                env = avisynth.AVS_ScriptEnvironment(6)
+            except OSError: # only on OSError
                 return
-            if hasattr(self.env, 'get_error'):
-                self.error_message = self.env.get_error()
-                if self.error_message: return
+            except:
+                self.error_message = 'At least Avisynth version 6 is required'
+                return
+
+        if not CheckVersion(env):
+            return
+
+        if hasattr(env, 'get_error'):
+            self.error_message = env.get_error()
+            if self.error_message:
+                return
+
+        self.env = env
         if isinstance(script, avisynth.AVS_Clip):
             self.clip = script
         else:
@@ -337,17 +371,29 @@ class AvsClipBase:
                                )
 
         self.IsPlanar = self.vi.is_planar()
-#        self.IsInterleaved = self.vi.is_interleaved()
         self.IsFieldBased = self.vi.is_field_based()
         self.IsFrameBased = not self.IsFieldBased
         self.GetParity = self.clip.get_parity(0) #self.vi.image_type
         self.HasAudio = self.vi.has_audio()
-
         self.interlaced = interlaced
-        if display_clip and not self.CreateDisplayClip(matrix, interlaced, swapuv, bit_depth):
+        """
+        if not x86_64:
+            # frame matrix
+            frame = self.clip.get_frame(0)
+            if frame:
+                err = self.clip.get_error()
+                if not err:
+                    i = frame.get_matrix()
+                    if isinstance(i, int):
+                        self.FrameMatrix = i
+                        print('matrix = ' + str(i))
+                frame = None
+        """
+        if display_clip and not self.CreateDisplayClip(matrix, interlaced, swapuv, bit_depth, readmatrix):
             return
         if self.IsRGB and reorder_rgb:
             self.clip = self.BGR2RGB(self.clip)
+
         self.initialized = True
         if __debug__:
             print(u"AviSynth clip created successfully: '{0}'".format(self.name))
@@ -356,13 +402,16 @@ class AvsClipBase:
         self.preview_filter = False
         self.preview_filter_args = ''
         self.preview_filter_idx = 0
-        if self.initialized:
+
+        if self.initialized or self.env and isinstance(self.env, avisynth.AVS_ScriptEnvironment):
             self.display_frame = None
             self.src_frame = None
-            self.display_clip = None
             self.env.set_var("avsp_raw_clip", None)
             self.env.set_var("avsp_filter_clip", None)
+            self.display_clip = None
             self.clip = None
+            self.env = None # GPo new
+            self.initialized = False
             if __debug__:
                 print(u"Deleting allocated video memory for '{0}'".format(self.name))
 
@@ -407,7 +456,7 @@ class AvsClipBase:
             return False
         return True
 
-    def CreateDisplayClip(self, matrix=['auto', 'tv'], interlaced=None, swapuv=False, bit_depth=None):
+    def CreateDisplayClip(self, matrix=['auto', 'tv'], interlaced=None, swapuv=False, bit_depth=None, readmatrix=False):
         if self.preview_filter:
             self.preview_filter = False
             if self.callBack is not None:
@@ -459,7 +508,13 @@ class AvsClipBase:
         if isinstance(matrix, basestring):
             self.matrix = matrix
         else:
-            matrix = matrix[:]
+            if readmatrix:
+                self.matrix_found = self.GetMatrix()
+                if self.matrix_found is not None:
+                    matrix = self.matrix_found[:]
+                else: matrix = matrix[:]
+            else: matrix = matrix[:]
+
             if matrix[0] == 'auto':
                 if self.DisplayWidth > 1024 or self.DisplayHeight > 576:
                     matrix[0] = '709'
@@ -484,7 +539,7 @@ class AvsClipBase:
     def CreateFilterClip(self, f_args='', idx=0):
         err = ''
         self.preview_filter = False
-        if not f_args or not self.clip or self.error_message is not None:
+        if not f_args or not self.clip or self.IsErrorClip():
             return None, ''
 
         self.env.set_var("avsp_filter_clip", None)
@@ -551,9 +606,48 @@ class AvsClipBase:
         try:
             if isinstance(self.env.get_var("avsp_filter_clip"), avisynth.AVS_Clip):
                 self.env.set_var("avsp_filter_clip", None)
-                self.CreateDisplayClip(self.matrix, self.interlaced, False, self.bit_depth)
+                self.CreateDisplayClip(self.matrix, self.interlaced, False, self.bit_depth, False)
         except:
             pass
+    # thread not used, for test only, thread extern ( avsp )
+    def GetMatrix(self, useThread=False):
+        def _get_matrix():
+            try:
+                self.env.set_global_var("avsp_var", -1)
+                self.env.set_var("avsp_var_clip", self.clip)
+                args = ('avsp_var_clip\nScriptClip("""Global avsp_var=propGetInt("_Matrix")""")')
+                clip = self.env.invoke("Eval", args)
+                if isinstance(clip, avisynth.AVS_Clip)and not clip.get_error():
+                    if self.current_frame > -1:
+                        nr = min(self.current_frame, self.Framecount-1)
+                    else: nr = 0
+                    frame = clip.get_frame(nr)
+                    frame = clip = None
+            except:
+                pass
+
+        matrix = None
+        if self.clip and not self.IsErrorClip() and self.avisynth_version >= 8:
+            if self.Thread and self.Thread.isAlive():
+                return None
+            self.Thread = None
+            if useThread:
+                th = threading.Thread(target=_get_matrix, args=())
+                th.daemon = True
+                th.name = 'avisynth'
+                self.Thread = th
+                th.start()
+                th.join(15)
+            else:
+                _get_matrix()
+            try:
+                m = self.env.get_var("avsp_var", None)
+            except:
+                m = -1
+            if m in (1, 2):
+                matrix = ['601','tv'] if m == 1 else ['709','tv']
+            self.env.set_var("avsp_var_clip", None)
+        return matrix
 
     def _GetFrame(self, frame):
         if self.initialized:
@@ -585,6 +679,33 @@ class AvsClipBase:
             self.current_frame = frame
             return True
         return False
+    """
+    def _GetFrame(self, frame):
+        #if not self.UseFrameThread:
+            #return self.th_GetFrame(frame)
+        if self.initialized:
+            if self.current_frame == frame:
+                return True
+            if frame < 0:
+                frame = 0
+            if frame >= self.Framecount:
+                frame = self.Framecount - 1
+            t = time.time()
+            th = threading.Thread(target=self.th_GetFrame, args=(frame,))
+            th.daemon = True
+            th.start()
+            th.join(60)
+            if th.isAlive():
+                #self.RunningThreads.append(th)
+                #if self.callBack:
+                    #self.callBack('framethreaderror', th, frame)
+                #print(str(time.time()-t))
+                return self.current_frame == frame
+            else:
+                #print(str(time.time()-t))
+                return self.current_frame == frame
+        return False
+    """
 
     def GetPixelYUV(self, x, y):
         if self.bits_per_component > 8: # TODO
@@ -920,6 +1041,9 @@ if os.name == 'nt':
                 CreateBitmapInfoHeader(self.display_clip, self.bmih)
                 self.pInfo = ctypes.pointer(self.bmih)
             return True, ''
+
+        def GetMatrix(self, useThread=False):
+            return AvsClipBase.GetMatrix(self, useThread)
 
         def _ConvertToRGB(self):
             if not self.IsRGB32: # bug in avisynth v2.6 alphas with ConvertToRGB24

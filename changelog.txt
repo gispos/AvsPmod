@@ -12,6 +12,29 @@ GPo source: https://github.com/gispos/AvsPmod
 GPo releases: https://github.com/gispos/AvsPmod/releases
 
 --------------------------
+Version 2.6.6.9 [2021-03-27] GPo
+--------------------------
+** The syntax for the preview filter end has changed. The Preview Filter Area must now be completed with **/
+-    /**avsp_filter
+-   sharpen(0.4)
+-   **/
+* First public release with thread access to avisynth on create/release clip and get frame
+- on/off options menu 'Access Avisnth in threads'
+- default turned off, but I recommend turning on the threads and only to deactivate if there are problems.
+- for more info please reade the readme_threads.txt
+* Display YUV -> RGB conversion (Resolution-based, BT,709, BT.601) now script related.
+- conversion coefficient can be read from the source (frame properties). Or from the script when it was previously manually stored in the script. 
+- an asterisk * is preceded when the matrix has not read from the source ( *Rec601 ) 
+- under Program Options > Configure Statusbar, there is a new value %DYR to display the used matrix in the status bar.
+* Preview filter handling with the sliders revised. Should everything run a little better. ;)
+* Still some changes
+ 
+--------------------------
+Version 2.6.6.8 [2021-02-13] GPo
+--------------------------
+* Fix threaded playback with 'Auto' drop frames
+
+--------------------------
 Version 2.6.6.7 [2021-02-13] GPo
 --------------------------
 * New playback function Video > Play video > 'Use separate thread' 
