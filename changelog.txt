@@ -12,6 +12,28 @@ GPo source: https://github.com/gispos/AvsPmod
 GPo releases: https://github.com/gispos/AvsPmod/releases
 
 --------------------------
+Version 2.6.7.0 [2021-03-03] GPo
+--------------------------
+* Threads slightly revised. 
+* Split View now loads the second frame in a thread if threading is enabled. 
+* New menu Edit > Insert > 'Preview filter', insert Preview filter syntax for the selected lines ( Ctrl + P )
+- keyboard shortcuts may have to be checked, previously printing was linked to it, now (Shift + P) 
+* In the preview filter it is now possible to switch individual filters on or off  (Edit > Insert > 'Tag selection for toggling')
+-   /**avsp_filter
+-   [sharpen=0]
+-   sharpen(0.4)
+-   [/sharpen]
+-   unsharp()
+-   **/
+* In the preview filters you can now also use sliders that you have created yourself. I think ... I don't support this though.
+- I only support automatically generated sliders that are stored in the database or options.
+* Show free memory (program options > Misc 2)  
+- after creating a new clip displays the free system memory for 3 seconds in the status bar if the free memory less then x MB
+* Threads was enabled by default. Sorry. (on/off options menu 'Access Avisnth in threads')
+- If the threading works on your system, they offer more script security in the event of an avisynth error (hang). So turn it on.  
+- for more info please reade the readme_threads.txt
+
+--------------------------
 Version 2.6.6.9 [2021-03-27] GPo
 --------------------------
 ** The syntax for the preview filter end has changed. The Preview Filter Area must now be completed with **/

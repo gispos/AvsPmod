@@ -657,6 +657,8 @@ class AvsClipBase:
                 frame = 0
             if frame >= self.Framecount:
                 frame = self.Framecount - 1
+                if self.current_frame == frame:
+                    return True
             # Original clip
             self.src_frame = self.clip.get_frame(frame)
             if self.clip.get_error():
@@ -1083,7 +1085,7 @@ if os.name == 'nt':
                 return True
 
         """
-        # GPo, not good
+        # GPo, alternativ
         def DrawFrame(self, frame, dc=None, offset=(0,0), size=None, srcXY=(0,0)):
             if not self._GetFrame(frame):
                 return
