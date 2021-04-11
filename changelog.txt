@@ -11,8 +11,60 @@ pinterf source: https://github.com/pinterf/AvsPmod
 GPo source: https://github.com/gispos/AvsPmod
 GPo releases: https://github.com/gispos/AvsPmod/releases
 
+#####
+ The sliders are a fine thing, but you should also use them with the right feeling.
+ Use the filter exclusion list for the sliders. The creation of the sliders is time and resource consuming, minimize this effort to what is necessary. 
+ source filters, trim, crop, addborders, prefetch, etc. can also be set wonderfully in the script.
+ And there is still the possibility to switch the list on and off in the slider window if you want to see all of them.
+#####
+
 --------------------------
-Version 2.6.7.0 [2021-03-03] GPo
+Version 2.6.7.1 [2021-04-11] GPo
+--------------------------
+* The matrix (YUV > RGB) stored in the script (tv601, tv709) is preferably used. If the entry is found no matrix is read from the source.
+* If the > character is used after the comment character #, the comment is displayed in a different font #> 
+- the font can be set under Options > Fonts and Colors > Basic 1 > 'Comment extra #>' 
+Please set the font before using it for the first time. I can only load the default font theme. For example, if the dark theme is used, the font is not set correctly.
+If you use the dark theme you only have to reload the dark theme under 'Fonts and Colors'. 
+-
+* Toggle tags can be saved with the script. Program options > User sliders > 'Save toggle tags ...' Please read the tooltip!
+#>[sharp=0]
+sharpen (0.40)
+#>[/ sharp]
+- toggle tags are displayed with the font 'Comment extra' and the toggle tags are only comments for other programs.
+- in AvsPmod sharpen is disabled [sharp=0], but in other programs not. 
+- when opening in an external player (AvsP button) , the deactivated filters in the preview script are still removed. Everything as usual. 
+If you remove the toggle tags 'Clear all tags' and you have used the characters #> in front of the tag, and the option 'Save toggle tags' is enabled, 
+then all these characters will also be removed if the line contains only this characters. 
+The whole thing is intended to not lose the toggle tags when saving the script and not to have to use the function 'Save or read AvsPmod markings'. 
+Because so far the toggle tags were only saved in the session file or in the AvsPmod marked section.
+-
+* Added the possibility of using the toggle tag checkbox as a radio item. 
+- the name must be split into two parts by > and the second name must be present as a checkbox.
+-
+#>[sharp>unsharp=1]  # the check-radio box
+sharpen(0.4)
+#>[/sharp]
+-
+#>[unsharp=0]  # the child checkbox
+unsharpmask()
+#>[/unsharp]
+- in this example clicking on 'sharp>unsharp' toggles between the filters sharpen and unsharpmask. Useful in the preview filters.
+-
+* Add Toggle tag for one line, now the line must not be selected, only the cursor just needs to be on the line. 
+* Progress Dialog resize fix for Win OS versions below Win7
+* Added Options > 'Show available memory' displays for 3 seconds the available system mem in the status bar. 
+* The status bar displays also the available memory while loading the clip
+* Added DGHDRToSDR to the database
+-
+And a note:
+The sliders are a fine thing, but you should also use them with the right feeling.
+Use the filter exclusion list for the sliders. The creation of the sliders is time and resource consuming, minimize this effort to what is necessary. 
+source filters, trim, crop, addborders, prefetch, etc. can also be set wonderfully in the script.
+And there is still the possibility to switch the list on and off in the slider window if you want to see all of them.
+
+--------------------------
+Version 2.6.7.0 [2021-04-03] GPo
 --------------------------
 * Threads slightly revised. 
 * Split View now loads the second frame in a thread if threading is enabled. 
