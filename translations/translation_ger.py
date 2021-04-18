@@ -16,7 +16,7 @@
 
 # Übersetzt von Henrik . AvsP 2.0.1  Danke für die Hilfe, besonders LigH ,doxville,Brother John, Selur und Rippraff !
 
-version = "2.6.7.1"
+version = "2.6.7.2"
 
 messages = {
     "AviSynth script" : u"", # New in v2.3.0
@@ -313,10 +313,12 @@ messages = {
     "type string (filename)" : u"Eingabe string  (Dateiname)",
     "Create placeholders for arguments which have no database information" : u"Platzhalter für Argumente erstellen, die keine Datenbankinformationen haben",
     "undocumented" : u"Undokumentiert",
-    "Button show/hide applies to all tabs" : u"", # New in v2.6.6.3
+    "Button show/hide applies to all tabs" : u"Schaltfläche Ein-/Ausblenden betrifft alle Tabs", # New in v2.6.6.3
     "Or press Ctrl when you click the button." : u"", # New in v2.6.6.3
+    "Hide slider window toggle tag menus*" : u"Schiebereglerfenster Schalter Menüs nicht anzeigen*", # New in v2.6.7.2
+    "Hide the toggle tag menus in the context menu of the sliders" : u"", # New in v2.6.7.2
     "Custom colors can be set under 'Options->Font and colors->Advanced 2'\nNot visible slider windows needed refresh." : u"", # New in v2.6.6.6
-    "Enable slider window custom color theme" : u"", # New in v2.6.6.6
+    "Enable slider window custom color theme" : u"Benutzerdefiniertes Farbschema des Schiebereglerfenster einschalten", # New in v2.6.6.6
     "Determines which filters will initially have hidden arguments in the slider window" : u"Stellt zuerst fest, welche Filter versteckt Argumente im Schiebereglerfenster haben",
     "Fold all" : u"Alle eingeklappen",
     "Fold non-numbers" : u"Nichtnumerische eingeklappen",
@@ -352,7 +354,9 @@ messages = {
     "Line endings" : u"", # New in v2.5.1 r452
     "Auto" : u"", # New in v2.5.1 r452
     "Save and read AvsPmod-specific markings (user sliders, toggle tags, etc) as a commented section in the *.avs file" : u"", # New in v2.6.1.5
-    "Save or read .avs scripts with AvsPmod markings" : u"", # New in v2.6.1.5
+    "Save or read avs scripts with AvsPmod markings" : u"", # New in v2.6.7.2
+    "Do not remove toggle tags and disabled filters.\nCan make the saved script unreadable for other programs if You not use #> in front of the toggle tag: #>[sharp=0]" : u"", # New in v2.6.7.2
+    "Save toggle tags within the script ( read the hint! )" : u"", # New in v2.6.7.2
     "Start dialogs on the last used directory" : u"", # New in v2.4.0
     "If unchecked, the script's directory is used" : u"", # New in v2.4.0
     "Start save image dialogs on the last used directory" : u"", # New in v2.4.0
@@ -417,8 +421,6 @@ messages = {
     "Advanced settings" : u"", # New in v2.6.7.1
     "After creating a new clip, show available memory in the status bar if memory is less than x MB" : u"", # New in v2.6.7.1
     "Show available system memory (0 disabled)" : u"", # New in v2.6.7.1
-    "Do not remove toggle tags and the disabled filters.\nMakes the script unreadable for other programs, but You can use: #>[sharp=0] and manually disable the filters" : u"", # New in v2.6.7.1
-    "Save toggle tags in the script ( read the hint! )" : u"", # New in v2.6.7.1
     "Add tab to group" : u"", # New in v2.5.0
     "Extend selection to line down position" : u"", # New in v2.2.1
     "Scroll down" : u"", # New in v2.2.1
@@ -849,6 +851,8 @@ messages = {
     "If checked, the video preview will not be shown under any circumstances" : u"Wenn angehakt, wird unter keinen Umständen die Video-Vorschaufunktion gezeigt werden",
     "Access Avisynth in threads" : u"", # New in v2.6.7.0
     "Use threads when accessing avisynth (load/release clip and get frame)" : u"", # New in v2.6.7.0
+    "Hide the video window scrollbars" : u"", # New in v2.6.7.2
+    "Hide video window scrollbars" : u"", # New in v2.6.7.2
     "Associate .avs files with AvsPmod" : u"", # New in v2.6.6.0
     "Configure this computer to open .avs files with AvsP when double-clicked. Run again to disassociate" : u"", # New in v2.4.0
     "Edit the various AviSynth script fonts and colors" : u"Bearbeite die verschiedenen Schriftarten und Farben im Avisynth-Skript",
@@ -916,7 +920,7 @@ messages = {
     "Open directory" : u"Öffne Verzeichnis",
     "Release video memory" : u"Video Speicher freigeben",
     "Release all other video memory" : u"Video Speicher aller anderen Tabs freigeben",
-    "Tab change loads bookmarks" : u"Tab Wechsel läd Bookmarks", # New in v2.6.1.5
+    "Tab change loads bookmarks" : u"Tab Wechsel läd Bookmarks",
     "Copy to new tab" : u"Zu einem neuen Tab kopieren",
     "Split View insert tab" : u"", # New in v2.6.6.0
     "Auto preview" : u"", # New in v2.6.6.0
@@ -949,7 +953,7 @@ messages = {
     "Print Error" : u"", # New in v2.3.1
     "There was an error when printing.\nCheck that your printer is properly connected." : u"", # New in v2.3.1
     "Printer Error" : u"", # New in v2.3.1
-    "Damaged session file" : u"Beschädigte Session Datei", # New in v2.3.1
+    "Damaged session file" : u"Beschädigte Session Datei",
     "File does not exist!" : u"Datei existiert nicht",
     "Select a file" : u"Auswahl einer Datei",
     "Create a separator label" : u"Erstellen einer Separator Bezeichnung (label)",
@@ -1002,12 +1006,12 @@ messages = {
     "You must restart for changes to take effect!" : u"Sie müssen neu starten, damit Änderungen wirksam werden!",
     "Basic (1)" : u"", # New in v2.5.1 r452
     "Override all fonts to use a specified monospace font (no effect on scrap window)" : u"", # New in v2.2.1
-    "Use monospaced font:" : u"Verwende monospaced Schriftart", # New in v2.2.1
+    "Use monospaced font:" : u"Verwende monospaced Schriftart",
     "Default:" : u"Standard",
     "Comment:" : u"Kommentar",
-    "Comment extra #>:" : u"Kommentar extra #>", # New in v2.6.7.1
+    "Comment special extension #>:" : u"", # New in v2.6.7.2
     "Block Comment:" : u"Block Kommentar",
-    "__END__ Comment:" : u"__END__ Kommentar", # New in v2.2.1
+    "__END__ Comment:" : u"__END__ Kommentar",
     "Number:" : u"Nummer",
     "String:" : u"",
     "Triple-quoted string:" : u"",
@@ -1018,7 +1022,7 @@ messages = {
     "External filter:" : u"Externer Filter",
     "Internal function:" : u"Interne Funktionen",
     "User defined function:" : u"Benutzerdefenierte Funkionen", 
-    "Unknown function:" : u"Unbekannte Funktion", # New in v2.5.0
+    "Unknown function:" : u"Unbekannte Funktion",
     "Clip property:" : u"Clip Eigenschaften (property)",
     "Parameter:" : u"", # New in v2.5.0
     "AviSynth data type:" : u" AviSynth Datentypen",
@@ -1047,7 +1051,7 @@ messages = {
     "Slider window default value" : u"", # New in v2.6.6.6
     "Slider window extras (Snapshot)" : u"", # New in v2.6.7.0
     "Information" : u"",
-    "Settings have been read from backup file\n" : u"Die Einstellungen wurden aus dem Backup gelesen", # New in v2.5.1.18
+    "Settings have been read from backup file\n" : u"Die Einstellungen wurden aus dem Backup gelesen",
     "File extension shouldn't contain dots!" : u"", # New in v2.5.1 r452
     "Insert aborted:" : u"Eingabe abgebrochen",
     "Edit extension-based templates" : u"Bearbeite Dateivorlagen",
@@ -1100,7 +1104,7 @@ messages = {
     "Video status bar message:" : u"Video-Status-Bar Nachricht",
     "Legend" : u"Legende",
     "Current frame" : u"Aktuelles Einzelbild",
-    "Framecount" : u"",
+    "Framecount" : u"Frame Anzahl",
     "Current time" : u"Aktuelle Zeit",
     "Total time" : u"Zeit Total",
     "Width" : u"Breite",
@@ -1129,20 +1133,23 @@ messages = {
     "Bookmark title" : u"", # New in v2.4.0
     "Note: The \"\\t\\t\" or \"\\T\\T\" is used to separate the left and right portions of the status bar\n         message." : u"", # New in v2.3.0
     "Slider update immediately" : u"Sofortige Schieberegler Aktualisierung",
-    "Enable/disable filter" : u"", # New in v2.6.7.0
     "A macro is still running. Close anyway?" : u"", # New in v2.3.0
     "A clip thread is still running. Close anyway?" : u"", # New in v2.6.7.0
     "Save changes before closing?" : u"Änderungen vor dem Beenden speichern?",
-    "Cannot create a new tab while crop editor is open!" : u"Kein neuer Tab kann erstellt werden,solange der Crop-Editor geöfnnet ist!",
-    "Cannot create a new tab while trim editor is open!" : u"Kein neuer Tab kann erstellt werden,solange der Trim-Editor geöfnnet ist!",
+    "Cannot create a new tab while crop editor is open!" : u"Kein neuer Tab kann erstellt werden, solange der Crop-Editor geöfnnet ist!",
+    "Cannot create a new tab while trim editor is open!" : u"Kein neuer Tab kann erstellt werden, solange der Trim-Editor geöfnnet ist!",
     "Source files" : u"", # New in v2.3.0
     "Open a script or source" : u"Öffne ein Skript oder Source",
     "Reload the file and lose the current changes?" : u"Die Datei neu laden und die gegenwärtigen Änderungen verlieren?",
     "%d Bookmarks imported" : u"", # New in v2.5.1.18
     "Open this file" : u"Öffne die Datei",
-    "Save session before closing all tabs?" : u"Session speichern bevor,alle Tags geschlossen werden?",
+    "Save session before closing all tabs?" : u"Session speichern bevor alle Tags geschlossen werden?",
     "Save current script" : u"Speichere aktuelles Skript",
     "Directory %(dirname)s does not exist!" : u"Verzeichnis %(dirname)s existiert nicht!",
+    "Saved script is changed because AvsP marked section added" : u"", # New in v2.6.7.2
+    "Saved script is changed because sliders or toggle tags and filters are removed" : u"", # New in v2.6.7.2
+    "Saved: %s" : u"", # New in v2.6.7.2
+    "Error saving the script: %s" : u"", # New in v2.6.7.2
     "Script has no text!" : u"", # New in v2.5.0
     "HTML files" : u"", # New in v2.5.0
     "Load a session" : u"Lade eine Session",
@@ -1184,6 +1191,8 @@ messages = {
     "Invalid slider text: invalid number" : u"Ungültiger Schiebereglertext: Ungültige Nummer",
     "Reset to initial value: %(value_formatted)s" : u"Zurückstellen zum Ausgangswert %(value_formatted)s",
     "Reset to initial value: %(value2_formatted)s" : u"", # New in v2.2.1
+    "Add toggle tag" : u"Schalter hinzufügen",
+    "Clear all tags and disabled filters" : u"Alle Schalter && ausgeschaltete Filter löschen", # New in v2.6.7.2
     "Toggle exclusions filters" : u"Ein/Aus Ausschluss Filterliste",
     "General settings..." : u"Allgemeine Einstellungen...",
     "Set same width for all tabs" : u"Gleiche Breite für alle Tabs",
@@ -1197,8 +1206,12 @@ messages = {
     "Default value must be a number!" : u"Standartwet muß eine Zahl sein!",
     "Step size value must be a number!" : u"Schrittgrößenwert muss eine Nummer sein!",
     "Left-click to select a color, right click to reset to default" : u"Links-click um eine Farbe zu wählen, Rechts-click setzt auf Standard zurück.",
+    "Joined or disabled filters found: filter1.filter2\nOnly the first filter can have a toggle tag" : u"", # New in v2.6.7.2
+    "Remove" : u"", # New in v2.6.7.2
+    "Add child" : u"", # New in v2.6.7.2
+    "Remove child" : u"", # New in v2.6.7.2
     "Toggle \"%(label)s\" section" : u"Umschalten \"%(label)s\" Abschnitt",
-    "Both videos must have the same width and height." : u"", # New in v2.6.7.1
+    "Both videos must have the same width and height." : u"Beide Videos müssen die selben Abmessungen besitzen",
     "Save changes before previewing?" : u"Speichern der Änderungen vor der Vorschau",
     "Select an external player" : u"Wähle einen externen Player",
     "A program must be specified to use this feature!" : u"Ein Programm muss angegeben werden um dieses Eigenschaften zu nutzen",
@@ -1266,7 +1279,7 @@ messages = {
     "Item %(newKey)s already exists!" : u"Element %(newKey)s existiert schon!",
     "Are you sure you want to rename from %(oldName)s to %(newName)s?" : u"Sind Sie sicher das Sie umbenennen möchten%(oldName)s zu %(newName)s?",
     "Question" : u"Frage",
-     "Insert a new item" : u"Ein neues Element einfügen",
+    "Insert a new item" : u"Ein neues Element einfügen",
     "Must enter a name!" : u"Es muss ein Name vergeben werden",
     "Warning: no value entered for item %(newKey)s!" : u"Warnung: Für das Element wurde kein Wert eingetragen %(newKey)s!",
     "Message" : u"Meldung",

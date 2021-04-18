@@ -19,6 +19,26 @@ GPo releases: https://github.com/gispos/AvsPmod/releases
 #####
 
 --------------------------
+Version 2.6.7.2 [2021-04-18] GPo
+--------------------------
+* Video window scroll bars can be hidden Options > 'Hide video window scrollbars'
+* Auto preview now also works when switching tabs with the mouse wheel (if mouse wheel is set for tab change) 
+* Toggle tags can be created or removed for the selected filter in the context menu of the slider window.
+* The toggle tags in the slider window have been given a context menu. Remove, Add child, Remove child
+- so there is the possibility with 'Add child' to create a check-radio item from two toggle tags. 
+- but use the toggle tags in the slider window with care, not everything can always be checked and changed automatically. 
+- the filter name can change in the slider window if e.g. the same filter is added again. 
+- if you not need or like it you can remove the menu entries under program options > User sliders > 'Hide slider window toggle tag menus'
+* Bugfix Special Comment #> only working correctly in the preview filters.
+- the special comment characters #> are a bit confusing. Sorry. Hopefully I didn't get lost with this option.
+- everything in the line behind #> is registered in AvsPmod as a text change and thus the script is then reinitialized. 
+- although in reality (for avisynth) there are no changes. For avisynth it is a normal comment.
+- at the moment it is only used for saving toggle tags within the script, but it also opens up possibilities for other functions. 
+- use it only for the toggle tags when a toggle tag is alone in a line. 
+ * And a few more code changes and a different wx version 
+** It's always a tightrope walk between functionality and ease of use **
+
+--------------------------
 Version 2.6.7.1 [2021-04-11] GPo
 --------------------------
 * The matrix (YUV > RGB) stored in the script (tv601, tv709) is preferably used. If the entry is found no matrix is read from the source.
