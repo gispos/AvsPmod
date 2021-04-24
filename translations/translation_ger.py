@@ -16,7 +16,7 @@
 
 # Übersetzt von Henrik . AvsP 2.0.1  Danke für die Hilfe, besonders LigH ,doxville,Brother John, Selur und Rippraff !
 
-version = "2.6.7.2"
+version = "2.6.7.3"
 
 messages = {
     "AviSynth script" : u"", # New in v2.3.0
@@ -313,12 +313,12 @@ messages = {
     "type string (filename)" : u"Eingabe string  (Dateiname)",
     "Create placeholders for arguments which have no database information" : u"Platzhalter für Argumente erstellen, die keine Datenbankinformationen haben",
     "undocumented" : u"Undokumentiert",
-    "Button show/hide applies to all tabs" : u"Schaltfläche Ein-/Ausblenden betrifft alle Tabs", # New in v2.6.6.3
+    "Button show/hide applies to all tabs" : u"Schaltfläche Ein-/Ausblenden betrifft alle Tabs",
     "Or press Ctrl when you click the button." : u"", # New in v2.6.6.3
-    "Hide slider window toggle tag menus*" : u"Schiebereglerfenster Schalter Menüs nicht anzeigen*", # New in v2.6.7.2
+    "Hide slider window toggle tag menus*" : u"Schiebereglerfenster Schalter Menüs nicht anzeigen*",
     "Hide the toggle tag menus in the context menu of the sliders" : u"", # New in v2.6.7.2
     "Custom colors can be set under 'Options->Font and colors->Advanced 2'\nNot visible slider windows needed refresh." : u"", # New in v2.6.6.6
-    "Enable slider window custom color theme" : u"Benutzerdefiniertes Farbschema des Schiebereglerfenster einschalten", # New in v2.6.6.6
+    "Enable slider window custom color theme" : u"Benutzerdefiniertes Farbschema des Schiebereglerfenster einschalten",
     "Determines which filters will initially have hidden arguments in the slider window" : u"Stellt zuerst fest, welche Filter versteckt Argumente im Schiebereglerfenster haben",
     "Fold all" : u"Alle eingeklappen",
     "Fold non-numbers" : u"Nichtnumerische eingeklappen",
@@ -975,7 +975,7 @@ messages = {
     "Preview filters" : u"", # New in v2.6.6.0
     "Snapshot 1" : u"", # New in v2.6.6.0
     "Snapshot 2" : u"", # New in v2.6.6.0
-    "Empty script" : u"", # New in v2.6.6.0
+    "Empty snapshot script" : u"", # New in v2.6.7.3
     "Display" : u"", # New in v2.6.7.0
     "YUV -> RGB" : u"", # New in v2.6.7.0
     "Cannot read the matrix. Clip not initialized" : u"", # New in v2.6.7.0
@@ -1049,6 +1049,7 @@ messages = {
     "Slider window" : u"", # New in v2.6.6.6
     "Slider window text field" : u"", # New in v2.6.6.6
     "Slider window default value" : u"", # New in v2.6.6.6
+    "Slider window slider background" : u"", # New in v2.6.7.3
     "Slider window extras (Snapshot)" : u"", # New in v2.6.7.0
     "Information" : u"",
     "Settings have been read from backup file\n" : u"Die Einstellungen wurden aus dem Backup gelesen",
@@ -1146,9 +1147,8 @@ messages = {
     "Save session before closing all tabs?" : u"Session speichern bevor alle Tags geschlossen werden?",
     "Save current script" : u"Speichere aktuelles Skript",
     "Directory %(dirname)s does not exist!" : u"Verzeichnis %(dirname)s existiert nicht!",
-    "Saved script is changed because AvsP marked section added" : u"", # New in v2.6.7.2
-    "Saved script is changed because sliders or toggle tags and filters are removed" : u"", # New in v2.6.7.2
-    "Saved: %s" : u"", # New in v2.6.7.2
+    "The saved script has changed because AvsP marked section added" : u"", # New in v2.6.7.3
+    "The saved script has changed because sliders or toggle tags and filters are removed" : u"", # New in v2.6.7.3
     "Error saving the script: %s" : u"", # New in v2.6.7.2
     "Script has no text!" : u"", # New in v2.5.0
     "HTML files" : u"", # New in v2.5.0
@@ -1192,7 +1192,8 @@ messages = {
     "Reset to initial value: %(value_formatted)s" : u"Zurückstellen zum Ausgangswert %(value_formatted)s",
     "Reset to initial value: %(value2_formatted)s" : u"", # New in v2.2.1
     "Add toggle tag" : u"Schalter hinzufügen",
-    "Clear all tags and disabled filters" : u"Alle Schalter && ausgeschaltete Filter löschen", # New in v2.6.7.2
+    "Clear all tags and disable the filters" : u"Alle Tags löschen und Filter ausschalten", # New in v2.6.7.3
+    "Clear all tags && disabled filters" : u"Alle Tags && ausgeschaltete Filter löschen", # New in v2.6.7.3
     "Toggle exclusions filters" : u"Ein/Aus Ausschluss Filterliste",
     "General settings..." : u"Allgemeine Einstellungen...",
     "Set same width for all tabs" : u"Gleiche Breite für alle Tabs",
@@ -1206,7 +1207,13 @@ messages = {
     "Default value must be a number!" : u"Standartwet muß eine Zahl sein!",
     "Step size value must be a number!" : u"Schrittgrößenwert muss eine Nummer sein!",
     "Left-click to select a color, right click to reset to default" : u"Links-click um eine Farbe zu wählen, Rechts-click setzt auf Standard zurück.",
+    "Snapshot doesn't seem to be from this session.\nKeep going?" : u"", # New in v2.6.7.3
+    "Question" : u"Frage",
+    "Restore to current" : u"", # New in v2.6.7.3
+    "Restore to new tab" : u"", # New in v2.6.7.3
     "Joined or disabled filters found: filter1.filter2\nOnly the first filter can have a toggle tag" : u"", # New in v2.6.7.2
+    "Enter new name" : u"", # New in v2.6.7.3
+    "Rename toggle tag" : u"", # New in v2.6.7.3
     "Remove" : u"", # New in v2.6.7.2
     "Add child" : u"", # New in v2.6.7.2
     "Remove child" : u"", # New in v2.6.7.2
@@ -1278,7 +1285,6 @@ messages = {
     "Error: key %(key)s does not exist!" : u"Fehler: key %(key)s existiert nicht!",
     "Item %(newKey)s already exists!" : u"Element %(newKey)s existiert schon!",
     "Are you sure you want to rename from %(oldName)s to %(newName)s?" : u"Sind Sie sicher das Sie umbenennen möchten%(oldName)s zu %(newName)s?",
-    "Question" : u"Frage",
     "Insert a new item" : u"Ein neues Element einfügen",
     "Must enter a name!" : u"Es muss ein Name vergeben werden",
     "Warning: no value entered for item %(newKey)s!" : u"Warnung: Für das Element wurde kein Wert eingetragen %(newKey)s!",

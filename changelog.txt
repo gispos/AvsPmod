@@ -19,6 +19,22 @@ GPo releases: https://github.com/gispos/AvsPmod/releases
 #####
 
 --------------------------
+Version 2.6.7.3 [2021-04-24] GPo
+--------------------------
+* Snapshot buttons in the slider window have got a context menu (Restore to current, Restore to new tab, Clear all) 
+* The background color of the sliders in the slider window can be changed. (Options > Font and colors > Advanced 2 )
+* Some new menu entries in the slider window and toggle tag context menus 
+* Under Win10, the mouse wheel should now also work on the video slider (if video window visible). 
+* Fixed: With the new wx version the Navigate > Bookmarks menu no longer worked. 
+*/
+One user did not like the fact that a message appeared in the status bar when the script was saved. 
+Now if the script is saved without changes, no more messages appear. Messages appear if the script is changed while saving,
+i.e. if toggle tags and filters are removed or an AvsP marked section is added to the script. 
+These messages are displayed for at least 3-4 seconds and disappear when you move the mouse in the video window. 
+Therefore, important messages are still displayed in the status bar. Without extra options for it.
+*/
+
+--------------------------
 Version 2.6.7.2 [2021-04-18] GPo
 --------------------------
 * Video window scroll bars can be hidden Options > 'Hide video window scrollbars'

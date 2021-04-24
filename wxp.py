@@ -426,9 +426,10 @@ class ArgsPosterThread:
                         self.app.videoDialog.Raise()
         finally:
             sock.close()
-        self.running = False
+            self.running = False
 
 class Frame(wx.Frame):
+
     def createMenuBar(self, menuBarInfo, shortcutList, oldShortcuts, menuBackups=[]):
         '''
         General utility function to create a menu bar of menus
@@ -445,6 +446,8 @@ class Frame(wx.Frame):
             menuInfo = eachMenuBarInfo[1:]
             menu = self.createMenu(menuInfo, menuLabel, shortcutList, oldShortcuts)
             menuBar.Append(menu, menuLabel)
+            # GPo, wx.2.9.4 menuBackups must first append or menuBar Video>Navigate>Bookmarks events not working
+            # but then menu bar flickers on add the bookmarks to the menu. What bullshit, TODO...
             if index in buckups:
                 menuBackups.append(self.createMenu(menuInfo, menuLabel, shortcutList, oldShortcuts, True))
             index += 1

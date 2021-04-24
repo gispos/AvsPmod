@@ -6114,7 +6114,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 'monospaced': 'face:{mono},size:10',
                 'default': 'face:{sans},size:10,fore:#000000,back:#FFFFFF',
                 'comment': 'face:{serif},size:9,fore:#007F00,back:#FFFFFF',
-                'comment2': 'face:{sans},size:9,fore:#000000,back:#FFFFFF',
+                'comment2': 'face:{sans},size:8,fore:#000000,back:#FFFFFF',
                 'blockcomment': 'face:{serif},size:9,fore:#007F00,back:#FFFFFF',
                 'endcomment': 'face:{sans},size:10,fore:#C0C0C0,back:#FFFFFF',
                 'number': 'face:{mono},size:10,fore:#007F7F,back:#FFFFFF',
@@ -6149,12 +6149,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 'sliderwindowtextctrl': 'fore:#EBEBEB,back:#353535',
                 'sliderwindowdefvalue': 'fore:#FFFD37,bold',
                 'sliderwindowextrabtn1': 'fore:#ADB7A4',
+                'sliderwindowbackslider': 'back:#2b2b2b',
             },
             _('Default dark'): {
                 'monospaced': 'face:{mono},size:10',
                 'default': 'face:{sans},size:10,fore:#dcdccc,back:#2b2b2b',
                 'comment': 'face:{serif},size:9,fore:#9eb69e,back:#2b2b2b',
-                'comment2': 'face:{sans},size:9,fore:#eae8bf,back:#2b2b2b',
+                'comment2': 'face:{sans},size:8,fore:#eae8bf,back:#2b2b2b',
                 'blockcomment': 'face:{serif},size:9,fore:#9eb69e,back:#2b2b2b',
                 'endcomment': 'face:{sans},size:10,fore:#7f9f7f,back:#2b2b2b',
                 'number': 'face:{mono},size:10,fore:#8cd0d3,back:#2b2b2b',
@@ -6189,13 +6190,14 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 'sliderwindowtextctrl': 'fore:#EBEBEB,back:#353535',
                 'sliderwindowdefvalue': 'fore:#FFFD37,bold',
                 'sliderwindowextrabtn1': 'fore:#ADB7A4',
+                'sliderwindowbackslider': 'back:#2b2b2b',
             },
             # Based, with some minor changes, on Solarized <http://ethanschoonover.com/solarized>
             _('Solarized light'): {
                 'monospaced': 'face:{mono},size:10',
                 'default': 'face:{sans},size:10,fore:{solarized_base00},back:{solarized_base3}',
                 'comment': 'face:{serif},size:9,fore:{solarized_base1},back:{solarized_base3}',
-                'comment2': 'face:{sans},size:9,fore:{solarized_base00},back:{solarized_base3}',
+                'comment2': 'face:{sans},size:8,fore:{solarized_base00},back:{solarized_base3}',
                 'blockcomment': 'face:{serif},size:9,fore:{solarized_base1},back:{solarized_base3}',
                 'endcomment': 'face:{sans},size:10,fore:{solarized_base1},back:{solarized_base3}',
                 'number': 'face:{mono},size:10,fore:{solarized_cyan},back:{solarized_base3}',
@@ -6230,12 +6232,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 'sliderwindowtextctrl': 'fore:#EBEBEB,back:#353535',
                 'sliderwindowdefvalue': 'fore:#FFFD37,bold',
                 'sliderwindowextrabtn1': 'fore:#ADB7A4',
+                'sliderwindowbackslider': 'back:#2B2B2B',
             },
             _('Solarized dark'): {
                 'monospaced': 'face:{mono},size:10',
                 'default': 'face:{sans},size:10,fore:{solarized_base0},back:{solarized_base03}',
                 'comment': 'face:{serif},size:9,fore:{solarized_base01},back:{solarized_base03}',
-                'comment2': 'face:{sans},size:9,fore:{solarized_base0},back:{solarized_base03}',
+                'comment2': 'face:{sans},size:8,fore:{solarized_base0},back:{solarized_base03}',
                 'blockcomment': 'face:{serif},size:9,fore:{solarized_base01},back:{solarized_base03}',
                 'endcomment': 'face:{sans},size:10,fore:{solarized_base01},back:{solarized_base03}',
                 'number': 'face:{mono},size:10,fore:{solarized_cyan},back:{solarized_base03}',
@@ -6270,6 +6273,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 'sliderwindowtextctrl': 'fore:#EBEBEB,back:#353535',
                 'sliderwindowdefvalue': 'fore:#FFFD37,bold',
                 'sliderwindowextrabtn1': 'fore:#ADB7A4',
+                'sliderwindowbackslider': 'back:#2B2B2B',
             },
         }
         #self.x_defaultTextStyle = dict(self.defaulttextstylesDict['Default'].copy()) # for test
@@ -7546,7 +7550,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         # Create the program's menu
         shortcutList = []
         oldShortcuts = ([item[0] for item in self.options['shortcuts']], self.options['shortcuts'])
-        self.menuBackups = [1, 2] #if wx.VERSION > (2, 8) else []
+
+        self.menuBackups = [1, 2]
         menuBar = self.createMenuBar(self.menuInfo(), shortcutList, oldShortcuts, self.menuBackups)
         self.SetMenuBar(menuBar)
         self.Bind(wx.EVT_MENU_OPEN, self.OnMenuBar)
@@ -8613,6 +8618,14 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         hex = s.split('#')[1]
                         r,g,b = tuple(int(hex[i:i+2], 16) for i in (0, 2 ,4))
                         self.foreExtraBtn1 = wx.Colour(r,g,b)
+                attr = self.app.options['textstyles']['sliderwindowbackslider'].split(',')
+                for i in xrange(len(attr)):
+                    s = attr[i]
+                    if s.startswith('back'):
+                        hex = s.split('#')[1]
+                        r,g,b = tuple(int(hex[i:i+2], 16) for i in (0, 2 ,4))
+                        self.backSlider = wx.Colour(r,g,b)
+                        break
             except:
                 self.SetSystemColors()
                 return
@@ -8657,8 +8670,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         scriptWindow.FrameThread = None
         scriptWindow.matrix = ['auto', 'tv']
         scriptWindow.snapShots = {
-            'shot1': [-1, None, ""],        # GPo: FrameNr, Bitmap, script
-            'shot2': [-1, None, ""]
+            'shot1': [-1, None, "", 0],        # GPo: FrameNr, Bitmap, script, previewFilterIdx
+            'shot2': [-1, None, "", 0]
             }
         try:
             scriptWindow.contextMenu = self.menuBackups[0] if self.menuBackups else self.GetMenuBar().GetMenu(1)
@@ -8710,10 +8723,15 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         videoWindow.SetScrollRate(1, 1)
         if self.options['hidescrollbars']:
             videoWindow.ShowScrollbars(wx.SHOW_SB_NEVER, wx.SHOW_SB_NEVER)
+        """ GPo, disabled not yet needed
         try:
-            videoWindow.contextMenu = self.menuBackups[1] if self.menuBackups else self.GetMenuBar().GetMenu(2)
+            if wx.VERSION >= (2, 9, 4):
+                videoWindow.contextMenu = self.menuBackups2[1] if self.menuBackups2 else self.GetMenuBar().GetMenu(2)
+            else:
+                videoWindow.contextMenu = self.menuBackups[1] if self.menuBackups else self.GetMenuBar().GetMenu(2)
         except AttributeError:
             pass
+        """
         # Event binding
         videoWindow.Bind(wx.EVT_CONTEXT_MENU, self.OnContextMenu)
         videoWindow.Bind(wx.EVT_SET_FOCUS, self.OnFocusVideoWindow)
@@ -8822,6 +8840,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             for ctrl in self.videoControlWidgets:
                 ctrl.Disable()
                 ctrl.Refresh()
+
+         #GPo, test Win10 hack
+        if self.WinVersion >= 8 and primary:
+            for ctrl in videoControlWidgets:
+                if ctrl != self.frameTextCtrl:
+                    ctrl.Bind(wx.EVT_MOUSEWHEEL, self.OnVideoControlsMouseWheel)
+
         # Set the sizer and return the panel
         panel.SetSizer(sizer)
 
@@ -9723,7 +9748,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             script.InsertText(endpos, '%s%s[/%s]%s' % (extraB, extraC, label, extraBB))
             script.InsertText(startpos, '%s[%s]%s' % (extraC, label, extraAA))
             # then we can set the preview text, tags as default enabled
-            if not scriptChanged:
+            if not scriptChanged and label.find('=') < 0:
                 script.Colourise(startpos, script.GetTextLength())
                 script.previewtxt = self.ScriptChanged(script, return_styledtext=True)[1]
             self.UpdateUserSliders()
@@ -9734,16 +9759,20 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         script.SetText(self.cleanToggleTags(script.GetText()))
         script.Colourise(0, script.GetTextLength()) # GPo 2021
     """
-
-    def OnMenuEditClearToggleTags(self, event=None):
+    # GPo 2021, changed
+    def OnMenuEditClearToggleTags(self, event=None, removeFilters=True):
         script = self.currentScript
         scriptTxt = script.GetText().rstrip()
-        txt = self.cleanToggleTags(scriptTxt)
+        txt = self.cleanToggleTags(scriptTxt, removeFilters)
         txt = self.stripComment_2(txt)
         if txt != scriptTxt:
             script.SetText(txt)
-            script.Colourise(0, script.GetTextLength()) # GPo 2021
+            script.Colourise(0, script.GetTextLength())
+            script.ToggleTags = []
             self.UpdateUserSliders()
+
+    def OnMenuEditClearToggleTags2(self, event=None):
+        self.OnMenuEditClearToggleTags(removeFilters=False)
 
     def OnMenuInsertPreviewFilter(self, event):
         script = self.currentScript
@@ -10390,7 +10419,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 w = self.currentScript.AVI.DisplayWidth
                 h = self.currentScript.AVI.DisplayHeight
                 self.refreshAVI = True
-                if self.UpdateScriptAVI(script=script, forceRefresh=False, prompt=False) is not None:
+                if self.UpdateScriptAVI(script=script, forceRefresh=False, prompt=False) is not None and script.AVI is not None:
                     if not script.AVI.IsErrorClip() and script.AVI.error_message is None:
                         if script.AVI.DisplayWidth != w or script.AVI.DisplayHeight != h:
                             wx.MessageBox('Both videos must have the same width and height.','Split View Error',parent=self)
@@ -10713,9 +10742,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     def OnMenuTest2(self, event):
         pass
-        #print(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
-        #from psutil import Process as ps_process
-        #print(ps_process(os.getpid()).memory_info().rss / 1024 ** 2)
 
     def ShowFreeMemory(self, returnStr=False):
         if not returnStr and self.options['showfreememory'] < 1:
@@ -10746,7 +10772,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             return
         txt = self.currentScript.GetText()
         script.snapShots['shot1'][1] = None
-        script.snapShots['shot1'] = [self.currentframenum, bmp, txt]
+        script.snapShots['shot1'] = [self.currentframenum, bmp, txt, script.previewFilterIdx]
 
     def OnMenuTakeSnapShot2(self, event):
         script = self.currentScript
@@ -10761,15 +10787,18 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             return
         txt = self.currentScript.GetText()
         script.snapShots['shot2'][1] = None
-        script.snapShots['shot2'] = [self.currentframenum, bmp, txt]
+        script.snapShots['shot2'] = [self.currentframenum, bmp, txt, script.previewFilterIdx]
 
-    def OnMenuShowSnapShot1(self, event):
+    def OnMenuShowSnapShot1(self, event=None, showMsg=True):
         script = self.currentScript
-        nr, bmp, txt = script.snapShots['shot1']
+        nr, bmp, txt, prevFilterIdx = script.snapShots['shot1']
         if txt:
             if (self.currentframenum != nr) or not self.previewWindowVisible:
                 self.ShowVideoFrame(nr, forceLayout=True, forceCursor=True)
             else:
+                if self.splitView:
+                    wx.Bell()
+                    return
                 if bmp:
                     self.snapShotIdx = 1 if self.snapShotIdx in [0,2] else 0
                     self.zoom_antialias = '' # disable draw 'Snapshot'
@@ -10777,6 +10806,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     self.ResetZoomAntialias() # now draw 'Snapshot'
                 else:
                     self.snapShotIdx = 0
+                    if not showMsg:
+                        wx.Bell()
+                        return
                     dlg = wx.MessageDialog(self, _('No Bitmap available, but you can restore the script from snapshot.'+
                                                    ' New tab from snapshot?'), _('Snapshot 1'), wx.YES_NO)
                     ID = dlg.ShowModal()
@@ -10787,13 +10819,16 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         else:
             wx.Bell()
 
-    def OnMenuShowSnapShot2(self, event):
+    def OnMenuShowSnapShot2(self, event=None, showMsg=True):
         script = self.currentScript
-        nr, bmp, txt = script.snapShots['shot2']
+        nr, bmp, txt, prevFilterIdx = script.snapShots['shot2']
         if txt:
             if (self.currentframenum != nr) or not self.previewWindowVisible:
                 self.ShowVideoFrame(nr, forceLayout=True, forceCursor=True)
             else:
+                if self.splitView:
+                    wx.Bell()
+                    return
                 if bmp:
                     self.snapShotIdx = 2 if self.snapShotIdx in [0,1] else 0
                     self.zoom_antialias = ''
@@ -10801,6 +10836,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     self.ResetZoomAntialias()
                 else:
                     self.snapShotIdx = 0
+                    if not showMsg:
+                        wx.Bell()
+                        return
                     dlg = wx.MessageDialog(self, _('No Bitmap available, but you can restore the script from snapshot.'+
                                                    ' New tab from snapshot?'), _('Snapshot 2'), wx.YES_NO)
                     ID = dlg.ShowModal()
@@ -10811,10 +10849,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         else:
             wx.Bell()
 
-    def OnMenuNewTabFromSnapShot1(self, event):
+    def OnMenuNewTabFromSnapShot1(self, event=None):
         txt = self.currentScript.snapShots['shot1'][2] # [2] = script text
         if not txt:
-            wx.MessageBox(_('Empty script'),'Error snap shot 1')
+            wx.MessageBox(_('Empty snapshot script'),'Error snapshot 1')
             return
         self.HidePreviewWindow()
         idx = self.NewTab(copyselected=False,text=txt,insertnext=True)
@@ -10824,10 +10862,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 script.lastFramenum = self.currentframenum
                 self.videoSlider.SetValue(self.currentframenum)
 
-    def OnMenuNewTabFromSnapShot2(self, event):
+    def OnMenuNewTabFromSnapShot2(self, event=None):
         txt = self.currentScript.snapShots['shot2'][2]
         if not txt:
-            wx.MessageBox(_('Empty script'),'Error snap shot 2')
+            wx.MessageBox(_('Empty snapshot script'),'Error snapshot 2')
             return
         self.HidePreviewWindow()
         idx = self.NewTab(copyselected=False,text=txt,insertnext=True)
@@ -10841,92 +10879,34 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.snapShotIdx = 0
         script = self.currentScript
         for key in script.snapShots.keys():
-            script.snapShots[key] = [-1, None, ""]
+            script.snapShots[key] = [-1, None, "", 0]
         self.videoWindow.Refresh()
 
-    def OnMenuClearAllSnapShots(self, event):
+    def OnMenuClearAllSnapShots(self, event=None):
         self.snapShotIdx = 0
         for index in xrange(self.scriptNotebook.GetPageCount()):
             script = self.scriptNotebook.GetPage(index)
             for key in script.snapShots.keys():
-                script.snapShots[key] = [-1, None, ""]
+                script.snapShots[key] = [-1, None, "", 0]
         self.videoWindow.Refresh()
 
     def GetScriptSnapshotDict(self, script):
-        """
-        saveImage = False # Bitmap convertet to image and again to bitmap is not the same, so it's makes no sense
-        saveJpg = False
         shots = {}
         for key in script.snapShots.keys():
-            if script.snapShots[key][1] and saveImage:
-                temp = StringIO()
-                img = wx.ImageFromBitmap(script.snapShots[key][1])
-                if saveJpg:
-                    img.SetOption(wx.IMAGE_OPTION_QUALITY, '95')
-                    img.SaveStream(temp, wx.BITMAP_TYPE_JPEG)
-                else:
-                    img.SaveStream(temp, wx.BITMAP_TYPE_PNG)
-                temp.seek(0)
-            else:
-                temp = None
-            shots[key] = [script.snapShots[key][0], temp, script.snapShots[key][2]]
-
-        """
-        """
-        saveImage = True
-        shots = {}
-        for key in script.snapShots.keys():
-            if script.snapShots[key][1] and saveImage:
-                temp = StringIO()
-                script.snapShots[key][1].CopyToBuffer(temp, wx.BitmapBufferFormat_RGB32)
-            else:
-                temp = None
-            shots[key] = [script.snapShots[key][0], temp, script.snapShots[key][2]]
-        return shots
-        """
-        shots = {}
-        for key in script.snapShots.keys():
-            shots[key] = [script.snapShots[key][0], None, script.snapShots[key][2]]
+            shots[key] = [script.snapShots[key][0], None, script.snapShots[key][2], script.snapShots[key][3]]
         return shots
 
     def GetSnapShotFromSession(self, script, snapshots):
         for key in script.snapShots.keys():
             if key in snapshots.keys():
-                nr, temp, txt = snapshots[key]
-                if temp is not None:  # default None, not None only for testing, see GetScriptSnapshotDict
-                    img = None
-                    try:
-                        img = wx.ImageFromStream(temp)
-                        if img:
-                            try:
-                                bmp = wx.BitmapFromImage(img)
-                                script.snapShots[key] = [nr, bmp, txt]
-                            except:
-                                script.snapShots[key] = [nr, None, txt]
-                        else:
-                            script.snapShots[key] = [nr, None, txt]
-                    except:
-                        script.snapShots[key] = [nr, None, txt]
-                else:
-                    script.snapShots[key] = [nr, None, txt]
+                try:
+                    nr, temp, txt, prevFilterIdx = snapshots[key]
+                except:
+                    nr, temp, txt = snapshots[key]
+                    prevFilterIdx = 0
+                script.snapShots[key] = [nr, None, txt, prevFilterIdx]
             else:
-                script.snapShots[key] = [-1, None, ""]
-        """
-        for key in script.snapShots.keys():
-            if key in snapshots.keys():
-                nr, temp, txt = snapshots[key]
-                if temp is not None:  # default None, not None only for testing, see GetScriptSnapshotDict
-                    try:
-                        bmp = wx.EmptyBitmap(1920, 1080, wx.BitmapBufferFormat_RGB32)
-                        bmp.CopyFromBuffer(temp, wx.BitmapBufferFormat_RGB32)
-                        script.snapShots[key] = [nr, bmp, txt]
-                    except:
-                        script.snapShots[key] = [nr, None, txt]
-                else:
-                    script.snapShots[key] = [nr, None, txt]
-            else:
-                script.snapShots[key] = [-1, None, ""]
-        """
+                script.snapShots[key] = [-1, None, "", 0]
 
     def SetDialogPositionNextToVideo(self, dlg):
         parent = dlg.GetParent()
@@ -11962,8 +11942,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     (_('Slider window'), 'sliderwindow'),
                     (_('Slider window text field'), 'sliderwindowtextctrl'),
                     (_('Slider window default value'), 'sliderwindowdefvalue'),
+                    (_('Slider window slider background'), 'sliderwindowbackslider'),
                     (_('Slider window extras (Snapshot)'), 'sliderwindowextrabtn1'),
-
                 ),
             )
         )
@@ -12965,8 +12945,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if self.zoomwindow:
                 forcePlaying = self.ShowVideoFrame(forceLayout=True, focus=False, scroll=script.videoXY, forceCursor=True, forceThread=self.UseAviThread) and forcePlaying
             else:
-                if (script.videoZoom != None) and ((script.AVI.Width, script.AVI.Height) == self.oldVideoSize):
-                    self.zoomfactor = script.videoZoom
                 forcePlaying = self.ShowVideoFrame(forceLayout=True, focus=False, scroll=script.videoXY, forceCursor=True, forceThread=self.UseAviThread) and forcePlaying
 
             self.Refresh()
@@ -13433,6 +13411,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.SelectTab(index)
                 return True
         return False
+
+    # Win10 hack
+    def OnVideoControlsMouseWheel(self, event):
+        if not self.previewWindowVisible or event.LeftIsDown():
+            return
+        self.OnMouseWheelVideoWindow(event)
 
     def OnMouseWheelVideoWindow(self, event):
         # Zoom preview
@@ -15146,7 +15130,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         # Delete the tab from the notebook
         self.snapShotIdx = 0
         for key in script.snapShots.keys():
-            script.snapShots[key] = [-1, None, ""]
+            script.snapShots[key] = [-1, None, "", 0]
 
         script.lastFramenum = None # GPo, disable OnPageChanged
 
@@ -15253,15 +15237,15 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     self.HidePreviewWindow()
                 if self.options['savemarkedavs']:
                     txt = self.stripComment_2(txt)
-                    savemsg = (3000, _('Saved script is changed because AvsP marked section added'), 1)
+                    savemsg = (4000, _('The saved script has changed because AvsP marked section added'), 1)
                     header = '### AvsP marked script ###'
                     base = '\n'.join(['# %s' % line for line in scriptText.split('\n')])
                     txt = '%(txt)s\n%(header)s\n%(base)s\n%(header)s' % locals()
                 else:
                     txt = self.stripComment_2(txt)
-                    savemsg = (3000, _('Saved script is changed because sliders or toggle tags and filters are removed'), 1)
+                    savemsg = (4000, _('The saved script has changed because sliders or toggle tags and filters are removed'), 1)
             else:
-                savemsg = (3000, _('Saved: %s') % filename, 0)
+                savemsg = None# (3000, _('Saved: %s') % filename, 0)
 
             # Encode text and save it to the specified file
             txt = self.GetEncodedText(txt, bom=True)
@@ -15280,7 +15264,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     raise
 
             # Misc stuff
-            self.StatusbarTimer_Start(savemsg[0], savemsg[1], savemsg[2])
+            if savemsg:
+                self.StatusbarTimer_Start(savemsg[0], savemsg[1], savemsg[2])
             script.SetSavePoint()
             script.filename = filename
             script.workdir = os.path.dirname(filename)
@@ -15538,11 +15523,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     def cleanSliders(self, text):
         return self.regexp.sub(self.re_replace, text)
 
-    def cleanToggleTags(self, text):
+    def cleanToggleTags(self, text, removeFilters=True):
         for endtag in re.findall('\[/.*?\]', text):
             tagname = endtag[2:-1]
             expr = re.compile('\[%s(\s*=.*?)*?\].*?\[/%s\]' % (tagname, tagname), re.IGNORECASE|re.DOTALL)
-            text = expr.sub(self.re_replace2, text)
+            if removeFilters:
+                text = expr.sub(self.re_replace2, text)
+            else: text = expr.sub(self.re_replace3, text)
         return text
 
     def ExportHTML(self, filename=None, ext_css=None, index=None):
@@ -16802,7 +16789,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             sliderList.append(self.videoSlider2)
         return sliderList
 
-    # GPo new
     def UpdateBookmarkMenu(self, event=None):
         for i in xrange(self.menuBookmark.GetMenuItemCount()-4):
             self.menuBookmark.DestroyItem(self.menuBookmark.FindItemByPosition(0))
@@ -18658,6 +18644,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     #####################
 
     def UpdateScriptTagProperties(self, script, scripttxt=None):
+        if script.AVI.IsErrorClip():
+            script.toggleTags = []
+            script.sliderProperties = []
+            script.sliderTexts = []
+            return
         if scripttxt is None:
             scripttxt = script.GetText()
         # First strip out comments from scripttxt
@@ -18668,10 +18659,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         script.toggleTags = self.GetScriptToggleTagProperties(scripttxt, stripComments=False)
         # Get the slider info
         script.sliderTexts, script.sliderProperties = self.GetScriptSliderProperties(scripttxt, stripComments=False)
-        if script.AVI.IsErrorClip():
-            script.toggleTags = []
-            script.sliderProperties = []
-            script.sliderTexts = []
 
     def OnToggleTagChecked(self, event):
         script = self.currentScript
@@ -18692,7 +18679,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                             newText = re.sub(r'\[%s(\s*=.*?)*?\]' % label[1], '[%s=%i]' % (label[1], int(not value)), newText)
                         break
         ##
+        script.Freeze()
         script.SetText(newText)
+        script.Thaw()
         script.Colourise(0, script.GetTextLength()) # GPo, need new update for scriptChanged
         # Update the video
         # GPo 2021, if tag in preview filter and preview filter is off then no update required
@@ -18903,6 +18892,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         valTxtCtrl.SetFont(font)
         if self.currentSliderWindow.customTheme:
             valTxtCtrl.SetForegroundColour(self.currentSliderWindow.foreDefValue)
+            slider.SetBackgroundColour(self.currentSliderWindow.backSlider)
         else:
             valTxtCtrl.SetForegroundColour(wx.BLUE)
         valTxtCtrl.SetCursor(wx.StockCursor(wx.CURSOR_HAND))
@@ -19070,7 +19060,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if not self.options['sliderhidetagmenu']:
                 menuInfoGeneral = [
                     (_('Add toggle tag'), '', self.OnSliderAddToggleTag, ''),
-                    (_('Clear all tags and disabled filters'), '', self.OnMenuEditClearToggleTags, ''),
+                    (_('Clear all tags and disable the filters'), '', self.OnMenuEditClearToggleTags2, ''),
+                    (_('Clear all tags && disabled filters'), '', self.OnMenuEditClearToggleTags, ''),
                     (''),
                     ]
             menuInfoGeneral += [
@@ -19340,6 +19331,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         else:
             slider.prevFilterIdx = -2
         slider.filterName = filterName
+
         # Slider event binding
         def UserSliderVideoUpdateNew(slider):
             # Create the new arg text
@@ -19376,6 +19368,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         valTxtCtrl.SetFont(font)
         if self.currentSliderWindow.customTheme:
             valTxtCtrl.SetForegroundColour(self.currentSliderWindow.foreDefValue)
+            slider.SetBackgroundColour(self.currentSliderWindow.backSlider)
         else:
             valTxtCtrl.SetForegroundColour(wx.BLUE)
         valTxtCtrl.SetCursor(wx.StockCursor(wx.CURSOR_HAND))
@@ -19742,7 +19735,50 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         separator.controls += [labelTxtCtrl, browseSizer]
 
     def addAvsSnapshotPanel(self, script, separator, row):
-        #import wx.lib.platebtn as platebtn
+        def OnRestoreToCurrent(event):
+            script = self.currentScript
+            shot = 'shot1' if self.lastContextMenuWin == btnSnapshot1 else 'shot2'
+            txt = script.snapShots[shot][2]
+            idx = script.snapShots[shot][3]
+            if not txt:
+                wx.MessageBox(_('Empty snapshot script'),'Error snapshot')
+                return
+            if not script.snapShots[shot][1]: # no bitmap, also from session file
+                dlg = wx.MessageDialog(self, _("Snapshot doesn't seem to be from this session.\nKeep going?"),_('Question'), wx.YES_NO|wx.ICON_INFORMATION)
+                ID = dlg.ShowModal()
+                dlg.Destroy()
+                if ID != wx.ID_YES:
+                    return
+            script.Freeze()
+            script.SetText(txt)
+            script.Thaw()
+            script.Colourise(0, script.GetTextLength())
+            if self.ScriptChanged(script):
+                if self.ShowVideoFrame(forceRefresh=True) and idx > 0:
+                    self.OnMenuPreviewFilter(index=idx, updateUserSliders=False)
+            else:
+                self.UpdateUserSliders(forceUpdate=True)
+                if idx > 0:
+                    self.OnMenuPreviewFilter(index=idx, updateUserSliders=False)
+                else: self.ShowVideoFrame()
+        def OnRestoreToNewTab(event):
+            if self.lastContextMenuWin == btnSnapshot1:
+                self.OnMenuNewTabFromSnapShot1()
+            else: self.OnMenuNewTabFromSnapShot2()
+        def OnClearAll(event):
+            self.OnMenuClearAllSnapShots()
+        def OnContextMenu(event):
+            info = [
+                (_('Restore to current'), '', OnRestoreToCurrent, ''),
+                (_('Restore to new tab'), '', OnRestoreToNewTab, ''),
+                (''),
+                (_('Clear all'), '', OnClearAll, ''),
+            ]
+            popup = self.createMenu(info)
+            self.lastContextMenuWin = event.GetEventObject()
+            self.PopupMenu(popup)
+            popup.Destroy()
+
         int5, int10 = intPPI(5), intPPI(10)
         parent = script.sliderWindow
         sizer = script.sliderSizerNew
@@ -19758,20 +19794,21 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             item.SetCursor(wx.StockCursor(wx.CURSOR_HAND))
             if self.currentSliderWindow.customTheme:
                 item.SetForegroundColour(self.currentSliderWindow.foreExtraBtn1)
+            item.Bind(wx.EVT_CONTEXT_MENU, OnContextMenu)
         def OnBtnSnapshot1(event):
             btn = event.GetEventObject()
             x,y = event.GetPosition()
             if x < (btn.GetSize()[0] / 2) - 3:
                 self.OnMenuTakeSnapShot1(None)
             elif x > (btn.GetSize()[0] / 2) + 3:
-                self.OnMenuShowSnapShot1(None)
+                self.OnMenuShowSnapShot1(showMsg=False)
         def OnBtnSnapshot2(event):
             btn = event.GetEventObject()
             x,y = event.GetPosition()
             if x < (btn.GetSize()[0] / 2) - 3:
                 self.OnMenuTakeSnapShot2(None)
             elif x > (btn.GetSize()[0] / 2) + 3:
-                self.OnMenuShowSnapShot2(None)
+                self.OnMenuShowSnapShot2(showMsg=False)
         btnSnapshot1.Bind(wx.EVT_LEFT_UP, OnBtnSnapshot1)
         btnSnapshot2.Bind(wx.EVT_LEFT_UP, OnBtnSnapshot2)
         btnSizer = wx.BoxSizer(wx.HORIZONTAL)
@@ -19993,31 +20030,38 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             return
 
         script.InsertText(posB, '%s%s[/%s]' % (extraB, prefix, name))
-        script.InsertText(posA, '%s[%s]%s' % (prefix, name, extraAA))
+        script.InsertText(posA, '%s[%s=1]%s' % (prefix, name, extraAA))
         self.UpdateUserSliders()
         if not scriptChanged:
             script.Colourise(startpos, script.GetTextLength())
             script.previewtxt = self.ScriptChanged(script, return_styledtext=True)[1]
 
-
     def SliderRenameToggleTag(self, tagName, newName, isChecked):
         script = self.currentScript
+        scriptChanged = self.ScriptChanged(script)
+        addedChild = False
         rep = r'[%s=1]' if isChecked else r'[%s=0]'
         newTxt = re.sub(r'\[(?!/)%s(\s*=.*?)*?\]' % tagName, rep % newName, script.GetText())
         newTxt = re.sub(r'\[/%s\]' % tagName, '[/%s]' % newName, newTxt)
         if isChecked and newName.find('>') > -1:
             splitName = newName.split('>')[1]
             newTxt = re.sub(r'\[(?!/)%s(\s*=.*?)*?\]' % splitName, '[%s=0]' % splitName, newTxt)
+            addedChild = True
+        script.Freeze()
         script.SetText(newTxt)
-        script.Colourise(0, script.GetTextLength()) # need new update for scriptChanged
+        script.Thaw()
+        script.Colourise(0, script.GetTextLength())
         self.UpdateUserSliders()
-        scriptChanged = self.ScriptChanged(script)
-        if script.previewFilterIdx > 0 or scriptChanged:
-            self.SliderShowVideoFrame(userScrolling=not scriptChanged, selfrefreshAVI=scriptChanged, script=script, scriptChanged=scriptChanged)
+        if not scriptChanged and not addedChild: # we can set the preview text
+            script.previewtxt = self.ScriptChanged(script, return_styledtext=True)[1]
+        else:
+            scriptChanged = self.ScriptChanged(script)
+            if script.previewFilterIdx > 0 or scriptChanged:
+                self.SliderShowVideoFrame(userScrolling=not scriptChanged, selfrefreshAVI=scriptChanged, script=script, scriptChanged=scriptChanged)
 
     def SliderRemoveToggleTag(self, label, tagName=None, isChecked=None):
         script = self.currentScript
-        # if checked (filter enabled) we don't need an UpdateAvi if script was not bevor changed
+        # if checked (filter enabled) we don't need an UpdateAvi if script was not changed before
         if isChecked:
             scriptChanged = self.ScriptChanged(script)
         else: scriptChanged = False
@@ -20044,7 +20088,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         newText = ''
         txt = re.sub(r'\[/?%s(\s*=.*?)*?\]' % filterName, '', script.GetText())
         txt = self.stripComment_2(txt)
+        script.Freeze()
         script.SetText(txt)
+        script.Thaw()
         script.Colourise(0, script.GetTextLength()) # need new update for scriptChanged
         self.UpdateUserSliders()
         # then no update required, we can set the current text as preview text
@@ -20222,7 +20268,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     parent.Scroll(-1, (pos[1]-10)/yscrollpixels)
         parent.Thaw()
 
-    # GPo 2021 changed
+    # GPo 2021 changed, add context menu
     def createToggleTagCheckboxes(self, script):
 
         def OnToogleTagContextMenu(event):
@@ -20242,6 +20288,14 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     return
                 newName = ctrlName.split('>')[0]
                 self.SliderRenameToggleTag(ctrlName, newName, ctrl.GetValue())
+            def OnRename(event):
+                dlg = wx.TextEntryDialog(self, _('Enter new name'), _('Rename toggle tag'), ctrlName)
+                ID = dlg.ShowModal()
+                if ID == wx.ID_OK:
+                    label = dlg.GetValue()
+                    if label != '':
+                        self.SliderRenameToggleTag(ctrlName, label, ctrl.GetValue())
+                dlg.Destroy()
             # get the checkbox
             ctrl = event.GetEventObject()
             ctrlName = ctrl.GetName()
@@ -20262,6 +20316,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             id = wx.NewId()
             popup.Append(id, _('Remove child'), kind=wx.ITEM_NORMAL)
             self.Bind(wx.EVT_MENU, OnRemoveChild, id=id)
+            popup.AppendSeparator()
+            id = wx.NewId()
+            popup.Append(id, _('Rename'), kind=wx.ITEM_NORMAL)
+            self.Bind(wx.EVT_MENU, OnRename, id=id)
             self.PopupMenu(popup)
             popup.Destroy()
 
@@ -20278,7 +20336,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 checkbox.Bind(wx.EVT_CHECKBOX, self.OnToggleTagChecked)
                 if not self.options['sliderhidetagmenu']:
                     checkbox.Bind(wx.EVT_CONTEXT_MENU, OnToogleTagContextMenu)
-                script.toggleTagSizer.Add(checkbox, 0, wx.BOTTOM, intPPI(15))
+                script.toggleTagSizer.Add(checkbox, 0, wx.BOTTOM, intPPI(12))
                 labels.append(label)
 
     def OnSliderLabelToggleAllFolds(self, event):
@@ -21452,6 +21510,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         else:
             return mo.group()
 
+    # removes also the filters from script
     def re_replace2(self, mo):
         txt = mo.group()
         if self.boolToggleTag(txt):
@@ -21460,6 +21519,24 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             return txt[posA:posB]
         else:
             return ''
+
+    # GPo, do not remove the filters, comment the lines out
+    def re_replace3(self, mo):
+        txt = mo.group()
+        if self.boolToggleTag(txt):
+            posA = txt.find(']') + 1
+            posB = txt.rfind('[')
+            return txt[posA:posB]
+        else:
+            posA = txt.find(']') + 1
+            posB = txt.rfind('[')
+            newTxt = ''
+            for line in txt[posA:posB].split('\n'):
+                ls = line.strip()
+                if ls and not ls.startswith('#'):
+                    newTxt += '#' + ls + '\n'
+                else: newTxt += ls + '\n'
+            return newTxt[:-1]
 
     def boolToggleTag(self, txt):
         starttag = txt[1:txt.find(']')]
