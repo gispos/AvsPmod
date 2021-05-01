@@ -19,6 +19,18 @@ GPo releases: https://github.com/gispos/AvsPmod/releases
 #####
 
 --------------------------
+Version 2.6.7.4 [2021-05-01] GPo
+--------------------------
+* New checkbox in the slider window 'Disable refresh'
+- if checked: several filter parameters can be changed with the sliders without triggering an immediate refresh. 
+- the refresh is only carried out when the video window gets the focus or through other actions that trigger a refresh. 
+- Exceptions are the preview filters, which are treated normally.
+- But if a non-preview filter parameter is changed, the preview filter is switched off. 
+- default value can be changed under program options > User sliders > 'Disable refresh as default'
+* Win10 bugfix: program restart from options dialog create a new tab
+* Some other fixes and code improvements.
+
+--------------------------
 Version 2.6.7.3 [2021-04-24] GPo
 --------------------------
 * Snapshot buttons in the slider window have got a context menu (Restore to current, Restore to new tab, Clear all) 

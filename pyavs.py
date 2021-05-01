@@ -513,7 +513,9 @@ class AvsClipBase:
                 if self.matrix_found is not None:
                     matrix = self.matrix_found[:]
                 else: matrix = matrix[:]
-            else: matrix = matrix[:]
+            else:
+                matrix = matrix[:]
+                self.matrix_found = None
 
             if matrix[0] == 'auto':
                 if self.DisplayWidth > 1024 or self.DisplayHeight > 576:

@@ -3672,6 +3672,22 @@ float "highsens"=50 (0 to 100),
 float "ss"=1.5 (1.0 to 3.0)
 )
 
+DGHDRToSDR(
+clip,
+int "white"=400 (1 to 10000),
+int "black"=0 (1 to 1000),
+float "gamma"=0.42 (0.01 to 1.00),
+float "hue"=0.00 (-1.00 to 1.00),
+float "r"=1.00 (0.00 to 2.00),
+float "g"=1.00 (0.00 to 2.00),
+float "b"=1.15 (0.00 to 2.00),
+float "tm"=0.90 (0.00 to 1.00),
+float "roll"=0.70 (0.00 to 1.00),
+bool "fulldepth"=False,
+string "impl"="255",
+string "mode"="pq" ("pq" / "hq")
+)
+
 Dither1Pre(
 clip m,
 string "flt"="dfttest (sigma=64)",
@@ -4737,28 +4753,32 @@ TemporalDegrain2(
 clip input,
 int "degrainTR"=1 (1/2/3/4/5),
 [int "degrainPlane"=4 (0/3/4)],
-bool "grainLevel"=true,
+int "grainLevel"=2 (0/1/2),
 [int "meAlg"=4],
 [int "meAlgPar"],
 [int "meSubpel"],
 [int "meBlksz"], 
 [bool "meTM"=false],
+[bool "meChroma"=true],
 [int "limitFFT"=1],
-[float "limitSigma"],
+[int "limitSigma"],
 [int "limitBlksz"],
 int "postFFT"=0 (-1/0/1/2/3/4),
 int "postTR"=1 (1/2/3/4/5),
 float "postSigma"=1.0 (0.1 to 5.0),
 int "postDither"=-1,
 [int "knlDevId"=0],
+int "postMix"=0 (0 to 100),
 [float "ppSAD1"],
 [float "ppSAD2"],
 [float "ppSCD1"],
 [int "thSCD2"=130],
-[int "DCT"=0],
-[float "gaussParam"=3.0],
+[int "DCT"=5 (0/1/2/3/4/5)],
+[float "gaussParam"],
+[bool "grainLevelSetup"=false],
 bool "extraSharp"=false,
-int "fftThreads"=1
+int "fftThreads"=1,
+bool "debug"=false
 )
 
 TempGaussMC_beta2(

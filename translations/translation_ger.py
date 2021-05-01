@@ -16,7 +16,7 @@
 
 # Übersetzt von Henrik . AvsP 2.0.1  Danke für die Hilfe, besonders LigH ,doxville,Brother John, Selur und Rippraff !
 
-version = "2.6.7.3"
+version = "2.6.7.4"
 
 messages = {
     "AviSynth script" : u"", # New in v2.3.0
@@ -313,6 +313,8 @@ messages = {
     "type string (filename)" : u"Eingabe string  (Dateiname)",
     "Create placeholders for arguments which have no database information" : u"Platzhalter für Argumente erstellen, die keine Datenbankinformationen haben",
     "undocumented" : u"Undokumentiert",
+    "Disable refresh as default" : u"Kein sofortiger Refresh als Standard", # New in v2.6.7.4
+    "Do not reinitialize the clip every time a slider is changed. Can be changed in the slider window" : u"", # New in v2.6.7.4
     "Button show/hide applies to all tabs" : u"Schaltfläche Ein-/Ausblenden betrifft alle Tabs",
     "Or press Ctrl when you click the button." : u"", # New in v2.6.6.3
     "Hide slider window toggle tag menus*" : u"Schiebereglerfenster Schalter Menüs nicht anzeigen*",
@@ -581,7 +583,7 @@ messages = {
     "Insert a user-scripted slider into the text" : u"Eingabe eines Schieberegler-Skripts im Text",
     "Insert user slider..." : u"Eingabe Schieberegler...",
     "Insert a tag which indicates a separator in the user slider window" : u"Eingabe einer Kennzeichnung (tag),welche ein Begrenzungszeichen im Anwender-Schiebereglerfenster anzeigt",
-    "Insert user slider separator" : u"Eingabe Schieberegler-Begrenzungszeichen",
+    "Insert user slider separator" : u"Eingabe Schieberegler-Begrenzungszeichen...",
     "Insert the current frame number into the text" : u"Eingabe der aktuellen Einzelbildnummer im Text",
     "Add tags surrounding the selected text for toggling with the video preview" : u"Ergänze tags die den ausgewählten Text umgeben, um zur Video-Vorschaufunktion zu schalten",
     "Tag selection for toggling..." : u"Eingabe schaltbarer Tag...",
@@ -780,7 +782,7 @@ messages = {
     "Copy image to clipboard" : u"", # New in v2.4.2
     "Copy the current frame to the clipboard as a bitmap" : u"", # New in v2.4.2
     "Force the script to reload and refresh the video frame" : u"Erzwinge durch Skript, erneutes laden und erneuern des Videoeinzelbilds",
-    "Refresh preview" : u"Erneuere Vorschaufunktion",
+    "Refresh preview" : u"Erneuere Vorschau",
     "Release all open videos from memory" : u"Freigabe aller offenen Videos im Speicher", 
     "Release all videos from memory" : u"Freigabe aller Videos im Speicher", 
     "Snapshot" : u"", # New in v2.6.6.0
@@ -823,7 +825,7 @@ messages = {
     "Save/Restore last view position and zoom factor on tab change" : u"", # New in v2.6.6.0
     "Save view pos on tab change" : u"", # New in v2.5.1.18
     "Additional" : u"", # New in v2.6.6.3
-    "Show/Hide the preview" : u"", # New in v2.2.1
+    "Show/Hide the preview" : u"Zeige/Verstecke die Vorschau", # New in v2.2.1
     "Toggle the video preview" : u"Umschalten Video Vorschaufunktion",
     "Switch focus between the video preview and the text editor" : u"Schalten des Fokus zwischen der Video-Vorschaufunktion und dem Texteditor",
     "Switch video/text focus" : u"Schalte Video/Textfocus",
@@ -846,21 +848,21 @@ messages = {
     "Always on top" : u"Immer im Vordergrund",
     "Keep this window always on top of others" : u"Dieses Fenster vor allen anderen im Vordergrund",
     "If the video preview is detached, keep it always on top of other windows" : u"", # New in v2.3.1
-    "Video preview always on top" : u"", # New in v2.3.1
-    "Disable video preview" : u"Abschalten der Video-Vorschaufunktion",
+    "Video preview always on top" : u"Video Vorschau immer im Vordergrund", # New in v2.3.1
+    "Disable video preview" : u"Abschalten der Video Vorschaufunktion",
     "If checked, the video preview will not be shown under any circumstances" : u"Wenn angehakt, wird unter keinen Umständen die Video-Vorschaufunktion gezeigt werden",
-    "Access Avisynth in threads" : u"", # New in v2.6.7.0
+    "Access Avisynth in threads" : u"Zugriff auf Avisynth in Threads", # New in v2.6.7.0
     "Use threads when accessing avisynth (load/release clip and get frame)" : u"", # New in v2.6.7.0
     "Hide the video window scrollbars" : u"", # New in v2.6.7.2
-    "Hide video window scrollbars" : u"", # New in v2.6.7.2
-    "Associate .avs files with AvsPmod" : u"", # New in v2.6.6.0
+    "Hide video window scrollbars" : u"Videofenster Scrollbalken verstecken", # New in v2.6.7.2
+    "Associate .avs files with AvsPmod" : u"Assoziiere .avs Dateien mit AvsPmod", # New in v2.6.6.0
     "Configure this computer to open .avs files with AvsP when double-clicked. Run again to disassociate" : u"", # New in v2.4.0
     "Edit the various AviSynth script fonts and colors" : u"Bearbeite die verschiedenen Schriftarten und Farben im Avisynth-Skript",
     "Fonts and colors..." : u"Schriftarten und Farben...",
-    "Make fonts and colors backup" : u"Erstelle Schriftarten && Farben Backup",
+    "Make fonts && colors backup" : u"Erstelle Schriftarten && Farben Backup", # New in v2.6.7.4
     "Make script fonts and colors backup" : u"", # New in v2.5.1.18
-    "Load fonts and colors backup" : u"Lade Schriftarten && Farben Backup",
-    "Restores script fonts and colors from backup" : u"", # New in v2.5.1.18
+    "Load fonts && colors backup" : u"Lade Schriftarten && Farben Backup", # New in v2.6.7.4
+    "Restores script fonts and colors from backup" : u"",
     "AviSynth function definition..." : u"AviSynth Funktionsdefinitionen...",
     "Edit the extension-based templates for inserting sources" : u"Bearbeite die Dateierweiterung basierenden Vorlagen um die Sources einzufügen",
     "Extension templates..." : u"Dateityp basierende Vorlagen...", 
@@ -885,14 +887,16 @@ messages = {
     "Open the avisynth help html" : u"Öffne Avisynth-HTML-Hilfe",
     "Open the Preview filter examples" : u"", # New in v2.6.6.0
     "Preview filter example" : u"Vorschau Filter Beispiel",
-    "Open Avisynth plugins folder" : u"", # New in v2.2.1
-    "Open the avisynth plugins folder, or the last folder from which a plugin was loaded" : u"", # New in v2.3.1
+    "Access in threads readme" : u"Zugriff in Threads liesmich", # New in v2.6.7.4
+    "Open the Access in threads readme" : u"", # New in v2.6.7.4
     "DPI Info" : u"", # New in v2.6.6.0
     "DPI information" : u"", # New in v2.6.6.0
     "Active video thread count" : u"", # New in v2.6.7.0
     "Prints the active running thread count. Normaly 0" : u"", # New in v2.6.7.0
     "Displays the available memory in the status bar" : u"", # New in v2.6.7.1
     "Show available system memory" : u"", # New in v2.6.7.1
+    "Open Avisynth plugins folder" : u"", # New in v2.2.1
+    "Open the avisynth plugins folder, or the last folder from which a plugin was loaded" : u"", # New in v2.3.1
     "Changelog" : u"", # New in v2.4.1
     "Open the changelog file" : u"", # New in v2.4.1
     "About this program" : u"Über dieses Programm",
@@ -925,6 +929,7 @@ messages = {
     "Split View insert tab" : u"", # New in v2.6.6.0
     "Auto preview" : u"", # New in v2.6.6.0
     "Reposition to" : u"", # New in v2.2.1
+    "Disable refresh" : u"", # New in v2.6.7.4
     "Crop editor" : u"Cropeditor",
     "You can drag the crop regions with the left mouse button when this dialog is visible, cropping the edge closest to the initial mouse click." : u"Bei diesem Dialog ,kann die Cropfunktion auch mittels linker Maustaste im Bild ausgeführt werden.",
     "Auto-crop" : u"", # New in v2.4.0
@@ -1003,7 +1008,6 @@ messages = {
     "samples" : u"Samples", 
     "Could not find the macros folder!" : u"", # New in v2.2.1
     "Failed to import the selected tool" : u"Werkzeug importieren ist Fehlgeschlagen",
-    "You must restart for changes to take effect!" : u"Sie müssen neu starten, damit Änderungen wirksam werden!",
     "Basic (1)" : u"", # New in v2.5.1 r452
     "Override all fonts to use a specified monospace font (no effect on scrap window)" : u"", # New in v2.2.1
     "Use monospaced font:" : u"Verwende monospaced Schriftart",
@@ -1191,14 +1195,6 @@ messages = {
     "Invalid slider text: invalid number" : u"Ungültiger Schiebereglertext: Ungültige Nummer",
     "Reset to initial value: %(value_formatted)s" : u"Zurückstellen zum Ausgangswert %(value_formatted)s",
     "Reset to initial value: %(value2_formatted)s" : u"", # New in v2.2.1
-    "Add toggle tag" : u"Schalter hinzufügen",
-    "Clear all tags and disable the filters" : u"Alle Tags löschen und Filter ausschalten", # New in v2.6.7.3
-    "Clear all tags && disabled filters" : u"Alle Tags && ausgeschaltete Filter löschen", # New in v2.6.7.3
-    "Toggle exclusions filters" : u"Ein/Aus Ausschluss Filterliste",
-    "General settings..." : u"Allgemeine Einstellungen...",
-    "Set same width for all tabs" : u"Gleiche Breite für alle Tabs",
-    "Update sliders" : u"Schieberegler neu initialisieren",
-    "Reset to default value: %(value_formatted)s" : u"", # New in v1.4.0
     "Invalid hexadecimal color!" : u"Ungültiger hexadecimal Farbwert",
     "Must specify a max value!" : u"Ein Maximalwert muß spezifiziert werden!",
     "Must specify a min value!" : u"Ein Minimalwert muß spezifiziert werden!",
@@ -1206,6 +1202,14 @@ messages = {
     "Max value must be a number!" : u"Maximalwert muß eine Zahl sein!",
     "Default value must be a number!" : u"Standartwet muß eine Zahl sein!",
     "Step size value must be a number!" : u"Schrittgrößenwert muss eine Nummer sein!",
+    "Add toggle tag" : u"Tag hinzufügen",
+    "Clear all tags and disable the filters" : u"Alle Tags löschen und Filter ausschalten",
+    "Clear all tags && disabled filters" : u"Alle Tags && ausgeschaltete Filter löschen",
+    "Toggle exclusions filters" : u"Ein/Aus Ausschluss Filterliste",
+    "General settings..." : u"Allgemeine Einstellungen...",
+    "Set same width for all tabs" : u"Gleiche Breite für alle Tabs",
+    "Update sliders" : u"Schieberegler neu initialisieren",
+    "Reset to default value: %(value_formatted)s" : u"", # New in v1.4.0
     "Left-click to select a color, right click to reset to default" : u"Links-click um eine Farbe zu wählen, Rechts-click setzt auf Standard zurück.",
     "Snapshot doesn't seem to be from this session.\nKeep going?" : u"", # New in v2.6.7.3
     "Question" : u"Frage",

@@ -1178,6 +1178,7 @@ class OptionsDialog(wx.Dialog):
                 nb.AddPage(tabPanel, tabInfo[0], select=True)
             else:
                 tabPanel = wx.Panel(self, wx.ID_ANY)
+            #tabPanel.SetDoubleBuffered(True) #buggy
             tabSizer = wx.BoxSizer(wx.VERTICAL)
             tabSizer.Add((-1,dpi.intPPI(5)), 0)
             boolStar = False
