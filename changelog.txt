@@ -19,6 +19,13 @@ GPo releases: https://github.com/gispos/AvsPmod/releases
 #####
 
 --------------------------
+Version 2.6.7.5 [2021-05-02] GPo
+--------------------------
+* Just a bug fix version 
+* If only preview filters were in the script, the slider window button may not have been set to enabled 
+* An error could arise if only one tab was available and 'Split View' has been activated.
+
+--------------------------
 Version 2.6.7.4 [2021-05-01] GPo
 --------------------------
 * New checkbox in the slider window 'Disable refresh'

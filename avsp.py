@@ -10403,6 +10403,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
             pageCount = self.scriptNotebook.GetPageCount()
             index = self.scriptNotebook.GetSelection()
+            currScript = self.currentScript
+            if currScript.AVI.IsErrorClip():
+                return
 
             if pageCount == 1:
                 self.NewTab(copytab=True)
@@ -10424,8 +10427,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 else: script,i = self.getScriptAtIndex(index - 1)
 
             if script is not None:
-                w = self.currentScript.AVI.DisplayWidth
-                h = self.currentScript.AVI.DisplayHeight
+                w = currScript.AVI.DisplayWidth
+                h = currScript.AVI.DisplayHeight
                 self.refreshAVI = True
                 if self.UpdateScriptAVI(script=script, forceRefresh=False, prompt=False) is not None and script.AVI is not None:
                     if not script.AVI.IsErrorClip() and script.AVI.error_message is None:
@@ -10497,12 +10500,15 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.previewFilterDict.clear() # GPo new
 
         # if preview not OK force show video frame, or we cannot put the preview
-        if lKey > 0 and not self.previewOK(script):
-            self.refreshAVI = True
-            self.ShowVideoFrame()
+        if lKey > 0:
+            previewOK = self.previewOK(script)
+            if not previewOK:
+                self.refreshAVI = True
+                self.ShowVideoFrame(forceLayout=True)
+                previewOK = self.previewOK(script)
 
         # find and count the script preview filters, else KillFilter
-        if lKey > 0 and self.previewOK:
+        if lKey > 0 and previewOK:
             self.ParseScriptPreviewFilters(None)
             if self.previewFilterDict:
                 maxKey = min(len(self.previewFilterDict), 5) # max 5 menu items, select max the last
@@ -10519,22 +10525,23 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         wx.MessageBox(err, "Preview filter")
                         script.display_clip_refresh_needed = True
                         self.refreshAVI = True #updateUserSliders
-                    self.ShowVideoFrame(userScrolling = not updateUserSliders)
+                    self.ShowVideoFrame(userScrolling=not updateUserSliders)
                 else:
                     updateState(0)
                     if script.AVI is not None and script.AVI.preview_filter:
                         script.AVI.KillFilterClip()
-                        self.ShowVideoFrame(userScrolling = not updateUserSliders)
+                        self.ShowVideoFrame(userScrolling=not updateUserSliders)
             else:
                 updateState(0) # bevor showing the frame, it's better to update the State
         else:
             updateState(0)
             if script.AVI is not None and script.AVI.preview_filter:
                 script.AVI.KillFilterClip()
-            if self.previewOK:
-                self.ShowVideoFrame(userScrolling= not updateUserSliders)
+            if self.previewOK(script):
+                self.ShowVideoFrame(userScrolling=not updateUserSliders)
 
         if updateUserSliders:
+
             self.UpdateUserSliders()
         self.SetVideoStatusText()
 
@@ -10680,7 +10687,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                             shortCut = ''
                         else:
                             shortCut = '\t'+ shortCut[1]
-
+    #@AsyncCallWrapper
     def UpdateUserSliders(self, forceUpdate=False):
         script = self.currentScript
         if not self.options['autoslideron'] or not self.previewOK(script):
@@ -10717,6 +10724,24 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             script.oldSliderTexts = script.sliderTexts
             script.oldAutoSliderInfo = script.autoSliderInfo
             script.oldToggleTags = script.toggleTags
+            # set slider window and toggle button state (enabel or disable the button or hide the window)
+            boolSliders = bool(script.sliderTexts or script.sliderProperties or script.toggleTags or script.autoSliderInfo)
+            if (boolSliders and not self.toggleSliderWindowButton.IsEnabled()) or \
+                (not boolSliders and self.toggleSliderWindowButton.IsEnabled()):
+                    if boolSliders:
+                        self.toggleSliderWindowButton.Enable()
+                        if script.sliderWindowShown:
+                            script.sliderWindow.Show()
+                            self.ShowSliderWindow(script)
+                        else:
+                            if not self.videoSplitter.IsSplit() and not self.options['keepsliderwindowhidden'] and not script.userHidSliders:
+                                self.ToggleSliderWindow()
+                            else:
+                                self.HideSliderWindow(script)
+                    else:
+                        script.sliderWindowShown = True
+                        self.ToggleSliderWindow()
+                        self.toggleSliderWindowButton.Disable()
         # on error close the slider window
         if isError:
             self.HideSliderWindow()
