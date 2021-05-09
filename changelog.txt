@@ -19,6 +19,23 @@ GPo releases: https://github.com/gispos/AvsPmod/releases
 #####
 
 --------------------------
+Version 2.6.7.6 [2021-05-09] GPo
+--------------------------
+* Values of the sliders can only be changed with the mouse wheel if the left mouse button is held down
+-  (prevents changing without performing a refresh, Win10) 
+* The drawing of the video frame slightly changed (if row size != pitch) faster now.
+- especially affects the preview filter if there is a resize filter in the preview filter (or crop is used) 
+* Extra background color for the sliders can optionally be switched on or off (Fonts and colors)
+** AvsPThumb does not work with this version. Update follows.
+/*
+Bookmarks navigation menu has been removed without replacement. Reason:
+I have been looking for a bug for almost 12 months that caused me a 4-5% increased CPU load when the slider window is visible.
+The bookmark menu is the culprit, there are entries there and if these entries are emptied and filled again when you change tabs,
+this leads to very strange behavior. I've looked at all the calls to this routine and can't find any errors.
+I think this is a wx bug
+*/
+
+--------------------------
 Version 2.6.7.5 [2021-05-02] GPo
 --------------------------
 * Just a bug fix version 

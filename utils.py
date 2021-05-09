@@ -55,22 +55,40 @@ def get_winversion():
         return 7
     #return (wv.major, wv.minor, sp)
 
-    """
-    def wxProcessEvents(self):
-        # this version uses the new Phoenix API
-        # Get app
 
-        app = wx.App.Get()
 
-        # Keep reference of old eventloop instance
-        old = wx.EventLoopBase.GetActive()
-        # Create new eventloop and process
-        eventLoop = app.GetTraits().CreateEventLoop()
-        wx.EventLoopActivator(eventLoop)
-        while eventLoop.Pending():
-            eventLoop.Dispatch()
-        # Process idle
-        eventLoop.ProcessIdle() # otherwise frames do not close
-        # Set back the original
-        wx.EventLoopActivator(old)
-    """
+##### Test ####
+
+"""
+def wxProcessEvents(self):
+    # this version uses the new Phoenix API
+    # Get app
+
+    app = wx.App.Get()
+
+    # Keep reference of old eventloop instance
+    old = wx.EventLoopBase.GetActive()
+    # Create new eventloop and process
+    eventLoop = app.GetTraits().CreateEventLoop()
+    wx.EventLoopActivator(eventLoop)
+    while eventLoop.Pending():
+        eventLoop.Dispatch()
+    # Process idle
+    eventLoop.ProcessIdle() # otherwise frames do not close
+    # Set back the original
+    wx.EventLoopActivator(old)
+"""
+"""
+def getWidgets(self, parent):
+    '''
+    Return a list of all the child widgets
+    '''
+    items = [parent]
+    for item in parent.GetChildren():
+        items.append(item)
+        if hasattr(item, "GetChildren"):
+            for child in item.GetChildren():
+                items.append(child)
+    return items
+"""
+###############

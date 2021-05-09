@@ -1079,7 +1079,9 @@ if os.name == 'nt':
                     pBits = self.pBits
                 else:
                     buf = ctypes.create_string_buffer(self.display_pitch * self.DisplayHeight)
-                    pBits = ctypes.cast(buf, ctypes.POINTER(ctypes.c_ubyte))  # GPo
+                    #~pBits = ctypes.addressof(buf) # GPo, not for x64, buffer address can be too large
+                    #pBits = ctypes.cast(buf, ctypes.POINTER(ctypes.c_ubyte))  # GPo, too slow
+                    pBits = ctypes.pointer(buf) # GPo new
                     ctypes.memmove(pBits, self.pBits, self.display_pitch * (self.DisplayHeight - 1) + row_size)
 
                 DrawDibDraw(handleDib[0], hdc, offset[0], offset[1], w, h,
@@ -1087,7 +1089,7 @@ if os.name == 'nt':
                 return True
 
         """
-        # GPo, alternativ
+        # GPo, alternativ, I see visual no problems
         def DrawFrame(self, frame, dc=None, offset=(0,0), size=None, srcXY=(0,0)):
             if not self._GetFrame(frame):
                 return
@@ -1102,7 +1104,6 @@ if os.name == 'nt':
                             self.pInfo, self.pBits, srcXY[0], srcXY[1], w, h, 0)
                 return True
         """
-
 # Use generical wxPython drawing support on other platforms
 else:
 

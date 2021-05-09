@@ -1,4 +1,4 @@
-# Version 2.6.7.5 GPo   
+# Version 2.6.7.6 GPo   
 - With pinterf (pfmod) modifications   
 - Avisynth header version 6   
 - For more see changelog   

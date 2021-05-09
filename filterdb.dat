@@ -4714,6 +4714,14 @@ bool "HQ"=False,
 bool "debug"=false
 )
 
+SmoothContrast(
+clip,
+float "cont"=0.00 (0.00 to 1.00),
+int "pivot"=128 (0 to 255),
+float "sat"=0.00 (0.00 to 1.00),
+string "range"="TV" ("TV" / "PC")
+)
+
 Soothe(
 clip sharp,
 clip orig,

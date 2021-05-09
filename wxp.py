@@ -2348,3 +2348,15 @@ class Slider(wx.Slider):
 
     def SetTick(self, upos):
         super(Slider, self).SetTick(self._upos2wxpos(upos))
+
+class StaticText(wx.StaticText):
+    ''' StaticText without flicker '''
+    def __init__(self, parent, id=wx.ID_ANY, label=wx.EmptyString,
+            pos=wx.DefaultPosition, size=wx.DefaultSize,
+            style=0, name=wx.StaticTextNameStr):
+        wx.StaticText.__init__(self, parent, id, label=label, pos=pos, size=size, style=style, name=name)
+        self.Bind(wx.EVT_ERASE_BACKGROUND, self._OnEraseBackground)
+
+    def _OnEraseBackground(self, event): # Do nothing, eleminates the flicker
+        pass
+
