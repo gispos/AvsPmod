@@ -1,5 +1,5 @@
 CHANGELOG
-=========
+===========
 
 GPo mod:
 Large Address Aware Flag is set (32bit version).
@@ -17,6 +17,37 @@ GPo releases: https://github.com/gispos/AvsPmod/releases
  source filters, trim, crop, addborders, prefetch, etc. can also be set wonderfully in the script.
  And there is still the possibility to switch the list on and off in the slider window if you want to see all of them.
 #####
+
+#####
+About accessing Avisnth in threads:
+Even with thrads it is easy to crash AvsPmod, the avisynth.dll is coupled with the main thread, 
+if an error is triggered by a plugin and the plugin or avisynth crashes, AvsPmod is also torn into the abyss.
+The threads only helps if avisynth does not return.
+Use program options > Save/Load > 'Backup session when previewing' and the accesses in threads to minimize the risk of losing the script.
+#####
+
+--------------------------
+Version 2.6.7.7 [2021-05-14] GPo
+--------------------------
+* New option Options > 'On cancel assign the clip later' ( Refer to 'Accessing Avisynth in threads' )
+- AvsPmod should normally be closed after a thread has been canceled by the user. 
+- this option tries to assign the clip to the script after the user has canceled the thread and the thread has been terminated internally.
+- nice for indexing, you can play with AvsPmod with another tab and a message appears if the clip process finished.
+- but test it, it's a bit alpha or beta or whatever. It's going smoothly for me, but you never know what the user is doing. ;)
+* New frame thread routine Options > 'Use new frame thread routine. Beta!'
+- Please test and report the differences, on my system under Win7 the new routine only brings 2.5 fps more playback speed.  
+- I had expected more of it for the long hours of work. I'm sad ;) But maybe it works better on another system.
+- The old routine works fine for me, I've never had a thread error. If no one gives me positive feedback about the new routine, it will be removed. 
+- To compare, please do not use any filters in the script and set playback speed to maximum and zoom to 100%
+- The fps is displayed on the left in the status bar. The videos shouldn't be bigger than HD otherwise the difference in the routines will be minimized.
+
+/*
+About accessing Avisnth in threads:
+Even with thrads it is easy to crash AvsPmod, the avisynth.dll is coupled with the main thread, 
+if an error is triggered by a plugin and the plugin or avisynth crashes, AvsPmod is also torn into the abyss.
+The threads only helps if avisynth does not return.
+Use program options > Save/Load > 'Backup session when previewing' and the accesses in threads to minimize the risk of losing the script.
+*/
 
 --------------------------
 Version 2.6.7.6 [2021-05-09] GPo

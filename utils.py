@@ -16,6 +16,10 @@ resource_str_threadwait = _('Waiting for Avisynth, thread still running.\n' +
                            'This dialog is automatically closed when avisynth returns.\n' +
                            'If you abort this process, you should restart the program!')
 
+resource_str_threadwait2 = _('Waiting for Avisynth, thread still running.\n' +
+                           'This dialog is automatically closed when avisynth returns.\n' +
+                           'If you abort this process, the clip will assign later.')
+
 
 """
 WIN_10 = (10, 0, 0)

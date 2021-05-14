@@ -16,7 +16,7 @@
 
 # Übersetzt von Henrik . AvsP 2.0.1  Danke für die Hilfe, besonders LigH ,doxville,Brother John, Selur und Rippraff !
 
-version = "2.6.7.4"
+version = "2.6.7.7"
 
 messages = {
     "AviSynth script" : u"", # New in v2.3.0
@@ -313,7 +313,7 @@ messages = {
     "type string (filename)" : u"Eingabe string  (Dateiname)",
     "Create placeholders for arguments which have no database information" : u"Platzhalter für Argumente erstellen, die keine Datenbankinformationen haben",
     "undocumented" : u"Undokumentiert",
-    "Disable refresh as default" : u"Kein sofortiger Refresh als Standard", # New in v2.6.7.4
+    "Disable refresh as default" : u"Kein sofortiger Refresh als Standard",
     "Do not reinitialize the clip every time a slider is changed. Can be changed in the slider window" : u"", # New in v2.6.7.4
     "Button show/hide applies to all tabs" : u"Schaltfläche Ein-/Ausblenden betrifft alle Tabs",
     "Or press Ctrl when you click the button." : u"", # New in v2.6.6.3
@@ -658,7 +658,6 @@ messages = {
     "Offset also bookmarks" : u"", # New in v2.5.1 r452
     "Apply the offset also to the currently set bookmarks" : u"", # New in v2.5.1 r452
     "&Navigate" : u"", # New in v2.2.1
-    "Go to &bookmark" : u"", # New in v2.2.1
     "Go to next bookmarked frame" : u"Gehe zum nächsten, als Lesezeichen markierten, Einzelbild",
     "Next bookmark" : u"Nächstes Lesezeichen",
     "Go to previous bookmarked frame" : u"Gehe zum vorherigen, als Lesezeichen markierten, Einzelbild ",
@@ -825,7 +824,7 @@ messages = {
     "Save/Restore last view position and zoom factor on tab change" : u"", # New in v2.6.6.0
     "Save view pos on tab change" : u"", # New in v2.5.1.18
     "Additional" : u"", # New in v2.6.6.3
-    "Show/Hide the preview" : u"Zeige/Verstecke die Vorschau", # New in v2.2.1
+    "Show/Hide the preview" : u"Zeige/Verstecke die Vorschau",
     "Toggle the video preview" : u"Umschalten Video Vorschaufunktion",
     "Switch focus between the video preview and the text editor" : u"Schalten des Fokus zwischen der Video-Vorschaufunktion und dem Texteditor",
     "Switch video/text focus" : u"Schalte Video/Textfocus",
@@ -848,20 +847,24 @@ messages = {
     "Always on top" : u"Immer im Vordergrund",
     "Keep this window always on top of others" : u"Dieses Fenster vor allen anderen im Vordergrund",
     "If the video preview is detached, keep it always on top of other windows" : u"", # New in v2.3.1
-    "Video preview always on top" : u"Video Vorschau immer im Vordergrund", # New in v2.3.1
+    "Video preview always on top" : u"Video Vorschau immer im Vordergrund",
     "Disable video preview" : u"Abschalten der Video Vorschaufunktion",
     "If checked, the video preview will not be shown under any circumstances" : u"Wenn angehakt, wird unter keinen Umständen die Video-Vorschaufunktion gezeigt werden",
-    "Access Avisynth in threads" : u"Zugriff auf Avisynth in Threads", # New in v2.6.7.0
-    "Use threads when accessing avisynth (load/release clip and get frame)" : u"", # New in v2.6.7.0
     "Hide the video window scrollbars" : u"", # New in v2.6.7.2
-    "Hide video window scrollbars" : u"Videofenster Scrollbalken verstecken", # New in v2.6.7.2
-    "Associate .avs files with AvsPmod" : u"Assoziiere .avs Dateien mit AvsPmod", # New in v2.6.6.0
+    "Hide video window scrollbars" : u"Videofenster Scrollbalken verstecken",
+    "Accessing AviSynth in threads" : u"Zugriff auf AviSynth in Threads", # New in v2.6.7.7
+    "Use threads when accessing avisynth (load/release clip and get frame)" : u"", # New in v2.6.7.0
+    "Please test and report! Use the new frame thread routine. Beta! for testing" : u"", # New in v2.6.7.7
+    "Use new frame thread routine. Beta!" : u"Verwende neue Frame Thread Routine. Beta!", # New in v2.6.7.7
+    "AvsPmod should normally be closed after a thread has been canceled by the user. This option tries to assign the clip to the script after the thread has internaly finished." : u"", # New in v2.6.7.7
+    "On cancel assign the clip later" : u"Nach Abbruch Clip später zuweisen", # New in v2.6.7.7
+    "Associate .avs files with AvsPmod" : u"Assoziiere .avs Dateien mit AvsPmod",
     "Configure this computer to open .avs files with AvsP when double-clicked. Run again to disassociate" : u"", # New in v2.4.0
     "Edit the various AviSynth script fonts and colors" : u"Bearbeite die verschiedenen Schriftarten und Farben im Avisynth-Skript",
     "Fonts and colors..." : u"Schriftarten und Farben...",
-    "Make fonts && colors backup" : u"Erstelle Schriftarten && Farben Backup", # New in v2.6.7.4
+    "Make fonts && colors backup" : u"Erstelle Schriftarten && Farben Backup",
     "Make script fonts and colors backup" : u"", # New in v2.5.1.18
-    "Load fonts && colors backup" : u"Lade Schriftarten && Farben Backup", # New in v2.6.7.4
+    "Load fonts && colors backup" : u"Lade Schriftarten && Farben Backup",
     "Restores script fonts and colors from backup" : u"",
     "AviSynth function definition..." : u"AviSynth Funktionsdefinitionen...",
     "Edit the extension-based templates for inserting sources" : u"Bearbeite die Dateierweiterung basierenden Vorlagen um die Sources einzufügen",
@@ -887,7 +890,7 @@ messages = {
     "Open the avisynth help html" : u"Öffne Avisynth-HTML-Hilfe",
     "Open the Preview filter examples" : u"", # New in v2.6.6.0
     "Preview filter example" : u"Vorschau Filter Beispiel",
-    "Access in threads readme" : u"Zugriff in Threads liesmich", # New in v2.6.7.4
+    "Accessing in threads readme" : u"Zugriff in Threads liesmich", # New in v2.6.7.7
     "Open the Access in threads readme" : u"", # New in v2.6.7.4
     "DPI Info" : u"", # New in v2.6.6.0
     "DPI information" : u"", # New in v2.6.6.0
@@ -988,6 +991,7 @@ messages = {
     "Interleaved RGB48" : u"", # New in v2.5.1 r452
     "Play video" : u"", # New in v2.6.6.0
     "Avisynth not returned thread still running.\n{0}" : u"", # New in v2.6.7.0
+    "Avisynth not returned frame thread still running.\n{0}" : u"", # New in v2.6.7.7
     "Error loading the script" : u"Fehlerhaft geladenes Skript",
     "Starting analysis pass..." : u"", # New in v2.3.0
     "Average %#.4g fps\nFrame %s/%s (%#.4g fps)" : u"", # New in v2.6.3.5
@@ -1048,13 +1052,14 @@ messages = {
     "Current line highlight:" : u"", # New in v2.2.1
     "Highlight the line that the caret is currently in" : u"Zeile mit Einschaltungszeichen hervorheben",
     "Fold margin:" : u"", # New in v2.2.1
-    "Scrap window" : u"", # New in v2.2.1
+    "Scrap window:" : u"", # New in v2.6.7.7
     "Advanced 2" : u"", # New in v2.6.6.6
-    "Slider window" : u"", # New in v2.6.6.6
-    "Slider window text field" : u"", # New in v2.6.6.6
-    "Slider window default value" : u"", # New in v2.6.6.6
-    "Slider window slider background" : u"", # New in v2.6.7.3
-    "Slider window extras (Snapshot)" : u"", # New in v2.6.7.0
+    "Slider window:" : u"", # New in v2.6.7.7
+    "Slider window text field:" : u"", # New in v2.6.7.7
+    "Slider window default value:" : u"", # New in v2.6.7.7
+    "Use another color for the sliders background" : u"", # New in v2.6.7.7
+    "Use sparate slider background:" : u"", # New in v2.6.7.7
+    "Slider window extras (Snapshot):" : u"", # New in v2.6.7.7
     "Information" : u"",
     "Settings have been read from backup file\n" : u"Die Einstellungen wurden aus dem Backup gelesen",
     "File extension shouldn't contain dots!" : u"", # New in v2.5.1 r452
@@ -1170,7 +1175,6 @@ messages = {
     "Script import" : u"", # New in v2.5.1.18
     "AvxSynth plugins" : u"", # New in v2.4.0
     "Insert a plugin" : u"Eingabe Plugin",
-    "Jump to specified bookmark" : u"Springe zu bestimmten Lesezeichen",
     "Line: %(line)i  Col: %(col)i" : u"Zeile: %(line)i  Col: %(col)i",
     "Frame Based" : u"Einzelbild basierend",
     "Field Based" : u"Feld basierend",
@@ -1183,11 +1187,15 @@ messages = {
     "pos" : u"",
     "*hex" : u"", # New in v2.6.1.5
     "Waiting for avisynth release memory" : u"", # New in v2.6.7.0
-    "Clip not released. Memory still allocated." : u"", # New in v2.6.7.0
+    "Clip not released. Memory still allocated" : u"", # New in v2.6.7.7
     "Clip successful released" : u"", # New in v2.6.7.0
+    "Abandoned clip assigned: \"{0}\"" : u"", # New in v2.6.7.7
+    "Abandoned clip assigned. Select the tab?" : u"", # New in v2.6.7.7
     "Abandoned clip released: \"{0}\"" : u"", # New in v2.6.7.0
+    "Process clip..." : u"", # New in v2.6.7.7
     "Waiting for avisynth clip" : u"", # New in v2.6.7.0
-    "Error: Clip not initialized" : u"", # New in v2.6.7.0
+    "Clip process finished" : u"", # New in v2.6.7.7
+    "Clip not initialized" : u"", # New in v2.6.7.7
     "Invalid slider text: min > max" : u"Ungültiger Schiebereglertext: min > max",
     "Invalid slider text: value not in bounds" : u"Ungültiger Schiebereglertext: Wert nicht in Grenzen",
     "Invalid slider text: bad modulo label" : u"Ungültiger Schiebereglertext: Fehl modulo Kennzeichnung",

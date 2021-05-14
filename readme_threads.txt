@@ -1,5 +1,5 @@
-Access in threads to clip create/release and get frame.
-on/off: Options menu > 'Access Avisynth in threads'
+Accessing in threads to clip create/release and get frame.
+on/off: Options menu > 'Accessing AviSynth in threads'
 
 This option takes precedence for Playback in threads. So if this option is set, the playback is also performed with threads.
 
@@ -15,8 +15,20 @@ Only when the thread has ended can an attempt be made to reinitialize the clip.
 The same with frames, a new frame can only be requested when the frame thread has finished.
 
 For clip threads:
-If the thread is canceled by the user and the thread terminates later, an attempt is made to release the now abandoned clip.
-If the clip is released, a message appears in the status bar and it buzzes 3 times. Then the clip can be reinitialized (memory has been released).
-Otherwise, it is better to restart the program.
+ If the thread is canceled by the user and the thread terminates later, an attempt is made to release the now abandoned clip (new option see below).
+ If the clip is released, a message appears in the status bar and it buzzes 2 times. Then the clip can be reinitialized (memory has been released).
+ Otherwise, it is better to restart the program.
 
 The whole should only be used for more script security. So that you can save your scripts even after a hanging avisynth. 
+
+* New option Options > 'On cancel assign the clip later' ( Refer to 'Accessing Avisynth in threads' )
+ AvsPmod should normally be closed after a thread has been canceled by the user. 
+ this option tries to assign the clip to the script after the user has canceled the thread and the thread has been terminated internally.
+ nice for indexing, you can play with AvsPmod with another tab and a message appears if the clip process finished.
+ but test it, it's a bit alpha or beta or whatever. It's going smoothly for me, but you never know what the user is doing.
+
+Another note about accessing Avisnth in threads:
+ Even with threads it is easy to crash AvsPmod, the avisynth.dll is coupled with the main thread, 
+ if an error is triggered by a plugin and the plugin or avisynth crashes, AvsPmod is also torn into the abyss. 
+ The threads only help if avisynth does not return.
+ Use program options > Save/Load > 'Backup session when previewing' and the accesses in threads to minimize the risk of losing the script.
