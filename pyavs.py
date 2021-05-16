@@ -454,6 +454,8 @@ class AvsClipBase:
                 self.clip = clip
         except avisynth.AvisynthError as err:
             return False
+        if self.callBack is not None:
+            self.callBack('errorclip', 0)
         return True
 
     def CreateDisplayClip(self, matrix=['auto', 'tv'], interlaced=None, swapuv=False, bit_depth=None, readmatrix=False):
@@ -714,6 +716,9 @@ class AvsClipBase:
     def GetPixelYUV(self, x, y):
         if self.bits_per_component > 8: # TODO
             return (-1,-1,-1)
+        # if a resize filter used in the preview filter. CRASH if not checked here
+        if self.DisplayWidth != self.Width or self.DisplayHeight != self.Height:
+            return (-1,-1,-1)
         if self.IsPlanar:
             indexY = x + y * self.pitch
             if self.IsY8:
@@ -733,6 +738,9 @@ class AvsClipBase:
         if self.IsRGB:
             if self.bits_per_component > 8: # Todo
                 return (-1,-1,-1)
+            # if a resize filter used in the preview filter. CRASH if not checked here
+            if self.DisplayWidth != self.Width or self.DisplayHeight != self.Height:
+                return (-1,-1,-1)
             bytes = self.vi.bytes_from_pixels(1)
             if BGR:
                 indexB = (x * bytes) + (self.Height - 1 - y) * self.pitch
@@ -748,6 +756,9 @@ class AvsClipBase:
 
     def GetPixelRGBA(self, x, y, BGR=True):
         if self.IsRGB32:
+            # if a resize filter used in the preview filter. CRASH if not checked here
+            if self.DisplayWidth != self.Width or self.DisplayHeight != self.Height:
+                return (-1,-1,-1)
             bytes = self.vi.bytes_from_pixels(1)
             if BGR:
                 indexB = (x * bytes) + (self.Height - 1 - y) * self.pitch
@@ -1063,7 +1074,7 @@ if os.name == 'nt':
                 self.bmih.biWidth = self.display_pitch * 8 / self.bmih.biBitCount
                 return True
             return False
-
+        """
         def DrawFrame(self, frame, dc=None, offset=(0,0), size=None, srcXY=(0,0)):
             if not self._GetFrame(frame):
                 return
@@ -1079,7 +1090,7 @@ if os.name == 'nt':
                     pBits = self.pBits
                 else:
                     buf = ctypes.create_string_buffer(self.display_pitch * self.DisplayHeight)
-                    #~pBits = ctypes.addressof(buf) # GPo, not for x64, buffer address can be too large
+                    #pBits = ctypes.addressof(buf) # GPo, not for x64, buffer address can be too large
                     #pBits = ctypes.cast(buf, ctypes.POINTER(ctypes.c_ubyte))  # GPo, too slow
                     pBits = ctypes.pointer(buf) # GPo new
                     ctypes.memmove(pBits, self.pBits, self.display_pitch * (self.DisplayHeight - 1) + row_size)
@@ -1089,7 +1100,7 @@ if os.name == 'nt':
                 return True
 
         """
-        # GPo, alternativ, I see visual no problems
+        # GPo, alternativ, I see visual no problems, it is mutch faster
         def DrawFrame(self, frame, dc=None, offset=(0,0), size=None, srcXY=(0,0)):
             if not self._GetFrame(frame):
                 return
@@ -1103,7 +1114,7 @@ if os.name == 'nt':
                 DrawDibDraw(handleDib[0], hdc, offset[0], offset[1], w, h,
                             self.pInfo, self.pBits, srcXY[0], srcXY[1], w, h, 0)
                 return True
-        """
+
 # Use generical wxPython drawing support on other platforms
 else:
 

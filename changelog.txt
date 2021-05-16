@@ -27,6 +27,17 @@ Use program options > Save/Load > 'Backup session when previewing' and the acces
 #####
 
 --------------------------
+Version 2.6.7.8 [2021-05-16] GPo
+--------------------------
+* With large video dimensions, the display drawing is much faster.
+* Split View drawing routine improved and zoom option 'fit inside' fixed
+* Bugfix: AvsPmod can crash if a resize filter is used in the preview filters. 
+- the reason is the pixel information that does not match the x, y coordinates of the mouse pointer. 
+- if a resize filter is now used in the preview filter, the pixel information is only read from the display. 
+* New frame thread routine disabled, get thread errors.
+* some other small changes
+
+--------------------------
 Version 2.6.7.7 [2021-05-14] GPo
 --------------------------
 * New option Options > 'On cancel assign the clip later' ( Refer to 'Accessing Avisynth in threads' )

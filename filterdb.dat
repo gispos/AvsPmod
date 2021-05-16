@@ -4390,6 +4390,18 @@ int "screenW"=1280,
 int "screenH"=1024
 )
 
+mClean(
+clip,
+int "thSAD"=400 (10 to 1200 by 10),
+float "strength"=20.0 (1.0 to 20.0),
+int "sharp"=10 (0 to 24),
+int "rn"=14 (0 to 20),
+int "deband"=4 (0 / 1 / 2 / 3 / 4 / 5), 
+int "depth"=0 (0 / 1 / 2 / 3 / 4 / 5),
+bool "chroma"=true,
+[int "outbits"]
+)
+
 nnedi3x_rpow2(
 clip,
 int "rfactor"=2 (2 / 4 / 8 / 16 / 32 / 64 / 128 / 256),
@@ -4408,7 +4420,7 @@ int "opt"=0 (0 / 1 / 2),
 int "fapprox"=15 (0 to 15),
 [bool "Y"=true],
 [bool "U"=true],
-[bool "V=true],
+[bool "V=true]
 )
 
 QTGMC(
@@ -4492,7 +4504,7 @@ int "FPSDivisor"=1 (1 to 4),
 bool "ShowSettings"=False,
 [string "GlobalNames"="QTGMC"],
 [string "PrevGlobals"="Replace" ("Replace"/ "Reuse")],
-[int "ForceTR"=0 (0 / 1 / 2 / 3)]
+[int "ForceTR"=0 (0 / 1 / 2 / 3)],
 )
 
 RawReadInterleaved(
