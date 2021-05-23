@@ -27,6 +27,17 @@ Use program options > Save/Load > 'Backup session when previewing' and the acces
 #####
 
 --------------------------
+Version 2.6.7.9 [2021-05-23] GPo
+--------------------------
+* Split View can now show the Snapshots
+* Split View remembers the last X, Y coordinates and the zoom factor when you turn off Split View.
+- in short, you can go from split view to normal view and compare the image using the tab selection, 
+- if you don't change the frame number you can switch back to the previous Split View. 
+* Auto Preview now only closes the video window. So you can look at the scripts via tab even if auto preview is switched on.
+- the uninitialized tabs are still skipped if the tabs are changed with the mouse forwards/backwards buttons or the mouse wheel. 
+* Bugfix (I hope): 'Add toggle tag' from the slider window context menu. Toggle tag was sometimes incorrectly placed in the script.
+
+--------------------------
 Version 2.6.7.8 [2021-05-16] GPo
 --------------------------
 * With large video dimensions, the display drawing is much faster.

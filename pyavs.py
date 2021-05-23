@@ -716,7 +716,7 @@ class AvsClipBase:
     def GetPixelYUV(self, x, y):
         if self.bits_per_component > 8: # TODO
             return (-1,-1,-1)
-        # if a resize filter used in the preview filter. CRASH if not checked here
+        # if a resize filter used in the preview filter. CRASH if not check here
         if self.DisplayWidth != self.Width or self.DisplayHeight != self.Height:
             return (-1,-1,-1)
         if self.IsPlanar:
@@ -738,7 +738,7 @@ class AvsClipBase:
         if self.IsRGB:
             if self.bits_per_component > 8: # Todo
                 return (-1,-1,-1)
-            # if a resize filter used in the preview filter. CRASH if not checked here
+            # if a resize filter used in the preview filter. CRASH if not check here
             if self.DisplayWidth != self.Width or self.DisplayHeight != self.Height:
                 return (-1,-1,-1)
             bytes = self.vi.bytes_from_pixels(1)
@@ -756,7 +756,7 @@ class AvsClipBase:
 
     def GetPixelRGBA(self, x, y, BGR=True):
         if self.IsRGB32:
-            # if a resize filter used in the preview filter. CRASH if not checked here
+            # if a resize filter used in the preview filter. CRASH if not check here
             if self.DisplayWidth != self.Width or self.DisplayHeight != self.Height:
                 return (-1,-1,-1)
             bytes = self.vi.bytes_from_pixels(1)
