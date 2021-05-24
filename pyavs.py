@@ -126,6 +126,28 @@ def avs_plus_get_colorspace_name(pixel_type):
         return avs_ColorspaceDict[pixel_type]
     return ''
 """
+Matrix_Dict = {
+    0: 'RGB',
+    1: 'BT.709',
+    2: 'undef',
+    #3: 'reserved',
+    4: 'FCC T47',
+    5: 'BT.470 B/G',
+    6: 'BT.601',
+    7: 'SMPTE ST 240',
+    8: 'YCgCo',
+    9: 'BT.2020ncl',
+    10: 'BT.2020cl',
+    11: 'SMPTE ST 2085',
+    12: 'Chroma ncl',
+    13: 'Chroma cl',
+    14: 'BT.2100'
+}
+
+def GetMatrixName(idx):
+    if idx in Matrix_Dict.keys():
+        return Matrix_Dict[idx]
+    return '..'
 
 class AvsClipBase:
 
@@ -198,6 +220,7 @@ class AvsClipBase:
         self.HasVideo = None
         self.Colorspace = None
         #self.ffms_info_cache = {}
+        self.sourceMatrix = '..'
         self.matrix_found = None
         self.matrix = 'Rec709'
         self.readmatrix = readmatrix
@@ -648,8 +671,9 @@ class AvsClipBase:
                 m = self.env.get_var("avsp_var", None)
             except:
                 m = -1
-            if m in (1, 2):
-                matrix = ['601','tv'] if m == 1 else ['709','tv']
+            if m in (1, 6):
+                matrix = ['709','tv'] if m == 1 else ['601','tv']
+            self.sourceMatrix = GetMatrixName(m)
             self.env.set_var("avsp_var_clip", None)
         return matrix
 

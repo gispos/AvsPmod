@@ -17244,7 +17244,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         """
         framerate = v.Framerate
         framecount = v.Framecount
-        dmatrix = v.matrix if v.matrix_found else '*' + v.matrix
+        dmatrix = '%s (%s)' % (v.matrix if v.matrix_found else '*' + v.matrix, v.sourceMatrix)
         time = self.FormatTime(frame/framerate)
         totaltime = self.FormatTime(framecount/framerate)
         bookmarktitle = self.titleDict.get(frame, '')
