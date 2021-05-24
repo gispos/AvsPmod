@@ -27,6 +27,11 @@ Use program options > Save/Load > 'Backup session when previewing' and the acces
 #####
 
 --------------------------
+Version 2.6.8.1 [2021-05-24] GPo
+--------------------------
+* Without words ;) 
+
+--------------------------
 Version 2.6.8.0 [2021-05-24] GPo
 --------------------------
 * Bugfix and update: display YUV > RGB conversion showed wrong values. 

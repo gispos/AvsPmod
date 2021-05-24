@@ -671,8 +671,8 @@ class AvsClipBase:
                 m = self.env.get_var("avsp_var", None)
             except:
                 m = -1
-            if m in (1, 6):
-                matrix = ['709','tv'] if m == 1 else ['601','tv']
+            if m in (1, 5, 6, 7):
+                matrix = ['709','tv'] if m in (1,7) else ['601','tv']
             self.sourceMatrix = GetMatrixName(m)
             self.env.set_var("avsp_var_clip", None)
         return matrix
