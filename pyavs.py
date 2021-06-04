@@ -704,11 +704,34 @@ class AvsClipBase:
                     return False
                 self.display_pitch = self.display_frame.get_pitch()
                 self.pBits = self.display_frame.get_read_ptr()
-                if self.RGB48: ## -> RGB24
-                    pass
+                #~if self.RGB48: ## -> RGB24
+                    #~pass
             self.current_frame = frame
             return True
         return False
+
+    # test for fast playback, but not faster
+    def _GetDisplayFrame(self, frame):
+        if self.initialized and self.display_clip:
+            if self.current_frame == frame:
+                return True
+                if frame < 0:
+                    frame = 0
+                if frame >= self.Framecount:
+                    frame = self.Framecount - 1
+                    if self.current_frame == frame:
+                        return True
+            #Display clip
+            self.display_frame = self.display_clip.get_frame(frame)
+            if self.display_clip.get_error():
+                return False
+            self.display_pitch = self.display_frame.get_pitch()
+            self.pBits = self.display_frame.get_read_ptr()
+            self.current_frame = frame
+            return True
+        return False
+
+
     """
     def _GetFrame(self, frame):
         #if not self.UseFrameThread:
@@ -1098,6 +1121,14 @@ if os.name == 'nt':
                 self.bmih.biWidth = self.display_pitch * 8 / self.bmih.biBitCount
                 return True
             return False
+
+        # test for fast playback, but not faster
+        def _GetDisplayFrame(self, frame):
+            if AvsClipBase._GetDisplayFrame(self, frame):
+                self.bmih.biWidth = self.display_pitch * 8 / self.bmih.biBitCount
+                return True
+            return False
+
         """
         def DrawFrame(self, frame, dc=None, offset=(0,0), size=None, srcXY=(0,0)):
             if not self._GetFrame(frame):

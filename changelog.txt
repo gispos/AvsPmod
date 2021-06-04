@@ -20,11 +20,32 @@ GPo releases: https://github.com/gispos/AvsPmod/releases
 
 #####
 About accessing Avisnth in threads:
-Even with thrads it is easy to crash AvsPmod, the avisynth.dll is coupled with the main thread, 
+Even with threads it is easy to crash AvsPmod, the avisynth.dll is coupled with the main thread, 
 if an error is triggered by a plugin and the plugin or avisynth crashes, AvsPmod is also torn into the abyss.
 The threads only helps if avisynth does not return.
 Use program options > Save/Load > 'Backup session when previewing' and the accesses in threads to minimize the risk of losing the script.
 #####
+
+--------------------------
+Version 2.6.8.2 [2021-06-02] GPo
+--------------------------
+* Add menu Video > 'Timeline range'
+- you can set the range for the video slider from 50 to 2000 frames in steps, or a custom range or start and end separated by a comma.
+- is not start and end is specified the current position is the calculations center for the range (set range 200 at pos 500 results in frame range 400 to 600 )  
+- if a range set, the playback ignores the selections and plays the timeline range in a loop if 'Play loop' activated and not 'Auto scroll' is set
+- the background color of the slider and selections is changed when a range is set 
+* The status bar has got a context menu 'Timeline ranges', the custom timeline settings can only be accessed from here. 
+- if 'Auto scroll' set, the timeline range scrolls automatically if a frame outside the current range selected (key, mouse wheel, bookmark jump, etc.) 
+- if 'Auto reset' set, the range resets if the video frame count change or you set the range and the script was not initialized.
+- If the slider is in the area of a selection and 'Custom range' is selected, the slider area is entered as a default in the dialog box.
+* New  status bar info %TR and %TM stands for Timeline range. (program settings > Video > 'Configure video statusbar')
+- %TR or %TM shows nothing if 100% Range is set, at Range 200:  %TR shows [200] and %TM [start-end], use one of them.. should be enough.
+- a good place should be after the frame count value  'Frame %F / %FC %TR -  (%T)' 
+* Added selections and bookmark information to the Video information ( Video > Video information )
+* On Win10, the mouse wheel should now also work in the status bar.
+* Added macro 'PreviewEncode.py' ( update 2021.06.01 ) to the macro folder
+- encodes fhe selections and insert the clips and trims into the script ( for a fast preview )
+- please open the macro with an text editor and read the info and change the paths and templates according to your needs.
 
 --------------------------
 Version 2.6.8.1 [2021-05-24] GPo
