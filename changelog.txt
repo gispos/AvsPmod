@@ -27,6 +27,23 @@ Use program options > Save/Load > 'Backup session when previewing' and the acces
 #####
 
 --------------------------
+Version 2.6.8.3 [2021-06-11] GPo
+--------------------------
+* Added the ability to move the timeline range
+- move left or right on the status bar with the left mouse button pressed 
+- the shift value is calculated depending on the size of the area, if you press the control key the value is 1 
+- the range of movement is limited to the slider position, if the shift key is pressed, the range is not limited,
+- but then the displayed image no longer matches the displayed slider position, you then have to click on the slider again.
+* The video slider has been given a context menu
+- if you click with the right mouse button directly on a selection (blue area), the full menu is displayed else only the 'Trim editor' menu
+* Status bar info %TM removed, a similar information is now displayed on the video slider
+* Added macro PreviewResize.py 
+- is intended for playback with display zoom < 100%,  more information is written in the macro.
+* Update PreviewEncode.py macro (showDialog, save and read the options, and more)
+* New macro 'DeleteEndodings.py' in macro subfolder 'Extra'. Is intended as a supplement to 'PreviewEncode' 
+* Small bugfixes in timeline range   
+
+--------------------------
 Version 2.6.8.2 [2021-06-02] GPo
 --------------------------
 * Add menu Video > 'Timeline range'
