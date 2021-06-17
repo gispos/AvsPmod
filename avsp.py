@@ -6486,6 +6486,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'savemarkedavs': False,       # GPo, changed to false, i don't like hidden scripts
             'timelineautoscroll': True,   # GPo, scroll the timeline range if needed
             'timelineautoreset': True,    # GPo, reset the range if frame count change
+            'timelinemoveslidertostart': True,
             'eol': 'auto',
             'loadstartupbookmarks': True,
             'nrecentfiles': 5,
@@ -7294,6 +7295,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 ((_('Enable line-by-line update'), wxp.OPT_ELEM_CHECK, 'autoupdatevideo', _('Enable the line-by-line video update mode (update every time the cursor changes line position)'), dict() ), ),
                 ((_('Focus the video preview upon refresh'), wxp.OPT_ELEM_CHECK, 'focusonrefresh', _('Switch focus to the video preview window when using the refresh command'), dict() ), ),
                 ((_('Refresh preview automatically'), wxp.OPT_ELEM_CHECK, 'refreshpreview', _('Refresh preview when switch focus on video window or change a value in slider window'), dict() ), ),
+                ((_('Move video slider to timeline start'), wxp.OPT_ELEM_CHECK, 'timelinemoveslidertostart', _('On moving timeline range with keys Ctrl + Alt + PageDown\nTimeline moving with Ctrl + Alt + (Left, Right, PageUp, PageDown)\n or left mouse button on the status bar, with Shift no limit'), dict() ), ),
                 ((_('Shared timeline'), wxp.OPT_ELEM_CHECK, 'enableframepertab', _('Seeking to a certain frame will seek to that frame on all tabs'), dict() ), ),
                 ((_('Only on tabs of the same characteristics'), wxp.OPT_ELEM_CHECK, 'enableframepertab_same', _('Only share timeline for clips with the same resolution and frame count'), dict(ident=20) ), ),
                 ((_('Mouse wheel function'), wxp.OPT_ELEM_LIST, 'mousewheelfunc', _('Determines which mouse wheel function is used, see below tabs.Tab change also possible under Misc -> Mouse browse buttons'), dict(choices=[(_('Frame step'), 'frame_step'), (_('Tab change'), 'tab_change'), (_('Tab change or scroll'), 'tab_change_or_scroll'),]) ), ), # GPo 2020
@@ -7370,6 +7372,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 ((_('DPI scaling main tabs:*'), wxp.OPT_ELEM_SPIN, 'ppiscalingscripttabs', _('Additional adjust the script window tabs (10 % steps)'), dict(min_val=0, val=0, max_val=10) ),
                  (_('DPI scaling statusbar:*'), wxp.OPT_ELEM_SPIN, 'ppiscalingstatusbar', _('Additional adjust the statusbar (10 % steps)'), dict(min_val=0, val=0, max_val=10) ), ),
                 ((_('Advanced settings'), wxp.OPT_ELEM_SEP, '', '', dict(adjust_width=True) ), ),
+                #((_('Move video slider to timeline start'), wxp.OPT_ELEM_CHECK, 'timelinemoveslidertostart', _('On moving timeline range with keys Ctrl + Alt + PageDown\nTimeline moving with Ctrl + Alt + (Left, Right, PageUp, PageDown)\n or left mouse button on the status bar, with Shift no limit'), dict() ), ),
                 ((_('Show available system memory (0 disabled)'), wxp.OPT_ELEM_SPIN, 'showfreememory', _('After creating a new clip, show available memory in the status bar if memory is less than x MB'), dict(min_val=0, max_val=9000, increment=100) ), ),
             ),
         )
@@ -9029,9 +9032,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 if x != self.mouseDownXY[0]:
                     val = 1 if wx.GetKeyState(wx.WXK_CONTROL) else 0
                     fullRange = wx.GetKeyState(wx.WXK_SHIFT)
-                    if self.playing_video:
-                        self.PlayPauseVideo()
-                        self.playing_video = ''
+                    self.CheckPlayback()
                     if x > self.mouseDownXY[0]:
                         self.MoveTimelineRange(1, val, not fullRange)
                     elif x < self.mouseDownXY[0]:
@@ -9680,9 +9681,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             wx.CallAfter(self.PlayPauseVideo)
         return True
 
-    def MoveTimelineRange(self, direction, frames=0, limitRange=True):
+    def MoveTimelineRange(self, direction, frames=0, limitRange=True, moveSlider=False, checkPlayback=False):
         if not self.videoSlider.offsetSet:
             return
+        if checkPlayback:
+            self.CheckPlayback()
         curRange = self.videoSlider.maxValue
         if frames < 1:
             frames = max(int(curRange/100), 1)
@@ -9701,6 +9704,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 framenum = curVal
             else:
                 framenum = newStart + curOffsetPos
+                if moveSlider and curVal < framenum:
+                    framenum = newStart
         else:
             solPos = self.videoSlider.startOffset - frames
             newStart = max(0, solPos)
@@ -9709,6 +9714,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 framenum = curVal
             else:
                 framenum = newStart + curOffsetPos
+                if moveSlider and curVal > framenum:
+                    if self.options['timelinemoveslidertostart']:
+                        framenum = newStart
+                    else:
+                        framenum = newStart + curRange
 
         self.videoSlider.SetOffset(newStart,  self.videoSlider.GetMax() - curRange)
         self.videoSlider.SetValue(framenum) # needed always for refresh
@@ -9730,6 +9740,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.frameTextCtrl2.SetForegroundColour(color)
                 self.frameTextCtrl2.Replace(0, -1, str(framenum))
             self.SetVideoStatusText()
+        if checkPlayback:
+            self.CheckPlayback()
 
     # GPo 2020, find menu item and sub item by name (multible used, so make one function)
     def FindMenuItem(self, menuBarIdx, itemLabel, subLabel=''):
@@ -10304,14 +10316,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.SetBookmarkFrameList(bookmarks)
     """
     def OnMenuVideoGotoFrameNumber(self, event):
-        if self.playing_video:
-            self.PlayPauseVideo(refreshFrame=False)
-            self.playing_video = ''
+        self.CheckPlayback()
         menuItem = self.GetMenuBar().FindItemById(event.GetId())
         framenum = int(menuItem.GetLabel().split()[0])
         self.ShowVideoFrame(framenum)
-        if self.playing_video == '':
-            self.PlayPauseVideo()
+        self.CheckPlayback()
 
     def OnMenuVideoBookmarkMoveTitle(self, event):
         if type(event) is int:
@@ -10495,14 +10504,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.AssignTabGroup(label)
 
     def OnMenuVideoGotoLastScrolled(self, event):
-        if self.playing_video:
-            self.PlayPauseVideo(refreshFrame=False)
-            self.playing_video = ''
+        self.CheckPlayback()
         curPos = self.videoSlider.GetValue()
         self.ShowVideoFrame(self.lastshownframe)
         self.lastshownframe = curPos
-        if self.playing_video == '':
-            self.PlayPauseVideo()
+        self.CheckPlayback()
 
     def OnMenuVideoGotoNextBookmark(self, event, previous=False):
         self.GotoNextBookmark(forceCursor=True)
@@ -10603,12 +10609,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.ShowVideoOffset(+1, units='min')
 
     def OnMenuVideoFirstFrame(self, event):
-        if self.playing_video:
-            self.PlayPauseVideo(refreshFrame=False)
-            self.playing_video = ''
+        self.CheckPlayback()
         self.ShowVideoFrame(0)
-        if self.playing_video == '':
-            self.PlayPauseVideo()
+        self.CheckPlayback()
 
     def OnMenuVideoLastFrame(self, event):
         if self.playing_video:
@@ -10791,11 +10794,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     def KillFilterClip(self):
         script = self.currentScript
         if script.AVI is not None and script.AVI.preview_filter:
+            self.CheckPlayback()
             script.AVI.KillFilterClip()
             self.bmpVideo = None
             self.videoWindow.Refresh()
             self.SetPreviewFilterMenus()
             self.SetVideoStatusText()
+            self.CheckPlayback()
 
     def SetPreviewFilterMenus(self, setIdx=0):
         setIdx = min(setIdx, 5) # max menu filter item count
@@ -10830,6 +10835,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             return
         if lKey > 5:
             return
+
+        self.CheckPlayback()
 
         ret = None
         script = self.currentScript
@@ -10878,9 +10885,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.ShowVideoFrame(userScrolling=not updateUserSliders)
 
         if updateUserSliders:
-
             self.UpdateUserSliders()
         self.SetVideoStatusText()
+        self.CheckPlayback()
 
     def ParseScriptPreviewFilters(self, filterDict=None, cleanText=True):
         if filterDict is None:
@@ -11971,7 +11978,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.SetPreviewFilterMenus()
         self.UpdateScriptTabname(allTabs=True) # GPo
 
-    def OnMenuScriptReleaseMemory(self, event): # GPo
+    def OnMenuScriptReleaseMemory(self, event=None): # GPo
         self.splitView = False
         self.snapShotIdx = 0
         script = self.currentScript
@@ -11998,6 +12005,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         break
         finally:
            self.Thaw()
+        if event is None:
+            return True
 
     def OnMenuOtherScriptReleaseMemory(self, event): # GPo
         self.splitView = False
@@ -12133,14 +12142,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     """
 
     def OnMenuVideoSeparateThread(self, event):
-        if self.playing_video:
-            self.PlayPauseVideo(refreshFrame=False)
-            self.playing_video = ''
+        self.CheckPlayback()
         self.options['playbackthread'] = event.IsChecked()
         self.UpdateVideoMenuItem(_('Play video'), _('Use separate thread'), '', event.IsChecked())
         #self.UpdateVideoMenuItems()
-        if self.playing_video == '':
-            self.PlayPauseVideo()
+        self.CheckPlayback()
 
     def OnMenuSaveViewPos(self, event):
         self.saveViewPos = not self.saveViewPos
@@ -12535,22 +12541,16 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.ShowVideoFrame(forceLayout=True)
 
     def OnMenuOptionsAviThread(self, event):
-        if self.playing_video:
-            self.PlayPauseVideo()
-            self.playing_video = ''
+        self.CheckPlayback()
         self.options['avithread'] = event.IsChecked()
         self.UseAviThread = self.options['avithread']
-        if self.playing_video == '':
-            self.PlayPauseVideo()
+        self.CheckPlayback()
 
     def OnMenuOptionsUseNewFrameThread(self, event):
-        if self.playing_video:
-            self.PlayPauseVideo()
-            self.playing_video = ''
+        self.CheckPlayback()
         self.options['usenewframethread'] = event.IsChecked()
         self.UseNewFrameThread = self.options['usenewframethread']
-        if self.playing_video == '':
-            self.PlayPauseVideo()
+        self.CheckPlayback()
 
     def OnMenuOptionsAviThreadAssignLater(self, event):
         self.options['avithreadassignlater'] = event.IsChecked()
@@ -12992,9 +12992,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     def OnPlayButtonContextMenu(self, event): # GPo 2020
         def OnSelectDropFrames(event):
-            if self.playing_video:
-                self.PlayPauseVideo(refreshFrame=False)
-                self.playing_video = ''
+            self.CheckPlayback()
             item = dropMenu.FindItemById(event.GetId())
             nr = item.GetLabel()
             if nr == _('Auto'):
@@ -13003,8 +13001,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.play_drop = int(nr)
             else:
                 self.play_drop = False
-            if self.playing_video == '':
-                self.PlayPauseVideo()
+            self.CheckPlayback()
         def AddDropFrameItems(menu):
             nr = 2
             for i in range(5):
@@ -13015,12 +13012,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 if nr < 4: nr += 2
                 else: nr += 4
         def OnVideoPlayHalfSpeed(event):
-            if self.playing_video:
-                self.PlayPauseVideo(refreshFrame=False)
-                self.playing_video = ''
+            self.CheckPlayback()
             self.play_speed_factor = 0.5
-            if self.playing_video == '':
-                self.PlayPauseVideo()
+            self.CheckPlayback()
         popup = wx.Menu()
         dropMenu = wx.Menu()
         # Loop
@@ -13127,9 +13121,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             textCtrl.Replace(0, -1, nr)
             textCtrl.SetFocus()
             if nr.isdigit():         # GPo
-                if self.playing_video:
-                    self.PlayPauseVideo(refreshFrame=False)
-                    self.playing_video = ''
+                self.CheckPlayback()
                 self.ShowVideoFrame(int(nr))
                 if self.playing_video == '':
                     wx.CallAfter(self.PlayPauseVideo)
@@ -13249,9 +13241,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.SetVideoStatusText()
 
     def OnSliderReleased(self, event):
-        if self.playing_video:
-            self.PlayPauseVideo(refreshFrame=False)
-            self.playing_video = ''
+        self.CheckPlayback()
         videoSlider = event.GetEventObject()
         frame = videoSlider.GetValue()
         if not self.separatevideowindow:
@@ -13871,12 +13861,19 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         key = event.GetKeyCode()
 
         if key in (wx.WXK_RETURN, wx.WXK_NUMPAD_ENTER):
-            if self.cropDialog.IsShown():
+            if event.ShiftDown():
+                if not self.AviThread_Running(self.currentScript, False):
+                    self.ShowVideoFrame(self.GetFrameNumber(), forceCursor=True)
+            elif self.cropDialog.IsShown():
                 self.OnCropDialogApply(None)
             elif self.trimDialog.IsShown():
                 self.OnTrimDialogApply(None)
             else:
-                event.Skip()
+                #~event.Skip()
+                if not self.AviThread_Running(self.currentScript, False):
+                    frame = self.currentframenum if event.ControlDown() else self.GetFrameNumber()
+                    self.ShowVideoFrame(frame, forceCursor=True)
+                else: event.Skip()
         elif key == wx.WXK_ESCAPE:
             if self.cropDialog.IsShown():
                 self.OnCropDialogCancel(None)
@@ -13890,6 +13887,16 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         elif key >= ord('0') and key <= ord('9'):
             i = (key - ord('1') + 10) % 10
             self.SelectTab(index=i)
+        elif self.timelineRange > 0 and event.AltDown() and event.ControlDown():
+            if key == wx.WXK_RIGHT:
+                self.MoveTimelineRange(1, int(self.timelineRange/100.0*10), True, False, True)
+            elif key == wx.WXK_LEFT:
+                self.MoveTimelineRange(0, int(self.timelineRange/100.0*10), True, False, True)
+            elif key == wx.WXK_UP:
+                self.MoveTimelineRange(1, self.timelineRange, False, True, True)
+            elif key == wx.WXK_DOWN:
+                self.MoveTimelineRange(0, self.timelineRange, False, True, True)
+            else: event.Skip()
         else:
             event.Skip()
 
@@ -14818,7 +14825,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if isinstance(win, wx.ListCtrl): # autocomplete list
             return
         # GPo, on script enable/disable avisynth lines or change boolean word
-        if isinstance(win, AvsStyledTextCtrl):
+
+        scriptContextMenu = isinstance(win, AvsStyledTextCtrl)
+        if scriptContextMenu:
             if wx.GetMouseState().LeftIsDown():
                 script = self.currentScript
                 sel = script.GetSelectedText()
@@ -14833,25 +14842,26 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.lastContextMenuWin = win
         pos = win.ScreenToClient(event.GetPosition())
 
-        # update 'video -> add tab to group' submenu
-        group_menu_id = win.contextMenu.FindItem(_('Add tab to group'))
-        if group_menu_id != wx.NOT_FOUND:
-            group_menu = win.contextMenu.FindItemById(group_menu_id).GetSubMenu()
-            group = self.currentScript.group
-            if group is None:
-                group = _('None')
-            id = group_menu.FindItem(group)
-            group_menu.Check(id, True)
-            id = group_menu.FindItem(_('Apply offsets'))
-            group_menu.Check(id, self.options['applygroupoffsets'])
-            id = group_menu.FindItem(_('Offset also bookmarks'))
-            group_menu.Check(id, self.options['offsetbookmarks'])
+        if not scriptContextMenu:
+            # update 'video -> add tab to group' submenu
+            group_menu_id = win.contextMenu.FindItem(_('Add tab to group'))
+            if group_menu_id != wx.NOT_FOUND:
+                group_menu = win.contextMenu.FindItemById(group_menu_id).GetSubMenu()
+                group = self.currentScript.group
+                if group is None:
+                    group = _('None')
+                id = group_menu.FindItem(group)
+                group_menu.Check(id, True)
+                id = group_menu.FindItem(_('Apply offsets'))
+                group_menu.Check(id, self.options['applygroupoffsets'])
+                id = group_menu.FindItem(_('Offset also bookmarks'))
+                group_menu.Check(id, self.options['offsetbookmarks'])
 
-        x_id = win.contextMenu.FindItem(_('Save view pos on tab change')) # GPo 2020
-        if x_id != wx.NOT_FOUND:
-            menu = win.contextMenu.FindItemById(x_id)
-            menu.Check(self.saveViewPos)
-        self.UpdatePreviewFilterMenu(self.ParseScriptPreviewFilters())
+            x_id = win.contextMenu.FindItem(_('Save view pos on tab change')) # GPo 2020
+            if x_id != wx.NOT_FOUND:
+                menu = win.contextMenu.FindItemById(x_id)
+                menu.Check(self.saveViewPos)
+            self.UpdatePreviewFilterMenu(self.ParseScriptPreviewFilters())
         try:
             win.PopupMenu(win.contextMenu, pos)
         except AttributeError:
@@ -15284,6 +15294,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     def StopPlayback(self):
         if self.playing_video:
+            self.PlayPauseVideo()
+
+    def CheckPlayback(self):
+        if self.playing_video:
+            self.PlayPauseVideo(refreshFrame=False)
+            self.playing_video = ''
+        elif self.playing_video == '':
             self.PlayPauseVideo()
 
     @AsyncCallWrapper
@@ -18356,6 +18373,23 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if self.videoSlider.offsetSet and self.videoSlider.GetVirtualMax() < framenum \
                 or self.videoSlider.startOffset > framenum:
                 if self.timelineAutoScroll:
+                    """
+                    # test
+                    start = -1
+                    if framenum - 1 == self.videoSlider.GetValue():
+                        start = framenum-1
+                        end = start+self.timelineRange
+                    elif framenum == self.videoSlider.startOffset-1:
+                        start = max(framenum - (self.timelineRange+1), 0)
+                        end = start + self.timelineRange
+                    if start > -1:
+                        if not self.OnMenuSetTimeLineRange(frange=self.timelineRange, r_center=framenum, r_start=start, r_end=end):
+                            self.videoSlider.SetValue(framenum)
+                    # test end
+                    else:
+                        if not self.OnMenuSetTimeLineRange(frange=self.timelineRange, r_center=framenum):
+                            self.videoSlider.SetValue(framenum)
+                    """
                     if not self.OnMenuSetTimeLineRange(frange=self.timelineRange, r_center=framenum):
                         self.videoSlider.SetValue(framenum)
                 else:
@@ -21436,6 +21470,16 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         w = script.AVI.DisplayWidth
         h = script.AVI.DisplayHeight
 
+        # groups
+        frame2 = frame
+        if self.currentScript.group is not None and self.currentScript.group == nextScript.group:
+            if self.options['applygroupoffsets']:
+                offset = nextScript.group_frame - self.currentScript.group_frame
+                if self.splitView_next:
+                    frame2 = max(0, frame + offset)
+                else:
+                    frame = max(0, frame + offset)
+
         if not isPaintEvent: # check only once on new frame
             if self.currentScript.AVI.current_frame != frame: # only thread if frame != curr
                 if not self.GetAviDisplayFrame(self.currentScript, frame, True):
@@ -21452,7 +21496,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             else:
                 Error()
                 return
-            if not self.GetAviDisplayFrame(nextScript, frame, True): # get the frame in thread is thread enabled
+            if not self.GetAviDisplayFrame(nextScript, frame2, True): # get the frame in thread is thread enabled
                 Error()
                 return
             if nextScript.AVI.display_clip.get_error():
@@ -21526,10 +21570,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             dc.Blit(xxx, 0, w-xx, h, dc2, xx, 0)
         else:
             dc.SetClippingRegion((xxx-_x)-10,_y,self.extended_width+12-(xxx-_x) ,(h+10)-_y)
-            if not script2.AVI.DrawFrame(frame, dc, offset=wx.Point(xxx,0), srcXY=wx.Point(xx, 0)):
+            if not script2.AVI.DrawFrame(frame2, dc, offset=wx.Point(xxx,0), srcXY=wx.Point(xx, 0)):
                 self.splitView = False
                 self.HidePreviewWindow()
-                self.ErrorMessage_GetFrame(script2, frame)
+                self.ErrorMessage_GetFrame(script2, frame2)
                 return
             dc.DestroyClippingRegion()
 
