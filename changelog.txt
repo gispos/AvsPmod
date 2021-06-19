@@ -36,11 +36,11 @@ Version 2.6.8.4 [2021-06-17] GPo
 * SplitView now also recognizes group offsets ( nice for compare two same videos with different start offsets )
 * Timeline range can be moved with 'hard coded shortcuts'
 - Ctrl + Alt + Left or Right ( moves 10% steps in the limited range )
-- Ctrl + Alt + PageUp or PageDown ( moves the complette range ), then slider position does not match the picture.
+- Ctrl + Alt + Up or Down ( moves the complette range ), then slider position does not match the picture.
 - the now displayed frame number can be updated with the 'Enter' or 'Return' or a frame step, if you have not updated and 
 - you hold down Ctrl while hitting 'Enter' or 'Return' the timeline moves back to the current frame number
 - there is one setting under program options > Video > 'Move video slider to timeline start', read the tooltip 
-* Update macro PreviewEncode.py and DeleteEncodings.py
+* Update macro PreviewEncode.py
 * Fixed: if a resize filter was set with a 'Preview Filter' during playback, an error message could appear.  
 * Fixed: the context menu of the text editor could crash under certain conditions 
 -
