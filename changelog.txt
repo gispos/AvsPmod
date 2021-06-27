@@ -31,6 +31,22 @@ Now all videos should be frame accurately synchronized.
 #####
 
 --------------------------
+Version 2.6.8.5 [2021-06-27] GPo
+--------------------------
+* New Frame thread routine Options > 'Use advanced frame thread'
+- it is Beta! a bit faster, one single frame thread per script, test it out and report problems.
+* Timeline shows frame or time numbers if a timeline range is set
+- program options > Misc 2 > 'Timeline range numbers count', you can change the count of numbers (1, 4, 9)
+* The sensitivity of the mouse movement on the status bar for moving the timeline range is adjustable
+-  program options > Misc 2 > 'Timeline move on status bar sensitivity', lower values more movement
+* A double click on the status bar moves the timeline in the limited area forwards or backwards, depending on the position of the mouse pointer
+- if Shift is held, the entire area is moved without limit 
+* A middle click on the status bar moves the timline back to the current frame
+* Fxed: if not timeline 'Auto reset' was set, on tab change the wrong frame was shown
+* Fix: I hope some shortcut problems fixed
+* New russian translation, thanks to Doom9 user Arx1meD
+
+--------------------------
 Version 2.6.8.4 [2021-06-17] GPo
 --------------------------
 * SplitView now also recognizes group offsets ( nice for compare two same videos with different start offsets )

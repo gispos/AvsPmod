@@ -12,13 +12,13 @@
 import sys
 import os
 
-resource_str_threadwait = _('Waiting for Avisynth, thread still running.\n' +
-                           'This dialog is automatically closed when avisynth returns.\n' +
-                           'If you abort this process, you should restart the program!')
+resource_str_threadwait = _("Waiting for Avisynth, thread still running.\n" \
+                            "This dialog is automatically closed when avisynth returns.\n" \
+                            "If you abort this process, you should restart the program!")
 
-resource_str_threadwait2 = _('Waiting for Avisynth, thread still running.\n' +
-                           'This dialog is automatically closed when avisynth returns.\n' +
-                           'If you abort this process, the clip will assign later.')
+resource_str_threadwait2 = _("Waiting for Avisynth, thread still running.\n" \
+                             "This dialog is automatically closed when avisynth returns.\n" \
+                             "If you abort this process, the clip will assign later.")
 
 
 """

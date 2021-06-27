@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # AvsP - an AviSynth editor
-# 
+#
 # Copyright 2007 Peter Jang <http://avisynth.nl/users/qwerpoi>
 #           2010-2013 the AvsPmod authors <https://github.com/avspmod/avspmod>
 #
@@ -9,19 +9,19 @@
 #  it under the terms of the GNU General Public License as published by
 #  the Free Software Foundation; either version 2 of the License, or
 #  (at your option) any later version.
-# 
+#
 #  This program is distributed in the hope that it will be useful,
 #  but WITHOUT ANY WARRANTY; without even the implied warranty of
 #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #  GNU General Public License for more details.
-# 
+#
 #  You should have received a copy of the GNU General Public License
 #  along with this program; if not, write to the Free Software
 #  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA, or visit
 #  http://www.gnu.org/copyleft/gpl.html .
 
 # i18n - internationalization and localization
-# 
+#
 # Dependencies:
 #     Python (tested on v2.6 and v2.7)
 # Scripts:
@@ -44,15 +44,15 @@ def _(s): return s
 builtins._ = _ # Python3
 # Python2 only: __builtin__._ = _
 
-pythonexe = sys.executable 
+pythonexe = sys.executable
 pygettextpath = os.path.join(sys.prefix, 'Tools', 'i18n', 'pygettext.py')
 toolsdir = 'tools'
 macrosdir = 'macros'
 
 def main(version=global_vars.version):
     """Generate __translation_new.py"""
-    
-    argsList = ['avsp.py wxp.py pyavs.py pyavs_avifile.py global_vars.py']
+
+    argsList = ['avsp.py wxp.py pyavs.py pyavs_avifile.py global_vars.py utils.py']
     # Get additional files to translate from the tools directory
     sys.path.insert(0, toolsdir)
     try:
@@ -62,12 +62,12 @@ def main(version=global_vars.version):
     for item in items:
         if len(item) == 3:
             argsList.append(item)
-    
+
     newlines = ['messages = {\n']
     messageSet = set()
     for args in argsList:
         newlines.extend(GenerateMessages(messageSet, args))
-    
+
     # Include the macros' filenames
     newlines.append('\n    #--- Macros ---#\n')
     macro_list = []
@@ -89,7 +89,7 @@ def main(version=global_vars.version):
                     label_list.append(match.group(3))
         for dirname in dirnames:
             newlines.append('    "%s" : u"",\n' % dirname)
-    
+
     # Include the macros
     for macro, label in zip(macro_list, label_list):
         lines = GenerateMessages(messageSet, macro)
@@ -97,7 +97,7 @@ def main(version=global_vars.version):
             newlines.append('\n    #--- Macro: %s ---#\n' % label)
             newlines.extend(lines)
     newlines.append('\n    #--- Macros - Extra ---#\n')
-    
+
     newlines.append('}')
 
     f = open('__translation_new.py', 'w')
@@ -106,17 +106,17 @@ def main(version=global_vars.version):
     f.writelines(newlines)
     f.write("'''")
     f.close()
-    
+
     return True
 
 def GenerateMessages(messageSet, args):
-    
+
     oldline = ''
     newlines = []
     from six import string_types # for Python 2 and 3
     if isinstance(args, string_types): # no basestring
-        # V3: The builtin basestring abstract type was removed. 
-        # Use str instead. The str and bytes types don’t have functionality enough in common to warrant 
+        # V3: The builtin basestring abstract type was removed.
+        # Use str instead. The str and bytes types don’t have functionality enough in common to warrant
         # a shared base class. The 2to3 tool replaces every occurrence of basestring with str.
         os.system('""%s" "%s" %s"' % (pythonexe, pygettextpath, args))
     else:
@@ -260,7 +260,7 @@ def UpdateTranslationFile(dir, lang=None, version=global_vars.version):
                 newlines.append(line)
         if extra_txt:
             newlines[-1] = extra_txt
-        
+
         # Overwrite the text file with the new data
         f = open(filename, 'w')
         f.write('\n'.join(newlines))
