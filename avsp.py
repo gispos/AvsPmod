@@ -7906,11 +7906,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             _('Light grey'): (191, 191, 191),
             _('White'): (255, 255, 255),
         }
-        self.previewFilterKeyId = []
-        for i in xrange(6):
-            ide = wx.ID_ANY
-            self.previewFilterKeyId.append(ide)
-
         self.backgroundColorDict = dict([(v,k) for k,v in self.backgroundLabelDict.items()])
         return (
             (_('&File'),
@@ -8315,7 +8310,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 (''),
                 (_('Changelog'), '', self.OnMenuHelpChangelog, _('Open the changelog file')),
                 (_('About AvsPmod'), '', self.OnMenuHelpAbout, _('About this program')),
-                #(_('Zoom fit height'), '', self.OnMenuTest2, _('Test2')),
+                #(_('Save Image png'), '', self.OnMenuTest2, _('Test2')),
                 #(_('Zoom remove'), '', self.OnMenuTest3, _('Test3')),
                 #(_('Zoom 200%'), '', self.OnMenuTest4, _('Test4')),
             ),
@@ -9100,6 +9095,21 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 event.Skip()
         def OnStatusbarDClick(event):
             if self.timelineRange > 0:
+                if event.GetPosition()[0] > self.GetSize()[0]/2.0:
+                    if event.ShiftDown():
+                        self.MoveTimelineRange(1, self.timelineRange, False, False, True)
+                    else: self.MoveTimelineRange(1, self.GetFrameNumber()-self.videoSlider.startOffset, True, True, True)
+                else:
+                    if event.ShiftDown():
+                        self.MoveTimelineRange(0, self.timelineRange, False, False, True)
+                    else: self.MoveTimelineRange(0, self.videoSlider.GetVirtualMax() - self.GetFrameNumber(), True, True, True)
+            """
+            if self.timelineRange > 0:
+                self.OnMenuSetTimeLineRange(None, self.timelineRange, self.currentframenum)
+            """
+            event.Skip()
+        def OnStatusbarMiddleUp(event):
+            if self.timelineRange > 0:
                 self.OnMenuSetTimeLineRange(None, self.timelineRange, self.currentframenum)
             """
             if self.timelineRange > 0:
@@ -9111,28 +9121,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     if event.ShiftDown():
                         self.MoveTimelineRange(0, self.timelineRange, False, False, True)
                     else: self.MoveTimelineRange(0, self.videoSlider.GetVirtualMax() - self.GetFrameNumber(), True, True, True)
-            """
-            event.Skip()
-        def OnStatusbarMiddleUp(event):
-            if self.timelineRange > 0:
-                if event.GetPosition()[0] > self.GetSize()[0]/2.0:
-                    if event.ShiftDown():
-                        self.MoveTimelineRange(1, self.timelineRange, False, False, True)
-                    else: self.MoveTimelineRange(1, self.GetFrameNumber()-self.videoSlider.startOffset, True, True, True)
-                else:
-                    if event.ShiftDown():
-                        self.MoveTimelineRange(0, self.timelineRange, False, False, True)
-                    else: self.MoveTimelineRange(0, self.videoSlider.GetVirtualMax() - self.GetFrameNumber(), True, True, True)
 
-            """
-            if event.ControlDown():
-                if event.ShiftDown():
-                    self.MoveTimelineRange(0, self.timelineRange, False, False, True)
-                else: self.MoveTimelineRange(0, self.videoSlider.GetVirtualMax() - self.GetFrameNumber(), True, True, True)
-            else:
-                if event.ShiftDown():
-                    self.MoveTimelineRange(1, self.timelineRange, False, False, True)
-                else: self.MoveTimelineRange(1, self.GetFrameNumber()-self.videoSlider.startOffset, True, True, True)
             """
             event.Skip()
 
@@ -11298,7 +11287,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         """
 
     def OnMenuTest2(self, event):
-        self.PreviewAddResizer()
+        pass
+        #self.SaveImage(filename='', frame=None, silent=False, index=None, avs_clip=None, default='', quality=None, depth=16)
+        #self.PreviewAddResizer()
         """
         def getFrame2(script2, q, nr2):
             #return
@@ -19874,11 +19865,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         try:
             minValue = float(strMin)
         except ValueError:
+            minValue = 0
             errortype = 1
             errormessage = _('Min value must be a number!')
         try:
             maxValue = float(strMax)
         except ValueError:
+            maxValue = 1
             errortype = 2
             errormessage = _('Max value must be a number!')
         if not strDef:
@@ -21913,7 +21906,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         th.Reset()
         return re
 
-    # Thread handle with events, not faster
+    # Single frame Thread for each script
     def GetAviDisplayFrame2(self, script, nr, showWarn=True, checkClipThread=True):
         # return false if AVI thread running
         if checkClipThread and self.AviThread_Running(script, prompt=showWarn):
@@ -21940,23 +21933,21 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         th.Start(nr)
         _t = time.time() + 10.0
         while th.isAlive() and th.IsRunning() and time.time() <= _t:
-        #while th.IsRunning() and time.time() <= _t:
             pass
-        #th.waitEvent.wait(timeout=10.0)
         if th.IsRunning():
             return self.WaitForFrameThread(script, th, nr)
         else:
             re = not th.IsError()
-            th.Reset()
+            if not re:
+                th.Reset()
             return re
 
-    # Thread handle with events, not faster as creating a thread for each frame
+    # Single frame thread for each script, not mutch faster as creating a thread for each frame
     class FrameThread(threading.Thread):
         def __init__(self, script):
             threading.Thread.__init__(self)
             self.setDaemon(True)
             self.script = script
-            self.waitEvent = threading.Event() # for extern waiting with event
             self.exitEvent = threading.Event()
             self.startEvent = threading.Event()
             self.Lock = threading.RLock()
@@ -21964,7 +21955,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.isError = False
             self.start()
         def Start(self, nr):
-            #self.waitEvent.clear()
             self.nr = nr
             self.isRunning = True
             self.startEvent.set()
@@ -21972,7 +21962,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.Lock.acquire()
             self.isError = False
             self.Lock.release()
-            self.waitEvent.clear()
         def Exit(self):
             self.exitEvent.set()
             self.startEvent.set()
@@ -21985,7 +21974,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     self.Lock.release()
                     if not re:
                         return False
-                    time.sleep(0.0001)
+                    time.sleep(0.00001)
             self.Lock.acquire() # with lock not slower
             re = self.isRunning
             self.Lock.release()
@@ -22000,17 +21989,16 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.startEvent.wait()
                 if not self.exitEvent.isSet():
                     try:
+                        #self.script.AVI._GetFrame(self.nr)
                         self.script.AVI.display_clip.get_frame(self.nr)
                     except:
                         self.Lock.acquire()
                         self.isError = True
                         self.Lock.release()
                     self.startEvent.clear()
-                    self.waitEvent.set()
                     self.Lock.acquire()
                     self.isRunning = False
                     self.Lock.release()
-
 
     def PlayPauseVideo(self, debug_stats=False, refreshFrame=True):
         """Play/pause the preview clip"""

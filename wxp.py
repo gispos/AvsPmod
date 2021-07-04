@@ -474,28 +474,28 @@ class Frame(wx.Frame):
                 menu.AppendSeparator()
                 menu.Remove(menu.Append(wx.ID_ANY, '0',).GetId()) # wxGTK fix
                 continue
-            if nItems > 8:
-                raise                                                 # GPo 2020, set custom ID (nice for submenus)
-            defaults = ('', '', None, '', wx.ITEM_NORMAL, None, self, wx.ID_ANY)
-            label, shortcut, handler, status, attr, state, bindwindow, wxID = eachMenuInfo + defaults[nItems:]
+            if nItems > 7:
+                raise
+            defaults = ('', '', None, '', wx.ITEM_NORMAL, None, self)
+            label, shortcut, handler, status, attr, state, bindwindow = eachMenuInfo + defaults[nItems:]
             if not bindwindow or bindwindow is None:
                 bindwindow = self
             # Special case: submenu
             if handler is None: #not isinstance(handler, FunctionType):
                 submenu = self.createMenu(shortcut, '%s -> %s'% (name, label), shortcutList, oldShortcuts, backup)
-                menu.AppendMenu(wxID, label, submenu, status)
+                menu.AppendMenu(wx.ID_ANY, label, submenu, status)
                 continue
             elif handler == -1:
                 submenu = shortcut #self.createMenu(shortcut, '%s -> %s'% (name, label), shortcutList, oldShortcuts, bindwindow)
-                menu.AppendMenu(wxID, label, submenu, status)
+                menu.AppendMenu(wx.ID_ANY, label, submenu, status)
                 continue
             # Get the id and type (normal, checkbox, radio)
             if attr in (wx.ITEM_CHECK, wx.ITEM_RADIO):
                 kind = attr
-                id = wxID
+                id = wx.ID_ANY
             elif attr == wx.ITEM_NORMAL:
                 kind = attr
-                id = wxID
+                id = wx.ID_ANY
             elif type(attr) is tuple:
                 kind, state, id = attr
             else:

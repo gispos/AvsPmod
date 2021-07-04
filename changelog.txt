@@ -31,6 +31,12 @@ Now all videos should be frame accurately synchronized.
 #####
 
 --------------------------
+Version 2.6.8.6 [2021-07-04] GPo
+--------------------------
+* Fixed again some shortcut problems
+* Minor other changes
+
+--------------------------
 Version 2.6.8.5 [2021-06-27] GPo
 --------------------------
 * New Frame thread routine Options > 'Use advanced frame thread'
