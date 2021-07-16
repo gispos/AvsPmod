@@ -4521,7 +4521,7 @@ class SliderPlus(wx.Panel):
         self.Bind(wx.EVT_MOTION, self._OnMouseMotion)
         self.Bind(wx.EVT_LEFT_UP, self._OnLeftUp)
         #~self.Bind(wx.EVT_MOUSEWHEEL, self._OnMouseWheel)  # GPo, in this version not used
-        self.Bind(wx.EVT_KEY_DOWN, self._OnKeyDown)
+        #self.Bind(wx.EVT_KEY_DOWN, self._OnKeyDown)
         def OnSetFocus(event):
             if not self.HasCapture():
                 try:
@@ -4669,7 +4669,7 @@ class SliderPlus(wx.Panel):
                 if self.value != oldvalue:
                     self._SendScrollEvent()
     """
-
+    """
     def _OnKeyDown(self, event):
         if self.HasCapture():
             key = event.GetKeyCode()
@@ -4680,7 +4680,7 @@ class SliderPlus(wx.Panel):
                 self.SetValue(self.value+1)
             if self.value != oldvalue:
                 self._SendScrollEvent()
-
+    """
     def _SendScrollEvent(self):
         event = wx.CommandEvent(wx.wxEVT_SCROLL_THUMBTRACK, self.GetId())
         event.SetEventObject(self)
@@ -7390,6 +7390,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 ((_('Mouse browse buttons'), wxp.OPT_ELEM_LIST, 'mouseauxdown', _("Mouse browse buttons (forward/backward) on video and script window\nIf 'Tab change' and tab count less than 2, 'Bookmark jump' is used\nIf 'Tab change' press CTRL or left mouse and 'Bookmark jump' is used\nIf 'Bookmark jump', vice versa"),dict(choices=[(_('Tab change'),'tab change'),(_('Custom jump'),'custom jump'),(_('Bookmark jump'),'bookmark jump'),(_('Frame step'),'frame step')]) ), # GPo 2020
                  (_('Middle mouse on script'), wxp.OPT_ELEM_LIST, 'middlemousefunc', _('Middle mouse button behavior on the script, if script empty open source is used'), dict(choices=[(_('Show video frame'), 'show video frame'), (_('Open source'), 'open source')]) ), ), # GPo 2020
                 ((_('Max number of recent filenames'), wxp.OPT_ELEM_SPIN, 'nrecentfiles', _('This number determines how many filenames to store in the recent files menu'), dict(min_val=0) ), ),
+                 #(_('Clear recent files'), wxp.OPT_ELEM_BUTTON, '', _('Clear the recent file list'), dict(handler=self.OnMenuFileClearRecentFiles) ), ),
                 ((_('Custom jump size:'), wxp.OPT_ELEM_SPIN, 'customjump', _('Jump size used in video menu'), dict(min_val=0) ), ),
                 ((_('Custom jump size units'), wxp.OPT_ELEM_RADIO, 'customjumpunits', _('Units of custom jump size'), dict(choices=[(_('frames'), 'frames'),(_('seconds'), 'sec'),(_('minutes'), 'min'),(_('hours'), 'hr')]) ), ),
             ),
@@ -7915,10 +7916,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 (_('Close tab'), 'Ctrl+W', self.OnMenuFileClose, _('Close the current tab')),
                 (_('Close all tabs'), 'Ctrl+Shift+W', self.OnMenuFileCloseAllTabs, _('Close every tab')),
                 (_('Rename tab'), '', self.OnMenuFileRenameTab, _('Rename the current tab. If script file is existing, also rename it')),
+                (''),
                 (_('Save script'), 'Ctrl+S', self.OnMenuFileSaveScript, _('Save the current script')),
                 (_('Save script as...'), 'Ctrl+Shift+S', self.OnMenuFileSaveScriptAs, _('Choose where to save the current script')),
                 (_('Reload script'), 'Ctrl+F5', self.OnMenuFileReloadScript, _('Reopen the current script file if it has changed')),
                 (_("Open script's directory"), '', self.OnMenuFileOpenScriptDirectory, _('If the current script is saved to a file, open its directory')),
+                (''),
                 (_('Export HTML'), '', self.OnMenuFileExportHTML, _('Save the current script as a HTML document')),
                 (_('&Print script'),
                     (
@@ -7939,6 +7942,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 (_('Previous tab'), 'Ctrl+Shift+Tab', self.OnMenuFilePrevTab, _('Switch to previous script tab')),
                 (''),
                 (_('Toggle scrap window'), 'Ctrl+Shift+P', self.OnMenuEditShowScrapWindow, _('Show the scrap window')),
+                (_('Clear file history'), '', self.OnMenuFileClearRecentFiles, _('Clear the recent file list')),
                 (''),
                 (''),
                 (_('&Exit'), 'Alt+X', self.OnMenuFileExit, _('Exit the program')),
@@ -8275,7 +8279,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 (_('Hide video window scrollbars'), '', self.OnMenuOptionsHideScrollbars, _('Hide the video window scrollbars'), wx.ITEM_CHECK, self.options['hidescrollbars']),
                 (''),
                 (_('Accessing AviSynth in threads'), '', self.OnMenuOptionsAviThread, _('Use threads when accessing avisynth (load/release clip and get frame)'), wx.ITEM_CHECK, self.options['avithread']),
-                (_('Use advanced frame thread. Beta!'), '', self.OnMenuOptionsUseNewFrameThread, _('Please test and report. Use advanced frame thread routines'), wx.ITEM_CHECK, self.options['usenewframethread']),
+                (_('Use advanced frame thread'), '', self.OnMenuOptionsUseNewFrameThread, _('For info read the readme_threads.txt'), wx.ITEM_CHECK, self.options['usenewframethread']),
                 (_('On cancel assign the clip later'), '', self.OnMenuOptionsAviThreadAssignLater, _('AvsPmod should normally be closed after a thread has been canceled by the user. This option tries to assign the clip to the script after the thread has internaly finished.'), wx.ITEM_CHECK, self.options['avithreadassignlater']),
                 (''),
                 (_('Associate .avs files with AvsPmod'), '', self.OnMenuOptionsAssociate, _('Configure this computer to open .avs files with AvsP when double-clicked. Run again to disassociate')),
@@ -8310,7 +8314,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 (''),
                 (_('Changelog'), '', self.OnMenuHelpChangelog, _('Open the changelog file')),
                 (_('About AvsPmod'), '', self.OnMenuHelpAbout, _('About this program')),
-                #(_('Save Image png'), '', self.OnMenuTest2, _('Test2')),
+                #(_('test 2'), '', self.OnMenuTest2, _('Test2')),
                 #(_('Zoom remove'), '', self.OnMenuTest3, _('Test3')),
                 #(_('Zoom 200%'), '', self.OnMenuTest4, _('Test4')),
             ),
@@ -8574,8 +8578,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             (''),
             (_('Tab change loads bookmarks'), '', self.OnMenuTabChangeLoadBookmarks, '', wx.ITEM_CHECK, self.options['tabsbookmarksfromscript']), # GPo 2019
             (_('Save view pos on tab change'), '', self.OnMenuSaveViewPos, _('Save/Restore last view position and zoom factor on tab change'), wx.ITEM_CHECK, False),
-            #(''),
-            #(_('Select all'), '', self.OnMenuEditSelectAll),
             (''),
             (_('Copy to new tab'), '', self.OnMenuEditCopyToNewTab),
             (_('Split View insert tab'), '', self.OnMenuCopyToNewTabNext),
@@ -10678,7 +10680,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 elif sel == 2:
                     unit = 'min'
                 elif sel == 3:
-                    offset = +self.options['customjump']
+                    offset = + self.options['customjump']
                     unit = self.options['customjumpunits']
 
         if not self.separatevideowindow:
@@ -10921,6 +10923,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 script.previewFilterIdx = 0
                 script.lastpreviewFilterIdx = 0
 
+        self.CheckPlayback()
+
         if event is not None:
             vidmenus = [self.videoWindow.contextMenu, self.GetMenuBar().GetMenu(2)]
             id = event.GetId()
@@ -10940,8 +10944,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             return
         if lKey > 5:
             return
-
-        self.CheckPlayback()
 
         ret = None
         script = self.currentScript
@@ -11063,7 +11065,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         filterDict = self.optionsPreviewFilters['previewfilters']
         for key in filterDict.keys():
             ident, arg = filterDict[key]
-            f += '\n' + ident +'\n' + arg + '\n*/\n'
+            f += '\n' + ident +'\n' + arg + '\n**/\n'
         self.InsertTextAtScriptEnd(f, self.currentScript)
 
     def OnMenuRestorePreviewFilter(self, event):
@@ -11089,8 +11091,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             return
         lKey = min(lKey, len(filterDict))
         ident, arg = filterDict[lKey]
-        f = '\n' + ident + '\n' + arg + '\n*/\n'
-        self.InsertTextAtScriptEnd(f, self.currentScript)
+        f = '\n' + ident + '\n' + arg + '\n**/\n'
+        #~self.InsertTextAtScriptEnd(f, self.currentScript)
+        self.InsertText(f, None)
 
     #@AsyncCallWrapper
     def UpdatePreviewFilterMenu(self, filterDict, isRestoreMenu=False):
@@ -15721,6 +15724,25 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             eol = None
         return txt, f_encoding, eol
 
+    def OnMenuFileClearRecentFiles(self, event):
+        self.options['recentfiles'] = []
+        menu = self.GetMenuBar().GetMenu(0)
+        nMenuItems = menu.GetMenuItemCount()
+        i = nMenuItems - 1 - 2
+        while i >= 0:
+            menuItem = menu.FindItemByPosition(i)
+            if menuItem.IsSeparator():
+                break
+            i -= 1
+        if i == 0:
+            return
+        pos = i + 1
+        nNameItems = (nMenuItems - 1 - 2) - pos + 1
+        if nNameItems > 0:
+            for i in range(nNameItems):
+                badMenuItem = menu.FindItemByPosition(pos)
+                menu.Delete(badMenuItem.GetId())
+
     def UpdateRecentFilesList(self, filename=None):
         # Update the persistent internal list
         if filename is not None:
@@ -18514,11 +18536,15 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 color = wx.BLACK
 
             self.frameTextCtrl.SetForegroundColour(color)
-            self.frameTextCtrl.Replace(0, -1, str(framenum))
+            #self.frameTextCtrl.Replace(0, -1, str(framenum))
+            self.frameTextCtrl.ChangeValue(str(framenum))
+            self.frameTextCtrl.Update()
             if self.separatevideowindow:
                 self.videoSlider2.SetValue(framenum)
                 self.frameTextCtrl2.SetForegroundColour(color)
-                self.frameTextCtrl2.Replace(0, -1, str(framenum))
+                #self.frameTextCtrl2.Replace(0, -1, str(framenum))
+                self.frameTextCtrl2.ChangeValue(str(framenum))
+                self.frameTextCtrl2.Update()
 
             # get the frame from avisynth. forceThread=True only on pagechange event
             if not forceThread and script.AVI.current_frame == framenum: # make it faster don't use thread (sliders and other funcs that uses ShowFrame)
@@ -18665,6 +18691,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     if self.playing_video:
                         self.SetVideoStatusText(framenum, primary=True, addon0=addon0)
                     else:
+                        #self.SetVideoStatusText(framenum, primary=True)
                         self.IdleCallDict['OnMouseMotionVideoWindow'] = self.OnMouseMotionVideoWindow
                 else:
                     primary = self.FindFocus() == self.videoWindow
@@ -19012,7 +19039,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 msg_1 = msg if self.WinVersion < 7 else ''
 
                 progress = wx.ProgressDialog(_('Waiting for avisynth release memory'),msg_1,10,self,
-                                style=wx.PD_ELAPSED_TIME|wx.PD_CAN_ABORT|wx.PD_APP_MODAL|wx.PD_APP_MODAL)
+                                style=wx.PD_ELAPSED_TIME|wx.PD_CAN_ABORT|wx.PD_APP_MODAL)
                 try:
                     while th.isAlive():
                         c,s = progress.Pulse()
@@ -19190,6 +19217,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                 progress.Pulse(msg)
                             i += 1
                             th.join(0.5)
+
                         if c and self.WinVersion > 6:
                             progress.Pulse(_('Clip process finished'))
                     finally:
@@ -21924,9 +21952,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         th = script.FrameThread
         if th.IsRunning(): # a bit faster when check running here
-            _t = time.time() + 1.0
+            _t = time.time() + 2.0
             while th.isAlive() and th.IsRunning() and time.time() <= _t:
-                pass
+                time.sleep(0.00001)
             if self.FrameThread_Running(script, showWarn):
                 return False
 
@@ -22022,8 +22050,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 if self.FrameThread_Running(script, prompt=False):
                     th = script.FrameThread
                     t = time.time() + 5.0
-                    while th.isAlive() and th.IsRunning() and time.time() <= _t:
-                        pass
+                    while th.isAlive() and th.IsRunning() and time.time() <= t:
+                        time.sleep(0.00001)
             except:
                 pass
             if refreshFrame:

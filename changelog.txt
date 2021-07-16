@@ -31,6 +31,14 @@ Now all videos should be frame accurately synchronized.
 #####
 
 --------------------------
+Version 2.6.8.7 [2021-07-15] GPo
+--------------------------
+* Add to menu File > 'Clear file history'
+* Bugfix advanced frame thread ( Options > 'Use advanced frame thread' )
+* Bugfix 'Write selected preview filter to script', at the end a * was missing ( **/ )
+* Bugfix filterdb.dat, entry for 'MCTemporalDenoise' was buggy
+
+--------------------------
 Version 2.6.8.6 [2021-07-04] GPo
 --------------------------
 * Fixed again some shortcut problems

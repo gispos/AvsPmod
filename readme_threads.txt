@@ -27,6 +27,10 @@ The whole should only be used for more script security. So that you can save you
  nice for indexing, you can play with AvsPmod with another tab and a message appears if the clip process finished.
  but test it, it's a bit alpha or beta or whatever. It's going smoothly for me, but you never know what the user is doing.
 
+* New option Options > 'Use advanced frame thread'
+Normally a new thread is created for each frame that is loaded. 
+If this option is activated, only one thread is created for each script that waits in the background for a frame to be loaded. 
+
 Another note about accessing Avisnth in threads:
  Even with threads it is easy to crash AvsPmod, the avisynth.dll is coupled with the main thread, 
  if an error is triggered by a plugin and the plugin or avisynth crashes, AvsPmod is also torn into the abyss. 

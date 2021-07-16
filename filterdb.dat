@@ -3038,9 +3038,9 @@ SmoothAdjust_SmoothLevels16(
 clip,
 int "input_low"=16 (0 to 65535),
 float "gamma"=1.00 (0.01 to 5.00),
-int "input_high"=235 (0 to 65535),
+int "input_high"=65535 (0 to 65535),
 int "output_low"=16 (0 to 65535),
-int "output_high"=235 (0 to 65535),
+int "output_high"=65535 (0 to 65535),
 [int "chroma"=100 (0 to 200)],
 [int "limiter"=0 (0 / 1 / 2)],
 bool "TVrange"=True,
@@ -4384,7 +4384,7 @@ int "searchparam"=2,
 int "MVsharp"=2,
 int "DCT"=0,
 [clip "p"],
-string "settings"="low" ("very low","low","medium","high","very high"),
+string "settings"="low" ("very low"/"low"/"medium"/"high"/"very high"),
 bool "show"=false,
 int "screenW"=1280,
 int "screenH"=1024
@@ -4685,6 +4685,14 @@ bool "Show"=False,
 [float "Amp"=0.0625 (0.0000 to 1.0000)]
 )
 
+SmoothContrast(
+clip,
+float "cont"=0.00 (0.00 to 1.00),
+int "pivot"=128 (0 to 255),
+float "sat"=0.00 (0.00 to 1.00),
+string "range"="TV" ("TV" / "PC")
+)
+
 SmoothCurveC3(
 clip,
 string "Ycurve"="Ycurve",
@@ -4724,14 +4732,6 @@ bool "HQ"=False,
 [int "useOPT"=0 (0 / 1 / 2 / 3)],
 [bool "scale"=True],
 bool "debug"=false
-)
-
-SmoothContrast(
-clip,
-float "cont"=0.00 (0.00 to 1.00),
-int "pivot"=128 (0 to 255),
-float "sat"=0.00 (0.00 to 1.00),
-string "range"="TV" ("TV" / "PC")
 )
 
 Soothe(

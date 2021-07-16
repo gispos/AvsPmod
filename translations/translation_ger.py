@@ -16,7 +16,7 @@
 
 # Übersetzt von Henrik . AvsP 2.0.1  Danke für die Hilfe, besonders LigH ,doxville,Brother John, Selur und Rippraff !
 
-version = "2.6.7.7"
+version = "2.6.8.7"
 
 messages = {
     "AviSynth script" : u"", # New in v2.3.0
@@ -141,7 +141,7 @@ messages = {
     "Select filters to import from the file:" : u"Filterauswahl von/aus der Datei importieren:",
     "Overwrite all data" : u"Überschreibe alle Daten",
     "You must select at least one filter!" : u"Mindestens ein Filter muß ausgewählt werden",
-    "Error: minValue must be less than maxValue" : u"Fehler: Min Wert muss weniger sein als Max Wert",
+    "Slider SetRange Error: minValue must be less than maxValue" : u"", # New in v2.6.8.7
     "New File" : u"Datei neu",
     "Windows Bitmap" : u"", # New in v2.3.0
     "Animation" : u"", # New in v2.3.0
@@ -267,6 +267,8 @@ messages = {
     "Switch focus to the video preview window when using the refresh command" : u"Schaltet den Fokus auf das Video-Vorschaufunktionsfenster um, wenn der Neuanzeigenbefehl verwenden wird",
     "Refresh preview automatically" : u"", # New in v2.2.1
     "Refresh preview when switch focus on video window or change a value in slider window" : u"", # New in v2.2.1
+    "Move video slider to timeline start" : u"", # New in v2.6.8.7
+    "On moving timeline range with keys Ctrl + Alt + PageDown\nTimeline moving with Ctrl + Alt + (Left, Right, PageUp, PageDown)\n or left mouse button on the status bar, with Shift no limit" : u"", # New in v2.6.8.7
     "Seeking to a certain frame will seek to that frame on all tabs" : u"", # New in v2.2.1
     "Shared timeline" : u"", # New in v2.2.1
     "Only on tabs of the same characteristics" : u"", # New in v2.5.0
@@ -421,6 +423,13 @@ messages = {
     "Additional adjust the statusbar (10 % steps)" : u"", # New in v2.6.6.0
     "DPI scaling statusbar:*" : u"", # New in v2.6.6.0
     "Advanced settings" : u"", # New in v2.6.7.1
+    "Sets the sensitivity of the mouse movement on the status bar, for timeline range move (with or without Shift), lower value more movement" : u"", # New in v2.6.8.7
+    "Timeline move on status bar sensitivity:" : u"", # New in v2.6.8.7
+    "1 number" : u"", # New in v2.6.8.7
+    "4 numbers" : u"", # New in v2.6.8.7
+    "9 numbers" : u"", # New in v2.6.8.7
+    "How many additional numbers should be displayed in the timeline when a range has been set" : u"", # New in v2.6.8.7
+    "Timeline range numbers count:" : u"", # New in v2.6.8.7
     "After creating a new clip, show available memory in the status bar if memory is less than x MB" : u"", # New in v2.6.7.1
     "Show available system memory (0 disabled)" : u"", # New in v2.6.7.1
     "Add tab to group" : u"", # New in v2.5.0
@@ -551,6 +560,8 @@ messages = {
     "Previous tab" : u"Vorheriger Tab",
     "Switch to previous script tab" : u"Schalte zum vorherigen Skript-Tab",
     "Show the scrap window" : u"Zeige das Ablage Fenster",
+    "Clear file history" : u"Datei History löschen", # New in v2.6.8.7
+    "Clear the recent file list" : u"Liste der zuletzt verwendeten Dateien löschen", # New in v2.6.8.7
     "&Exit" : u"&Beenden",
     "Exit the program" : u"Programm beenden",
     "&Edit" : u"&Bearbeiten",
@@ -723,6 +734,7 @@ messages = {
     "Clear tab trim editor selections (hide the trim editor if visible)" : u"", # New in v2.6.6.0
     "Clear all selections Globally" : u"", # New in v2.6.6.0
     "Clear all the tab trim editor selections (hide the trim editor if visible)" : u"", # New in v2.6.6.0
+    "Timeline range" : u"", # New in v2.6.8.7
     "Zoom video preview to 25%" : u"Zoom Video-Vorschaufunktion auf 25%",
     "Zoom video preview to 50%" : u"Zoom Video-Vorschaufunktion auf 50%",
     "Zoom video preview to 100% (normal)" : u"Zoom Video-Vorschaufunktion auf 100%",
@@ -852,12 +864,12 @@ messages = {
     "If checked, the video preview will not be shown under any circumstances" : u"Wenn angehakt, wird unter keinen Umständen die Video-Vorschaufunktion gezeigt werden",
     "Hide the video window scrollbars" : u"", # New in v2.6.7.2
     "Hide video window scrollbars" : u"Videofenster Scrollbalken verstecken",
-    "Accessing AviSynth in threads" : u"Zugriff auf AviSynth in Threads", # New in v2.6.7.7
+    "Accessing AviSynth in threads" : u"Zugriff auf AviSynth in Threads",
     "Use threads when accessing avisynth (load/release clip and get frame)" : u"", # New in v2.6.7.0
-    "Please test and report! Use the new frame thread routine. Beta! for testing" : u"", # New in v2.6.7.7
-    "Use new frame thread routine. Beta!" : u"Verwende neue Frame Thread Routine. Beta!", # New in v2.6.7.7
+    "Please test and report. Use advanced frame thread routines" : u"", # New in v2.6.8.7
+    "Use advanced frame thread. Beta!" : u"", # New in v2.6.8.7
     "AvsPmod should normally be closed after a thread has been canceled by the user. This option tries to assign the clip to the script after the thread has internaly finished." : u"", # New in v2.6.7.7
-    "On cancel assign the clip later" : u"Nach Abbruch Clip später zuweisen", # New in v2.6.7.7
+    "On cancel assign the clip later" : u"Nach Abbruch Clip später zuweisen",
     "Associate .avs files with AvsPmod" : u"Assoziiere .avs Dateien mit AvsPmod",
     "Configure this computer to open .avs files with AvsP when double-clicked. Run again to disassociate" : u"", # New in v2.4.0
     "Edit the various AviSynth script fonts and colors" : u"Bearbeite die verschiedenen Schriftarten und Farben im Avisynth-Skript",
@@ -890,7 +902,7 @@ messages = {
     "Open the avisynth help html" : u"Öffne Avisynth-HTML-Hilfe",
     "Open the Preview filter examples" : u"", # New in v2.6.6.0
     "Preview filter example" : u"Vorschau Filter Beispiel",
-    "Accessing in threads readme" : u"Zugriff in Threads liesmich", # New in v2.6.7.7
+    "Accessing in threads readme" : u"Zugriff in Threads liesmich",
     "Open the Access in threads readme" : u"", # New in v2.6.7.4
     "DPI Info" : u"", # New in v2.6.6.0
     "DPI information" : u"", # New in v2.6.6.0
@@ -933,6 +945,14 @@ messages = {
     "Auto preview" : u"", # New in v2.6.6.0
     "Reposition to" : u"", # New in v2.2.1
     "Disable refresh" : u"", # New in v2.6.7.4
+    "Custom frame range" : u"", # New in v2.6.8.7
+    "Frame range 30 to n.. or set start,end separated by comma" : u"", # New in v2.6.8.7
+    "Percent" : u"", # New in v2.6.8.7
+    "Show nothing" : u"", # New in v2.6.8.7
+    "Show time" : u"", # New in v2.6.8.7
+    "Auto scroll" : u"", # New in v2.6.8.7
+    "Auto reset" : u"", # New in v2.6.8.7
+    "Custom..." : u"", # New in v2.6.8.7
     "Crop editor" : u"Cropeditor",
     "You can drag the crop regions with the left mouse button when this dialog is visible, cropping the edge closest to the initial mouse click." : u"Bei diesem Dialog ,kann die Cropfunktion auch mittels linker Maustaste im Bild ausgeführt werden.",
     "Auto-crop" : u"", # New in v2.4.0
@@ -954,6 +974,7 @@ messages = {
     "Insert Dissolve(trim,) commands: " : u"", # New in v2.5.1.18
     "Insert Dissolve(clips,) commands: " : u"", # New in v2.5.1.18
     "Use the buttons which appear on the video slider handle to create the frame selections to trim." : u"Video-Schieberegler für die Bildauswahl zum trimmen benutzen ",
+    "Hide timeline numbers" : u"", # New in v2.6.8.7
     "Clear" : u"Löschen",
     "The script's directory doesn't exist anymore!" : u"Das Skript Verzeichnis exestiert nicht mehr",
     "Print Preview" : u"", # New in v2.3.1
@@ -981,8 +1002,9 @@ messages = {
     "Cannot use crop editor unless bit depth is set to 8" : u"", # New in v2.5.1 r452
     "No filters found, clear the current saved filters?" : u"", # New in v2.6.6.0
     "Preview filters" : u"", # New in v2.6.6.0
-    "Snapshot 1" : u"", # New in v2.6.6.0
-    "Snapshot 2" : u"", # New in v2.6.6.0
+    "Available Memory: {} MB" : u"", # New in v2.6.8.7
+    "Snapshot %d" : u"", # New in v2.6.8.7
+    "Error snapshot %d" : u"", # New in v2.6.8.7
     "Empty snapshot script" : u"", # New in v2.6.7.3
     "Display" : u"", # New in v2.6.7.0
     "YUV -> RGB" : u"", # New in v2.6.7.0
@@ -1010,6 +1032,8 @@ messages = {
     "Sample type:" : u"Sample-Typ:",
     "bits" : u"Bits",
     "samples" : u"Samples", 
+    "Bookmarks:" : u"", # New in v2.6.8.7
+    "Timeline selections:" : u"", # New in v2.6.8.7
     "Could not find the macros folder!" : u"", # New in v2.2.1
     "Failed to import the selected tool" : u"Werkzeug importieren ist Fehlgeschlagen",
     "Basic (1)" : u"", # New in v2.5.1 r452
@@ -1089,13 +1113,16 @@ messages = {
     "AvsPmod Website" : u"", # New in v2.5.1 r452
     "Active thread on Doom9's forum" : u"", # New in v2.2.1
     "This program is freeware under the GPL license." : u"Dieses Programm ist Freeware unter der GPL Lizenz.",
+    "Input a frame number or time (hr:min:sec) and hit Enter. Right-click to retrieve from history. Or input a text and set the bookmark title." : u"", # New in v2.6.8.7
     "Drop frames" : u"", # New in v2.4.0
     "Half speed" : u"", # New in v2.6.6.0
     "Custom unit" : u"", # New in v2.6.6.3
     "1 Minute" : u"", # New in v2.6.6.3
     "1 Second" : u"", # New in v2.6.6.3
+    "1 Frame" : u"", # New in v2.6.8.7
     "bookmark highlight color..." : u"", # New in v2.6.3.5
     "selection highlight color..." : u"", # New in v2.6.3.5
+    "set colors" : u"", # New in v2.6.8.7
     "bell at bookmarks" : u"", # New in v2.5.1.18
     "highlight bookmarks" : u"", # New in v2.5.1.18
     "Set bookmark title" : u"", # New in v2.6.6.0
@@ -1103,6 +1130,12 @@ messages = {
     "copy" : u"", # New in v2.2.1
     "paste" : u"", # New in v2.2.1
     "clear history" : u"", # New in v2.2.1
+    "Frames: %i" : u"", # New in v2.6.8.7
+    "Create trim" : u"", # New in v2.6.8.7
+    "Remove" : u"", # New in v2.6.7.2
+    "Remove all" : u"", # New in v2.6.8.7
+    "Remove all other" : u"", # New in v2.6.8.7
+    "Trim editor..." : u"", # New in v2.6.8.7
     "Cannot switch tabs while crop editor is open!" : u"Kann keine Tabs schalten,weil der Cropeditor noch geöffnet ist",
     "Cannot switch tabs while trim editor is open!" : u"Tabs können nicht geschaltet werden,solange der Trim editor geöffnet ist.",
     "Invalid crop values detected.  Continue?" : u"Unzulässige Crop-Werte ermittelt. Weitermachen?",
@@ -1196,6 +1229,7 @@ messages = {
     "Waiting for avisynth clip" : u"", # New in v2.6.7.0
     "Clip process finished" : u"", # New in v2.6.7.7
     "Clip not initialized" : u"", # New in v2.6.7.7
+    "%s - Initialize clip: %s" : u"", # New in v2.6.8.7
     "Invalid slider text: min > max" : u"Ungültiger Schiebereglertext: min > max",
     "Invalid slider text: value not in bounds" : u"Ungültiger Schiebereglertext: Wert nicht in Grenzen",
     "Invalid slider text: bad modulo label" : u"Ungültiger Schiebereglertext: Fehl modulo Kennzeichnung",
@@ -1226,7 +1260,6 @@ messages = {
     "Joined or disabled filters found: filter1.filter2\nOnly the first filter can have a toggle tag" : u"", # New in v2.6.7.2
     "Enter new name" : u"", # New in v2.6.7.3
     "Rename toggle tag" : u"", # New in v2.6.7.3
-    "Remove" : u"", # New in v2.6.7.2
     "Add child" : u"", # New in v2.6.7.2
     "Remove child" : u"", # New in v2.6.7.2
     "Toggle \"%(label)s\" section" : u"Umschalten \"%(label)s\" Abschnitt",
@@ -1256,6 +1289,8 @@ messages = {
     "Failed to open the AVI file" : u"Konnte die AVI-Datei nicht öffnen",
     "Failed to open the AVI frame" : u"Konnte das AVI-Einzelbild nicht öffnen",
     "Failed to retrieve AVI frame" : u"Konnte das AVI-Einzelbild nicht wiederherstellen",
+    "Waiting for Avisynth, thread still running.\nThis dialog is automatically closed when avisynth returns.\nIf you abort this process, you should restart the program!" : u"", # New in v2.6.8.7
+    "Waiting for Avisynth, thread still running.\nThis dialog is automatically closed when avisynth returns.\nIf you abort this process, the clip will assign later." : u"", # New in v2.6.8.7
     "Ctrl" : u"",
     "Alt" : u"",
     "Shift" : u"",
@@ -1303,6 +1338,7 @@ messages = {
     "Message" : u"Meldung",
     "Select an item to delete first" : u"Erst ein Element auswählen um zu löschen",
     "Are you sure you want to delete item %(key)s?" : u"Das Element wirklich löschen %(key)s?",
+    "Error: minValue must be less than maxValue" : u"Fehler: Min Wert muss weniger sein als Max Wert",
 
     #--- Tool: resize_calc.py ---#
     "Resize calculator..." : u"Resize-Calculator...",
@@ -1422,17 +1458,22 @@ messages = {
     "Bookmarks to Chapter" : u"", # New in v2.3.0
     "Bookmarks to Trims" : u"", # New in v2.6.3.5
     "ConditionalReader file from bookmarks" : u"", # New in v2.3.0
+    "ConditionalReader file from WriteFile" : u"", # New in v2.6.8.7
     "DeleteFrame" : u"", # New in v2.3.0
     "DuplicateFrame" : u"", # New in v2.3.0
     "Import bookmarks from file" : u"", # New in v2.3.1
     "Open Image Sequence" : u"", # New in v2.6.3.5
     "Preview from current point" : u"", # New in v2.3.0
+    "PreviewEncode" : u"", # New in v2.6.8.7
+    "PreviewResize" : u"", # New in v2.6.8.7
     "Random Clip Order" : u"", # New in v2.3.0
+    "RemovePing" : u"", # New in v2.6.8.7
     "Save Image Sequence" : u"", # New in v2.3.0
     "Selected trims to selections" : u"", # New in v2.6.3.5
     "Shift Bookmarks by frames" : u"", # New in v2.3.0
     "Example (Resize)" : u"", # New in v2.3.0
     "Examples" : u"", # New in v2.3.0
+    "Extra" : u"", # New in v2.6.8.7
     "Customized" : u"", # New in v2.3.0
     "bilinear" : u"", # New in v2.3.0
     "bicubic" : u"", # New in v2.3.0
@@ -1448,6 +1489,8 @@ messages = {
     "Encoding example" : u"", # New in v2.3.0
     "Encoding example 2" : u"", # New in v2.3.0
     "Optimize Sliders" : u"", # New in v2.3.0
+    "DeleteEncodings" : u"", # New in v2.6.8.7
+    "Save as Tiff_rgb48" : u"", # New in v2.6.8.7
 
     #--- Macro: Bookmarks at Intervals ---#
     "Choose a frame step or a number of intervals" : u"", # New in v2.3.0
@@ -1483,6 +1526,10 @@ messages = {
     "Interpolation only available for Int and Float" : u"", # New in v2.3.0
     "Odd number of bookmarks" : u"", # New in v2.3.0
 
+    #--- Macro: ConditionalReader file from WriteFile ---#
+    "There is not Valus" : u"", # New in v2.6.8.7
+    "ConditionalReader file from WriteFile file" : u"", # New in v2.6.8.7
+
     #--- Macro: Import bookmarks from file ---#
     "All supported files" : u"", # New in v2.3.1
     "Chapters Text files" : u"", # New in v2.3.0
@@ -1512,6 +1559,34 @@ messages = {
 
     #--- Macro: Preview from current point ---#
     "Failed to run the external player!\n\nOpen the macro file in the \"Macros\" subdirectory\nwith a text editor and edit the executable\ndirectory appropriately!" : u"", # New in v2.3.0
+
+    #--- Macro: PreviewEncode ---#
+    "Convert to script color space" : u"", # New in v2.6.8.7
+    "Encode threads:" : u"", # New in v2.6.8.7
+    "Insert trims into script" : u"", # New in v2.6.8.7
+    "Select save path:" : u"", # New in v2.6.8.7
+    "Template:" : u"", # New in v2.6.8.7
+    "Use script dir" : u"", # New in v2.6.8.7
+    "Encode options" : u"", # New in v2.6.8.7
+    "You must first create selections" : u"", # New in v2.6.8.7
+    "Last encoding returns error. Process is canceled\n" : u"", # New in v2.6.8.7
+    "Error, cannot insert the encode preview text\nTrying to create new tab" : u"", # New in v2.6.8.7
+    "Encoding finished\n\nElapsed time: %s\n%s%s" : u"", # New in v2.6.8.7
+
+    #--- Macro: PreviewResize ---#
+    "BicubicResize" : u"", # New in v2.6.8.7
+    "Spline16Resize" : u"", # New in v2.6.8.7
+    "Spline36Resize" : u"", # New in v2.6.8.7
+    "Spline64Resize" : u"", # New in v2.6.8.7
+    "0" : u"", # New in v2.6.8.7
+    "0.5" : u"", # New in v2.6.8.7
+    "0.75" : u"", # New in v2.6.8.7
+    "1.5" : u"", # New in v2.6.8.7
+    "2.0" : u"", # New in v2.6.8.7
+    "Border:" : u"", # New in v2.6.8.7
+    "Fit only height" : u"", # New in v2.6.8.7
+    "Resize Filter:" : u"", # New in v2.6.8.7
+    "Resise options" : u"", # New in v2.6.8.7
 
     #--- Macro: Save Image Sequence ---#
     "Save image sequence" : u"", # New in v2.4.0
