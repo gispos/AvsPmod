@@ -31,6 +31,17 @@ Now all videos should be frame accurately synchronized.
 #####
 
 --------------------------
+Version 2.6.8.8 [2021-08-02] GPo
+--------------------------
+* Completely new threaded playback routine.
+- especially under Win10 this should result in lower CPU usage, higher speed and a smoother playback. 
+* Add custom editor mouse wheel handler ( Program options > Misc2 > 'Mouse wheel scroll rate on editor' )
+- One user reports problems with the mouse wheel while the PC is running for a long time (40 days). Maybe it helps.
+- Or you want change the scroll rate: 1 to 5 lines ( default 0 = custom handler disabled )
+* Add to video slider context menu 'Timeline to trims' and 'Timeline to clips'
+- inserts the complete timeline into the script as trims, separated by the selections. 
+
+--------------------------
 Version 2.6.8.7 [2021-07-15] GPo
 --------------------------
 * Add to menu File > 'Clear file history'
