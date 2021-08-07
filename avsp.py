@@ -4587,19 +4587,19 @@ class SliderPlus(wx.Panel):
         self.brushOffset = wx.Brush(colorHighlight)
         self.penOffset = wx.Pen(colorHighlight)
 
-    def _OnLeftDown(self, event):
-        def StopPlaying():  # GPo 2020
-            if self.app.playing_video:
-                self.app.PlayPauseVideo()
-                self.app.playing_video = '' # starts playing again OnSliderReleased
+    def _StopPlaying(self):  # GPo 2020
+        if self.app.playing_video:
+            self.app.PlayPauseVideo()
+            self.app.playing_video = '' # starts playing again OnSliderReleased
 
+    def _OnLeftDown(self, event):
         self.app.lastshownframe = self.app.paintedframe
         mousepos = event.GetPosition()
         x, y, w, h = self.GetRect()
         rectHandle = self._getRectHandle()
         rectBox = wx.Rect(0, 0+self.yo, w, h-self.yo-self.yo2)
         if rectHandle.Inside(mousepos):
-            StopPlaying()
+            self._StopPlaying()
             self.isclicked = True
             self.xdelta = mousepos.x - rectHandle.x
             self.CaptureMouse()
@@ -4612,7 +4612,7 @@ class SliderPlus(wx.Panel):
         elif self.selmode == 1 and self._HitTestHandleDeadZone(mousepos):
             pass
         elif rectBox.Inside(mousepos):
-            StopPlaying()
+            self._StopPlaying()
             self.isclicked = True
             self.CaptureMouse()
             oldvalue = self.value
@@ -4644,6 +4644,7 @@ class SliderPlus(wx.Panel):
             mousepos = event.GetPosition()
             index = self.HitTestBookmark(mousepos)
             if index is not None:
+                self._StopPlaying()
                 self.SetValue(index)
                 self.adjust_handle = False
                 self._SendScrollEndEvent()
@@ -5612,7 +5613,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.OnMenuTabChangeLoadBookmarks(None) # enable/disable 'Clear tab bookmarks' menu
         self.play_speed_factor = 1.0
         self.play_drop = False
-        #self.play_fastFunc = self.options['playfastfunc']
         self.UseAviThread = self.options['avithread'] # GPo, use thread for load/unload clip, read frame
         self.getPixelInfo = False
         self.sliderOpenString = '[<'
@@ -6503,7 +6503,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'tabautopreview': False,                 # GPo 2021
             'hidescrollbars': False,                 # GPo 2021
             'scriptwindowbindmousewheel': 0,     # GPo 2021 # user problem with mouse wheel on editor
-            #'playfastfunc': True,                   # GPo 2020
             'playloop': False,                       # GPo 2020
             'playbackthread': True,                  # GPo 2021, if true use separate thread for playback
             'avithread': False,                      # GPo 2021, if true use separate thread for loading and freeing the clip and frame
@@ -7058,7 +7057,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 pos = long_name.find('_' + short_name)
                 if pos == -1:
                     print>>sys.stderr, 'Error parsing plugin string at function "%s"\n' % long_name
-                    break
+                    continue # GPo new 2021
+                    #break
                 dllname = long_name[:pos]
 
                 self.installed_plugins.add(dllname)
@@ -8101,7 +8101,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     (_('Maximum speed'), 'Shift+Numpad *', self.OnMenuVideoPlayMax, _('Play the video as fast as possible without dropping frames')),
                     (''),
                     (_('Play loop'), '', self.OnMenuVideoPlayLoop, _('Loop playback for trim editor selections or at the end of the clip'), wx.ITEM_CHECK, self.options['playloop']),
-                    #(_('Use faster playback routine'), '', self.OnMenuVideoPlayFunc, _('0 % to 38 % faster playback, depending on CPU load'), wx.ITEM_CHECK, self.options['playfastfunc']),
                     (_('Use separate thread'), '', self.OnMenuVideoSeparateThread, _('Use a separate thread for playback. If avisynth threads used, playback uses also threads'), wx.ITEM_CHECK, self.options['playbackthread']),
                     ),
                 ),
@@ -8652,12 +8651,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     # GPo 2021
     class sliderWindowEx(wx.ScrolledWindow):
         #def __init__(self, parent, app, id=wx.ID_ANY, pos=(0,0), size=(10,10), style=wx.STATIC_BORDER|wx.TAB_TRAVERSAL|wx.NO_FULL_REPAINT_ON_RESIZE):
-        #def __init__(self, parent, app, id=wx.ID_ANY, pos=(0,0), size=(10,10), style=wx.STATIC_BORDER|wx.CLIP_CHILDREN):
-        def __init__(self, parent, app, id=wx.ID_ANY, pos=(0,0), size=(2,2), style=wx.STATIC_BORDER|wx.NO_FULL_REPAINT_ON_RESIZE|wx.TAB_TRAVERSAL|wx.CLIP_CHILDREN):
+        def __init__(self, parent, app, id=wx.ID_ANY, pos=(0,0), size=(10,10), style=wx.STATIC_BORDER|wx.CLIP_CHILDREN):
+        #def __init__(self, parent, app, id=wx.ID_ANY, pos=(0,0), size=(2,2), style=wx.STATIC_BORDER|wx.NO_FULL_REPAINT_ON_RESIZE|wx.TAB_TRAVERSAL|wx.CLIP_CHILDREN):
             wx.ScrolledWindow.__init__(self, parent, id, pos=pos, size=size, style=style)
             SetFontPPI(self)
             self.SetDoubleBuffered(True)
-            self.SetScrollRate(1, 1)
+            self.SetScrollRate(40, 40)
             # if not wx.FULL_REPAINT_ON_RESIZE set, we must repaint it on resize if double buffered
             def _OnSize(event):
                 self.Refresh()
@@ -12278,13 +12277,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if self.playing_video:
             self.PlayPauseVideo(refreshFrame=False)
             self.PlayPauseVideo()
-    """
-    def OnMenuVideoPlayFunc(self, event):
-        self.play_fastFunc = event.IsChecked()
-        self.options['playfastfunc'] = self.play_fastFunc
-        #self.UpdateVideoMenuItem(_('Play video'), _('Use faster playback routine'), '', self.play_fastFunc)
-        self.UpdateVideoMenuItems()
-    """
 
     def OnMenuVideoSeparateThread(self, event):
         self.CheckPlayback()
@@ -13445,6 +13437,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         trim = ' Trim(%i, %i)' % (start, stop)
                         self.InsertTextAtScriptEnd('#SelectedTrims: ' + trim)
                     script.Colourise(pos, script.GetTextLength()-pos) # needed for ScriptChanged
+                    script.EnsureCaretVisible()
                 def OnSplitIntoTrims(event, toClips=False):
                     selections = self.GetSliderSelections()
                     maxStop = self.currentScript.AVI.Framecount-1 if previewOK else self.videoSlider.GetMax()
@@ -18702,9 +18695,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 if script.sliderTexts != script.oldSliderTexts:
                     if not self.createUserSliders(script):
                         doFocusScript = True
+                script.sliderWindow.Freeze()
                 script.videoSidebarSizer.Layout()
                 script.sliderWindow.FitInside()
-                script.sliderWindow.Refresh()
+                script.sliderWindow.Thaw()
 
             # Resize the video window as necessary
             oldSize = self.videoWindow.GetVirtualSize()
@@ -20080,7 +20074,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 state = bool(script.SliderFoldsBackup[label])
                 if state: # count the refreshes and do not refresh if count > 10 (refresh is slow, but restores without flicker)
                     i += 1
-                self.ToggleSliderFold(item, fold=not state, refresh=(state and i < 11) or (x == count), scroll=False) # refresh on last item reduce flicker. Strange.
+                #~self.ToggleSliderFold(item, fold=not state, refresh=(state and i < 11) or (x == count), scroll=False) # refresh on last item reduce flicker. Strange.
+                # GPo new
+                self.ToggleSliderFold(item, fold=not state, refresh=False, scroll=False) # Win10 no refresh needed, Win7 ?
             else:
                 self.ToggleSliderFold(item, fold=True, refresh=False, scroll=False)
 
@@ -20793,11 +20789,20 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if self.currentSliderWindow.customTheme:
                 item.SetForegroundColour(self.currentSliderWindow.foreExtraBtn1)
             item.Bind(wx.EVT_CONTEXT_MENU, OnContextMenu)
+        def GetResponse(btn):
+            btn.SetLabel(_('Done'))
+            btn.Update()
+            wx.MilliSleep(500)
+            if btn == btnSnapshot1:
+                btn.SetLabel('Make 1  Show 1')
+            else: btn.SetLabel('Make 2  Show 2')
+            btn.Update()
         def OnBtnSnapshot1(event):
             btn = event.GetEventObject()
             x,y = event.GetPosition()
             if x < (btn.GetSize()[0] / 2) - 3:
                 self.TakeSnapShot(0)
+                GetResponse(btn)
             elif x > (btn.GetSize()[0] / 2) + 3:
                 self.ShowSnapShot(0, showMsg=False)
         def OnBtnSnapshot2(event):
@@ -20805,6 +20810,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             x,y = event.GetPosition()
             if x < (btn.GetSize()[0] / 2) - 3:
                 self.TakeSnapShot(1)
+                GetResponse(btn)
             elif x > (btn.GetSize()[0] / 2) + 3:
                 self.ShowSnapShot(1, showMsg=False)
         btnSnapshot1.Bind(wx.EVT_LEFT_UP, OnBtnSnapshot1)
@@ -21325,7 +21331,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.ToggleSliderFold(item, fold=self.foldAllSliders, refresh=False)
         script.sliderSizerNew.Layout()
         script.sliderWindow.FitInside()
-        #script.sliderWindow.Refresh()
         script.sliderWindow.Thaw()
         self.foldAllSliders = not self.foldAllSliders
 
@@ -21575,7 +21580,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             inputdc.SetDeviceOrigin(self.xo, self.yo)
         else:
             inputdc.SetDeviceOrigin(0, 0)
-        if self.zoomfactor == 1 and not self.flip and not self.zoomwindow:
+        if self.zoomfactor == 1 and not self.flip and not self.zoomwindow: # and not self.playing_video:
             if self.cropDialog.IsShown() or self.trimDialog.IsShown():
                 w = script.AVI.DisplayWidth
                 h = script.AVI.DisplayHeight
@@ -21637,12 +21642,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             """
             if (self.zoomfactor != 1 or self.zoomwindow) and (self.zoom_antialias and isPaintEvent):
                 inputdc = wx.GCDC(inputdc)
-
-            #try: # DoPrepareDC causes NameError in wx2.9.1 and fixed in wx2.9.2
-                #self.videoWindow.DoPrepareDC(inputdc)
-            #except:
-                #self.videoWindow.PrepareDC(inputdc)
-
+            # DoPrepareDC causes NameError in wx2.9.1 and fixed in wx2.9.2
             self.videoWindow.DoPrepareDC(inputdc)
             inputdc.SetUserScale(self.zoomfactor, self.zoomfactor)
             inputdc.Blit(0, 0, w, h, dc, 0, 0)
@@ -22002,9 +22002,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         th.daemon = True
         script.AviThread = th
         th.start()
-        time.sleep(0.001)
+        _t = time.time() + 1.0
+        wx.MilliSleep(1)
+        while th.isAlive() and time.time() <= _t: # its faster as join
+            #wx.MicroSleep(500)
+            wx.MilliSleep(1)
         if th.isAlive():
-            th.join(10)
+            th.join(9.0)
 
         """
         We have to block the app to prevent access to the script.
@@ -22067,21 +22071,22 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             return True
 
         if script.FrameThread is None:# or not script.FrameThread.isAlive(): # HM...
-            #script.FrameThread = None
             script.FrameThread = self.FrameThread(script)
 
         th = script.FrameThread
         if th.IsRunning(): # a bit faster when check running here
             _t = time.time() + 2.0
             while th.isAlive() and th.IsRunning() and time.time() <= _t:
-                time.sleep(0.00001)
+                wx.MilliSleep(2)
             if self.FrameThread_Running(script, showWarn):
                 return False
 
         th.Start(nr)
         _t = time.time() + 10.0
         while th.isAlive() and th.IsRunning() and time.time() <= _t:
-            pass
+            wx.MilliSleep(1)
+            #wx.MicroSleep(500)
+            #time.sleep(0.0005)
         if th.IsRunning():
             return self.WaitForFrameThread(script, th, nr)
         else:
@@ -22247,6 +22252,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if os.name == 'nt': # default Windows resolution is ~10 ms, ( out of date )
                 def playback_timer2(id, reserved, factor, reserved1, reserved2):
                     """"needed for playthread speed boost"""
+                    #AsyncCall(self.SaveCallYield).Wait()
                     pass
 
                 def playback_timer(id, reserved, factor, reserved1, reserved2):
@@ -22257,7 +22263,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         self.timeEndPeriod(self.play_timer_resolution)
                         return
 
-                    # GPo 2020, for smoother playback
+                    # GPo 2020, for fps
                     startTime = time.time()
                     """
                     if debug_stats:
@@ -22333,11 +22339,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                 return
                     self.SaveCallYield()
 
-                    # GPo 2020, plays smoother only on Win7, on Win10 not good
-                    #if not threaded:
-                    #while self.playing_video and (time.time() < (startTime + self.interval)):
-                        #time.sleep(0.0001)
-                        #wx.Yield() # leave it here!
 
                 def WindowsTimer(interval, callback, periodic=True):
                     """High precision timer (1 ms) using Windows Multimedia"""
@@ -22385,6 +22386,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 ################################################################
                 ##
                 ##  GPo 2021, Play Thread
+                ##  geting 80 fps with a 1920x1080 video, but somtimes 180 fps down't kwnow why
                 ##
                 ################################################################
 
@@ -22437,36 +22439,56 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     if self.ShowVideoFrame(self.videoSlider.startOffset):
                         self.PlayPauseVideo()
 
-                def UpdateSelf(script, framenum, addon0):
+                def th_PaintFrame(script, frame):
+                    re = False
                     try:
-                        self.videoSlider.SetValue(framenum)
-                        self.frameTextCtrl.ChangeValue(str(framenum))
-                        self.frameTextCtrl.Update()
-                        if self.separatevideowindow:
-                            self.videoSlider2.SetValue(framenum)
-                            self.frameTextCtrl2.ChangeValue(str(framenum))
-                            self.frameTextCtrl2.Update()
                         dc = wx.ClientDC(self.videoWindow)
-                        self.PaintAVIFrame(dc, script, framenum)
-                        self.SetVideoStatusText(framenum, primary=True, addon0=addon0)
+                        re = self.PaintAVIFrame(dc, script, frame)
                     except:
                         return False
-                    return True
+                    return re
+
+                def updateCtrls(frame, fps):
+                    try:
+                        self.videoSlider.SetValue(frame)
+                        self.frameTextCtrl.ChangeValue(str(frame))
+                        self.frameTextCtrl.Update()
+                        if self.separatevideowindow:
+                            self.videoSlider2.SetValue(frame)
+                            self.frameTextCtrl2.ChangeValue(str(frame))
+                            self.frameTextCtrl2.Update()
+                        self.SetVideoStatusText(frame, primary=True, addon0=fps)
+                    except:
+                        pass
+
+                def th_Update(frame, fps):
+                    AsyncCall(updateCtrls, frame, fps).Wait()
+                ### test
+                def th_get_frame(script, frame, reEvt):
+                    script.AVI.display_clip.get_frame(frame)
+                    reEvt.set()
 
                 def play(frame, interval, factor):
                     script = self.currentScript
                     play_speed_factor = self.play_speed_factor
                     drop_count = self.drop_count
                     play_initial_frame = frame
-                    play_initial_time =  time.time() - 0.00001
+                    play_initial_time = time.time() - 0.00001
                     self_interval = self.interval
                     self_id = script.PlayThreadId
                     startTime = time.time()
+                    updateTh = None
+                    ### test
+                    getFrameTh = None
+                    #reQu = queue.LifoQueue()
+                    #reEvent = threading.Event()
+                    #_next_frame = -1
+                    ### test end
                     while self.playing_video and self_id == script.PlayThreadId:
                         try:
                             fps = float(self.currentframenum - play_initial_frame)  / (time.time() - play_initial_time)
                         except:
-                            fps = 0
+                            fps = 0.00
                         sfps = 'fps %4.2f ' % fps
 
                         if (drop_count == 1) and play_speed_factor != 'max':
@@ -22490,23 +22512,69 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                             self.loop_start = self.loop_end = -1
                                     else:
                                         self.loop_start = self.loop_end = -1
+                        ### test
+                        #nextFrame = frame + increment + 1
+                        ### test end
 
                         frame += increment
                         self.currentframenum = frame
-                        script.AVI.display_clip.get_frame(frame)
+                        """
+                        ### test with 3 active threads, but not faster
+                        if getFrameTh and _next_frame == frame:
+                            if reEvent.wait(6.0) is True:
+                                reEvent.clear()
+                                _next_frame = nextFrame
+                                getFrameTh = threading.Thread(target=th_get_frame, args=(script, nextFrame, reEvent))
+                                getFrameTh.daemon = True
+                                getFrameTh.start()
+                            else:
+                                errmsg = 'Play thread error wait for frame'
+                                wx.CallAfter(FrameError, 1, script, errmsg, frame)
+                                return
+                        else:
+                            # get first the important frame !!
+                            script.AVI.display_clip.get_frame(frame)
+                            #script.AVI._GetFrame(frame)
+                            if not getFrameTh or (getFrameTh and not getFrameTh.isAlive()):
+                                reEvent.clear()
+                                _next_frame = nextFrame
+                                getFrameTh = threading.Thread(target=th_get_frame, args=(script, nextFrame, reEvent))
+                                getFrameTh.daemon = True
+                                getFrameTh.start()
+                        ### test end
+                        """
 
+                        script.AVI.display_clip.get_frame(frame) # normal used, without test
                         errmsg = script.AVI.display_clip.get_error()
                         if errmsg is not None:
                             wx.CallAfter(FrameError, 1, script, errmsg, frame)
                             break
 
-                        startTime += self_interval
-                        time.sleep(max(startTime-time.time(), 0))
+                        if self_interval > 0:
+                            startTime += self_interval
+                            time.sleep(max(startTime-time.time(), 0))
                         startTime = time.time()
-                        if not AsyncCall(UpdateSelf, script, frame, sfps).Wait():
+
+                        """ interresant
+                        dc = wx.ClientDC(self.videoWindow)
+                        self.videoWindow.DoPrepareDC(dc)
+                        if not script.AVI.DrawFrame(frame, dc):
+                            wx.CallAfter(self.ErrorMessage_GetFrame, script, frame)
+                            break
+                        """
+                        # paint frame
+                        if not AsyncCall(th_PaintFrame, script, frame).Wait():
                             errmsg = 'Play thread unknown error'
                             wx.CallAfter(FrameError, 3, script, errmsg, frame)
                             break
+                        # update the controls with a separate thread
+                        if updateTh and updateTh.isAlive():
+                            pass
+                        else:
+                            updateTh = threading.Thread(target=th_Update, args=(frame, sfps,))
+                            updateTh.daemon = True
+                            updateTh.start()
+                        # and now update the program
                         self.SaveCallYield()
 
                         errmsg = script.AVI.error_message
@@ -22515,7 +22583,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                             break
 
                         script.lastFramenum = frame
-
                         if not self.playing_video:
                             break
 
@@ -22542,8 +22609,18 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                     wx.CallAfter(self.PlayPauseVideo) # stop playback
                                     break
 
+                    # on thread termination wait for the other threads
+                    if updateTh and updateTh.isAlive():
+                        updateTh.join(5)
+                    if getFrameTh and getFrameTh.isAlive():
+                        getFrameTh.join(10)
+                    if (updateTh and updateTh.isAlive()) or (getFrameTh and getFrameTh.isAlive()):
+                        errmsg = "Play thread hangs, it's important that you save the scripts and restart the program!"
+                        wx.CallAfter(FrameError, 3, script, errmsg, frame)
+                    # additional indicator and break, thread finished
                     self.currentScript.PlayThreadId = -1
 
+                # Befor start the playback check the threads
                 if self.AviThread_Running(script, prompt=True) or \
                     self.FrameThread_Running(script, prompt=True) or \
                     self.PlayThread_Running(script, prompt=True):
@@ -22551,7 +22628,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     self.playing_video = True
                     wx.CallAfter(self.PlayPauseVideo)
                     return
-
+                # run the playback
                 th = threading.Thread(target=play, args=(self.currentframenum, interval, factor,))
                 th.daemon = True
                 script.PlayThread = th

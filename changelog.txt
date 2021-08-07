@@ -29,6 +29,27 @@ If a group was previously selected, delete that group first. Make sure 'Add tab 
 Go to the desired position with each video (tab), then select the same group for each video ('Add tab to group'). 
 Now all videos should be frame accurately synchronized.
 #####
+About Avisynth filter plugins *.dll naming:
+Please do not use strange characters in the names of the plugins. It is best not to rename the *.dll files. 
+Avisynth and AvsPmod can have problems with it. Function names have to be assigned to the associated dll, 
+the name has to be split and this can lead to errors. 
+AvsPmod can only provide a user-friendly editor if he has no problems with the name of the dll and its function. 
+If, for example, there is a '-' in the file name of the dll, AvsPmod will report it at startup, 
+please rename this dll and replace the '-' with a '_' 
+
+--------------------------
+Version 2.6.8.9 [2021-08-02] GPo
+--------------------------
+* Improved get_frame threading ( lower CPU usage on Win10 )
+* Play thread now multi threaded. 
+- the speed up varies on the video dimensions and used filters and
+- goes down to 0 with heavy filters or big video dimensions (no hardware acceleration).
+- on my sytem: video 1280x720 without a filter and 100% zoom, before 120 fps now 178 fps
+* Slider window refresh on Win10 improved.
+* Slider window snapshot button (label) gets feedback on making a snapshot.
+* Slider window scroll rate increased to 40 pixel 
+* Added to filterdb.dat 'KNLMeansCL' 
+* Some other changes
 
 --------------------------
 Version 2.6.8.8 [2021-08-02] GPo
