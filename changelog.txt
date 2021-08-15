@@ -41,6 +41,7 @@ please rename this dll and replace the '-' with a '_'
 Version 2.6.9.0 [2021-08-15] GPo
 --------------------------
 * Play thread modified, ~14% faster ( without filter ).
+- hopefully bug under Win7 fixed 
 * Bugfix middle mouse button on a selections mark in the timeline ( trying to delete the mark causes an error )
 * Bugfix 'Save Image Sequence', fixed AvsPmod and macro code
 * Added to filterdb.dat Dogway's ex_contrast

@@ -22198,7 +22198,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     while th.isAlive() and time.time() <= t:
                         wx.GetApp().ProcessPendingEvents()
                         #self.SaveCallYield() # not good
-                        wx.MilliSleep(20)
+                        th.join(0.1)
+                        #wx.MilliSleep(20)
                 if self.AviThread_Running(script, prompt=False):
                     script.AviThread.join(5.0)
                 if self.FrameThread_Running(script, prompt=False):
