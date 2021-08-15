@@ -10,7 +10,8 @@ basename = ur''
 padding = 0
 
 # GPo mod: 
-#   make dir if not exists, add options 'From first to last bookmark', 'Add Image Source to the script' 
+#   make dir if not exists, add options 'From first to last bookmark', 'Add Image Source to the script'
+#   12.08.21 fixed bookmarkDict and matrix 
 # -------------------------------------------------------------------------------------------------
 
 
@@ -23,7 +24,34 @@ import pyavs
 # run in thread
 
 self = avsp.GetWindow()
+script = self.currentScript
 tabIndex = avsp.GetCurrentTabIndex()
+avsp_run = avsp.GetSelectedText(index=None).lower().startswith('##avsp_imagesource')
+
+def insertTxt(text):
+    lines = {}
+    lines = avsp.GetText(index=None, clean=False).split('\n')
+    i = 0
+    start = -1
+    end = -1
+    for line in lines:
+        if start < 0 and line.lower().startswith('##avsp_imagesource'):
+            start = self.currentScript.PositionFromLine(i)
+        elif line.lower().startswith('##avsp_end'):
+            end = self.currentScript.PositionFromLine(i)
+        i += 1
+        if start > -1 and end > 0:
+            Break
+    if start > -1:
+        self.currentScript.SetTargetStart(start)
+        if end > 0:
+            end = self.currentScript.GetLineEndPosition(end)
+        else:
+            end = self.currentScript.GetLineEndPosition(start)
+        self.currentScript.SetTargetEnd(end)
+        self.currentScript.ReplaceTarget(text)
+    else:
+        avsp.InsertText(text) 
 
 # Get options
 frames = avsp.Options.get('frames', _('Bookmarks'))
@@ -99,8 +127,16 @@ else:
 # vpy hack, remove when VapourSynth is supported
 if os.name == 'nt' and avsp.GetScriptFilename().endswith('.vpy'):
     avsp.SaveScript()
+
+## GPo alternative, use a thread for get frame (clip must also be a script)	
+"""
+if self.UpdateScriptAVI() is None or not self.previewOK(script):
+    avsp.MsgBox('Script not initialized.')
+    return
+AVS = script.AVI
+"""
 AVS = pyavs.AvsClip(avsp.GetText(clean=True), filename=avsp.GetScriptFilename(), 
-                    workdir=workdir, matrix=self.matrix, interlaced=self.interlaced, 
+                    workdir=workdir, matrix=script.matrix, interlaced=self.interlaced, 
                     swapuv=self.swapuv)
 if AVS.IsErrorClip():
     avsp.MsgBox(AVS.error_message, _('Error'))
@@ -110,6 +146,7 @@ if AVS.IsErrorClip():
 frame_count = avsp.GetVideoFramecount()
 if frames == _('Bookmarks'):
     use_subdirs = False
+    avsp_run = False
     bookmarks = avsp.GetBookmarkList()
     if bookmarks:
         frames = sorted(filter(lambda x: x < frame_count, set(bookmarks))),
@@ -117,6 +154,7 @@ if frames == _('Bookmarks'):
         avsp.MsgBox(_('There is not bookmarks'), _('Error'))
         return
 elif frames == _('Range between bookmarks'):
+    avsp_run = False
     bookmarks = avsp.GetBookmarkList()
     if bookmarks:
         bookmarks = list(set(bookmarks))
@@ -155,6 +193,7 @@ elif frames == _('From first to last bookmark'):
 elif frames == _('Trim editor selections'):
     selections = avsp.GetSelectionList()
     if selections:
+        avsp_run = avsp_run and len(selections) == 1
         frames = [range(lo, hi+1) for lo, hi in selections]
     else:
         avsp.MsgBox(_('There is not Trim editor selections'), _('Error'))
@@ -193,12 +232,15 @@ if not os.path.isdir(dirname): # GPo
 paths = []
 txt = ''
 clip_info = ', fps=' + str(avsp.GetVideoFramerate()) + ', info=False)'
+avsp_run = avsp_run and not use_subdirs
 
 if show_progress:
     progress = avsp.ProgressBox(total_frames, '', _('Saving images...'))
+# GPo, since the bookmarks are script related we get the bookmarks from video slider
+bDict = self.GetBookmarkDict()
 for i, frame_range in enumerate(frames):
     if use_subdirs:
-        dirname2 = os.path.join(dirname, self.bookmarkDict.get(frame_range[0], 
+        dirname2 = os.path.join(dirname, bDict.get(frame_range[0], 
                                          _('scene_{0:0{1}}').format(i+1, scene_digits)))
         if not os.path.isdir(dirname2): os.mkdir(dirname2)
         if not suffix_added:
@@ -214,19 +256,20 @@ for i, frame_range in enumerate(frames):
     first_nr = -1
     last_nr = -1
     for j, frame in enumerate(frame_range):
-        if show_progress and not avsp.SafeCall(progress.Update, len(paths), 
-                                str(len(paths)) + ' / ' + str(total_frames))[0]:
-            break
-            
-        if first_nr == -1:
-            first_nr = frame if frame_suffix else frame_index + j 
-            
-        ret = self.SaveImage(filename % (frame if frame_suffix else frame_index + j), 
-                             frame=frame, avs_clip=AVS, quality=quality, depth=depth)
-        if not ret:
-            break
-        last_nr = frame if frame_suffix else frame_index + j
-        paths.append(ret)
+		if show_progress and not avsp.SafeCall(progress.Update, len(paths), 
+								str(len(paths)) + ' / ' + str(total_frames))[0]:
+			break
+			
+		if first_nr == -1:
+			first_nr = frame if frame_suffix else frame_index + j 
+			
+		ret = self.SaveImage(filename % (frame if frame_suffix else frame_index + j), 
+							 frame=frame, avs_clip=AVS, quality=quality, depth=depth)					 
+		if not ret:
+			break
+		last_nr = frame if frame_suffix else frame_index + j
+		paths.append(ret)
+
         
     if first_nr > -1 and last_nr > -1:
         if txt: 
@@ -242,7 +285,12 @@ else:
 
 if insertSource and txt:
     self.StopPlayback()
-    txt += '\nImg.ConvertToYV12(matrix="rec709")'
+    if avsp_run:
+        txt = '##avsp_ImageSource' + txt
+        txt += '\nImgVid = audioDub(Img.ConvertToYV12(matrix="rec709"), trim(%d, %d))\n' % (first_nr, last_nr) + \
+                'trim(0, %d) + ImgVid + trim(ImgVid.FrameCount() + 1, 0)\n##avsp_end' % (first_nr - 1)
+    else: 
+        txt += '\nImg.ConvertToYV12(matrix="rec709")'
     if addNewTab: 
         avsp.NewTab(copyselected=False)
         tabIndex = avsp.GetTabCount()-1
@@ -251,6 +299,8 @@ if insertSource and txt:
             tabIndex = avsp.GetTabCount()-1
     if avsp.GetCurrentTabIndex() != tabIndex:
         avsp.SelectTab(index=tabIndex, inc=0)
-    avsp.InsertText(txt)
+    if avsp_run:
+        insertTxt(txt)
+    else: avsp.InsertText(txt)
 
 return paths

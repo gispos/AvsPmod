@@ -13523,12 +13523,16 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         mousepos = event.GetPosition()
         index = slider.HitTestBookmark(mousepos)
         if index is not None:
-            bookmarks = slider.GetBookmarks()
-            bmtype = bookmarks[index]
-            if isinstance(bmtype, basestring):
+            if index in slider.selectionsDict:
+                bmtype = slider.selectionsDict[index]
+            elif index in slider.GetBookmarks():
                 bmtype = 0
+            else:
+                return
+            #~if isinstance(bmtype, basestring):
+                #bmtype = 0
             self.DeleteFrameBookmark(index, bmtype)
-            if (bmtype == 0) and index in self.titleDict and (event.ControlDown() or event.AltDown() or event.ShiftDown()):
+            if (bmtype == 0) and index in self.titleDict:
                 del self.titleDict[index]
             self.frameTextCtrl.SetForegroundColour(wx.BLACK)
             self.frameTextCtrl.Refresh()
@@ -16640,14 +16644,16 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if not avs_clip:
             avs_clip = script.AVI
         else:
-            script = None # GPo, I need the script
-            for i in self.scriptNotebook.GetPageCount():
+            # GPo, I need the script for threading, if no script then threading is disabled for get frame
+            # see Macro 'Save Image Sequence'
+            script = None
+            for i in xrange(self.scriptNotebook.GetPageCount()):
                 scr = self.scriptNotebook.GetPage(i)
                 if scr.AVI == avs_clip:
-                    script = src
+                    script = scr
                     break
 
-        if script is None or avs_clip is None:
+        if script is None and avs_clip is None:
             wx.MessageBox(_('No image to save'), _('Error'), style=wx.OK|wx.ICON_ERROR)
             return
 
@@ -16727,8 +16733,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 filename = '%s%s' % (filename, ext)
             #~if ext == '.png' and depth == 16:
             if ext == '.png' and (depth == 16 or depth is None and self.check_RGB48(script)):
-                if self.GetAviDisplayFrame(script, frame):
-                    ret = avs_clip.RawFrame(frame)
+                if script:
+                    if self.GetAviDisplayFrame(script, frame): # use thread if threaded
+                        ret = avs_clip.RawFrame(frame)
+                else:
+                    ret = avs_clip.RawFrame(frame) # else get direct
                 if ret:
                     self.SavePNG(filename, ret, avs_clip.Height / 2)
                     return filename
@@ -16738,7 +16747,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 bmp = wx.EmptyBitmap(w, h)
                 mdc = wx.MemoryDC()
                 mdc.SelectObject(bmp)
-                if self.GetAviDisplayFrame(script, frame):
+                if script:
+                    if self.GetAviDisplayFrame(script, frame): # use thread if threaded
+                        ret = avs_clip.DrawFrame(frame, mdc)
+                else:
                     ret = avs_clip.DrawFrame(frame, mdc)
             if not ret:
                 wx.MessageBox(u'\n\n'.join((_('Error requesting frame {number}').format(number=frame),
@@ -22168,15 +22180,17 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     self.timeEndPeriod(self.play_timer_resolution)
             else:
                 self.play_timer.Stop()
+            script = self.currentScript
             self.playing_video = False # set to false bevor self.ShowVideoFrameFast
+            script.PlayThreadId = 0
             self.zoom_antialias = self.options['zoom_antialias']
+
             self.play_button.SetBitmapLabel(self.bmpPlay)
             self.play_button.Refresh()
             if self.separatevideowindow:
                 self.play_button2.SetBitmapLabel(self.bmpPlay)
                 self.play_button2.Refresh()
-            script = self.currentScript
-            script.PlayThreadId = 0
+
             try: # must wait for thread finish or the thread paint the frame after ShowVideoFrame
                 if self.PlayThread_Running(script, prompt=False):
                     th = script.PlayThread
@@ -22185,7 +22199,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         wx.GetApp().ProcessPendingEvents()
                         #self.SaveCallYield() # not good
                         wx.MilliSleep(20)
-
                 if self.AviThread_Running(script, prompt=False):
                     script.AviThread.join(5.0)
                 if self.FrameThread_Running(script, prompt=False):
@@ -22195,16 +22208,26 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         wx.MilliSleep(20)
             except:
                 pass
+
             if refreshFrame:
                 self.ShowVideoFrameFast(self.currentframenum)  # GPo 2020, leave it call fast, fast checks errors
 
-        # ? make signal flag if frame thread running e.g self.loadingFrame = threading.Event() if self.loadingFrame.set()
-        elif self.ShowVideoFrame(self.GetFrameNumber(), focus=False, forceLayout=True, forceCursor=self.ScriptChanged(self.currentScript)) \
-                and not self.currentScript.AVI.IsErrorClip():
+        else:
             script = self.currentScript
+            threaded = self.options['playbackthread'] or self.UseAviThread
+            script.PlayThreadId = 0
+            # Befor start the playback check the threads
+            if self.AviThread_Running(script, prompt=True) or \
+                self.FrameThread_Running(script, prompt=True) or \
+                self.PlayThread_Running(script, prompt=True):
+                    return
+            # check and set the defaults
+            if not self.ShowVideoFrame(self.GetFrameNumber(), focus=False, forceLayout=True, forceCursor=self.ScriptChanged(self.currentScript)) \
+                or self.currentScript.AVI.IsErrorClip():
+                    return
+            # calc play loop
             self.loop_start = self.loop_end = -1
             if self.options['playloop'] and not self.trimDialog.IsShown() and script.AVI.Framecount > 5:
-                # Play loop
                 prev = self.ValueInSliderSelection(self.currentframenum)
                 if prev == None:
                     prev = False
@@ -22246,15 +22269,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.drop_count = self.play_drop
             else:
                 self.drop_count = 0
-            threaded = self.options['playbackthread'] or self.UseAviThread
-            script.PlayThreadId = 0
 
             if os.name == 'nt': # default Windows resolution is ~10 ms, ( out of date )
                 def playback_timer2(id, reserved, factor, reserved1, reserved2):
                     """"needed for playthread speed boost"""
                     #AsyncCall(self.SaveCallYield).Wait()
                     pass
-
+                # only for playback without threads
                 def playback_timer(id, reserved, factor, reserved1, reserved2):
                     """"Callback for a Windows Multimedia timer"""
                     if not self.playing_video:
@@ -22386,7 +22407,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 ################################################################
                 ##
                 ##  GPo 2021, Play Thread
-                ##  geting 80 fps with a 1920x1080 video, but somtimes 180 fps down't kwnow why
                 ##
                 ################################################################
 
@@ -22467,6 +22487,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 def th_get_frame(script, frame, reEvt):
                     script.AVI.display_clip.get_frame(frame)
                     reEvt.set()
+                def th_paint_frame(script, frame, reQu):
+                    re = AsyncCall(th_PaintFrame, script, frame).Wait()
+                    reQu.put_nowait(re) # important _nowait()
 
                 def play(frame, interval, factor):
                     script = self.currentScript
@@ -22479,8 +22502,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     startTime = time.time()
                     updateTh = None
                     ### test
-                    getFrameTh = None
+                    paintFrameTh = None
+                    paintFrame = frame
+                    #getFrameTh = None
                     #reQu = queue.LifoQueue()
+                    reQu = queue.Queue()
                     #reEvent = threading.Event()
                     #_next_frame = -1
                     ### test end
@@ -22512,14 +22538,15 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                             self.loop_start = self.loop_end = -1
                                     else:
                                         self.loop_start = self.loop_end = -1
-                        ### test
+
+                        ### test for get frame test
                         #nextFrame = frame + increment + 1
                         ### test end
-
                         frame += increment
                         self.currentframenum = frame
+
                         """
-                        ### test with 3 active threads, but not faster
+                        ### get frame test with 3 active threads, but not faster, avisynth input is single threaded
                         if getFrameTh and _next_frame == frame:
                             if reEvent.wait(6.0) is True:
                                 reEvent.clear()
@@ -22544,7 +22571,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         ### test end
                         """
 
-                        script.AVI.display_clip.get_frame(frame) # normal used, without test
+                        script.AVI.display_clip.get_frame(frame)
                         errmsg = script.AVI.display_clip.get_error()
                         if errmsg is not None:
                             wx.CallAfter(FrameError, 1, script, errmsg, frame)
@@ -22562,12 +22589,45 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                             wx.CallAfter(self.ErrorMessage_GetFrame, script, frame)
                             break
                         """
-                        # paint frame
+
+                        #self.SaveCallYield() # pos here faster but it seems Yield() not needed
+                        # wait vor the frame paint result
+                        if paintFrameTh and self.playing_video:
+                            try:
+                                qre = reQu.get(True, 0.5)
+                            except:
+                                re = qre = False
+                                _t = time.time() + 4.0
+                                while not re and self.playing_video and _t < time.time():
+                                    try:
+                                        qre = reQu.get(True, 0.2)
+                                        re = True
+                                    except:
+                                        continue
+                                    if re:
+                                        break
+                            if not qre:
+                                errmsg = 'Play thread paint frame error'
+                                wx.CallAfter(FrameError, 3, script, errmsg, paintFrame)
+                                break
+
+                        if not self.playing_video:
+                            break
+                        # paint the frame in separate thread
+                        reQu = queue.Queue()
+                        paintFrame = frame
+                        paintFrameTh = threading.Thread(target=th_paint_frame, args=(script, frame, reQu))
+                        paintFrameTh.daemon = True
+                        paintFrameTh.start()
+
+                        """
+                        # paint frame the original
                         if not AsyncCall(th_PaintFrame, script, frame).Wait():
                             errmsg = 'Play thread unknown error'
                             wx.CallAfter(FrameError, 3, script, errmsg, frame)
                             break
-                        # update the controls with a separate thread
+                        """
+                        # update the controls with a separate thread, it's not so important, so no wait is needed
                         if updateTh and updateTh.isAlive():
                             pass
                         else:
@@ -22575,7 +22635,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                             updateTh.daemon = True
                             updateTh.start()
                         # and now update the program
-                        self.SaveCallYield()
+                        #self.SaveCallYield() #pos here slower
 
                         errmsg = script.AVI.error_message
                         if errmsg is not None:
@@ -22612,22 +22672,14 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     # on thread termination wait for the other threads
                     if updateTh and updateTh.isAlive():
                         updateTh.join(5)
-                    if getFrameTh and getFrameTh.isAlive():
-                        getFrameTh.join(10)
-                    if (updateTh and updateTh.isAlive()) or (getFrameTh and getFrameTh.isAlive()):
+                    if paintFrameTh and paintFrameTh.isAlive():
+                        paintFrameTh.join(5)
+                    if (updateTh and updateTh.isAlive()) or (paintFrameTh and paintFrameTh.isAlive()):
                         errmsg = "Play thread hangs, it's important that you save the scripts and restart the program!"
                         wx.CallAfter(FrameError, 3, script, errmsg, frame)
                     # additional indicator and break, thread finished
                     self.currentScript.PlayThreadId = -1
 
-                # Befor start the playback check the threads
-                if self.AviThread_Running(script, prompt=True) or \
-                    self.FrameThread_Running(script, prompt=True) or \
-                    self.PlayThread_Running(script, prompt=True):
-                    self.currentScript.PlayThreadId = 0
-                    self.playing_video = True
-                    wx.CallAfter(self.PlayPauseVideo)
-                    return
                 # run the playback
                 th = threading.Thread(target=play, args=(self.currentframenum, interval, factor,))
                 th.daemon = True

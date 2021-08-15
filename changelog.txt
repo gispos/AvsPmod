@@ -38,7 +38,15 @@ If, for example, there is a '-' in the file name of the dll, AvsPmod will report
 please rename this dll and replace the '-' with a '_' 
 
 --------------------------
-Version 2.6.8.9 [2021-08-02] GPo
+Version 2.6.9.0 [2021-08-15] GPo
+--------------------------
+* Play thread modified, ~14% faster ( without filter ).
+* Bugfix middle mouse button on a selections mark in the timeline ( trying to delete the mark causes an error )
+* Bugfix 'Save Image Sequence', fixed AvsPmod and macro code
+* Added to filterdb.dat Dogway's ex_contrast
+
+--------------------------
+Version 2.6.8.9 [2021-08-07] GPo
 --------------------------
 * Improved get_frame threading ( lower CPU usage on Win10 )
 * Play thread now multi threaded. 

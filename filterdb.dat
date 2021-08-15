@@ -4036,6 +4036,16 @@ int "str"=80,
 string "cspace"
 )
 
+ex_contrast(
+clip,
+float "cont"=0.00 (-1.00 to 1.00),
+float "pivot"=127.5 (0.0 to 192.0), 
+float "sat"=0.00 (-1.00 to 1.00),
+[int "UV"=1 (1 / 2 / 3)],
+[bool "tv_range"=True],
+[bool "fulls"]
+)
+
 FastLineDarken(
 clip c,
 int "strength"=48,
