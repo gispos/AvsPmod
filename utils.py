@@ -20,6 +20,15 @@ resource_str_threadwait2 = _("Waiting for Avisynth, thread still running.\n" \
                              "This dialog is automatically closed when avisynth returns.\n" \
                              "If you abort this process, the clip will assign later.")
 
+resource_str_displayfilter = ("# you can run short macro with line start: #>\n"
+                              "#>avsp.GetWindow().OnMenuVideoZoom(zoomfactor=1)\n\n"
+                              "# Set zoom fill for playback\n"
+                              "w=float(last.Width())\n"
+                              "h=float(last.Height())\n"
+                              "#  set the height\n"
+                              "ch = 920\n"
+                              "Spline36Resize((round(ch*(w/h))/4)*4, ch)")
+
 
 """
 WIN_10 = (10, 0, 0)

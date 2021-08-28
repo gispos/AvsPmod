@@ -154,7 +154,7 @@ class AvsClipBase:
     def __init__(self, script, filename='', workdir='', env=None, fitHeight=None,
                  fitWidth=None, oldFramecount=240, display_clip=True, reorder_rgb=False,
                  matrix=['auto', 'tv'], interlaced=False, swapuv=False, bit_depth=None,
-                 callBack=None, readmatrix=None):
+                 callBack=None, readmatrix=None, displayFilter=None):
 
         def CheckVersion(env):
             try:
@@ -226,6 +226,7 @@ class AvsClipBase:
         self.readmatrix = readmatrix
         self.Thread = None
         self.avisynth_version = None
+        self.displayFilter = displayFilter
 
         # threading get frame
         #self.UseFrameThread = UseFrameThread
@@ -556,9 +557,27 @@ class AvsClipBase:
                 self.display_clip = self.env.invoke('SwapUV', self.display_clip)
             except avisynth.AvisynthError as err:
                 return self.CreateErrorClip(display_clip_error=True)
+        # test
+        if self.displayFilter:
+            self.env.set_var("avsp_filter_clip", self.clip)
+            args = 'avsp_filter_clip\n' + self.displayFilter
+            try:
+                self.display_clip = self.env.invoke('Eval', args)
+            except avisynth.AvisynthError as err:
+                return self.CreateErrorClip(display_clip_error=True)
+        else: self.env.set_var("avsp_filter_clip", None)
+        # test end
+
         vi = self.display_clip.get_video_info()
         self.DisplayWidth = vi.width
         self.DisplayHeight = vi.height
+
+        # test
+        if vi.num_frames != self.Framecount:
+            avisynth.AvisynthError = "Display filter error: \nDisplay-Clip length different"
+            return self.CreateErrorClip(display_clip_error=True)
+        # test end
+
         if not self._ConvertToRGB():
             return self.CreateErrorClip(display_clip_error=True)
         return True
@@ -573,6 +592,8 @@ class AvsClipBase:
         self.env.set_var("avsp_filter_clip", self.clip)
 
         args = ('avsp_filter_clip\n' + f_args)
+        if self.displayFilter:
+            args += '\n' + self.displayFilter
         try:
             clip = self.env.invoke("Eval", args)
         except:
@@ -1129,7 +1150,7 @@ if os.name == 'nt':
                 return True
             return False
 
-        """
+
         def DrawFrame(self, frame, dc=None, offset=(0,0), size=None, srcXY=(0,0)):
             if not self._GetFrame(frame):
                 return
@@ -1169,6 +1190,7 @@ if os.name == 'nt':
                 DrawDibDraw(handleDib[0], hdc, offset[0], offset[1], w, h,
                             self.pInfo, self.pBits, srcXY[0], srcXY[1], w, h, 0)
                 return True
+         """
 
 # Use generical wxPython drawing support on other platforms
 else:

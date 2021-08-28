@@ -38,6 +38,24 @@ If, for example, there is a '-' in the file name of the dll, AvsPmod will report
 please rename this dll and replace the '-' with a '_' 
 
 --------------------------
+Version 2.6.9.1 [2021-08-28] GPo
+--------------------------
+* Added menus Video > Display > 'Display filter' and 'Configure display filter'
+- you can add avisynth code (filters) and it is used as last filter for all scripts.
+- this filter affects only the display drawing! 
+- on changing the display filter the current script does remain the preview filter state if video window visible, 
+- all other scripts does turn off the preview filter.
+- you can use short macro code by adding #> at line begin, e.g. #>avsp.GetWindow().OnMenuVideoZoom(zoomfactor=1) 
+- Note: The filter requires the same CPU time as if it were written in the script.  
+- link a shortcut for quick switching, the filter is at program startup always off.
+* Added menu Edit > Miscelaneos > 'Set selection as display filter...' see above.
+* Under Program Options > Misc2 the default display conversion YUV -> RGB can be set, which is used for a new tab (script)
+* Added menu File > 'New tab from template'
+- you can create a template for a new tab by adding an entry with an asterisk * in the file extension templates. 
+* Bugfix writing the matrix into the script led to an error if the matrix was already written into the script.   
+* Some other changes
+
+--------------------------
 Version 2.6.9.0 [2021-08-15] GPo
 --------------------------
 * Play thread modified, ~14% faster ( without filter ).
