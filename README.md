@@ -2,23 +2,23 @@
 - With pinterf (pfmod) modifications   
 - Avisynth header version 6   
 - For more see changelog   
-##### AvsPmod needs write permissions in its own directory. So please do not unzip into a system program directory!   
+##### AvsPmod needs write permissions for its own directory. So please do not unzip into a system program directory!   
 -----   
 ### Mouse button combinations (for the new users)   
 ##### On video window.   
 - Press left and right click: changes zoom 100%, 200%   
 - Press left and use mouse wheel: changes the zoom   
 - Press Ctrl and double click on the video window increases the height a few pixels
-- If tab change for mouse browse buttons selected, press Ctrl or move the mouse on the slider area and bookmark jump is used.   
+- If the tab change for mouse browse buttons is selected, press Ctrl or move the mouse on the slider area and bookmark jump is used.   
 - When the mouse pointer is in the video slider area. Press Ctrl and use mouse browse buttons only trim editor marks would be selected  
-- When the mouse pointer is in the video slider area. Press Alt and use mouse browse buttons only bookmarks with title would be selected 
+- When the mouse pointer is in the video slider area. Press Alt and use mouse browse buttons only bookmarks with the title would be selected 
 
 ##### On script window:   
 - Press left and right click: The # character is removed or added at the beginning of the selected lines 
 - If a boolean selected (True, False) the value does change  
 
 ##### On slider window:
-- If direct slider update enabled (only with preview filters), can then be deactivated by pressing Ctrl on slider move
+- If direct slider update is enabled (only with preview filters), can then be deactivated by pressing Ctrl on the slider move
    
 ##### Furthermore   
 - On the video slider right click to add or remove a bookmark   
@@ -117,7 +117,7 @@ the following is also needed:
     - avisynth_c.h
 
 In that case start AvsPmod by running avsp.py, i.e. `python -O avsp.py`, 
-pythonw recommended on Windows.
+pythonw is recommended on Windows.
 
 
 Updating to a new version
