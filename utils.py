@@ -27,6 +27,7 @@ resource_str_displayfilter = ("# you can run short macro with line start: #>\n"
                               "h=float(last.Height())\n"
                               "#  set the height\n"
                               "ch = 920\n"
+                              "ch = ch/4*4\n"
                               "Spline36Resize((round(ch*(w/h))/4)*4, ch)")
 
 

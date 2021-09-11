@@ -38,6 +38,20 @@ If, for example, there is a '-' in the file name of the dll, AvsPmod will report
 please rename this dll and replace the '-' with a '_' 
 
 --------------------------
+Version 2.6.9.2 [2021-09-10] GPo
+--------------------------
+* Added to the timeline selections context menu 'Apply filter' and to the Options menu 'Apply filters...'
+- insert one or more filters in a part of the clip (selected with the Trim Editor), or for other things, think of something.
+- templates can be created for this (Options > 'Apply filters...'), which are then inserted into the script   
+- please read the applyfilters_readme.txt ( Help > 'Apply filters readme' )
+* Added Options > 'Display filters...', you can create templates for the display filter
+- the templates can be selected from the menu Video > Display > 'Select display filter...'
+- if you choose a template, the current display filter will be overwritten!
+- renamed 'Configure display filter' to 'Edit current display filter...' (This does not change the template)
+* Changed all default options for 'Accessing Avisynth in threads' to True (enabled)
+- only noticeable if no options.dat is available 
+
+--------------------------
 Version 2.6.9.1 [2021-08-28] GPo
 --------------------------
 * Added menus Video > Display > 'Display filter' and 'Configure display filter'

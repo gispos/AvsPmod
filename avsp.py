@@ -5818,35 +5818,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if len(self.optionsPreviewFilters['previewfilters']) > 0:
             self.UpdatePreviewFilterMenu(self.optionsPreviewFilters['previewfilters'], isRestoreMenu=True)
 
-        """
-        LF_FACESIZE = 32
-        STD_OUTPUT_HANDLE = -11
-
-        class COORD(ctypes.Structure):
-            _fields_ = [("X", ctypes.c_short), ("Y", ctypes.c_short)]
-
-        class CONSOLE_FONT_INFOEX(ctypes.Structure):
-            _fields_ = [("cbSize", ctypes.c_ulong),
-                        ("nFont", ctypes.c_ulong),
-                        ("dwFontSize", COORD),
-                        ("FontFamily", ctypes.c_uint),
-                        ("FontWeight", ctypes.c_uint),
-                        ("FaceName", ctypes.c_wchar * LF_FACESIZE)]
-
-        font = CONSOLE_FONT_INFOEX()
-        font.cbSize = ctypes.sizeof(CONSOLE_FONT_INFOEX)
-        font.nFont = 12
-        font.dwFontSize.X = 11
-        font.dwFontSize.Y = 18
-        font.FontFamily = 54
-        font.FontWeight = 400
-        font.FaceName = "Arial"
-
-        handle = ctypes.windll.kernel32.GetStdHandle(STD_OUTPUT_HANDLE)
-        ctypes.windll.kernel32.SetCurrentConsoleFontEx(
-                handle, ctypes.c_long(False), ctypes.pointer(font))
-        """
-
         # Warn if option files are damaged
         if self.loaderror:
             print>>sys.stderr, '{0}: {1}'.format(_('Error'), _('Damaged {0}. Using default settings.').format(', '.join(self.loaderror)))
@@ -6122,7 +6093,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 'jpg': 'FFVideoSource(***, cache=false, seekmode=-1)',
                 'png': 'FFVideoSource(***, cache=false, seekmode=-1)',
             }
-        snippetsDict = {
+        applyFilterDict = {
+            'Selected filters': '/**avsp_filter\nfilter = """\\\n%*%join\n\\\"""\nApplyFilter(%start, %stop, filter)\n**/',
+            'Selected filters*': '/**avsp_filter\nfilter = """\\\n%*%join\n\\\"""\n%>ApplyFilter(%start, %stop, filter)\n**/',
         }
         index = os.name == 'nt'
         sans = ('sans', 'Verdana')[index]
@@ -6356,8 +6329,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.options.update({
             # INTERNAL OPTIONS
             'templates': templateDict,
-            'snippets': snippetsDict,
+            'snippets': {},
             'textstyles': textstylesDict,
+            'applyfilters': applyFilterDict,
+            'displayfilters': {'Preview resize': utils.resource_str_displayfilter,},
             'theme_set_only_colors': True,
             'filteroverrides': {},
             'filterpresets': {},
@@ -6504,12 +6479,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'mouseauxdown': 'tab change',            # GPo 2020
             'tabautopreview': False,                 # GPo 2021
             'hidescrollbars': False,                 # GPo 2021
-            'scriptwindowbindmousewheel': 0,     # GPo 2021 # user problem with mouse wheel on editor
+            'scriptwindowbindmousewheel': 0,         # GPo 2021 # user problem with mouse wheel on editor
             'playloop': False,                       # GPo 2020
             'playbackthread': True,                  # GPo 2021, if true use separate thread for playback
-            'avithread': False,                      # GPo 2021, if true use separate thread for loading and freeing the clip and frame
-            'avithreadassignlater': False,           # GPo 2021, if true then thread assign AVI to script after canceling, else freeing the clip (True=Avisynth not always happy)
-            'usenewframethread': False,              # GPo new, test
+            'avithread': True,                       # GPo 2021, if true use separate thread for loading and freeing the clip and frame
+            'avithreadassignlater': True,            # GPo 2021, if true then thread assign AVI to script after canceling, else freeing the clip (True=Avisynth not always happy)
+            'usenewframethread': True,               # GPo new, test
             'bookmarktotrim': False,                 # GPo 2020
             'bookmarkshilightcolor': wx.Colour(233,122,122),   # GPo
             'selectionshilightcolor': wx.Colour(110,110,204),  # GPo 2020
@@ -6584,7 +6559,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.options['filterremoved'].add(name.lower())
         if oldOptions and 'parseavsi' in oldOptions:
             self.options['autoloadedavsi'] = oldOptions['parseavsi']
-
 
     def SetPaths(self):
         '''Set configurable paths'''
@@ -8162,7 +8136,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 (_('&Display'),
                     (
                     (_('Display filter'), '', self.OnMenuVideoDisplayFilter, _('Enable/Disable the display filter'), wx.ITEM_CHECK, False),
-                    (_('Configure display filter'), '', self.OnMenuConfigureDisplayFilter, _('Configure the display filter')),
+                    (_('Select display filter...'), '', self.OnMenuSelectDisplayFilter, _('Select the display filter from template')),
+                    (_('Edit current display filter...'), '', self.OnMenuConfigureDisplayFilter, _('Edit the current display filter')),
                     (''),
                     (_('&Flip'),
                         (
@@ -8300,6 +8275,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 (''),
                 (_('AviSynth function definition...'), '', self.OnMenuOptionsFilters, _('Add or override AviSynth functions in the database')),
                 (_('Extension templates...'), '', self.OnMenuOptionsTemplates, _('Edit the extension-based templates for inserting sources')),
+                (''),
+                (_('Display filters...'), '', self.OnMenuOptionsDisplayFilter, _('Edit display filters')),
+                (_('Apply filters...'), '', self.OnMenuOptionsApplyFilter, _('Edit insertable timeline selections filters')),
                 (_('Snippets...'), '', self.OnMenuOptionsSnippets, _('Edit insertable text snippets')),
                 (''),
                 (_('Keyboard shortcuts...'), '', self.OnMenuConfigureShortcuts, _('Configure the program keyboard shortcuts')),
@@ -8316,9 +8294,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 (_('Avisynth help'), 'F1', self.OnMenuHelpAvisynth, _('Open the avisynth help html')),
                 (_('Preview filter example'), '', self.OnMenuHelpPreviewFilters, _('Open the Preview filter examples')),
                 (_('Accessing in threads readme'), '', self.OnMenuHelpAccessInThreads, _('Open the Access in threads readme')),
+                (_('Apply filters readme'), '', self.OnMenuHelpApplyFilters, _('Open the apply filters readme')),
                 (''),
-                (_('DPI Info'), '', self.OnMenuDPIInfo, _('DPI information')),
-                (_('Active video thread count'), '', self.OnMenuTest, _('Prints the active running thread count. Normaly 0')),
+                (_('DPI info'), '', self.OnMenuDPIInfo, _('DPI information')),
+                #(_('Active video thread count'), '', self.OnMenuTest, _('Prints the active running thread count. Normaly 0')),
                 (_('Show available system memory'), '', self.OnMenuShowFreeMemory, _('Displays the available memory in the status bar')),
                 (_('Open Avisynth plugins folder'), '', self.OnMenuHelpAvisynthPlugins, _('Open the avisynth plugins folder, or the last folder from which a plugin was loaded')),
                 (''),
@@ -11233,6 +11212,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         return needRefresh
 
     # GPo new, test. Spline36Resize is faster as wx.SetUserScale on scale down
+    """
     def PreviewRemoveResizer(self):
         script = self.currentScript
         if script.AVI is not None:
@@ -11282,8 +11262,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         return '\n%s(%i, %i)' % (rFilter, W, H)
 
     ##### test end
+    """
 
     def OnMenuTest(self, event):
+        pass
+        """
         # For thread test only
         tcount = 0
         tclipcount = 0
@@ -11300,7 +11283,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         #for th in threading.enumerate():
             #if th.name == 'avisynth':
         print('\nActive Threads\nClip threads: {0}\nFrame threads: {1}'.format(tclipcount, tcount))
-
+        """
         """
         defDict = self.x_defaultTextStyle
         s = ''
@@ -11312,68 +11295,19 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         with open(afile, 'w') as f:
             f.write(s)
         """
-
+    """
     def OnMenuTest2(self, event):
-        player.showPlayer()
+        pass
+        #player.showPlayer()
         #self.SaveImage(filename='', frame=None, silent=False, index=None, avs_clip=None, default='', quality=None, depth=16)
         #self.PreviewAddResizer()
-        """
-        def getFrame2(script2, q, nr2):
-            #return
-            script2.AVI.display_clip.get_frame(nr2)
-            q.put(True)
 
-        def getFrame1(script1, script2, q, nr, nr2):
-            #th2 = threading.Thread(target=getFrame2, args=(script2, q, nr2,))
-            #th2.daemon = True
-            #th2.start()
-            script1.AVI.display_clip.get_frame(nr)
-            #script1.AVI.display_clip.get_frame(nr2)
-            #q.put(True)
-
-        script1,i = self.getScriptAtIndex(0)
-        script2, x = self.getScriptAtIndex(1)
-
-        if not self.previewOK(script1) or not self.previewOK(script2):
-            return
-
-        nr1 = max(self.currentframenum+1,1)
-        nr2 = max(self.currentframenum+2,1)
-        start_time = time.time()
-        frameCount = 30
-        for i in xrange(frameCount):
-            q = queue.Queue()
-            th1 = threading.Thread(target=getFrame1, args=(script1, script2, q, nr1, nr2,))
-            th2 = threading.Thread(target=getFrame2, args=(script2, q, nr2,))
-            th2.daemon = True
-            th2.start()
-            t = time.time()
-            th1.daemon = True
-            th1.start()
-            th1.join()
-
-            dc = wx.ClientDC(self.videoWindow)
-            self.PaintAVIFrame(dc, script1, nr1)
-            wx.Yield()
-            t1 = time.time() - t
-            print(str(t1))
-            th2.join()
-            #q.get(block=True, timeout=68)
-            self.PaintAVIFrame(dc, script2, nr2)
-            wx.Yield()
-            t1 = time.time() - t
-            print(str(t1))
-            nr1 += 1
-            nr2 += 1
-            if nr2 < 1:
-                break
-        print('finish ' + str(time.time()-start_time))
-        """
     def OnMenuTest3(self, event):
         self.PreviewRemoveResizer()
 
     def OnMenuTest4(self, event):
         self.PreviewAddResizer(zoom=2)
+    """
 
     def ShowFreeMemory(self, returnStr=False):
         if not returnStr and self.options['showfreememory'] < 1:
@@ -11724,6 +11658,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         else:
             self.zoom_antialias = False
 
+    # display filter on/off
     def OnMenuVideoDisplayFilter(self, event, enabled=False):
         if event:
             self.displayFilter = not self.displayFilter
@@ -11765,10 +11700,26 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.ShowVideoFrame()
             """
 
+    def OnMenuSelectDisplayFilter(self, event):
+        def _setDisplayFilter(event):
+            obj = event.GetEventObject()
+            key = obj.GetLabel(event.GetId())
+            self.options['displayfilter'] = self.options['displayfilters'][key]
+            self.OnMenuVideoDisplayFilter(None, self.displayFilter)
+        menu = wx.Menu('Display Filters')
+        for key in self.options['displayfilters']:
+            id = wx.NewId()
+            item = menu.Append(id, key, kind=wx.ITEM_CHECK)
+            item.Check(self.options['displayfilter'] == self.options['displayfilters'][key])
+            self.Bind(wx.EVT_MENU, _setDisplayFilter, id=id)
+        self.PopupMenu(menu)
+        menu.Destroy()
+
     def OnMenuConfigureDisplayFilter(self, event=None, txt=None):
+        int5 = intPPI(5)
         if not txt:
             txt = self.options['displayfilter']
-        dlg = wx.Dialog(self, wx.ID_ANY, _('Enter Display Filter'), size=tuplePPI(450, 270), style=wx.DEFAULT_DIALOG_STYLE|wx.RESIZE_BORDER)
+        dlg = wx.Dialog(self, wx.ID_ANY, _('Edit current display filter'), size=tuplePPI(450, 270), style=wx.DEFAULT_DIALOG_STYLE|wx.RESIZE_BORDER)
         SetFontPPI(dlg)
         textCtrl = wx.TextCtrl(dlg, style=wx.TE_MULTILINE|wx.TE_DONTWRAP, value=txt)
         # Standard buttons
@@ -11780,9 +11731,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         btns.Realize()
         # Size the elements
         dlgSizer = wx.BoxSizer(wx.VERTICAL)
-        dlgSizer.Add(textCtrl, 1, wx.EXPAND|wx.ALL, 5)
+        dlgSizer.Add(textCtrl, 1, wx.EXPAND|wx.ALL, int5)
         #dlgSizer.Add(label, 0, wx.LEFT, 5)
-        dlgSizer.Add(btns, 0, wx.EXPAND|wx.ALL, 5)
+        dlgSizer.Add(btns, 0, wx.EXPAND|wx.ALL, int5)
         dlg.SetSizer(dlgSizer)
         ID = dlg.ShowModal()
         dlg.Destroy()
@@ -11790,6 +11741,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.options['displayfilter'] = textCtrl.GetValue()
             self.OnMenuVideoDisplayFilter(None, self.displayFilter)
 
+    # copy from script
     def OnMenuCopyAsDisplayFilter(self, event):
         txt = self.currentScript.GetSelectedText()
         macroTxt = ''
@@ -12718,6 +12670,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if '.' in key:
                 msg = '%s\n%s' % (_('Insert aborted:'), _("File extension shouldn't contain dots!"))
             return msg
+        self.StopPlayback()
         dlg = wxp.EditStringDictDialog(
             self,
             self.options['templates'],
@@ -12745,6 +12698,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         def keyChecker(key):
             if not re.match(r'^\w+$', key):
                 return '%s\n%s' % (_('Insert aborted:'), _('Only alphanumeric and underscores allowed!'))
+        self.StopPlayback()
         dlg = wxp.EditStringDictDialog(
             self,
             self.options['snippets'],
@@ -12753,13 +12707,66 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             valueTitle=_('Snippet'),
             editable=True,
             insertable=True,
-            keyChecker=keyChecker,
-            nag=False
+            keyChecker=keyChecker
         )
         ID = dlg.ShowModal()
         # Set the data
         if ID == wx.ID_OK:
             self.options['snippets'] = dlg.GetDict()
+            with open(self.optionsfilename, mode='wb') as f:
+                cPickle.dump(self.options, f, protocol=0)
+        dlg.Destroy()
+
+    def OnMenuOptionsApplyFilter(self, event):
+        def keyChecker(key):
+            #if not re.match(r'^\w+$', key):
+                #return '%s\n%s' % (_('Insert aborted:'), _('Only alphanumeric allowed!'))
+            if len(dlg.GetDict()) > 29:
+                return '%s\n%s' % (_('Insert aborted:'), _('A maximum of 30 entries are allowed!'))
+        self.StopPlayback()
+        dlg = wxp.EditStringDictDialog(
+            self,
+            self.options['applyfilters'],
+            title=_('Edit insertable timeline selection filters'),
+            keyTitle='  '+_('Tag'),
+            valueTitle=_('Avisynth filter ( %start %stop is replaced by selection start stop )'),
+            editable=True,
+            insertable=True,
+            keyChecker=keyChecker,
+            size=tuplePPI(540, 380),
+            about = '%s\n%s' % (_('%* insert the selected text, %join joins the filters from each selected line'),
+                                _('%copy copies the selected text, %> copy this line to all timeline selections'))
+        )
+        ID = dlg.ShowModal()
+        if ID == wx.ID_OK:
+            self.options['applyfilters'] = dlg.GetDict()
+            with open(self.optionsfilename, mode='wb') as f:
+                cPickle.dump(self.options, f, protocol=0)
+        dlg.Destroy()
+
+    # display filter templates
+    def OnMenuOptionsDisplayFilter(self, event):
+        def keyChecker(key):
+            #if not re.match(r'^\w+$', key):
+                #return '%s\n%s' % (_('Insert aborted:'), _('Only alphanumeric allowed!'))
+            if len(dlg.GetDict()) > 14:
+                return '%s\n%s' % (_('Insert aborted:'), _('A maximum of 15 entries are allowed!'))
+        self.StopPlayback()
+        dlg = wxp.EditStringDictDialog(
+            self,
+            self.options['displayfilters'],
+            title=_('Edit display filter templates'),
+            keyTitle='  '+_('Tag'),
+            valueTitle=_('Avisynth filter (you can run short macro by adding #> at line start'),
+            editable=True,
+            insertable=True,
+            keyChecker=keyChecker,
+            about = '%s %s' % (_('Display filters only affects the display drawing.'),
+                               _('It is applied as last filter to all tabs.'))
+        )
+        ID = dlg.ShowModal()
+        if ID == wx.ID_OK:
+            self.options['displayfilters'] = dlg.GetDict()
             with open(self.optionsfilename, mode='wb') as f:
                 cPickle.dump(self.options, f, protocol=0)
         dlg.Destroy()
@@ -13061,6 +13068,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     def OnMenuHelpAccessInThreads(self, event):
         example = os.path.join(self.programdir, 'readme_threads.txt')
+        if os.path.isfile(example):
+            startfile(example)
+        else:
+            wx.MessageBox(_('Could not find %(example)s!') % locals(), _('Error'), style=wx.OK|wx.ICON_ERROR)
+
+    def OnMenuHelpApplyFilters(self, event):
+        example = os.path.join(self.programdir, 'applyfilters_readme.txt')
         if os.path.isfile(example):
             startfile(example)
         else:
@@ -13592,6 +13606,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         self.InsertTextAtScriptEnd(trims[:-2])
                 def OnSplitIntoClips(event):
                     OnSplitIntoTrims(event=None, toClips=True)
+                def OnSelectionsToTrims(event):
+                    trims = ''
+                    for _start, _stop in self.GetSliderSelections():
+                        trims += 'Trim(%i, %i)++' % (_start, _stop)
+                    if trims: self.InsertTextAtScriptEnd(trims[:-2])
                 def OnSelectionRemove(event):
                     self.DeleteFrameBookmark(start, 1, False, False)
                     self.DeleteFrameBookmark(stop, 2)
@@ -13607,12 +13626,85 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         self.DeleteFrameBookmark(_stop, 2, False, False)
                     for slider in self.GetVideoSliderList():
                         slider._Refresh(True)
+                def OnSelectApplyFilter(event):
+                    obj = event.GetEventObject()
+                    key = obj.GetLabel(event.GetId())
+                    value = self.options['applyfilters'][key]
+                    if value:
+                        sel = self.currentScript.GetSelectedText().strip().split('\n')
+                        mFunc = ''
+                        s = ''
+                        copy = value.find('%copy') > -1
+                        if copy:
+                            value = value.replace('%copy', '')
+                        multi = value.find('%>') > -1
+                        if multi:
+                            txt = value.strip().split('\n')
+                            for line in txt:
+                                if line.startswith('%>'):
+                                    mFunc += line[2:].strip() + '\n'
+                                elif line.strip():
+                                    s += line + '\n'
+                            if sel and not s: # only one filter selected
+                                if sel[0].startswith('#'):
+                                    sel[0] = sel[0][1:]
+                                pos = sel[0].find('#')
+                                if pos > -1:
+                                    sel[0] = sel[0][:pos]
+                                mFunc = mFunc.replace('%*', sel[0].strip()).strip()
+                            else:
+                                mFunc = mFunc.strip()
+                        else:
+                            s = value.replace('%start', str(start)).replace('%stop', str(stop))
+                        if sel:
+                            sep = value.find('%join') > -1
+                            if sep and sel[0].startswith('#'): # if join first filter should not be disabled
+                                wx.MessageBox(_('On join filters, the first line must not begin with') + ' #',_('Error'))
+                                return
+                            if len(sel) == 1 and sel[0].strip().startswith('#'): # enable and remove comment if one filter selected
+                                sel[0] = sel[0][1:].strip()
+                            pos = sel[0].find('#')
+                            if pos > 0: sel[0] = sel[0][:pos] # remove comment from line end
+                            newSel = []
+                            newSel.append(sel[0] + '\n')
+                            if len(sel) > 1:
+                                for i in xrange(1, len(sel)):
+                                    if sel[i].strip() and not sel[i].lstrip().startswith('#'):
+                                        pos = sel[i].find('#') # find comment at line end ( my way )
+                                        if pos < 0: pos = len(sel[i]) # if not found set line len
+                                        if sep and not sel[i].lstrip().startswith('\.'):
+                                            newSel.append('\.' + sel[i][:pos].strip() + '\n')
+                                        else: newSel.append(sel[i][:pos].strip() + '\n')
+                            if s:
+                                s = s.replace('%*', ''.join(newSel).strip()).replace('%join', '')
+                                s = s.strip()
+                        if multi:
+                            for _start, _stop in self.GetSliderSelections():
+                                s += '\n' + mFunc.replace('%start', str(_start)).replace('%stop', str(_stop))
+                        if copy: self.InsertTextAtScriptEnd(s)
+                        else: self.InsertText(s, None)
+                        return
+                    wx.Bell()
                 menuInfo = []
                 if hitlist:
+                    def createFiltersMenu():
+                        menu = wx.Menu()
+                        for key in sorted(self.options['applyfilters'], key=lambda k: k.lower()):
+                        #for key in sorted(self.options['applyfilters']):
+                            id = wx.NewId()
+                            self.Bind(wx.EVT_MENU, OnSelectApplyFilter, id=id)
+                            menu.Append(id, key)
+                        return menu
+                    fmenu = createFiltersMenu()
                     menuInfo = [
                         (_('Frames: %i') % (stop-start), '', OnDummy, ''),
                         ('%i-%i' % (start, stop), '', OnDummy, ''),
+                        (''),
+                        (_('Apply filter'), fmenu, -1, ''),
+                        (''),
+                        (_('All as trim'), '', OnSelectionsToTrims, ''),
                         (_('Add as trim'), '', OnCreateTrim, ''),
+                        (''),
                         (_('Timeline to trims'), '', OnSplitIntoTrims, ''),
                         (_('Timeline to clips'), '', OnSplitIntoClips, ''),
                         (''),

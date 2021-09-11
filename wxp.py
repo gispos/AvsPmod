@@ -1974,10 +1974,13 @@ class ShortcutsDialog(wx.Dialog):
 
 class EditStringDictDialog(wx.Dialog):
     def __init__(self, parent, infoDict, title='Edit', keyTitle='Key',
-                 valueTitle='Value', editable=False, insertable=False,
-                 about='', keyChecker=None, valueChecker=None, nag=True):
-        wx.Dialog.__init__(self, parent, wx.ID_ANY, title, size=dpi.tuplePPI(500, 300), style=wx.DEFAULT_DIALOG_STYLE|wx.RESIZE_BORDER)
+                 valueTitle='Value', editable=False, insertable=False, size=dpi.tuplePPI(540, 360),
+                 about='', keyChecker=None, valueChecker=None, nag=False):
+        wx.Dialog.__init__(self, parent, wx.ID_ANY, title, size=size, style=wx.DEFAULT_DIALOG_STYLE|wx.RESIZE_BORDER)
         dpi.SetFontPPI(self)
+        int5 = dpi.intPPI(5)
+        int10 = dpi.intPPI(10)
+        int20 = dpi.intPPI(20)
         self.infoDict = infoDict.copy()
         self.keyTitle = keyTitle
         self.valueTitle = valueTitle
@@ -2012,8 +2015,8 @@ class EditStringDictDialog(wx.Dialog):
             deleteButton = wx.Button(self, wx.ID_ANY, _('Delete'))
             self.Bind(wx.EVT_BUTTON, self.OnButtonDelete, deleteButton)
             insSizer = wx.BoxSizer(wx.HORIZONTAL)
-            insSizer.Add(insertButton, 1, wx.ALIGN_CENTER|wx.ALL, 5)
-            insSizer.Add(deleteButton, 1, wx.ALIGN_CENTER|wx.ALL, 5)
+            insSizer.Add(insertButton, 1, wx.ALIGN_CENTER|wx.ALL, int5)
+            insSizer.Add(deleteButton, 1, wx.ALIGN_CENTER|wx.ALL, int5)
         # Standard buttons
         okay  = wx.Button(self, wx.ID_OK, _('OK'))
         self.Bind(wx.EVT_BUTTON, self.OnButtonOK, okay)
@@ -2023,22 +2026,22 @@ class EditStringDictDialog(wx.Dialog):
         btns.AddButton(cancel)
         btns.Realize()
         # Size the elements
-        gridSizer = wx.FlexGridSizer(cols=2, hgap=10, vgap=5)
+        gridSizer = wx.FlexGridSizer(cols=2, hgap=int10, vgap=int5)
         gridSizer.AddGrowableCol(1, 1)
         gridSizer.AddGrowableRow(1)
         gridSizer.Add(keyLabel, 0)
         gridSizer.Add(valueLabel, 0, wx.ALIGN_CENTER)
-        gridSizer.Add(self.listCtrl, 2, wx.EXPAND|wx.RIGHT, 10)
+        gridSizer.Add(self.listCtrl, 2, wx.EXPAND|wx.RIGHT, int10)
         gridSizer.Add(self.textCtrl, 3, wx.EXPAND)
         minWidth = max(self.listCtrl.GetColumnWidth(0), keyLabel.GetSize()[0])
-        gridSizer.SetItemMinSize(self.listCtrl, min(minWidth+20, 250), 20)
+        gridSizer.SetItemMinSize(self.listCtrl, min(minWidth+int20, 200), int20*2)
         dlgSizer = wx.BoxSizer(wx.VERTICAL)
-        dlgSizer.Add(gridSizer, 1, wx.EXPAND|wx.ALL, 10)
+        dlgSizer.Add(gridSizer, 1, wx.EXPAND|wx.ALL, int10)
         if insertable:
-            dlgSizer.Add(insSizer, 0, wx.EXPAND|wx.ALIGN_CENTER|wx.BOTTOM, 15)
+            dlgSizer.Add(insSizer, 0, wx.EXPAND|wx.ALIGN_CENTER|wx.BOTTOM, dpi.intPPI(15))
         if about:
-            dlgSizer.Add(wx.StaticText(self, wx.ID_ANY, about), 0, wx.ALIGN_CENTER|wx.BOTTOM, 10)
-        dlgSizer.Add(btns, 0, wx.EXPAND|wx.ALL, 5)
+            dlgSizer.Add(wx.StaticText(self, wx.ID_ANY, about), 0, wx.ALIGN_CENTER|wx.BOTTOM, int10)
+        dlgSizer.Add(btns, 0, wx.EXPAND|wx.ALL, int5)
         self.SetSizer(dlgSizer)
         # Misc
         if self.listCtrl.GetItemCount():
