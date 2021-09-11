@@ -6094,8 +6094,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 'png': 'FFVideoSource(***, cache=false, seekmode=-1)',
             }
         applyFilterDict = {
-            'Selected filters': '/**avsp_filter\nfilter = """\\\n%*%join\n\\\"""\nApplyFilter(%start, %stop, filter)\n**/',
-            'Selected filters*': '/**avsp_filter\nfilter = """\\\n%*%join\n\\\"""\n%>ApplyFilter(%start, %stop, filter)\n**/',
+            'Selected filters': 'filter = """\\\n%*%join\n\\\"""\nApplyFilter(%start, %stop, filter)',
+            'Selected filters*': 'filter = """\\\n%*%join\n\\\"""\n%>ApplyFilter(%start, %stop, filter)',
         }
         index = os.name == 'nt'
         sans = ('sans', 'Verdana')[index]
