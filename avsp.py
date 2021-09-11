@@ -6094,8 +6094,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 'png': 'FFVideoSource(***, cache=false, seekmode=-1)',
             }
         applyFilterDict = {
-            'Selected filters': 'filter = """\\\n%*%join\n\\\"""\nApplyFilter(%start, %stop, filter)',
-            'Selected filters*': 'filter = """\\\n%*%join\n\\\"""\n%>ApplyFilter(%start, %stop, filter)',
+            'Selected filters': '/**avsp_filter\nfilter = """\\\n%*%join\n\\\"""\nApplyFilter(%start, %stop, filter)\n**/',
+            'Selected filters*': '/**avsp_filter\nfilter = """\\\n%*%join\n\\\"""\n%>ApplyFilter(%start, %stop, filter)\n**/',
         }
         index = os.name == 'nt'
         sans = ('sans', 'Verdana')[index]
@@ -13639,10 +13639,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                             value = value.replace('%copy', '')
                         multi = value.find('%>') > -1
                         if multi:
+                            previewfilter = value.lstrip().startswith('/**avsp_filter')
                             txt = value.strip().split('\n')
                             for line in txt:
                                 if line.startswith('%>'):
                                     mFunc += line[2:].strip() + '\n'
+                                elif line.startswith('/**avsp_filter') or line.lstrip().startswith('**/'):
+                                    continue
                                 elif line.strip():
                                     s += line + '\n'
                             if sel and not s: # only one filter selected
@@ -13677,10 +13680,14 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                         else: newSel.append(sel[i][:pos].strip() + '\n')
                             if s:
                                 s = s.replace('%*', ''.join(newSel).strip()).replace('%join', '')
-                                s = s.strip()
+                        s = s.strip()
                         if multi:
+                            if previewfilter:
+                                s = '/**avsp_filter\n' + s
                             for _start, _stop in self.GetSliderSelections():
                                 s += '\n' + mFunc.replace('%start', str(_start)).replace('%stop', str(_stop))
+                            if previewfilter:
+                                s += '\n**/'
                         if copy: self.InsertTextAtScriptEnd(s)
                         else: self.InsertText(s, None)
                         return

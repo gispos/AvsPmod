@@ -38,6 +38,13 @@ If, for example, there is a '-' in the file name of the dll, AvsPmod will report
 please rename this dll and replace the '-' with a '_' 
 
 --------------------------
+Version 2.6.9.3 [2021-09-10] GPo
+--------------------------
+* 'Apply filter' revised. Preview filter is now also possible as a default in the templates. 
+- /**avsp_filter must be at the beginning of the template.
+- the templates for this have been updated. 
+
+--------------------------
 Version 2.6.9.2 [2021-09-10] GPo
 --------------------------
 * Added to the timeline selections context menu 'Apply filter' and to the Options menu 'Apply filters...'
