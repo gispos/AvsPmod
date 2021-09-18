@@ -247,6 +247,8 @@ class AvsStyledTextCtrl(stc.StyledTextCtrl):
         self.calltiptext = None
         self.calltipOpenpos = None
         self.flagTextChanged = self.flagCodeFolding = False
+        self.flagModified = False
+        self.lastText = ''
         self.keywordStyleList = (
             self.STC_AVS_COREFILTER,
             #~ self.STC_AVS_CLIPPROPERTY,
@@ -315,7 +317,8 @@ class AvsStyledTextCtrl(stc.StyledTextCtrl):
         self.SetSavePoint()
         # Event handling
         self.Bind(stc.EVT_STC_UPDATEUI, self.OnUpdateUI)
-        self.Bind(stc.EVT_STC_CHANGE, self.OnTextChange)
+        #self.Bind(stc.EVT_STC_CHANGE, self.OnTextChange)
+        self.Bind(stc.EVT_STC_MODIFIED, self.OnTextChange)
         self.Bind(stc.EVT_STC_CHARADDED, self.OnTextCharAdded)
         self.Bind(stc.EVT_STC_NEEDSHOWN, self.OnNeedShown)
         self.Bind(wx.EVT_KEY_UP, self.OnKeyUp)
@@ -1766,6 +1769,11 @@ class AvsStyledTextCtrl(stc.StyledTextCtrl):
             line += 1
 
     def OnTextChange(self, event):
+        # GPo new, needed for autosnapshot
+        if not self.flagModified:
+            self.lastText = self.GetText()
+            self.flagModified = self.lastText != ''
+        ###
         if self.app.options['numlinechars']:
             self.fitNumberMarginWidth()
         self.flagTextChanged = True
@@ -5585,6 +5593,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         # Internal class variables
         self.UseNewFrameThread = self.options['usenewframethread']  # GPo new, test with one background frame thread for each script
+        self.progressDelayTime = self.options['progressdelaytime']  # GPo, waiting before showing the thread progress dialog
         self.splitView = False       # GPo
         self.splitView_next = True   # GPo
         self.extended_width = 0      # GPo 2020 used for extended_move and splitView
@@ -5754,8 +5763,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         def OnIdle(event):
             if self.IdleCallDict: # GPo, fire from first to last entry
-                #if self.debug:
-                    #print('IdleCallDict')
                 try:
                     key = next(iter(self.IdleCallDict))
                     f = self.IdleCallDict.pop(key)
@@ -5764,10 +5771,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     self.IdleCallDict.clear()
 
             if self.IdleCall:
-                #if self.debug:
-                    #print('IdleCall')
                 func, args, kwargs = self.IdleCall.pop() # GPo, fire from last to first entry
-                func(*args, **kwargs)
+                try:
+                    func(*args, **kwargs)
+                except:
+                    pass
         self.Bind(wx.EVT_IDLE, OnIdle)
 
         # Print options
@@ -6485,6 +6493,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'avithread': True,                       # GPo 2021, if true use separate thread for loading and freeing the clip and frame
             'avithreadassignlater': True,            # GPo 2021, if true then thread assign AVI to script after canceling, else freeing the clip (True=Avisynth not always happy)
             'usenewframethread': True,               # GPo new, test
+            'progressdelaytime': 10,                 # GPo new, delay before showing thread progress dialog (10s)
+            #'threadprogresshiden': False,            # GPo new, show only the progress dialog after press Ctrl + Shift ( not working )
             'bookmarktotrim': False,                 # GPo 2020
             'bookmarkshilightcolor': wx.Colour(233,122,122),   # GPo
             'selectionshilightcolor': wx.Colour(110,110,204),  # GPo 2020
@@ -6496,6 +6506,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'timelinestatusbarmovesense': 100,      # GPo sensevity timeline mouse move
             'timelinehidenumbers': True,            # GPo, automatically hide the numbers if trim dialog shown
             'timelinenumdivisor': 5,                # GPo, timline number divisor e.g. 10 shows 9 numbers
+            'autosnapshot': False,                  # GPo, automatically take snapshot 2 on clip refresh
             'eol': 'auto',
             'loadstartupbookmarks': True,
             'nrecentfiles': 5,
@@ -7385,6 +7396,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 ((_('Timeline move on status bar sensitivity:'), wxp.OPT_ELEM_SPIN, 'timelinestatusbarmovesense', _('Sets the sensitivity of the mouse movement on the status bar, for timeline range move (with or without Shift), lower value more movement'), dict(min_val=5, max_val=300, increment=5) ), ),
                 ((_('Timeline range numbers count:'), wxp.OPT_ELEM_LIST, 'timelinenumdivisor', _('How many additional numbers should be displayed in the timeline when a range has been set'), dict(choices=[(_('1 number'), 2),(_('4 numbers'), 5), (_('9 numbers'), 10),]) ), ),
                 ((_('Show available system memory (0 disabled)'), wxp.OPT_ELEM_SPIN, 'showfreememory', _('After creating a new clip, show available memory in the status bar if memory is less than x MB'), dict(min_val=0, max_val=9000, increment=100) ), ),
+                ((_('Delay before thread progress dialog appears'), wxp.OPT_ELEM_SPIN, 'progressdelaytime', _('If accessing Avisynth in threads enabled, this setting determines the delay in seconds before the dialog appears. Can be double (clip, frame)'), dict(min_val=10, max_val=360) ), ),
+                #((_('Hide thread progress dialog (Ctrl + Shift to show)'), wxp.OPT_ELEM_CHECK, 'threadprogresshiden', _('Hides the thread dialog and only shows it by pressing Ctrl + Shift (after delay time!) '), dict() ), ),
                 ((_('Mouse wheel scroll rate on editor (0 disabled)*'), wxp.OPT_ELEM_SPIN, 'scriptwindowbindmousewheel', _('If the mouse wheel does not work in the editor\nor you want another scroll rate. 1 to 5 lines to scroll\nFor enable/disable you must restart the program'), dict(min_val=0, max_val=5)  ), ),
                 #((_('Move video slider to timeline start'), wxp.OPT_ELEM_CHECK, 'timelinemoveslidertostart', _('On moving timeline range with keys Ctrl + Alt + PageDown\nTimeline moving with Ctrl + Alt + (Left, Right, PageUp, PageDown)\n or left mouse button on the status bar, with Shift no limit'), dict() ), ),
             ),
@@ -7846,6 +7859,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             ('Edit -> Select All', 'Ctrl+A'),
             ),
         ]
+        """ # GPo removed, causes problems
         self.menuBookmark = self.createMenu(
             (
                 (''),
@@ -7854,6 +7868,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 (_('show title'), '', self.UpdateBookmarkMenu, _('Show bookmarks with title'), wx.ITEM_CHECK, True),
             )
         )
+        """
         self.yuv2rgbDict = {
             _('Resolution-based'): 'auto',
             _('BT.709'): '709',
@@ -8207,6 +8222,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     (''),
                     (_('New tab from snapshot 1'), '', self.OnMenuNewTabFromSnapShot1, _('Copy snap shot 1 to new tab')),
                     (_('New tab from snapshot 2'), '', self.OnMenuNewTabFromSnapShot2, _('Copy snap shot 2 to new tab')),
+                    (''),
+                    (_('Auto take snapshot 2'), '', self.OnMenuAutoTakeSnapShot, _('Automatically takes snapshot 2 on clip refresh'), wx.ITEM_CHECK, self.options['autosnapshot']),
                     (''),
                     (_('Clear tab snapshots'), '', self.OnMenuClearTabSnapShot, _('Clears the current tab snapshots')),
                     (_('Clear all snapshots Globally'), '', self.OnMenuClearAllSnapShots, _('Clears all snapshots Globally')),
@@ -8759,8 +8776,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         scriptWindow.PlayThread = None
         scriptWindow.matrix = self.options['defaultmatrix'].split(',') # ['auto', 'tv']
         scriptWindow.snapShots = {
-            'shot1': [-1, None, "", 0],        # GPo: FrameNr, Bitmap, script, previewFilterIdx
-            'shot2': [-1, None, "", 0]
+            'shot1': utils.emptySnapShot,  # [-1, None, "", 0] FrameNr, Bitmap, script, previewFilterIdx
+            'shot2': utils.emptySnapShot   # also used for autosnapshot
+            #'shot3': utils.emptySnapShot   # GPo new, test autosnapshot
             }
         try:
             scriptWindow.contextMenu = self.menuBackups[0] if self.menuBackups else self.GetMenuBar().GetMenu(1)
@@ -11331,23 +11349,33 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     def OnMenuTakeSnapShot2(self, event):
         self.TakeSnapShot(1)
 
-    def TakeSnapShot(self, shotIdx):
+    def OnMenuAutoTakeSnapShot(self, event):
+        self.options['autosnapshot'] = event.IsChecked()
+        self.UpdateVideoMenuItem(_('Snapshot'), _('Auto take snapshot 2'), '', event.IsChecked())
+        self.UpdateUserSliders(forceUpdate=True) # Change the snapshot 2 label
+
+    # if not updateFrame: no error message and don't call ShowVideoFrame, return only not True
+    def TakeSnapShot(self, shotIdx, updateFrame=True, readScript=True):
         if not shotIdx in (0,1):
             return
         self.snapShotIdx = 0
-        if not self.ShowVideoFrame(forceLayout=True):
-            return
         script = self.currentScript
+        if updateFrame and not self.ShowVideoFrame(forceLayout=True):
+            return
+        if not script.AVI:
+            return
         bmp = wx.EmptyBitmap(script.AVI.DisplayWidth, script.AVI.DisplayHeight)
         dc = wx.MemoryDC()
         dc.SelectObject(bmp)
         if not script.AVI.DrawFrame(self.currentframenum, dc):
-            self.ErrorMessage_GetFrame(script, self.currentframenum)
+            if updateFrame:
+                self.ErrorMessage_GetFrame(script, self.currentframenum)
             return
-        txt = self.currentScript.GetText()
+        txt = self.currentScript.GetText() if readScript else ''
         shotKey = 'shot' + str(shotIdx+1)
         script.snapShots[shotKey][1] = None # free bmp
         script.snapShots[shotKey] = [self.currentframenum, bmp, txt, script.previewFilterIdx]
+        return True
 
     def OnMenuShowSnapShot1(self, event=None, showMsg=True):
         self.ShowSnapShot(0, showMsg=showMsg)
@@ -11417,7 +11445,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.snapShotIdx = 0
         script = self.currentScript
         for key in script.snapShots.keys():
-            script.snapShots[key] = [-1, None, "", 0]
+            script.snapShots[key] = utils.emptySnapShot
         self.videoWindow.Refresh()
 
     def OnMenuClearAllSnapShots(self, event=None):
@@ -11425,7 +11453,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         for index in xrange(self.scriptNotebook.GetPageCount()):
             script = self.scriptNotebook.GetPage(index)
             for key in script.snapShots.keys():
-                script.snapShots[key] = [-1, None, "", 0]
+                script.snapShots[key] = utils.emptySnapShot
         self.videoWindow.Refresh()
 
     def GetScriptSnapshotDict(self, script):
@@ -11444,7 +11472,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     prevFilterIdx = 0
                 script.snapShots[key] = [nr, None, txt, prevFilterIdx]
             else:
-                script.snapShots[key] = [-1, None, "", 0]
+                script.snapShots[key] = utils.emptySnapShot
 
     def SetDialogPositionNextToVideo(self, dlg):
         parent = dlg.GetParent()
@@ -11924,7 +11952,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 th.name = 'frame'
                 script.AviThread = th
                 th.start()
-                th.join(10)
+                th.join(self.progressDelayTime)
                 if th.isAlive():
                     self.TH_WaitForFrame(script, th, self.currentframenum)
                 else: script.AviThread = None
@@ -12142,7 +12170,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     def OnMenuVideoHide(self, event):
         self.HidePreviewWindow()
 
-    def AviThread_Running(self, script, prompt=True):
+    def AviThread_Running(self, script, prompt=True, checkFrameThread=True):
         if script.AviThread and script.AviThread.isAlive():
             script.AviThread.join(1)
             if script.AviThread and script.AviThread.isAlive():
@@ -12152,6 +12180,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         name = base
                     wx.MessageBox(_(u'Avisynth not returned thread still running.\n{0}').format(name))
                 return True
+        if checkFrameThread:
+            return self.FrameThread_Running(script, prompt)
         return False
 
     # for frame thread handle with events
@@ -16135,11 +16165,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if self.AviThread_Running(script):
             self.HidePreviewWindow()
             return False
+        """
         if script.FrameThread:
             if script.FrameThread.IsRunning():
                 self.HidePreviewWindow()
                 return False
-
+        """
         if self.splitView:
             self.splitView = False
             if self.previewWindowVisible:
@@ -16168,7 +16199,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         self.snapShotIdx = 0
         for key in script.snapShots.keys():
-            script.snapShots[key] = [-1, None, "", 0]
+            script.snapShots[key] = utils.emptySnapShot
 
         script.lastFramenum = None # GPo, disable OnPageChanged
 
@@ -18687,17 +18718,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 _t = time.time() + 9.0
                 while th.isAlive() and time.time() <= _t:
                     wx.MilliSleep(1)
-                    #wx.MicroSleep(300)
-                    #time.sleep(0.0001)
-                    #wx.Yield()
-                    #pass # Strange behavior, no increased CPU usage, no app block ( only on Win7 )
-
                 if th.isAlive():
                     if not self.TH_WaitForFrame(script, th, framenum):
                         return
                 else:
                     script.AviThread = None
-
             else:
                 th = script.FrameThread
                 if th.IsRunning():
@@ -18707,10 +18732,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 _t = time.time() + 9.0
                 while th.IsRunning() and time.time() <= _t:
                     wx.MilliSleep(1)
-                    #wx.MicroSleep(300)
-                    #time.sleep(0.0001)
-                    #wx.Yield()
-                    #pass
 
                 if th.IsRunning():
                     if not self.WaitForFrameThread(script, th, framenum):
@@ -19545,9 +19566,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         'Options->Access Avisynth in threads should be deaktivated.\n'+
                         'Then restart the program.'), style=wx.OK|wx.ICON_ERROR)
                 return
-            #self.Enable(False)
-            disabler = wx.WindowDisabler(True)
-            th.join(10)
+
+            disabler = wx.WindowDisabler()
+            th.join(self.progressDelayTime)
             try:
                 try:
                     AVI = q.get_nowait()
@@ -19561,10 +19582,27 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     msgShown = False
                     msg = utils.resource_str_threadwait2 if self.options['avithreadassignlater'] else utils.resource_str_threadwait
                     msg_1 = msg if self.WinVersion < 7 else _('Process clip...')
-
-                    progress = wx.ProgressDialog(_('Waiting for avisynth clip'),msg_1,10,self,
-                                    style=wx.PD_ELAPSED_TIME|wx.PD_CAN_ABORT|wx.PD_APP_MODAL)
+                    #progress = None
                     try:
+                        """
+                        if self.options['threadprogresshiden']:
+                            while th.isAlive():
+                                if not progress and wx.GetKeyState(wx.WXK_CONTROL) and wx.GetKeyState(wx.WXK_SHIFT):
+                                    progress = wx.ProgressDialog(_('Waiting for avisynth clip'),msg_1,10,self,
+                                        style=wx.PD_ELAPSED_TIME|wx.PD_CAN_ABORT|wx.PD_APP_MODAL)
+                                if progress:
+                                    if not msgShown:
+                                        msgShown = True
+                                        c,s = progress.Pulse(msg)
+                                    else:
+                                        c,s = progress.Pulse()
+                                    if not c:
+                                        break
+                                th.join(1.0)
+                        else:
+                        """
+                        progress = wx.ProgressDialog(_('Waiting for avisynth clip'),msg_1,10,self,
+                                    style=wx.PD_ELAPSED_TIME|wx.PD_CAN_ABORT|wx.PD_APP_MODAL)
                         while th.isAlive():
                             c,s = progress.Pulse()
                             if not c:
@@ -19578,9 +19616,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                             i += 1
                             th.join(0.5)
 
-                        if c and self.WinVersion > 6:
+                        if progress and c and self.WinVersion > 6:
                             progress.Pulse(_('Clip process finished'))
                     finally:
+                        #if progress:
                         progress.Destroy()
                     try:
                         AVI = q.get_nowait()
@@ -19591,17 +19630,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         rq.put(True) # flag for thread (release or assign later the clip)
                         self.Thread_List.append((th,q))
             finally:
-                #self.Enable(True)
                 disabler = False
                 if not th.isAlive():
                     script.AviThread = None
                 if not AVI or (AVI and AVI.IsErrorClip()):
                     self.GetStatusBar().SetStatusText(_('Clip not initialized'))
-                try:
-                    #self.DeletePendingEvents()
-                    pass
-                except:
-                    pass
                 return AVI
 
         def checkMatrix(script):
@@ -19647,6 +19680,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     # Backup the current session if paranoia mode is on
                     if self.options['paranoiamode']:
                         self.SaveSession(self.lastSessionFilename, saverecentdir=False, previewvisible=False)
+                    # GPo new, place change
+                    if self.AviThread_Running(script):
+                        return None
+                    script.AviThread = None
                     if self.playing_video:
                         self.PlayPauseVideo(refreshFrame=False)
                         self.playing_video = ''
@@ -19661,16 +19698,23 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         boolOldAVI = False
                         env = None
                     else:
-                        self.SetPreviewFilterMenus() # GPo. 2020
+                        # GPo new test auto snapshot
+                        if self.options['autosnapshot'] and not script.AVI.IsErrorClip():
+                            if not self.TakeSnapShot(1, updateFrame=False, readScript=False):
+                                script.snapShots['shot2'] = utils.emptySnapShot
+                            else: script.snapShots['shot2'][2] = script.lastText
+                            script.flagModified = False # tell the script save last text before text changes
+                        ###
+                        self.SetPreviewFilterMenus()
                         oldFramecount = script.AVI.Framecount
                         oldWidth, oldHeight = script.AVI.DisplayWidth, script.AVI.DisplayHeight
                         boolOldAVI = True
                         env = script.AVI.env if keep_env else None
-
+                    """ GPo new, place it upper
                     if self.AviThread_Running(script):
                         return None
                     script.AviThread = None
-
+                    """
                     workdir_exp = self.ExpandVars(self.options['workdir'])
                     if (self.options['useworkdir'] and self.options['alwaysworkdir']
                         and os.path.isdir(workdir_exp)):
@@ -19697,9 +19741,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         displayFilter = None
 
                     if script == self.currentScript:
-                        p, f = os.path.split(filename)
-                        if not f: f = p
-                        self.GetStatusBar().SetStatusText(_('%s - Initialize clip: %s') % (self.ShowFreeMemory(returnStr=True), f))
+                        #p, f = os.path.split(filename)
+                        #if not f: f = p
+                        #self.GetStatusBar().SetStatusText(_('%s - Initialize clip: %s') % (self.ShowFreeMemory(returnStr=True), f))
+                        #if self.options['threadprogresshiden']:
+                            #self.GetStatusBar().SetStatusText(_('Initialize clip  %s  (Press Ctrl + Shift do show the progress dialog)') % (self.ShowFreeMemory(returnStr=True)))
+                        #else:
+                        self.GetStatusBar().SetStatusText(_('Initialize clip  %s') % (self.ShowFreeMemory(returnStr=True)))
 
                     if self.UseAviThread:
                         script.AVI = TH_GetClip(script, self.getCleanText(scripttxt), filename,
@@ -21018,15 +21066,26 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             else: self.OnMenuNewTabFromSnapShot2()
         def OnClearAll(event):
             self.OnMenuClearAllSnapShots()
+        def OnAutoSnapshot(event):
+            btn = event.GetEventObject()
+            self.options['autosnapshot'] = event.IsChecked()
+            if self.options['autosnapshot']:
+                btnSnapshot2.SetLabel('*Make 2  Show 2')
+            else: btnSnapshot2.SetLabel('Make 2  Show 2')
+            btnSnapshot2.Update()
+            self.UpdateVideoMenuItem(_('Snapshot'), _('Auto take snapshot 2'), '', event.IsChecked())
         def OnContextMenu(event):
+            self.lastContextMenuWin = event.GetEventObject()
             info = [
                 (_('Restore to current'), '', OnRestoreToCurrent, ''),
                 (_('Restore to new tab'), '', OnRestoreToNewTab, ''),
                 (''),
+                (_('Auto take snapshot 2'), '', OnAutoSnapshot, '', wx.ITEM_CHECK, self.options['autosnapshot']),
+                (''),
                 (_('Clear all'), '', OnClearAll, ''),
             ]
             popup = self.createMenu(info)
-            self.lastContextMenuWin = event.GetEventObject()
+
             self.PopupMenu(popup)
             popup.Destroy()
 
@@ -21034,7 +21093,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         parent = script.sliderWindow
         sizer = script.sliderSizerNew
         btnSnapshot1 = wxp.StaticText(parent, wx.ID_ANY, label='Make 1  Show 1')
-        btnSnapshot2 = wxp.StaticText(parent, wx.ID_ANY, label='Make 2  Show 2')
+        if self.options['autosnapshot']:
+            btnSnapshot2 = wxp.StaticText(parent, wx.ID_ANY, label='*Make 2  Show 2')
+        else: btnSnapshot2 = wxp.StaticText(parent, wx.ID_ANY, label='Make 2  Show 2')
         ctrl = (btnSnapshot1,btnSnapshot2)
         font = btnSnapshot1.GetFont()
         font.SetUnderlined(True)
@@ -21047,12 +21108,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 item.SetForegroundColour(self.currentSliderWindow.foreExtraBtn1)
             item.Bind(wx.EVT_CONTEXT_MENU, OnContextMenu)
         def GetResponse(btn):
+            label = btn.GetLabel()
             btn.SetLabel(_('Done'))
             btn.Update()
             wx.MilliSleep(500)
-            if btn == btnSnapshot1:
-                btn.SetLabel('Make 1  Show 1')
-            else: btn.SetLabel('Make 2  Show 2')
+            btn.SetLabel(label)
             btn.Update()
         def OnBtnSnapshot1(event):
             btn = event.GetEventObject()
@@ -22060,7 +22120,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             except:
                 pass
 
-        # I don't know if faster... 3 extra calls and calculation
+        # I don't know if it faster... 3 extra calls and calculation
         _x = max(int(x/self.zoomfactor)-int(10/self.zoomfactor),0)
         _y = max(int(y/self.zoomfactor)-int(10/self.zoomfactor),0)
         dc.DestroyClippingRegion()
@@ -22135,10 +22195,18 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         h = script.AVI.DisplayHeight
         if not bmp or (bmp.GetWidth() != w or bmp.GetHeight() != h):
             self.snapShotIdx = 0
-            wx.Bell()
+            if bmp and bmp.GetWidth() != w or bmp.GetHeight() != h:
+                wx.MessageBox(_('Snapshot dimensions different: %ix%i') % (bmp.GetWidth(), bmp.GetHeight()))
+            else:
+                wx.Bell()
             self.videoWindow.Refresh()
             return
         dc = wx.MemoryDC()
+        """ Flicker free but CPU usage higher and memory doubled
+        if self.zoomfactor == 1:
+            dc.SelectObject(bmp.GetSubBitmap(wx.Rect(0, 0, *bmp.Size)))
+        else:
+        """
         dc.SelectObject(bmp)
         try:
             self.videoWindow.DoPrepareDC(inputdc)
@@ -22153,21 +22221,20 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             inputdc.Blit(0, 0, w, h, dc, 0, 0)
             if self.zoom_antialias == '': # wait for ResetZoomAntialias
                 return
-            """
-            screendc = wx.ScreenDC()
-            screendc.SetFont(wx.Font(pointSize=12, family=wx.FONTFAMILY_DEFAULT, style=wx.FONTSTYLE_NORMAL, weight=wx.FONTWEIGHT_BOLD))
-            screendc.SetTextForeground(wx.YELLOW)
-            sx, sy = self.videoWindow.GetScreenPosition()
-            screendc.DrawLabel("Snapshot " + str(self.snapShotIdx),(sx+2,sy+2,sx+52,sy+102))
-            screendc.Clear()
-            """
             inputdc.SetUserScale(1, 1)
             inputdc.SetFont(wx.Font(pointSize=12, family=wx.FONTFAMILY_DEFAULT, style=wx.FONTSTYLE_NORMAL, weight=wx.FONTWEIGHT_BOLD))
             inputdc.SetTextForeground(wx.YELLOW)
+            #inputdc.SetTextBackground(wx.BLACK)
+            #inputdc.SetBackgroundMode(wx.BRUSHSTYLE_SOLID)
             inputdc.DrawLabel("Snapshot " + str(self.snapShotIdx),(x+2,y+2,x+52,y+102))
         else:
+            #dc.SetFont(wx.Font(pointSize=12, family=wx.FONTFAMILY_DEFAULT, style=wx.FONTSTYLE_NORMAL, weight=wx.FONTWEIGHT_BOLD))
+            #dc.SetTextForeground(wx.YELLOW)
+            #dc.DrawLabel("Snapshot " + str(self.snapShotIdx),(x+2,y+2,x+52,y+102))
             inputdc.SetFont(wx.Font(pointSize=12, family=wx.FONTFAMILY_DEFAULT, style=wx.FONTSTYLE_NORMAL, weight=wx.FONTWEIGHT_BOLD))
             inputdc.SetTextForeground(wx.YELLOW)
+            #inputdc.SetTextBackground(wx.BLACK)
+            #inputdc.SetBackgroundMode(wx.BRUSHSTYLE_SOLID)
             inputdc.Blit(0, 0, w, h, dc, 0, 0)
             inputdc.DrawLabel("Snapshot " + str(self.snapShotIdx),(x+2,y+2,x+52,y+102))
 
@@ -22208,10 +22275,27 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             disabler = wx.WindowDisabler()
             msg = utils.resource_str_threadwait
             msg_1 = msg if self.WinVersion < 7 else ''
-
-            progress = wx.ProgressDialog(_('Waiting for frame {0}'.format(nr)),msg_1,10, self,
-                            style=wx.PD_ELAPSED_TIME|wx.PD_CAN_ABORT|wx.PD_APP_MODAL)
+            #progress = None
             try:
+                """
+                if self.options['threadprogresshiden']:
+                    while th.isAlive():
+                        if not progress and wx.GetKeyState(wx.WXK_CONTROL) and wx.GetKeyState(wx.WXK_SHIFT):
+                            progress = wx.ProgressDialog(_('Waiting for frame {0}'.format(nr)),msg_1,10, self,
+                                        style=wx.PD_ELAPSED_TIME|wx.PD_CAN_ABORT|wx.PD_APP_MODAL)
+                        if progress:
+                            if not msgShown:
+                                msgShown = True
+                                c,s = progress.Pulse(msg)
+                            else:
+                                c,s = progress.Pulse()
+                            if not c:
+                                break
+                        th.join(1.0)
+                else:
+                """
+                progress = wx.ProgressDialog(_('Waiting for frame {0}'.format(nr)),msg_1,10, self,
+                            style=wx.PD_ELAPSED_TIME|wx.PD_CAN_ABORT|wx.PD_APP_MODAL)
                 while th.isAlive():
                     c,s = progress.Pulse()
                     if not c:             # user abort
@@ -22227,6 +22311,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     th.join(0.5)
             finally:
                 disabler = False # must first called or progress cannot quickly destroy
+                #if progress:
                 progress.Destroy()
                 self.Raise() # bring window to top was dialog shown
 
@@ -22262,10 +22347,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         _t = time.time() + 1.0
         wx.MilliSleep(1)
         while th.isAlive() and time.time() <= _t: # its faster as join
-            #wx.MicroSleep(500)
             wx.MilliSleep(1)
         if th.isAlive():
-            th.join(9.0)
+            th.join(self.progressDelayTime)
 
         """
         We have to block the app to prevent access to the script.
@@ -22284,26 +22368,43 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             disabler = wx.WindowDisabler()
             msg = utils.resource_str_threadwait
             msg_1 = msg if self.WinVersion < 7 else ''
-
-            progress = wx.ProgressDialog(_('Waiting for frame {0}'.format(nr)),msg_1,10, self,
-                            style=wx.PD_ELAPSED_TIME|wx.PD_CAN_ABORT|wx.PD_APP_MODAL)
-
+            #progress = None
             try:
+                """
+                if self.options['threadprogresshiden']:
+                    while th.isAlive():
+                        if not progress and wx.GetKeyState(wx.WXK_CONTROL) and wx.GetKeyState(wx.WXK_SHIFT):
+                            progress = wx.ProgressDialog(_('Waiting for frame {0}'.format(nr)),msg_1,10, self,
+                                        style=wx.PD_ELAPSED_TIME|wx.PD_CAN_ABORT|wx.PD_APP_MODAL)
+                        if progress:
+                            if not msgShown:
+                                msgShown = True
+                                c,s = progress.Pulse(msg)
+                            else:
+                                c,s = progress.Pulse()
+                            if not c:
+                                break
+                        th.join(1.0)
+                else:
+                """
+                progress = wx.ProgressDialog(_('Waiting for frame {0}'.format(nr)),msg_1,10, self,
+                        style=wx.PD_ELAPSED_TIME|wx.PD_CAN_ABORT|wx.PD_APP_MODAL)
                 while th.isAlive() and th.IsRunning():
                     c,s = progress.Pulse()
                     if not c:             # user abort
-                        if i > 25: break
+                        if i > 10: break
                         else:
                             msgShown = True
                             progress.Pulse(msg)
-                    if not msgShown and i > 25: # show msg
+                    if not msgShown and i > 10: # show msg
                         msgShown = True
                         progress.Pulse(msg)
-                    if i < 26:
+                    if i < 11:
                         i += 1
-                    th.join(0.2) # must not so fast if frame after 10 seconds not ready
+                    th.join(0.5) # must not so fast if frame after 10 seconds not ready
             finally:
                 disabler = False # must first called or progress cannot quickly destroy
+                #if progress:
                 progress.Destroy()
                 self.Raise() # bring window to top was dialog shown
 
@@ -22318,7 +22419,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     # Single frame Thread for each script
     def GetAviDisplayFrame2(self, script, nr, showWarn=True, checkClipThread=True):
         # return false if AVI thread running
-        if checkClipThread and self.AviThread_Running(script, prompt=showWarn):
+        if checkClipThread and self.AviThread_Running(script, prompt=showWarn, checkFrameThread=False):
             return False
 
         if not self.UseAviThread:
@@ -22339,11 +22440,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 return False
 
         th.Start(nr)
-        _t = time.time() + 10.0
+        _t = time.time() + self.progressDelayTime  #10.0
         while th.isAlive() and th.IsRunning() and time.time() <= _t:
             wx.MilliSleep(1)
-            #wx.MicroSleep(500)
-            #time.sleep(0.0005)
         if th.IsRunning():
             return self.WaitForFrameThread(script, th, nr)
         else:
@@ -22448,7 +22547,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                             wx.GetApp().ProcessPendingEvents()
                         th.join(0.1)
 
-                if self.AviThread_Running(script, prompt=False):
+                if self.AviThread_Running(script, prompt=False, checkFrameThread=False):
                     script.AviThread.join(5.0)
                 if self.FrameThread_Running(script, prompt=False):
                     th = script.FrameThread
@@ -22466,8 +22565,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             threaded = self.options['playbackthread'] or self.UseAviThread
             script.PlayThreadId = 0
             # Befor start the playback check the threads
-            if self.AviThread_Running(script, prompt=True) or \
-                self.FrameThread_Running(script, prompt=True) or \
+            if self.AviThread_Running(script, prompt=True, checkFrameThread=True) or \
                 self.PlayThread_Running(script, prompt=True):
                     return
             # check and set the defaults
@@ -23521,6 +23619,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 if self.options['pluginsdir'] != old_plugins_directory:
                     self.SetPluginsDirectory(old_plugins_directory)
             self.options['plugindirregister'] = False
+            self.progressDelayTime = self.options['progressdelaytime']
 
             for key in ['altdir', 'workdir', 'pluginsdir', 'avisynthhelpfile',
                         'externalplayer', 'docsearchpaths']:

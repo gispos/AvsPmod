@@ -33,10 +33,12 @@ ApplyFilter(%start, %stop, """%*%copy""")
 # the selected text (filters) are copied to the script end. 
 
 ## for a single timeline selection
+/**avsp_filter
 filter = """\
 %*%join
 \"""
 ApplyFilter(%start, %stop, filter)
+**/
 
 ## for all timeline selections
 filter = """\

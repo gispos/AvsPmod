@@ -30,6 +30,7 @@ resource_str_displayfilter = ("# you can run short macro with line start: #>\n"
                               "ch = ch/4*4\n"
                               "Spline36Resize((round(ch*(w/h))/4)*4, ch)")
 
+emptySnapShot = [-1, None, "", 0] # FrameNr, Bitmap, script, previewFilterIdx
 
 """
 WIN_10 = (10, 0, 0)

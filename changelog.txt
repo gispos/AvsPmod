@@ -38,6 +38,17 @@ If, for example, there is a '-' in the file name of the dll, AvsPmod will report
 please rename this dll and replace the '-' with a '_' 
 
 --------------------------
+Version 2.6.9.4 [2021-09-18] GPo
+--------------------------
+* Added selectable delay for thread progress dialog ( program options Misc 2 )
+* Added automatically take snapshot on clip refresh ( Video > Snapshot > 'Auto take snapshot 2' )
+- better than staring at the screen for 30 seconds...and then still miss the moment
+- also added on slider window Snapshot popup menu 'Auto take snapshot 2'
+- preview filters do not trigger a snapshot only when the clip is initialized (refreshed)
+- if active, then 'Make 2' is changed to '*Make 2' in the slider window 
+* Error treatment for the 'Use advanced frame thread' revised
+
+--------------------------
 Version 2.6.9.3 [2021-09-10] GPo
 --------------------------
 * 'Apply filter' revised. Preview filter is now also possible as a default in the templates. 
