@@ -5618,6 +5618,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.xo = self.yo = 5
         self.mouseDownXY = None
         self.saveViewPos = False        # GPo, keep view XY and zoom for each script
+        self.lastTwoPagesIdx =  (0, 0)  # GPo, save the last two page indexes for toggle between
         self.tabChangeLoadBookmarks = self.options['tabsbookmarksfromscript']
         self.OnMenuTabChangeLoadBookmarks(None) # enable/disable 'Clear tab bookmarks' menu
         self.play_speed_factor = 1.0
@@ -7936,6 +7937,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 (''),
                 (_('Next tab'), 'Ctrl+Tab', self.OnMenuFileNextTab, _('Switch to next script tab')),
                 (_('Previous tab'), 'Ctrl+Shift+Tab', self.OnMenuFilePrevTab, _('Switch to previous script tab')),
+                (_('Toggle last two tabs'), '', self.OnToggleLastTwoTabs, _('Toggle between last two selected tabs')),
                 (''),
                 (_('Toggle scrap window'), 'Ctrl+Shift+P', self.OnMenuEditShowScrapWindow, _('Show the scrap window')),
                 (_('Clear file history'), '', self.OnMenuFileClearRecentFiles, _('Clear the recent file list')),
@@ -11354,13 +11356,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.UpdateVideoMenuItem(_('Snapshot'), _('Auto take snapshot 2'), '', event.IsChecked())
         self.UpdateUserSliders(forceUpdate=True) # Change the snapshot 2 label
 
-    # if not updateFrame: no error message and don't call ShowVideoFrame, return only not True
-    def TakeSnapShot(self, shotIdx, updateFrame=True, readScript=True):
+    def TakeSnapShot(self, shotIdx):
         if not shotIdx in (0,1):
             return
         self.snapShotIdx = 0
         script = self.currentScript
-        if updateFrame and not self.ShowVideoFrame(forceLayout=True):
+        if not self.ShowVideoFrame(forceLayout=True):
             return
         if not script.AVI:
             return
@@ -11368,10 +11369,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         dc = wx.MemoryDC()
         dc.SelectObject(bmp)
         if not script.AVI.DrawFrame(self.currentframenum, dc):
-            if updateFrame:
-                self.ErrorMessage_GetFrame(script, self.currentframenum)
+            self.ErrorMessage_GetFrame(script, self.currentframenum)
             return
-        txt = self.currentScript.GetText() if readScript else ''
+        txt = self.currentScript.GetText()
         shotKey = 'shot' + str(shotIdx+1)
         script.snapShots[shotKey][1] = None # free bmp
         script.snapShots[shotKey] = [self.currentframenum, bmp, txt, script.previewFilterIdx]
@@ -11393,9 +11393,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if (self.currentframenum != nr) or not self.previewWindowVisible:
                 self.ShowVideoFrame(nr, forceLayout=True, forceCursor=True)
             else:
-                #if self.splitView:
-                   # wx.Bell()
-                    #return
                 if bmp:
                     if index == 0:
                         self.snapShotIdx = 1 if self.snapShotIdx in [0,2] else 0
@@ -13794,6 +13791,20 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.AddFrameBookmark(value, bmtype)
         event.Skip()
 
+    def OnToggleLastTwoTabs(self, event):
+        a, b = self.lastTwoPagesIdx
+        curr = self.scriptNotebook.GetSelection()
+        count = self.scriptNotebook.GetPageCount()
+        if a != b:
+            if (a < count) and (a != curr):
+                self.SelectTab(a)
+            elif (b < count) and (b != curr):
+                self.SelectTab(b)
+            else:
+                 wx.Bell()
+        else:
+             wx.Bell()
+
     def OnNotebookPageChanged(self, event):
 
         def SetBookmarks():
@@ -13826,6 +13837,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         # Get the newly selected script
         currIndex = event.GetSelection()
         oldIndex =  event.GetOldSelection()
+        self.lastTwoPagesIdx = (currIndex, oldIndex)
         script = self.scriptNotebook.GetPage(currIndex)
         self.currentScript = script
         self.refreshAVI = True
@@ -18260,10 +18272,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         bookmarktitle = self.titleDict.get(frame, '')
         zoom = ''
         if self.zoomfactor != 1:
+            """
             if self.zoomfactor < 1 or self.zoomwindow:
                 zoom = '(%.2fx) ' % self.zoomfactor
             else:
                 zoom = '(%ix) ' % self.zoomfactor
+            """
+            zoom = '(%.2fx) ' % self.zoomfactor
         if addon:
             pixelpos, pixelhex, pixelrgb, pixelrgba, pixelyuv = addon
             if v.IsYUV:
@@ -18316,10 +18331,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         zoom = ''
         width, height = v.DisplayWidth, v.DisplayHeight
         if self.zoomfactor != 1:
+            """
             if self.zoomfactor < 1 or self.zoomwindow:
                 zoom = '(%.2fx) ' % self.zoomfactor
             else:
                 zoom = '(%ix) ' % self.zoomfactor
+            """
+            zoom = '(%.2fx) ' % self.zoomfactor
         aspectratio = '%.03f:1' % (width / float(height))
         if aspectratio == '1.000:1':  # GPo 2018 added elif
             aspectratio = '1:1'
@@ -19469,7 +19487,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             return not th.isAlive()
         """
 
-        def UpdateAbandonedScript(qr, AVI, script, scripttxt, scr_filename):
+        def updateAbandonedScript(qr, AVI, script, scripttxt, scr_filename):
             # check the clip and script again in the main thread, ignor AVI.isErrorClip
             if isinstance(AVI,  pyavs.AvsClipBase) and isinstance(script, AvsStyledTextCtrl):
                 idx = -1
@@ -19534,7 +19552,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                             break
                     if found:
                         qr = queue.Queue()
-                        wx.CallAfter(UpdateAbandonedScript, qr, AVI, script, scripttxt, scr_filename) # go into the main thread
+                        wx.CallAfter(updateAbandonedScript, qr, AVI, script, scripttxt, scr_filename) # go into the main thread
                         if qr.get(block=True, timeout=5) is True: # wait for the result
                             return
             except:
@@ -19657,6 +19675,20 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     readmatrix = False # force the writen matrix in the script
             return readmatrix
 
+        def autoTakeSnapshot(script):
+            self.snapShotIdx = 0
+            bmp = wx.EmptyBitmap(script.AVI.DisplayWidth, script.AVI.DisplayHeight)
+            dc = wx.MemoryDC()
+            dc.SelectObject(bmp)
+            nr = script.lastFramenum
+            if script.AVI.DrawFrame(nr, dc):
+                script.snapShots['shot2'][1] = None # free bmp
+                script.snapShots['shot2'] = [nr, bmp, script.lastText, script.previewFilterIdx]
+            else:
+                 bmp = None
+                 script.snapShots['shot2'] = utils.emptySnapShot
+            script.flagModified = False # tell the script save last text before text changes
+
         # Func start ( UpdateScriptAvi )
         try:
             if not script:
@@ -19699,12 +19731,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         env = None
                     else:
                         # GPo new test auto snapshot
-                        if self.options['autosnapshot'] and not script.AVI.IsErrorClip():
-                            if not self.TakeSnapShot(1, updateFrame=False, readScript=False):
-                                script.snapShots['shot2'] = utils.emptySnapShot
-                            else: script.snapShots['shot2'][2] = script.lastText
-                            script.flagModified = False # tell the script save last text before text changes
-                        ###
+                        if self.options['autosnapshot'] and script.lastFramenum and not script.AVI.IsErrorClip():
+                            autoTakeSnapshot(script)
                         self.SetPreviewFilterMenus()
                         oldFramecount = script.AVI.Framecount
                         oldWidth, oldHeight = script.AVI.DisplayWidth, script.AVI.DisplayHeight
@@ -21074,12 +21102,19 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             else: btnSnapshot2.SetLabel('Make 2  Show 2')
             btnSnapshot2.Update()
             self.UpdateVideoMenuItem(_('Snapshot'), _('Auto take snapshot 2'), '', event.IsChecked())
+        def OnCopySnapshot2To1(event):
+            script = self.currentScript
+            nr, bmp, txt, idx = script.snapShots['shot2']
+            if bmp and txt:
+                script.snapShots['shot1'] = [nr, bmp.GetSubBitmap(wx.Rect(0, 0, *bmp.Size)), txt, idx] # [-1, None, "", 0]
+            else: wx.MessageBox(_('Error: Snapshot 2 is empty'))
         def OnContextMenu(event):
             self.lastContextMenuWin = event.GetEventObject()
             info = [
                 (_('Restore to current'), '', OnRestoreToCurrent, ''),
                 (_('Restore to new tab'), '', OnRestoreToNewTab, ''),
                 (''),
+                (_('Copy snapshot 2 to 1'), '', OnCopySnapshot2To1, ''),
                 (_('Auto take snapshot 2'), '', OnAutoSnapshot, '', wx.ITEM_CHECK, self.options['autosnapshot']),
                 (''),
                 (_('Clear all'), '', OnClearAll, ''),

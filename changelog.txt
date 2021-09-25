@@ -35,7 +35,16 @@ Avisynth and AvsPmod can have problems with it. Function names have to be assign
 the name has to be split and this can lead to errors. 
 AvsPmod can only provide a user-friendly editor if he has no problems with the name of the dll and its function. 
 If, for example, there is a '-' in the file name of the dll, AvsPmod will report it at startup, 
-please rename this dll and replace the '-' with a '_' 
+please rename this dll and replace the '-' with a '_'
+
+
+--------------------------
+Version 2.6.9.5 [2021-09-25] GPo
+--------------------------
+* Added to slider window snapshot popup menu 'Copy snapshot 2 to 1'
+* Zoom values in the status bar that are not equal to 1 are now always displayed in decimal
+* Added File > 'Toggle last two tabs', toggles between the last two selected tabs (idea by Dogway)
+* Fixed 'Auto take snapshot 2', if several tabs were open, the wrong frame number could be used as a snapshot 
 
 --------------------------
 Version 2.6.9.4 [2021-09-18] GPo
