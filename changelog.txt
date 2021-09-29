@@ -37,6 +37,14 @@ AvsPmod can only provide a user-friendly editor if he has no problems with the n
 If, for example, there is a '-' in the file name of the dll, AvsPmod will report it at startup, 
 please rename this dll and replace the '-' with a '_'
 
+--------------------------
+Version 2.6.9.6 [2021-09-29] GPo
+--------------------------
+* Change menu naming File > 'Toggle last two tabs' to 'Previously selected tab', you must recreate the shortcut for it.
+* Fixed zooming with keyboard and program startup with last zoom settings doesn't work. 
+- Note: 100%, fill and fit is always restored at program startup.
+- only if you want to restore 2x or something similar you must turn on Options > Video > 'Startup with last zoom settings'  
+* Fixed 'Auto take snapshot 2' doesn't work on frame number 0
 
 --------------------------
 Version 2.6.9.5 [2021-09-25] GPo

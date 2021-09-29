@@ -5618,7 +5618,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.xo = self.yo = 5
         self.mouseDownXY = None
         self.saveViewPos = False        # GPo, keep view XY and zoom for each script
-        self.lastTwoPagesIdx =  (0, 0)  # GPo, save the last two page indexes for toggle between
+        self.oldTabIndex =  0           # GPo, save the last page index for toggle
         self.tabChangeLoadBookmarks = self.options['tabsbookmarksfromscript']
         self.OnMenuTabChangeLoadBookmarks(None) # enable/disable 'Clear tab bookmarks' menu
         self.play_speed_factor = 1.0
@@ -7937,7 +7937,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 (''),
                 (_('Next tab'), 'Ctrl+Tab', self.OnMenuFileNextTab, _('Switch to next script tab')),
                 (_('Previous tab'), 'Ctrl+Shift+Tab', self.OnMenuFilePrevTab, _('Switch to previous script tab')),
-                (_('Toggle last two tabs'), '', self.OnToggleLastTwoTabs, _('Toggle between last two selected tabs')),
+                (_('Previously selected tab'), '', self.OnPreviouslySelectedTab, _('Toggle between the last two selected tabs')),
                 (''),
                 (_('Toggle scrap window'), 'Ctrl+Shift+P', self.OnMenuEditShowScrapWindow, _('Show the scrap window')),
                 (_('Clear file history'), '', self.OnMenuFileClearRecentFiles, _('Clear the recent file list')),
@@ -8130,6 +8130,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     ('400 frames', '', self.OnMenuSetTimeLineRange),
                     ('800 frames', '', self.OnMenuSetTimeLineRange),
                     ('2000 frames', '', self.OnMenuSetTimeLineRange),
+                    ('5000 frames', '', self.OnMenuSetTimeLineRange),
                     ),
                 ),
                 (''),
@@ -11532,7 +11533,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.KeyUpVideoWndow = False
             wx.CallLater(400, self.OnKeyUpVideoWindow, None) # reset after 400ms and unblock this function
 
-        if event and zoomfactor is None:
+        if zoomfactor is None:
             if True:#wx.VERSION > (2, 8):
                 vidmenus = [self.videoWindow.contextMenu, self.GetMenuBar().GetMenu(2)]
                 if menuItem is None:
@@ -13791,19 +13792,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.AddFrameBookmark(value, bmtype)
         event.Skip()
 
-    def OnToggleLastTwoTabs(self, event):
-        a, b = self.lastTwoPagesIdx
-        curr = self.scriptNotebook.GetSelection()
+    def OnPreviouslySelectedTab(self, event):
+        idx = self.oldTabIndex
         count = self.scriptNotebook.GetPageCount()
-        if a != b:
-            if (a < count) and (a != curr):
-                self.SelectTab(a)
-            elif (b < count) and (b != curr):
-                self.SelectTab(b)
-            else:
-                 wx.Bell()
-        else:
-             wx.Bell()
+        if isinstance(idx, int) and (idx < count) and (idx != self.scriptNotebook.GetSelection()):
+            self.SelectTab(idx)
+            return
+        wx.Bell()
 
     def OnNotebookPageChanged(self, event):
 
@@ -13836,8 +13831,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         # Get the newly selected script
         currIndex = event.GetSelection()
-        oldIndex =  event.GetOldSelection()
-        self.lastTwoPagesIdx = (currIndex, oldIndex)
+        self.oldTabIndex = event.GetOldSelection()
+
         script = self.scriptNotebook.GetPage(currIndex)
         self.currentScript = script
         self.refreshAVI = True
@@ -13846,13 +13841,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         # Check split View
         if self.splitView:
-            if oldIndex >= 0 and oldIndex != currIndex:
+            if self.oldTabIndex >= 0 and self.oldTabIndex != currIndex:
                 if self.splitView_next:
-                    if currIndex == oldIndex + 1:
+                    if currIndex == self.oldTabIndex + 1:
                         self.splitView_next = False
                     else: self.splitView = False
                 else:
-                    if currIndex == oldIndex - 1:
+                    if currIndex == self.oldTabIndex - 1:
                         self.splitView_next = True
                     else: self.splitView = False
             else:
@@ -19680,14 +19675,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             bmp = wx.EmptyBitmap(script.AVI.DisplayWidth, script.AVI.DisplayHeight)
             dc = wx.MemoryDC()
             dc.SelectObject(bmp)
-            nr = script.lastFramenum
+            nr = script.AVI.current_frame
             if script.AVI.DrawFrame(nr, dc):
                 script.snapShots['shot2'][1] = None # free bmp
                 script.snapShots['shot2'] = [nr, bmp, script.lastText, script.previewFilterIdx]
             else:
                  bmp = None
                  script.snapShots['shot2'] = utils.emptySnapShot
-            script.flagModified = False # tell the script save last text before text changes
 
         # Func start ( UpdateScriptAvi )
         try:
@@ -19712,13 +19706,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     # Backup the current session if paranoia mode is on
                     if self.options['paranoiamode']:
                         self.SaveSession(self.lastSessionFilename, saverecentdir=False, previewvisible=False)
+                    if self.playing_video:
+                        self.PlayPauseVideo(refreshFrame=False)
+                        self.playing_video = ''
                     # GPo new, place change
                     if self.AviThread_Running(script):
                         return None
                     script.AviThread = None
-                    if self.playing_video:
-                        self.PlayPauseVideo(refreshFrame=False)
-                        self.playing_video = ''
                     script.display_clip_refresh_needed = False
                     scripttxt = script.GetText()
                     sDirname = os.path.dirname(script.filename)
@@ -19730,19 +19724,17 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         boolOldAVI = False
                         env = None
                     else:
-                        # GPo new test auto snapshot
-                        if self.options['autosnapshot'] and script.lastFramenum and not script.AVI.IsErrorClip():
-                            autoTakeSnapshot(script)
+                        # auto snapshot
+                        if self.options['autosnapshot']:
+                            if not script.AVI.IsErrorClip() and script.AVI.current_frame > -1:
+                                autoTakeSnapshot(script)
+                            script.flagModified = False # tell the script save last text before text changes
                         self.SetPreviewFilterMenus()
                         oldFramecount = script.AVI.Framecount
                         oldWidth, oldHeight = script.AVI.DisplayWidth, script.AVI.DisplayHeight
                         boolOldAVI = True
                         env = script.AVI.env if keep_env else None
-                    """ GPo new, place it upper
-                    if self.AviThread_Running(script):
-                        return None
-                    script.AviThread = None
-                    """
+
                     workdir_exp = self.ExpandVars(self.options['workdir'])
                     if (self.options['useworkdir'] and self.options['alwaysworkdir']
                         and os.path.isdir(workdir_exp)):
@@ -19769,12 +19761,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         displayFilter = None
 
                     if script == self.currentScript:
-                        #p, f = os.path.split(filename)
-                        #if not f: f = p
-                        #self.GetStatusBar().SetStatusText(_('%s - Initialize clip: %s') % (self.ShowFreeMemory(returnStr=True), f))
-                        #if self.options['threadprogresshiden']:
-                            #self.GetStatusBar().SetStatusText(_('Initialize clip  %s  (Press Ctrl + Shift do show the progress dialog)') % (self.ShowFreeMemory(returnStr=True)))
-                        #else:
                         self.GetStatusBar().SetStatusText(_('Initialize clip  %s') % (self.ShowFreeMemory(returnStr=True)))
 
                     if self.UseAviThread:
