@@ -510,7 +510,7 @@ clip
 
 ConvertToRGB(
 clip,
-string "matrix"="Rec709" ("Rec601"/ "PC.601"/ "Rec709"/ "PC.709"/ "AVERAGE"),
+string "matrix"="Rec709" ("Rec601"/ "PC.601"/ "Rec709"/ "PC.709"/ "Rec2020" / "PC.2020" / "AVERAGE"),
 bool "interlaced"=false,
 [string "ChromaInPlacement"="MPEG2" ("MPEG2"/ "MPEG1"/ "DV")],
 [string "chromaresample"="bicubic" ("point"/ "bilinear"/ "bicubic"/ "lanczos"/ "lanczos4"/ "blackman"/ "spline16"/ "spline36"/ "spline64"/ "gauss"/ "sinc")]
@@ -518,7 +518,7 @@ bool "interlaced"=false,
 
 ConvertToRGB24(
 clip,
-string "matrix"="Rec709" ("Rec601"/ "PC.601"/ "Rec709"/ "PC.709"/ "AVERAGE"),
+string "matrix"="Rec709" ("Rec601"/ "PC.601"/ "Rec709"/ "PC.709"/ "Rec2020" / "PC.2020" / "AVERAGE"),
 bool "interlaced"=false,
 [string "ChromaInPlacement"="MPEG2" ("MPEG2"/ "MPEG1"/ "DV")],
 [string "chromaresample"="bicubic" ("point"/ "bilinear"/ "bicubic"/ "lanczos"/ "lanczos4"/ "blackman"/ "spline16"/ "spline36"/ "spline64"/ "gauss"/ "sinc")]
@@ -526,7 +526,7 @@ bool "interlaced"=false,
 
 ConvertToRGB32(
 clip,
-string "matrix"="Rec709" ("Rec601"/ "PC.601"/ "Rec709"/ "PC.709"/ "AVERAGE"),
+string "matrix"="Rec709" ("Rec601"/ "PC.601"/ "Rec709"/ "PC.709"/ "Rec2020" / "PC.2020" / "AVERAGE"),
 bool "interlaced"=false,
 [string "ChromaInPlacement"="MPEG2" ("MPEG2"/ "MPEG1"/ "DV")],
 [string "chromaresample"="bicubic" ("point"/ "bilinear"/ "bicubic"/ "lanczos"/ "lanczos4"/ "blackman"/ "spline16"/ "spline36"/ "spline64"/ "gauss"/ "sinc")]
@@ -534,7 +534,7 @@ bool "interlaced"=false,
 
 ConvertToY8(
 clip,
-string "matrix"="Rec709" ("Rec601"/ "PC.601"/ "Rec709"/ "PC.709"/ "AVERAGE")
+string "matrix"="Rec709" ("Rec601"/ "PC.601"/ "Rec709"/ "PC.709"/ "Rec2020" / "PC.2020" / "AVERAGE")
 )
 
 ConvertToYUY2(
@@ -547,16 +547,16 @@ bool "interlaced"=false,
 
 ConvertToYV12(
 clip,
-string "matrix"="Rec709" ("Rec601"/ "PC.601"/ "Rec709"/ "PC.709"/ "AVERAGE"),
+string "matrix"="Rec709" ("Rec601"/ "PC.601"/ "Rec709"/ "PC.709"/ "Rec2020" / "PC.2020" / "AVERAGE"),
 bool "interlaced"=false,
-[string "ChromaInPlacement"="MPEG2" ("MPEG2"/ "MPEG1"/ "DV")],
+[string "ChromaInPlacement"="MPEG2" ("MPEG2"/ "MPEG1"/ "DV" / "top_left")],
 [string "chromaresample"="bicubic" ("point"/ "bilinear"/ "bicubic"/ "lanczos"/ "lanczos4"/ "blackman"/ "spline16"/ "spline36"/ "spline64"/ "gauss"/ "sinc")],
-[string "ChromaOutPlacement"="MPEG2" ("MPEG2"/ "MPEG1"/ "DV")]
+[string "ChromaOutPlacement"="MPEG2" ("MPEG2"/ "MPEG1"/ "DV" / "top_left")]
 )
 
 ConvertToYV16(
 clip,
-string "matrix"="Rec709" ("Rec601"/ "PC.601"/ "Rec709"/ "PC.709"/ "AVERAGE"),
+string "matrix"="Rec709" ("Rec601"/ "PC.601"/ "Rec709"/ "PC.709"/ "Rec2020" / "PC.2020" / "AVERAGE"),
 bool "interlaced"=false,
 [string "ChromaInPlacement"="MPEG2" ("MPEG2"/ "MPEG1"/ "DV")],
 [string "chromaresample"="bicubic" ("point"/ "bilinear"/ "bicubic"/ "lanczos"/ "lanczos4"/ "blackman"/ "spline16"/ "spline36"/ "spline64"/ "gauss"/ "sinc")]
@@ -564,7 +564,7 @@ bool "interlaced"=false,
 
 ConvertToYV24(
 clip,
-string "matrix"="Rec709" ("Rec601"/ "PC.601"/ "Rec709"/ "PC.709"/ "AVERAGE"),
+string "matrix"="Rec709" ("Rec601"/ "PC.601"/ "Rec709"/ "PC.709"/ "Rec2020" / "PC.2020" / "AVERAGE"),
 bool "interlaced"=false,
 [string "ChromaInPlacement"="MPEG2" ("MPEG2"/ "MPEG1"/ "DV")],
 [string "chromaresample"="bicubic" ("point"/ "bilinear"/ "bicubic"/ "lanczos"/ "lanczos4"/ "blackman"/ "spline16"/ "spline36"/ "spline64"/ "gauss"/ "sinc")]
@@ -572,7 +572,7 @@ bool "interlaced"=false,
 
 ConvertToYV411(
 clip,
-string "matrix"="Rec709" ("Rec601"/ "PC.601"/ "Rec709"/ "PC.709"/ "AVERAGE"),
+string "matrix"="Rec709" ("Rec601"/ "PC.601"/ "Rec709"/ "PC.709"/ "Rec2020" / "PC.2020" / "AVERAGE"),
 bool "interlaced"=false,
 [string "ChromaInPlacement"="MPEG2" ("MPEG2"/ "MPEG1"/ "DV")],
 [string "chromaresample"="bicubic" ("point"/ "bilinear"/ "bicubic"/ "lanczos"/ "lanczos4"/ "blackman"/ "spline16"/ "spline36"/ "spline64"/ "gauss"/ "sinc")]
