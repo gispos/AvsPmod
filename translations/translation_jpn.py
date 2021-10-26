@@ -17,7 +17,7 @@
 # Japanese translation authors:
 #   niiyan v2.0.2 - v2.4.1
 
-version = "2.6.6.0"
+version = "2.6.9.8"
 
 messages = {
     "AviSynth script" : u"AviSynth スクリプト",
@@ -32,6 +32,9 @@ messages = {
     "Cancel" : u"キャンセル",
     "Page:" : u"ページ:",
     "Page: %d" : u"ページ: %d",
+    "Frame properties" : u"", # New in v2.6.9.8
+    "Word warp" : u"", # New in v2.6.9.8
+    "Horz scroll" : u"", # New in v2.6.9.8
     "Scrap Window" : u"スクラップウィンドウ",
     "Undo" : u"元に戻す",
     "Redo" : u"やり直し",
@@ -142,7 +145,7 @@ messages = {
     "Select filters to import from the file:" : u"ファイルからインポートするフィルタの選択:",
     "Overwrite all data" : u"すべてのデータを上書きする",
     "You must select at least one filter!" : u"少なくとも 1 つのフィルタを選択してください！",
-    "Error: minValue must be less than maxValue" : u"エラー: 最小値は最小値より小さくしてください",
+    "Slider SetRange Error: minValue must be less than maxValue" : u"", # New in v2.6.9.8
     "New File" : u"新しいファイル",
     "Windows Bitmap" : u"Windows ビットマップ",
     "Animation" : u"アニメーション",
@@ -163,9 +166,6 @@ messages = {
     "Translation updated" : u"翻訳が更新されました",
     "%s translation file updated.  No new messages to translate." : u"%s 翻訳ファイルが更新されました。未訳のメッセージはありません。",
     "%s language couldn't be loaded" : u"%s 言語を読み込むことが出来ませんでした",
-    "Solarized light" : u"", # New in v2.5.1
-    "Solarized dark" : u"", # New in v2.5.1
-    "Zenburn" : u"", # New in v2.5.1
     "Cannot read the avisynth plugins directory from the registry\n" : u"", # New in v2.6.1.5
     "HKLM\\Software\\Avisynth'plugindir2_5' or 'plugindir+' is missing or wrong.\n\n" : u"", # New in v2.6.1.5
     "You should set the plugins path under options manually or register it." : u"", # New in v2.6.1.5
@@ -268,6 +268,8 @@ messages = {
     "Switch focus to the video preview window when using the refresh command" : u"更新コマンド使用時にフォーカスをビデオプレビューウィンドウに切り替える",
     "Refresh preview automatically" : u"プレビューを自動的にリフレッシュ",
     "Refresh preview when switch focus on video window or change a value in slider window" : u"ビデオウィンドウにフォーカスを切り替えるかスライダウィンドの値を変更した時にプレビューをリフレッシュする",
+    "Move video slider to timeline start" : u"", # New in v2.6.9.8
+    "On moving timeline range with keys Ctrl + Alt + PageDown\nTimeline moving with Ctrl + Alt + (Left, Right, PageUp, PageDown)\n or left mouse button on the status bar, with Shift no limit" : u"", # New in v2.6.9.8
     "Seeking to a certain frame will seek to that frame on all tabs" : u"あるフレームへシークした時、すべてのタブでそのフレームにシークする",
     "Shared timeline" : u"タイムラインの共有",
     "Only on tabs of the same characteristics" : u"", # New in v2.5.0
@@ -314,14 +316,22 @@ messages = {
     "type string (filename)" : u"string 型（ファイル名）",
     "Create placeholders for arguments which have no database information" : u"データベース情報のない引数にプレースホルダを生成",
     "undocumented" : u"データベース未登録",
+    "Disable refresh as default" : u"", # New in v2.6.9.8
+    "Do not reinitialize the clip every time a slider is changed. Can be changed in the slider window" : u"", # New in v2.6.9.8
+    "Button show/hide applies to all tabs" : u"", # New in v2.6.9.8
+    "Or press Ctrl when you click the button." : u"", # New in v2.6.9.8
+    "Hide slider window toggle tag menus*" : u"", # New in v2.6.9.8
+    "Hide the toggle tag menus in the context menu of the sliders" : u"", # New in v2.6.9.8
+    "Custom colors can be set under 'Options->Font and colors->Advanced 2'\nNot visible slider windows needed refresh." : u"", # New in v2.6.9.8
+    "Enable slider window custom color theme" : u"", # New in v2.6.9.8
     "Determines which filters will initially have hidden arguments in the slider window" : u"初期状態でスライダウィンドウ内のどの引数を隠すかを決定する",
     "Fold all" : u"すべて折りたたむ",
     "Fold non-numbers" : u"数値以外を折りたたむ",
     "Fold none" : u"すべて展開",
-    "Fold or restore last order" : u"", # New in v2.6.6.0
+    "Fold or restore last status" : u"", # New in v2.6.9.8
     "Fold startup setting" : u"折りたたみ初期設定",
     "Filter exclusion list:" : u"除外フィルタリスト:",
-    "Specify filters never to build automatic sliders for" : u"オートマチックスライダを構築しないフィルタを指定する",
+    "Specify filters never to build automatic sliders for. Use a space as separator.\nYou can toggle it in the slider context menu." : u"", # New in v2.6.9.8
     "Save/Load" : u"保存/読み込み",
     "Automatically save the session on shutdown and load on next startup" : u"終了時に自動的にセッションを保存し、次回起動時に読み込む",
     "Save session for next launch" : u"セッションの自動保存",
@@ -349,7 +359,9 @@ messages = {
     "Line endings" : u"", # New in v2.5.1
     "Auto" : u"", # New in v2.5.1
     "Save and read AvsPmod-specific markings (user sliders, toggle tags, etc) as a commented section in the *.avs file" : u"", # New in v2.6.1.5
-    "Save or read .avs scripts with AvsPmod markings" : u"", # New in v2.6.1.5
+    "Save or read avs scripts with AvsPmod markings" : u"", # New in v2.6.9.8
+    "Do not remove toggle tags and disabled filters.\nCan make the saved script unreadable for other programs if You not use #> in front of the toggle tag: #>[sharp=0]" : u"", # New in v2.6.9.8
+    "Save toggle tags within the script ( read the hint! )" : u"", # New in v2.6.9.8
     "Start dialogs on the last used directory" : u"ダイアログを最後に使用されたディレクトリから開始する",
     "If unchecked, the script's directory is used" : u"チェックを外すと、スクリプトのディレクトリが使用される",
     "Start save image dialogs on the last used directory" : u"画像保存ダイアログを最後に使用されたディレクトリから開始する",
@@ -399,19 +411,40 @@ messages = {
     "frames" : u"フレーム",
     "Misc 2" : u"", # New in v2.6.6.0
     "AvsPmod DPI scaling *" : u"", # New in v2.6.6.0
-    "Beta: some elements may be not scaled" : u"", # New in v2.6.6.0
     "DPI scaling overall only manually*" : u"", # New in v2.6.6.0
     "Do not do overall DPI scaling automatically" : u"", # New in v2.6.6.0
-    "Adjust dpi scaling overall (10 % steps). For 150 % DPI set value 5" : u"", # New in v2.6.6.0
+    "Disable DPI awareness*" : u"", # New in v2.6.6.0
+    "Only disable it if you using 100% system zoom. Program is zoomed by the system and set DPI values." : u"", # New in v2.6.9.8
     "DPI scaling overall:*" : u"", # New in v2.6.6.0
-    "Additional adjust the script window tabs (10 % steps)" : u"", # New in v2.6.6.0
-    "DPI scaling main tabs:*" : u"", # New in v2.6.6.0
+    "Manually adjust dpi scaling overall (10 % steps). For 150 % DPI set value 5" : u"", # New in v2.6.9.8
     "Additional adjust the video controls (10 % steps)" : u"", # New in v2.6.6.0
     "DPI scaling video controls:*" : u"", # New in v2.6.6.0
+    "Additional adjust the script window tabs (10 % steps)" : u"", # New in v2.6.6.0
+    "DPI scaling main tabs:*" : u"", # New in v2.6.6.0
     "Additional adjust the statusbar (10 % steps)" : u"", # New in v2.6.6.0
     "DPI scaling statusbar:*" : u"", # New in v2.6.6.0
-    "Disable AvsPmod DPI Aware. Program is zoomed by the system and set values." : u"", # New in v2.6.6.0
-    "Disable DPI awareness*" : u"", # New in v2.6.6.0
+    "Advanced settings" : u"", # New in v2.6.9.8
+    "Auto pc" : u"", # New in v2.6.9.8
+    "Auto tv" : u"", # New in v2.6.9.8
+    "Auto: Resolution based" : u"", # New in v2.6.9.8
+    "Default YUV -> RGB conversion" : u"", # New in v2.6.9.8
+    "PC.601" : u"", # New in v2.6.9.8
+    "PC.709" : u"", # New in v2.6.9.8
+    "Rec.601" : u"", # New in v2.6.9.8
+    "Rec.709" : u"", # New in v2.6.9.8
+    "Sets the sensitivity of the mouse movement on the status bar, for timeline range move (with or without Shift), lower value more movement" : u"", # New in v2.6.9.8
+    "Timeline move on status bar sensitivity:" : u"", # New in v2.6.9.8
+    "1 number" : u"", # New in v2.6.9.8
+    "4 numbers" : u"", # New in v2.6.9.8
+    "9 numbers" : u"", # New in v2.6.9.8
+    "How many additional numbers should be displayed in the timeline when a range has been set" : u"", # New in v2.6.9.8
+    "Timeline range numbers count:" : u"", # New in v2.6.9.8
+    "After creating a new clip, show available memory in the status bar if memory is less than x MB" : u"", # New in v2.6.9.8
+    "Show available system memory (0 disabled)" : u"", # New in v2.6.9.8
+    "Delay before thread progress dialog appears" : u"", # New in v2.6.9.8
+    "If accessing Avisynth in threads enabled, this setting determines the delay in seconds before the dialog appears. Can be double (clip, frame)" : u"", # New in v2.6.9.8
+    "If the mouse wheel does not work in the editor\nor you want another scroll rate. 1 to 5 lines to scroll\nFor enable/disable you must restart the program" : u"", # New in v2.6.9.8
+    "Mouse wheel scroll rate on editor (0 disabled)*" : u"", # New in v2.6.9.8
     "Add tab to group" : u"", # New in v2.5.0
     "Extend selection to line down position" : u"選択範囲を一行下へ拡張",
     "Scroll down" : u"スクロールダウン",
@@ -466,12 +499,6 @@ messages = {
     "Line or selection duplicate" : u"行/選択範囲の複製",
     "Convert selection to lowercase" : u"選択範囲を小文字に変換",
     "Convert selection to uppercase" : u"選択範囲を大文字に変換",
-    "Sort bookmarks ascending" : u"ブックマークを昇順にソート",
-    "sort ascending" : u"昇順にソート",
-    "Show bookmarks with timecode" : u"ブックマークのタイムコードを表示",
-    "show time" : u"時間の表示",
-    "Show bookmarks with title" : u"ブックマークのタイトルを表示",
-    "show title" : u"タイトルの表示",
     "Resolution-based" : u"解像度ベース",
     "BT.709" : u"",
     "BT.601" : u"",
@@ -498,6 +525,8 @@ messages = {
     "&File" : u"ファイル(&F)",
     "Create a new tab" : u"新しいタブを作成",
     "New tab" : u"新しいタブ",
+    "Create a new tab from template **" : u"", # New in v2.6.9.8
+    "New tab from template" : u"", # New in v2.6.9.8
     "Open an existing script" : u"既存のスクリプトを開く",
     "Open..." : u"開く...",
     "Reopen the last closed tab" : u"最後に閉じたタブを開き直す",
@@ -539,7 +568,11 @@ messages = {
     "Switch to next script tab" : u"次のスクリプトのタブに移動",
     "Previous tab" : u"前のタブ",
     "Switch to previous script tab" : u"前のスクリプトのタブに移動",
+    "Previously selected tab" : u"", # New in v2.6.9.8
+    "Toggle between the last two selected tabs" : u"", # New in v2.6.9.8
     "Show the scrap window" : u"スクラップウィンドウを表示",
+    "Clear file history" : u"", # New in v2.6.9.8
+    "Clear the recent file list" : u"", # New in v2.6.9.8
     "&Exit" : u"終了(&E)",
     "Exit the program" : u"プログラムを終了",
     "&Edit" : u"編集(&E)",
@@ -575,9 +608,11 @@ messages = {
     "Insert user slider separator" : u"ユーザースライダセパレータの挿入",
     "Insert the current frame number into the text" : u"現在のフレーム番号をテキストに挿入",
     "Add tags surrounding the selected text for toggling with the video preview" : u"ビデオプレビューをトグルするための選択されたテキストを囲むタグを追加",
-    "Tag selection for toggling" : u"トグル用のタグ選択",
+    "Tag selection for toggling..." : u"", # New in v2.6.9.8
     "Clear all tags" : u"すべてのタグをクリア",
     "Clear all toggle tags from the text" : u"テキストからすべてのトグルタグをクリア",
+    "Add Preview filter surrounding the selected lines" : u"", # New in v2.6.9.8
+    "Preview filter" : u"", # New in v2.6.6.0
     "Indent the selected lines" : u"選択行のインデント",
     "Unindent the selected lines" : u"選択行のアンインデント",
     "Block comment" : u"ブロックコメント",
@@ -613,6 +648,8 @@ messages = {
     "Copy unmarked script to clipboard" : u"マークなしスクリプトをクリップボードにコピー",
     "Copy avisynth error to clipboard" : u"AviSynth エラーをクリップボードにコピー",
     "Copy the avisynth error message shown on the preview window to the clipboard" : u"プレビューウィンドウに表示された AviSynth エラーメッセージを",
+    "Set selection as display filter..." : u"", # New in v2.6.9.8
+    "Shows the display filter dialog with the selected text" : u"", # New in v2.6.9.8
     "&Video" : u"ビデオ(&V)",
     "Bookmarks" : u"ブックマーク",
     "Bookmarks to script" : u"", # New in v2.6.1.5
@@ -645,7 +682,6 @@ messages = {
     "Offset also bookmarks" : u"", # New in v2.5.1
     "Apply the offset also to the currently set bookmarks" : u"", # New in v2.5.1
     "&Navigate" : u"移動 (&N)",
-    "Go to &bookmark" : u"ブックマークへ移動 (&b)",
     "Go to next bookmarked frame" : u"次のブックマークされたフレームへ移動",
     "Next bookmark" : u"次のブックマーク",
     "Go to previous bookmarked frame" : u"前のブックマークされたフレームへ移動",
@@ -684,10 +720,10 @@ messages = {
     "Normal speed" : u"通常の速度",
     "Play the video as fast as possible without dropping frames" : u"ドロップフレームしない範囲の最高速度でビデオを再生する",
     "Maximum speed" : u"最大速度",
-    "Play loop between trim editor first selection start and end frame" : u"", # New in v2.6.6.0
+    "Loop playback for trim editor selections or at the end of the clip" : u"", # New in v2.6.9.8
     "Play loop" : u"", # New in v2.6.6.0
-    "0 % to 38 % faster playback, depending on CPU load" : u"", # New in v2.6.6.0
-    "Use faster playback routine" : u"", # New in v2.6.6.0
+    "Use a separate thread for playback. If avisynth threads used, playback uses also threads" : u"", # New in v2.6.9.8
+    "Use separate thread" : u"", # New in v2.6.9.8
     "Crop editor..." : u"クロップエディタ...",
     "Show the crop editor dialog" : u"クロップエディタのダイアログを表示",
     "&Trim selection editor" : u"トリム選択エディタ(&T)",
@@ -711,6 +747,7 @@ messages = {
     "Clear tab trim editor selections (hide the trim editor if visible)" : u"", # New in v2.6.6.0
     "Clear all selections Globally" : u"", # New in v2.6.6.0
     "Clear all the tab trim editor selections (hide the trim editor if visible)" : u"", # New in v2.6.6.0
+    "Timeline range" : u"", # New in v2.6.9.8
     "Zoom video preview to 25%" : u"ビデオプレビューを 25% にズーム",
     "Zoom video preview to 50%" : u"ビデオプレビューを 50% にズーム",
     "Zoom video preview to 100% (normal)" : u"ビデオプレビューを 100% にズーム（標準）",
@@ -723,18 +760,35 @@ messages = {
     "Shrink preview image to previous zoom level. Not work under 'Fill window' or 'Fit inside window'" : u"プレビュー画像を前のズームレベルに縮小。「ウィンドウに合わせる」/「プレビューウィンドウに合わせる」では機能しない",
     "Antialiasing" : u"", # New in v2.6.6.0
     "If zoom not 100 %, the preview is drawing antialiased" : u"", # New in v2.6.6.0
+    "&Display" : u"", # New in v2.6.9.8
+    "Enable/Disable the display filter" : u"", # New in v2.6.9.8
+    "Display filter" : u"", # New in v2.6.9.8
+    "Select display filter..." : u"", # New in v2.6.9.8
+    "Select the display filter from template" : u"", # New in v2.6.9.8
+    "Edit current display filter..." : u"", # New in v2.6.9.8
+    "Edit the current display filter" : u"", # New in v2.6.9.8
     "&Flip" : u"反転(&F)",
     "Flip video preview upside down" : u"ビデオプレビューを天地逆さまに反転する",
     "Flip video preview from left to right" : u"ビデオプレビューを左から右に反転する",
     "&YUV -> RGB" : u"",
     "Swap chroma channels (U and V)" : u"色差チャンネルをスワップ",
-    "Use BT.709 coefficients for HD, BT.601 for SD (default)" : u"HD には BT.709 係数、SD には BT.601 を使用（デフォルト）",
+    "Get the coefficients from source or script, if the matrix available" : u"", # New in v2.6.9.8
+    "Read from source or script" : u"", # New in v2.6.9.8
+    "Set matrix default value (options) if matrix not found" : u"", # New in v2.6.9.8
+    "Reset matrix if not found" : u"", # New in v2.6.9.8
+    "Use BT.709 coefficients for HD, BT.601 for SD" : u"", # New in v2.6.9.8
     "Use BT.709 coefficients" : u"BT.709 係数を使用",
     "Use BT.601 coefficients" : u"BT.601 係数を使用",
     "Use limited range (default)" : u"リミテッドレンジを使用（デフォルト）",
     "Use full range" : u"フルレンジを使用",
     "For YV12 only, assume it is progressive (default)" : u"YV12 についてのみ、プログレッシブと仮定（デフォルト）",
     "For YV12 only, assume it is interlaced" : u"YV12 についてのみ、インターレースと仮定",
+    "Current matrix to script" : u"", # New in v2.6.9.8
+    "Write the current matrix to script. If no matrix found this matrix is used" : u"", # New in v2.6.9.8
+    "Read the matrix now" : u"", # New in v2.6.9.8
+    "Try to get the matrix from source or script" : u"", # New in v2.6.9.8
+    "Globally to default" : u"", # New in v2.6.9.8
+    "Reset all scripts to Resolution-based" : u"", # New in v2.6.9.8
     "Bit &depth" : u"", # New in v2.6.1.5
     "8-bit" : u"", # New in v2.5.1
     "Regular 8-bit depth (default)" : u"", # New in v2.5.1
@@ -775,11 +829,12 @@ messages = {
     "New tab from snapshot 1" : u"", # New in v2.6.6.0
     "Copy snap shot 2 to new tab" : u"", # New in v2.6.6.0
     "New tab from snapshot 2" : u"", # New in v2.6.6.0
+    "Automatically takes snapshot 2 on clip refresh" : u"", # New in v2.6.9.8
+    "Auto take snapshot 2" : u"", # New in v2.6.9.8
     "Clear tab snapshots" : u"", # New in v2.6.6.0
     "Clears the current tab snapshots" : u"", # New in v2.6.6.0
     "Clear all snapshots Globally" : u"", # New in v2.6.6.0
     "Clears all snapshots Globally" : u"", # New in v2.6.6.0
-    "Preview filter" : u"", # New in v2.6.6.0
     "Preview filter off" : u"", # New in v2.6.6.0
     "Preview filter 1" : u"", # New in v2.6.6.0
     "1" : u"", # New in v2.6.6.0
@@ -797,14 +852,13 @@ messages = {
     "Write all to script" : u"", # New in v2.6.6.0
     "Write to script" : u"", # New in v2.6.6.0
     "Write Preview filter to script" : u"", # New in v2.6.6.0
-    "Enable block commend /** showing as string. Filters must written to script" : u"", # New in v2.6.6.0
-    "Enable preview filter sliders" : u"", # New in v2.6.6.0
     "Shows the selected and optional the next or previous tab in one view (video width and height must be the same)" : u"", # New in v2.6.6.0
     "Split View on/off" : u"", # New in v2.6.6.0
     "Expands the left shift area of the video window" : u"", # New in v2.6.6.0
     "Toggle extended left move" : u"", # New in v2.5.1.09
     "Save/Restore last view position and zoom factor on tab change" : u"", # New in v2.6.6.0
     "Save view pos on tab change" : u"", # New in v2.6.1.5
+    "Additional" : u"", # New in v2.6.9.8
     "Show/Hide the preview" : u"プレビューの表示/非表示",
     "Toggle the video preview" : u"ビデオプレビューのトグル",
     "Switch focus between the video preview and the text editor" : u"ビデオプレビューとテキストエディタの間でフォーカスを切り替える。",
@@ -822,6 +876,7 @@ messages = {
     "Run the current script with an external program and arg1" : u"", # New in v2.6.6.0
     "External tool arg2" : u"", # New in v2.6.6.0
     "Run the current script with an external program and arg2" : u"", # New in v2.6.6.0
+    "Show/Hide the properties window" : u"", # New in v2.6.9.8
     "Show information about the video in a dialog box" : u"ビデオに関する情報をダイアログボックスに表示",
     "Video information" : u"ビデオ情報",
     "&Options" : u"オプション(&O)",
@@ -831,17 +886,29 @@ messages = {
     "Video preview always on top" : u"ビデオプレビューを常に前面に表示",
     "Disable video preview" : u"ビデオプレビューを無効化",
     "If checked, the video preview will not be shown under any circumstances" : u"チェックすると、ビデオプレビューが常に非表示になる",
+    "Hide the video window scrollbars" : u"", # New in v2.6.9.8
+    "Hide video window scrollbars" : u"", # New in v2.6.9.8
+    "Accessing AviSynth in threads" : u"", # New in v2.6.9.8
+    "Use threads when accessing avisynth (load/release clip and get frame)" : u"", # New in v2.6.9.8
+    "For info read the readme_threads.txt" : u"", # New in v2.6.9.8
+    "Use advanced frame thread" : u"", # New in v2.6.9.8
+    "AvsPmod should normally be closed after a thread has been canceled by the user. This option tries to assign the clip to the script after the thread has internaly finished." : u"", # New in v2.6.9.8
+    "On cancel assign the clip later" : u"", # New in v2.6.9.8
     "Associate .avs files with AvsPmod" : u"", # New in v2.6.6.0
     "Configure this computer to open .avs files with AvsP when double-clicked. Run again to disassociate" : u"ダブルクリック時に AVS ファイルを AvsP を使って開くようにこのコンピュータを設定する。関連付けを解除するにはもう一度実行して下さい",
     "Edit the various AviSynth script fonts and colors" : u"さまざまな AviSynth スクリプトのフォントと色を編集する",
     "Fonts and colors..." : u"フォントと色...",
-    "Make fonts and colors backup" : u"", # New in v2.6.1.5
+    "Make fonts && colors backup" : u"", # New in v2.6.9.8
     "Make script fonts and colors backup" : u"", # New in v2.6.1.5
-    "Load fonts and colors backup" : u"", # New in v2.6.1.5
+    "Load fonts && colors backup" : u"", # New in v2.6.9.8
     "Restores script fonts and colors from backup" : u"", # New in v2.6.1.5
     "AviSynth function definition..." : u"AviSynth 関数の定義...",
     "Edit the extension-based templates for inserting sources" : u"ソースの挿入のための拡張子別テンプレートを編集",
     "Extension templates..." : u"拡張子別テンプレート...",
+    "Display filters..." : u"", # New in v2.6.9.8
+    "Edit display filters" : u"", # New in v2.6.9.8
+    "Apply filters..." : u"", # New in v2.6.9.8
+    "Edit insertable timeline selections filters" : u"", # New in v2.6.9.8
     "Snippets..." : u"", # New in v2.5.0
     "Edit insertable text snippets" : u"", # New in v2.5.0
     "Configure the program keyboard shortcuts" : u"プログラムのキーボードショートカットを編集する",
@@ -863,16 +930,22 @@ messages = {
     "Open the avisynth help html" : u"AviSynth のヘルプを開く",
     "Open the Preview filter examples" : u"", # New in v2.6.6.0
     "Preview filter example" : u"", # New in v2.6.6.0
+    "Accessing in threads readme" : u"", # New in v2.6.9.8
+    "Open the Access in threads readme" : u"", # New in v2.6.9.8
+    "Apply filters readme" : u"", # New in v2.6.9.8
+    "Open the apply filters readme" : u"", # New in v2.6.9.8
+    "DPI info" : u"", # New in v2.6.9.8
+    "DPI information" : u"", # New in v2.6.6.0
+    "Displays the available memory in the status bar" : u"", # New in v2.6.9.8
+    "Show available system memory" : u"", # New in v2.6.9.8
     "Open Avisynth plugins folder" : u"AviSynth のプラグインフォルダを開く",
     "Open the avisynth plugins folder, or the last folder from which a plugin was loaded" : u"AviSynth プラグインフォルダまたは最後にプラグインが読み込まれたフォルダを開く",
-    "DPI Info" : u"", # New in v2.6.6.0
-    "DPI information" : u"", # New in v2.6.6.0
     "Changelog" : u"更新履歴",
     "Open the changelog file" : u"更新履歴ファイルを開く",
     "About this program" : u"このプラグラムについて",
     "About AvsPmod" : u"AvsPmod について",
-    "Previous frame" : u"前のフレーム",
-    "Next frame" : u"次のフレーム",
+    "Jump back. Right click for options" : u"", # New in v2.6.9.8
+    "Jump forward. Right click for options" : u"", # New in v2.6.9.8
     "Play/pause video. Right click for options." : u"", # New in v2.6.6.0
     "Run the script with an external program" : u"外部プログラムを使ってスクリプトを実行する",
     "Run the selected tool" : u"選択されたツールを実行",
@@ -899,6 +972,15 @@ messages = {
     "Split View insert tab" : u"", # New in v2.6.6.0
     "Auto preview" : u"", # New in v2.6.6.0
     "Reposition to" : u"位置の変更",
+    "Disable refresh" : u"", # New in v2.6.9.8
+    "Custom frame range" : u"", # New in v2.6.9.8
+    "Frame range 30 to n.. or set start,end separated by comma" : u"", # New in v2.6.9.8
+    "Percent" : u"", # New in v2.6.9.8
+    "Show nothing" : u"", # New in v2.6.9.8
+    "Show time" : u"", # New in v2.6.9.8
+    "Auto scroll" : u"", # New in v2.6.9.8
+    "Auto reset" : u"", # New in v2.6.9.8
+    "Custom..." : u"", # New in v2.6.9.8
     "Crop editor" : u"クロップエディタ",
     "You can drag the crop regions with the left mouse button when this dialog is visible, cropping the edge closest to the initial mouse click." : u"ダイアログ表示時、左マウスボタンでクロップ領域をドラッグ可能 （最初のマウスクリックに最も近い端をクロップ）。",
     "Auto-crop" : u"オートクロップ",
@@ -920,6 +1002,7 @@ messages = {
     "Insert Dissolve(trim,) commands: " : u"", # New in v2.6.1.5
     "Insert Dissolve(clips,) commands: " : u"", # New in v2.6.1.5
     "Use the buttons which appear on the video slider handle to create the frame selections to trim." : u"選択範囲の生成にはビデオスライダのつまみの上にあるボタンを使用してください。",
+    "Hide timeline numbers" : u"", # New in v2.6.9.8
     "Clear" : u"クリア",
     "The script's directory doesn't exist anymore!" : u"", # New in v2.5.1
     "Print Preview" : u"印刷プレビュー",
@@ -947,12 +1030,20 @@ messages = {
     "Cannot use crop editor unless bit depth is set to 8" : u"", # New in v2.5.1
     "No filters found, clear the current saved filters?" : u"", # New in v2.6.6.0
     "Preview filters" : u"", # New in v2.6.6.0
-    "Snapshot 1" : u"", # New in v2.6.6.0
-    "Snapshot 2" : u"", # New in v2.6.6.0
-    "Empty script" : u"", # New in v2.6.6.0
+    "Available Memory: {} MB" : u"", # New in v2.6.9.8
+    "Snapshot %d" : u"", # New in v2.6.9.8
+    "Error snapshot %d" : u"", # New in v2.6.9.8
+    "Empty snapshot script" : u"", # New in v2.6.9.8
+    "Display" : u"", # New in v2.6.9.8
+    "Edit current display filter" : u"", # New in v2.6.9.8
+    "YUV -> RGB" : u"", # New in v2.6.9.8
+    "Cannot read the matrix. Clip not initialized" : u"", # New in v2.6.9.8
     "Cannot change bit depth while crop editor is open!" : u"", # New in v2.5.1
     "Interleaved RGB48" : u"", # New in v2.5.1
     "Play video" : u"", # New in v2.6.6.0
+    "Avisynth not returned thread still running.\n{0}" : u"", # New in v2.6.9.8
+    "Avisynth not returned frame thread still running.\n{0}" : u"", # New in v2.6.9.8
+    "Avisynth not returned play thread still running.\n{0}" : u"", # New in v2.6.9.8
     "Error loading the script" : u"スクリプトの読み込みエラー",
     "Starting analysis pass..." : u"解析パスを開始しています...",
     "Average %#.4g fps\nFrame %s/%s (%#.4g fps)" : u"", # New in v2.6.6.0
@@ -971,14 +1062,16 @@ messages = {
     "Sample type:" : u"サンプリング形式:",
     "bits" : u"ビット",
     "samples" : u"サンプル",
+    "Bookmarks:" : u"", # New in v2.6.9.8
+    "Timeline selections:" : u"", # New in v2.6.9.8
     "Could not find the macros folder!" : u"マクロフォルダが見つかりませんでした！",
     "Failed to import the selected tool" : u"選択されたツールのインポートに失敗しました",
-    "You must restart for changes to take effect!" : u"変更を有効にするには再起動する必要があります！",
     "Basic (1)" : u"", # New in v2.5.1
     "Override all fonts to use a specified monospace font (no effect on scrap window)" : u"すべてのフォントに優先して指定された等幅フォントを使用（スクラップウィンドウには無効）",
     "Use monospaced font:" : u"等幅フォントを使用",
     "Default:" : u"デフォルト:",
     "Comment:" : u"コメント:",
+    "Comment special extension #>:" : u"", # New in v2.6.9.8
     "Block Comment:" : u"ブロックコメント:",
     "__END__ Comment:" : u"__END__ コメント:",
     "Number:" : u"数値:",
@@ -1013,7 +1106,15 @@ messages = {
     "Current line highlight:" : u"現在行の強調:",
     "Highlight the line that the caret is currently in" : u"現在キャレットがある行を強調",
     "Fold margin:" : u"折り畳みの余白:",
-    "Scrap window" : u"スクラップウィンドウ",
+    "Advanced 2" : u"", # New in v2.6.9.8
+    "Scrap window:" : u"", # New in v2.6.9.8
+    "Properties window:" : u"", # New in v2.6.9.8
+    "Slider window:" : u"", # New in v2.6.9.8
+    "Slider window text field:" : u"", # New in v2.6.9.8
+    "Slider window default value:" : u"", # New in v2.6.9.8
+    "Use another color for the sliders background" : u"", # New in v2.6.9.8
+    "Use sparate slider background:" : u"", # New in v2.6.9.8
+    "Slider window extras (Snapshot):" : u"", # New in v2.6.9.8
     "Information" : u"情報",
     "Settings have been read from backup file\n" : u"", # New in v2.6.1.5
     "File extension shouldn't contain dots!" : u"", # New in v2.5.1
@@ -1027,6 +1128,16 @@ messages = {
     "Only alphanumeric and underscores allowed!" : u"", # New in v2.5.0
     "Tag" : u"", # New in v2.5.0
     "Snippet" : u"", # New in v2.5.0
+    "A maximum of 30 entries are allowed!" : u"", # New in v2.6.9.8
+    "Edit insertable timeline selection filters" : u"", # New in v2.6.9.8
+    "Avisynth filter ( %start %stop is replaced by selection start stop )" : u"", # New in v2.6.9.8
+    "%* insert the selected text, %join joins the filters from each selected line" : u"", # New in v2.6.9.8
+    "%copy copies the selected text, %> copy this line to all timeline selections" : u"", # New in v2.6.9.8
+    "A maximum of 15 entries are allowed!" : u"", # New in v2.6.9.8
+    "Edit display filter templates" : u"", # New in v2.6.9.8
+    "Avisynth filter (you can run short macro by adding #> at line start" : u"", # New in v2.6.9.8
+    "Display filters only affects the display drawing." : u"", # New in v2.6.9.8
+    "It is applied as last filter to all tabs." : u"", # New in v2.6.9.8
     "Associating .avs files will write to the windows registry." : u".avs ファイルの関連付けを Windows レジストリに書き込む。",
     "Do you wish to continue?" : u"続行しますか？",
     "Associate avs files for all users?" : u"AVS ファイルをすべてのユーザーに関連付ける",
@@ -1043,10 +1154,16 @@ messages = {
     "AvsPmod Website" : u"", # New in v2.5.1
     "Active thread on Doom9's forum" : u"Doom9 フォーラム AvsP スレッド",
     "This program is freeware under the GPL license." : u"このプログラムは、GPL ライセンスのフリーウェアです。",
+    "Input a frame number or time (hr:min:sec) and hit Enter. Right-click to retrieve from history. Or input a text and set the bookmark title." : u"", # New in v2.6.9.8
     "Drop frames" : u"ドロップフレーム",
     "Half speed" : u"", # New in v2.6.6.0
+    "Custom unit" : u"", # New in v2.6.9.8
+    "1 Minute" : u"", # New in v2.6.9.8
+    "1 Second" : u"", # New in v2.6.9.8
+    "1 Frame" : u"", # New in v2.6.9.8
     "bookmark highlight color..." : u"", # New in v2.6.6.0
     "selection highlight color..." : u"", # New in v2.6.6.0
+    "set colors" : u"", # New in v2.6.9.8
     "bell at bookmarks" : u"", # New in v2.6.1.5
     "highlight bookmarks" : u"", # New in v2.6.1.5
     "Set bookmark title" : u"", # New in v2.6.6.0
@@ -1054,10 +1171,20 @@ messages = {
     "copy" : u"コピー",
     "paste" : u"貼り付け",
     "clear history" : u"履歴のクリア",
+    "On join filters, the first line must not begin with" : u"", # New in v2.6.9.8
+    "Frames: %i" : u"", # New in v2.6.9.8
+    "Apply filter" : u"", # New in v2.6.9.8
+    "All as trim" : u"", # New in v2.6.9.8
+    "Add as trim" : u"", # New in v2.6.9.8
+    "Timeline to trims" : u"", # New in v2.6.9.8
+    "Timeline to clips" : u"", # New in v2.6.9.8
+    "Remove" : u"", # New in v2.6.9.8
+    "Remove all" : u"", # New in v2.6.9.8
+    "Remove all other" : u"", # New in v2.6.9.8
+    "Trim editor..." : u"", # New in v2.6.9.8
     "Cannot switch tabs while crop editor is open!" : u"クロップエディタを開いている間はタブを切り替えることが出来ません！",
     "Cannot switch tabs while trim editor is open!" : u"トリムエディタを開いている間はタブを切り替えることが出来ません！",
     "Invalid crop values detected.  Continue?" : u"無効なクロップ値が検出されました。続行しますか？",
-    "You must create at least one frame selection first!" : u"まず最低1フレームの選択範囲を作成する必要があります！",
     "Select autocomplete keywords" : u"自動補完キーワードの選択",
     "select all" : u"すべて選択",
     "select none" : u"選択解除",
@@ -1090,11 +1217,13 @@ messages = {
     "Pixel rgb color (cursor based)" : u"ピクセル RGB カラー（カーソルベース）",
     "Pixel yuv color (cursor based)" : u"ピクセル YUV カラー（カーソルベース）",
     "Pixel color (auto-detect colorspace)" : u"ピクセルカラー（自動検出色空間）",
+    "Display YUV -> RGB conversion" : u"", # New in v2.6.9.8
     "Program zoom" : u"プログラムズーム",
     "Bookmark title" : u"ブックマークタイトル",
     "Note: The \"\\t\\t\" or \"\\T\\T\" is used to separate the left and right portions of the status bar\n         message." : u"註: \"\\t\\t\" または \"\\T\\T\" はステータスバーメッセージの左部分と右部分を分割するために\n使用されます。",
     "Slider update immediately" : u"", # New in v2.6.6.0
     "A macro is still running. Close anyway?" : u"マクロ実行中です。それでも閉じますか？",
+    "A clip thread is still running. Close anyway?" : u"", # New in v2.6.9.8
     "Save changes before closing?" : u"閉じる前に変更を保存しますか？",
     "Cannot create a new tab while crop editor is open!" : u"クロップエディタを開いている間は新しいタブを作成することが出来ません！",
     "Cannot create a new tab while trim editor is open!" : u"トリムエディタを開いている間は新しいタブを作成することが出来ません！",
@@ -1106,6 +1235,9 @@ messages = {
     "Save session before closing all tabs?" : u"すべてのタブを閉じる前にセッションを保存しますか？",
     "Save current script" : u"現在のスクリプトを保存",
     "Directory %(dirname)s does not exist!" : u"ディレクトリ %(dirname)s は存在しません！",
+    "The saved script has changed because AvsP marked section added" : u"", # New in v2.6.9.8
+    "The saved script has changed because sliders or toggle tags and filters are removed" : u"", # New in v2.6.9.8
+    "Error saving the script: %s" : u"", # New in v2.6.9.8
     "Script has no text!" : u"", # New in v2.5.0
     "HTML files" : u"", # New in v2.5.0
     "Load a session" : u"セッションの読み込み",
@@ -1122,7 +1254,6 @@ messages = {
     "Script import" : u"", # New in v2.6.1.5
     "AvxSynth plugins" : u"AvxSynth プラグイン",
     "Insert a plugin" : u"プラグインの挿入",
-    "Jump to specified bookmark" : u"指定されたブックマークに移動",
     "Line: %(line)i  Col: %(col)i" : u"行: %(line)i  列: %(col)i",
     "Frame Based" : u"フレームベース",
     "Field Based" : u"フィールドベース",
@@ -1134,20 +1265,24 @@ messages = {
     "Float" : u"浮動小数点数",
     "pos" : u"座標",
     "*hex" : u"", # New in v2.6.1.5
-    "Error: cannot save the Session" : u"", # New in v2.6.6.0
-    "Question" : u"質問",
+    "Waiting for avisynth release memory" : u"", # New in v2.6.9.8
+    "Clip not released. Memory still allocated" : u"", # New in v2.6.9.8
+    "Clip successful released" : u"", # New in v2.6.9.8
+    "Abandoned clip assigned: \"{0}\"" : u"", # New in v2.6.9.8
+    "Abandoned clip assigned. Select the tab?" : u"", # New in v2.6.9.8
+    "Abandoned clip released: \"{0}\"" : u"", # New in v2.6.9.8
+    "Process clip..." : u"", # New in v2.6.9.8
+    "Waiting for avisynth clip" : u"", # New in v2.6.9.8
+    "Clip process finished" : u"", # New in v2.6.9.8
+    "Clip not initialized" : u"", # New in v2.6.9.8
+    "Initialize clip  %s" : u"", # New in v2.6.9.8
     "Invalid slider text: min > max" : u"無効なスライダテキスト: 最小値 > 最大値",
     "Invalid slider text: value not in bounds" : u"無効なスライダテキスト: 範囲外の値",
     "Invalid slider text: bad modulo label" : u"無効なスライダテキスト: 不当な倍数ラベル",
     "Invalid slider text: slider label already exists" : u"無効なスライダテキスト: スライダラベルの重複",
     "Invalid slider text: invalid number" : u"無効なスライダテキスト: 無効な数値",
-    "General settings..." : u"一般設定...",
-    "Clear all auto fold orders" : u"", # New in v2.6.6.0
-    "Only with preview filter /**avsp_filter" : u"", # New in v2.6.6.0
-    "Update sliders" : u"", # New in v2.6.6.0
     "Reset to initial value: %(value_formatted)s" : u"初期値に %(value_formatted)s リセット",
     "Reset to initial value: %(value2_formatted)s" : u"初期値に %(value2_formatted)s リセット",
-    "Reset to default value: %(value_formatted)s" : u"デフォルト値 %(value_formatted)s にリセット",
     "Invalid hexadecimal color!" : u"無効な 16 進色！",
     "Must specify a max value!" : u"最大値を指定する必要があります！",
     "Must specify a min value!" : u"最小値を指定する必要があります！",
@@ -1155,9 +1290,31 @@ messages = {
     "Max value must be a number!" : u"最大値は数でなければなりません！",
     "Default value must be a number!" : u"デフォルト値は数でなければなりません！",
     "Step size value must be a number!" : u"ステップサイズは数でなければなりません！",
+    "Add toggle tag" : u"", # New in v2.6.9.8
+    "Clear all tags and disable the filters" : u"", # New in v2.6.9.8
+    "Clear all tags && disabled filters" : u"", # New in v2.6.9.8
+    "Toggle exclusions filters" : u"", # New in v2.6.9.8
+    "General settings..." : u"一般設定...",
+    "Set same width for all tabs" : u"", # New in v2.6.9.8
+    "Update sliders" : u"", # New in v2.6.6.0
+    "Reset to default value: %(value_formatted)s" : u"デフォルト値 %(value_formatted)s にリセット",
     "Left-click to select a color, right click to reset to default" : u"左クリックで色の選択、右クリックでデフォルトにリセット",
+    "Snapshot doesn't seem to be from this session.\nKeep going?" : u"", # New in v2.6.9.8
+    "Question" : u"質問",
+    "Error: Snapshot 2 is empty" : u"", # New in v2.6.9.8
+    "Restore to current" : u"", # New in v2.6.9.8
+    "Restore to new tab" : u"", # New in v2.6.9.8
+    "Copy snapshot 2 to 1" : u"", # New in v2.6.9.8
+    "Done" : u"完了",
+    "Joined or disabled filters found: filter1.filter2\nOnly the first filter can have a toggle tag" : u"", # New in v2.6.9.8
+    "Enter new name" : u"", # New in v2.6.9.8
+    "Rename toggle tag" : u"", # New in v2.6.9.8
+    "Add child" : u"", # New in v2.6.9.8
+    "Remove child" : u"", # New in v2.6.9.8
     "Toggle \"%(label)s\" section" : u"\"%(label)s\" のセクションをトグル",
-    "Error: can not save the Session" : u"", # New in v2.6.1.5
+    "Both videos must have the same width and height." : u"", # New in v2.6.9.8
+    "Snapshot dimensions different: %ix%i" : u"", # New in v2.6.9.8
+    "Error playing frame {number}" : u"", # New in v2.6.9.8
     "Save changes before previewing?" : u"プレビュー前に変更を保存しますか？",
     "Select an external player" : u"外部プレーヤーの選択",
     "A program must be specified to use this feature!" : u"この機能を使用するにはプログラムを指定する必要があります！",
@@ -1183,6 +1340,8 @@ messages = {
     "Failed to open the AVI file" : u"AVI ファイルのオープンに失敗しました",
     "Failed to open the AVI frame" : u"AVI フレームのオープンに失敗しました",
     "Failed to retrieve AVI frame" : u"AVI フレームの読み出しに失敗しました",
+    "Waiting for Avisynth, thread still running.\nThis dialog is automatically closed when avisynth returns.\nIf you abort this process, you should restart the program!" : u"", # New in v2.6.9.8
+    "Waiting for Avisynth, thread still running.\nThis dialog is automatically closed when avisynth returns.\nIf you abort this process, the clip will assign later." : u"", # New in v2.6.9.8
     "Ctrl" : u"",
     "Alt" : u"",
     "Shift" : u"",
@@ -1230,6 +1389,7 @@ messages = {
     "Message" : u"メッセージ",
     "Select an item to delete first" : u"まず削除するアイテムを選択してください",
     "Are you sure you want to delete item %(key)s?" : u"本当にアイテム %(key)s を削除してもいいですか？",
+    "Error: minValue must be less than maxValue" : u"エラー: 最小値は最小値より小さくしてください",
 
     #--- Tool: resize_calc.py ---#
     "Resize calculator..." : u"リサイズ計算機...",
@@ -1284,6 +1444,7 @@ messages = {
     "Encoder priority:" : u"エンコーダ優先度:",
     "Path to %(name)s:" : u"%(name)s へのパス:",
     "Extra arguments:" : u"オプション引数:",
+    "Presets file not found:\n" : u"", # New in v2.6.9.8
     "Bitrate Calculator" : u"ビットレート計算機",
     "Output info" : u"出力情報",
     "Total size:" : u"合計サイズ:",
@@ -1333,7 +1494,6 @@ messages = {
     "# of passes must be an integer!" : u"パスの数は整数にする必要があります！",
     "Priority must be an integer!" : u"優先度は整数にする必要があります！",
     "Stop" : u"停止",
-    "Done" : u"完了",
     "Process stopped." : u"処理が停止されました。",
     "Processing..." : u"処理中...",
     "Finished in %(hr)i hour(s) and %(min)i minute(s)." : u"%(hr)i 時間 %(min)i 分で終了しました。",
@@ -1348,17 +1508,22 @@ messages = {
     "Bookmarks to Chapter" : u"ブックマークをチャプタに変換",
     "Bookmarks to Trims" : u"", # New in v2.6.6.0
     "ConditionalReader file from bookmarks" : u"ブックマークから ConditionalReader ファイルを生成",
+    "ConditionalReader file from WriteFile" : u"", # New in v2.6.9.8
     "DeleteFrame" : u"",
     "DuplicateFrame" : u"",
     "Import bookmarks from file" : u"ファイルからブックマークをインポート",
     "Open Image Sequence" : u"", # New in v2.6.6.0
     "Preview from current point" : u"現在の位置からプレビュー",
+    "PreviewEncode" : u"", # New in v2.6.9.8
+    "PreviewResize" : u"", # New in v2.6.9.8
     "Random Clip Order" : u"ランダム順にクリップを連結",
+    "RemovePing" : u"", # New in v2.6.9.8
     "Save Image Sequence" : u"イメージシーケンスの保存",
     "Selected trims to selections" : u"", # New in v2.6.6.0
     "Shift Bookmarks by frames" : u"指定フレーム数だけブックマークを移動",
     "Example (Resize)" : u"例（リサイズ）",
     "Examples" : u"例",
+    "Extra" : u"", # New in v2.6.9.8
     "Customized" : u"カスタマイズ",
     "bilinear" : u"",
     "bicubic" : u"",
@@ -1374,6 +1539,8 @@ messages = {
     "Encoding example" : u"エンコード例",
     "Encoding example 2" : u"エンコード例 2",
     "Optimize Sliders" : u"スライダ最適化",
+    "DeleteEncodings" : u"", # New in v2.6.9.8
+    "Save as Tiff_rgb48" : u"", # New in v2.6.9.8
 
     #--- Macro: Bookmarks at Intervals ---#
     "Choose a frame step or a number of intervals" : u"フレームステップまたは周期の選択",
@@ -1409,6 +1576,10 @@ messages = {
     "Interpolation only available for Int and Float" : u"補間は整数型と浮動小数点数型のみ利用可",
     "Odd number of bookmarks" : u"奇数個のブックマーク",
 
+    #--- Macro: ConditionalReader file from WriteFile ---#
+    "There is not Valus" : u"", # New in v2.6.9.8
+    "ConditionalReader file from WriteFile file" : u"", # New in v2.6.9.8
+
     #--- Macro: Import bookmarks from file ---#
     "All supported files" : u"すべての対応しているファイル",
     "Chapters Text files" : u"チャプタテキストファイル",
@@ -1438,6 +1609,34 @@ messages = {
 
     #--- Macro: Preview from current point ---#
     "Failed to run the external player!\n\nOpen the macro file in the \"Macros\" subdirectory\nwith a text editor and edit the executable\ndirectory appropriately!" : u"外部プレーヤーの起動に失敗しました！\n\nテキストエディタで \"Macros\" サブディレクトリの\nマクロファイルを開き、実行ファイルのディレクトリを\n適切に編集して下さい！",
+
+    #--- Macro: PreviewEncode ---#
+    "Convert to script color space" : u"", # New in v2.6.9.8
+    "Encode threads:" : u"", # New in v2.6.9.8
+    "Insert trims into script" : u"", # New in v2.6.9.8
+    "Select save path:" : u"", # New in v2.6.9.8
+    "Template:" : u"", # New in v2.6.9.8
+    "Use script dir" : u"", # New in v2.6.9.8
+    "Encode options" : u"", # New in v2.6.9.8
+    "You must first create selections" : u"", # New in v2.6.9.8
+    "Last encoding returns error. Process is canceled\n" : u"", # New in v2.6.9.8
+    "Error, cannot insert the encode preview text\nTrying to create new tab" : u"", # New in v2.6.9.8
+    "Encoding finished\n\nElapsed time: %s\n%s%s" : u"", # New in v2.6.9.8
+
+    #--- Macro: PreviewResize ---#
+    "BicubicResize" : u"", # New in v2.6.9.8
+    "Spline16Resize" : u"", # New in v2.6.9.8
+    "Spline36Resize" : u"", # New in v2.6.9.8
+    "Spline64Resize" : u"", # New in v2.6.9.8
+    "0" : u"", # New in v2.6.9.8
+    "0.5" : u"", # New in v2.6.9.8
+    "0.75" : u"", # New in v2.6.9.8
+    "1.5" : u"", # New in v2.6.9.8
+    "2.0" : u"", # New in v2.6.9.8
+    "Border:" : u"", # New in v2.6.9.8
+    "Fit only height" : u"", # New in v2.6.9.8
+    "Resize Filter:" : u"", # New in v2.6.9.8
+    "Resise options" : u"", # New in v2.6.9.8
 
     #--- Macro: Save Image Sequence ---#
     "Save image sequence" : u"画像シークエンスの保存",

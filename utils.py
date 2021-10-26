@@ -70,6 +70,25 @@ def get_winversion():
         return 7
     #return (wv.major, wv.minor, sp)
 
+def CheckAvisynthVersion371(env, VersionString):
+    try:
+        if not env.check_version(8):
+            raise
+        re = VersionString.lower().find('avisynth+ ')
+        if re < 0:
+            raise
+        sp = VersionString.split(' ')
+        if len(sp) < 2:
+            raise
+        s = sp[1].replace('.', '')
+        if not s.isdigit():
+            raise
+        if int(s) < 371:
+            raise
+    except:
+        return False
+    return True
+
 
 
 ##### Test ####

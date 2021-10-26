@@ -2357,6 +2357,9 @@ class AvsStyleDialog(wx.Dialog):
         wx.Dialog.__init__(self, parent, wx.ID_ANY, title)
         SetFontPPI(self)
         self.dlgInfo = dlgInfo
+        for key in parent.defaulttextstylesDict['Default'].keys(): # GPo 2021, make sure all new colors added
+            if not key in options:
+                options[key] = parent.defaulttextstylesDict['Default'][key]
         self.options = options.copy()
         self.defaults = defaults
         self.colour_data = colour_data
@@ -2812,6 +2815,164 @@ class STCPrintout(wx.Printout):
         dc.SetBrush(wx.TRANSPARENT_BRUSH)
         dc.DrawRectangleRect(self.GetLogicalPageMarginsRect(self.page_setup_data))
 
+# test anti flicker
+"""
+class StaticTextEx(wx.StaticText):
+    def __init__(self, parent, id=-1, label="", pos=wx.DefaultPosition,
+                 size=wx.DefaultSize, style=0, name="staticText"):
+        wx.StaticText.__init__(self, parent, id, label, pos, size,
+                            style, name)
+        self.Bind(wx.EVT_ERASE_BACKGROUND, self.OnErase)
+    def OnErase(self, evt):
+        pass
+"""
+
+# Dialog for property window
+"""
+class PropWindow(wx.MiniFrame):
+    def __init__(self, parent, title=_('Frame properties'), pos=wx.DefaultPosition, size=tuplePPI(190,260)):
+        style = wx.CAPTION | wx.STAY_ON_TOP | wx.RESIZE_BORDER
+        wx.MiniFrame.__init__(self, parent, wx.ID_ANY, title, pos, size, style=style)
+"""
+class PropWindow(wx.Dialog):
+    def __init__(self, parent, title=_('Frame properties'), pos=wx.DefaultPosition, size=tuplePPI(190,260)):
+        style = wx.DEFAULT_DIALOG_STYLE | wx.STAY_ON_TOP | wx.RESIZE_BORDER# | wx.NO_FULL_REPAINT_ON_RESIZE | wx.CLIP_CHILDREN
+        wx.Dialog.__init__(self, parent, wx.ID_ANY, title, pos, size, style=style)
+        SetFontPPI(self)
+        self.parent = parent
+        self.SetDoubleBuffered(True)
+        # StyledTextCtrl
+        self.textCtrl = stc.StyledTextCtrl(self, wx.ID_ANY, size=tuplePPI(250,250), style=wx.NO_BORDER)
+        #self.textCtrl.SetBufferedDraw(True)
+        #self.textCtrl.SetTwoPhaseDraw(True)
+        self.textCtrl.SetCaretStyle(stc.STC_CARETSTYLE_INVISIBLE)
+        self.textCtrl.SetMarginWidth(1, 0)
+        self.textCtrl.SetUseHorizontalScrollBar(self.parent.options['propwinhorzscroll'])
+        self.textCtrl.SetWrapMode(stc.STC_WRAP_WORD if self.parent.options['propwinwordwarp'] else stc.STC_WRAP_NONE)
+        self.textCtrl.UsePopUp(0)
+        self.textCtrl.SetEOLMode(stc.STC_EOL_LF)
+        if wx.VERSION > (2, 9):
+            self.textCtrl.SetScrollWidth(intPPI(300))
+            self.textCtrl.SetScrollWidthTracking(True)
+        self.Style()
+        self.zoom = (1,1)
+        #self.textCtrl.SetZoom(0)
+        #self.textCtrl.ZoomIn()
+        #self.textCtrl.ZoomOut()
+        sizer = wx.BoxSizer()
+        sizer.Add(self.textCtrl, 1, wx.EXPAND)
+        self.SetSizer(sizer)
+        self.Bind(wx.EVT_CLOSE, self.Close)
+        menuInfo = (
+            (_('Word warp'), self.OnWarpMode, wx.ITEM_CHECK, self.textCtrl.GetWrapMode() == stc.STC_WRAP_WORD),
+            (_('Horz scroll'), self.OnHorzScroll, wx.ITEM_CHECK, self.textCtrl.GetUseHorizontalScrollBar()),
+        )
+        self.textCtrl.contextMenu = menu = wx.Menu()
+        for eachMenuInfo in menuInfo:
+            # Define optional arguments
+            if not eachMenuInfo:
+                menu.AppendSeparator()
+            else:
+                label = eachMenuInfo[0]
+                handler = eachMenuInfo[1]
+                kind = eachMenuInfo[2]
+                menuItem = menu.Append(wx.ID_ANY, label, '', kind)
+                if kind == wx.ITEM_CHECK:
+                    menuItem.Check(eachMenuInfo[3])
+                self.textCtrl.Bind(wx.EVT_MENU, handler, menuItem)
+        self.textCtrl.Bind(wx.EVT_CONTEXT_MENU, self.OnContextMenu)
+        def OnFocus(event):
+            self.Update()
+            event.Skip()
+        self.textCtrl.Bind(wx.EVT_SET_FOCUS, OnFocus)
+        #def OnLeaveWindow(event):
+            #event.Skip()
+        #self.textCtrl.Bind(wx.EVT_LEAVE_WINDOW, OnLeaveWindow)
+        #def OnDbClick(event):
+            #event.Skip()
+        def OnMouseAux1Down(event, isAux2=False):
+            if wx.GetKeyState(wx.WXK_SHIFT):
+                self.parent.GotoNextBookmark(reverse=not isAux2, forceCursor=True, bmtype=[1,2])
+            elif wx.GetKeyState(wx.WXK_ALT):
+                self.parent.GotoNextBookmark(reverse=not isAux2, forceCursor=True, bmtype=[3]) # titled bookmarks
+            else:
+                self.parent.GotoNextBookmark(reverse=not isAux2, forceCursor=True)
+        def OnMouseAux2Down(event):
+            OnMouseAux1Down(event, True)
+        self.textCtrl.Bind(wx.EVT_MOUSE_AUX1_DOWN, OnMouseAux1Down)
+        self.textCtrl.Bind(wx.EVT_MOUSE_AUX2_DOWN, OnMouseAux2Down)
+        """
+        def OnMouseWheel(event):
+            if event.LeftIsDown():
+                rotation = event.GetWheelRotation()
+                #self.parent.OnMenuNext_I_Frame(reverse=rotation<0)
+                x,y,w,h = self.GetRect()
+                z = round((y/100.0)*10)
+                if rotation > 0:
+                    y = y - z
+                    self.SetRect(wx.Rect(x,y,w,h+z))
+                else:
+                    y = y + z
+                    self.SetRect(wx.Rect(x,y,w,h-z))
+            else:
+                event.Skip()
+        self.textCtrl.Bind(wx.EVT_MOUSEWHEEL, OnMouseWheel)
+        """
+    def OnContextMenu(self, event):
+        win = event.GetEventObject()
+        pos = win.ScreenToClient(event.GetPosition())
+        win.PopupMenu(win.contextMenu, pos)
+    def OnWarpMode(self, event):
+        if self.textCtrl.GetWrapMode() == stc.STC_WRAP_WORD:
+            self.textCtrl.SetWrapMode(stc.STC_WRAP_NONE)
+        else: self.textCtrl.SetWrapMode(stc.STC_WRAP_WORD)
+        self.parent.options['propwinwordwarp'] = self.textCtrl.GetWrapMode() == stc.STC_WRAP_WORD
+        self.textCtrl.Update()
+    def OnHorzScroll(self, event):
+        self.textCtrl.SetUseHorizontalScrollBar(not self.textCtrl.GetUseHorizontalScrollBar())
+        self.textCtrl.Update()
+        self.parent.options['propwinhorzscroll'] = self.textCtrl.GetUseHorizontalScrollBar()
+    def Style(self):
+        textstyles = self.parent.options['textstyles']
+        self.textCtrl.StyleSetSpec(stc.STC_STYLE_DEFAULT, textstyles['propwindow'])
+        self.textCtrl.StyleClearAll()
+        for elem in textstyles['propwindow'].split(','):
+            if elem.startswith('fore:'):
+                self.textCtrl.SetSelForeground(True, elem.split(':')[1].strip())
+            elif elem.startswith('back:'):
+                self.textCtrl.SetSelBackground(True, elem.split(':')[1].strip())
+    def Clear(self):
+        self.textCtrl.SetReadOnly(False)
+        self.textCtrl.ClearAll()
+        self.textCtrl.EmptyUndoBuffer()
+        self.textCtrl.SetReadOnly(True)
+        self.textCtrl.Update()
+    def SetText(self, txt):
+        self.textCtrl.SetReadOnly(False)
+        self.textCtrl.SetText(txt)
+        self.textCtrl.Update()
+        self.textCtrl.SetReadOnly(True)
+    def Show(self):
+        ctrl = self.parent.FindFocus()
+        if (ctrl and ctrl == self) or not ctrl:
+            if self.parent.previewWindowVisible:
+                ctrl = self.parent.videoWindow
+        else:
+            ctrl = self.parent
+        self.parent.SetReadFrameProps(True)
+        super(PropWindow, self).Show()
+        if ctrl:
+            ctrl.SetFocus()
+    def Close(self, event=None):
+        self.Hide()
+        self.Clear()
+        self.parent.SetReadFrameProps(False)
+    def Toggle(self):
+        if self.IsShown():
+            self.Close()
+        else:
+            self.Show()
+
 # Dialog for scrap window
 class ScrapWindow(wx.Dialog): # PPI Font Size set under Font and Colors
     def __init__(self, parent, title=_('Scrap Window'), pos=wx.DefaultPosition, size=tuplePPI(250,250)):
@@ -2822,14 +2983,13 @@ class ScrapWindow(wx.Dialog): # PPI Font Size set under Font and Colors
         self.textCtrl = self.createTextCtrl()
         self.Style()
         self.textCtrl.nInserted = 0
-        # Define keyboard shortcuts
-        #~ self.BindShortcuts()
         # Add the text from the previous session
         txt, anchor, pos = self.parent.options['scraptext']
         self.textCtrl.SetText(txt)
         self.textCtrl.SetAnchor(anchor)
         self.textCtrl.SetCurrentPos(pos)
         self.textCtrl.EnsureCaretVisible()
+        self.neverShown = True
         self.textCtrl.EmptyUndoBuffer()
         # Set the width for the horizontal scrollbar
         maxWidth = intPPI(50)
@@ -2848,7 +3008,6 @@ class ScrapWindow(wx.Dialog): # PPI Font Size set under Font and Colors
         sizer = wx.BoxSizer()
         sizer.Add(self.textCtrl, 1, wx.EXPAND)
         self.SetSizerAndFit(sizer)
-        self.neverShown = True
 
     def createTextCtrl(self):
         textCtrl = stc.StyledTextCtrl(self, wx.ID_ANY, size=tuplePPI(250,250), style=wx.SIMPLE_BORDER)
@@ -5354,6 +5513,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.IdleCallDict = {}  # GPo, if you use the same key name for a function then each func does only fires once
         self.defineFilterInfo()
         self.optionsPreviewFilters = {}
+        self.readFrameProps = False
 
         if os.path.isfile(self.macrosfilename):
             try:
@@ -5575,6 +5735,17 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         # Create all the program's controls and dialogs
         self.blockStatusbar = False  # GPo 2020
         self.NewFileName = _('New File')
+        # property window
+        try:
+            sw, sh = wx.ScreenDC().GetSize()
+            x,y,w,h = self.options['propwindowrect']
+            _pos = (min(max(x,-5),sw-50), min(max(y,0),sh-50))
+            _size = (min(w,sw),min(h,sh))
+        except:
+            _pos = wx.DefaultPosition
+            _size = tuplePPI(200,260)
+
+        self.propWindow = PropWindow(self, pos=_pos, size=_size)
         self.scrapWindow = ScrapWindow(self)
         self.titleDict = {}
         self.recentframes = []
@@ -5615,6 +5786,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.oldSliderWindowShown = None
         self.oldBoolSliders = None
         self.slidersShowExclusionFilters = False
+        self.options['selectedmatrix'] = self.options['defaultmatrix'].split(',')
         self.xo = self.yo = 5
         self.mouseDownXY = None
         self.saveViewPos = False        # GPo, keep view XY and zoom for each script
@@ -5678,6 +5850,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGING, self.OnNotebookPageChanging)
         #leave it, if progress is shown LayoutVideoWindows doesn't work if self Iconized and no event skip called
         def OnIconize(event):
+            if self.IsIconized():
+                self.StopPlayback()
+                if self.propWindow.IsShown():
+                    self.propWindow.Hide()
+            else:
+                if self.readFrameProps:
+                    self.propWindow.Show()
             event.Skip()
         self.Bind(wx.EVT_ICONIZE, OnIconize)
         """
@@ -6162,7 +6341,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         zenburn_fold_back = '#333333'
         locals_dict = locals()
         self.defaulttextstylesDict = {
-            _('Default'): {
+            'Default': {
                 'monospaced': 'face:{mono},size:10',
                 'default': 'face:{sans},size:10,fore:#000000,back:#FFFFFF',
                 'comment': 'face:{serif},size:9,fore:#007F00,back:#FFFFFF',
@@ -6197,13 +6376,14 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 'linenumber': 'face:{mono},fore:#555555,back:#C0C0C0',
                 'foldmargin': 'fore:#555555,back:#%02X%02X%02X' % rgb,
                 'scrapwindow': 'face:{mono},size:10,fore:#0000AA,back:#F5EF90',
+                'propwindow': 'face:{sans},size:9,fore:#dcdccc,back:#434443',
                 'sliderwindow': 'fore:#E4DEDA,back:#2B2B2B',
                 'sliderwindowtextctrl': 'fore:#EBEBEB,back:#353535',
                 'sliderwindowdefvalue': 'fore:#FFFD37,bold',
                 'sliderwindowextrabtn1': 'fore:#ADB7A4',
                 'sliderwindowbackslider': 'back:#2b2b2b',
             },
-            _('Default dark'): {
+            'Default dark': {
                 'monospaced': 'face:{mono},size:10',
                 'default': 'face:{sans},size:10,fore:#dcdccc,back:#2b2b2b',
                 'comment': 'face:{serif},size:9,fore:#9eb69e,back:#2b2b2b',
@@ -6238,6 +6418,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 'linenumber': 'face:{mono},size:10,fore:#9fafaf,back:#262626',
                 'foldmargin': 'fore:#93b3a3,back:#333333',
                 'scrapwindow': 'face:{mono},size:10,fore:#dcdccc,back:#434443',
+                'propwindow': 'face:{sans},size:9,fore:#dcdccc,back:#434443',
                 'sliderwindow': 'fore:#E4DEDA,back:#2b2b2b',
                 'sliderwindowtextctrl': 'fore:#EBEBEB,back:#353535',
                 'sliderwindowdefvalue': 'fore:#FFFD37,bold',
@@ -6245,7 +6426,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 'sliderwindowbackslider': 'back:#2b2b2b',
             },
             # Based, with some minor changes, on Solarized <http://ethanschoonover.com/solarized>
-            _('Solarized light'): {
+            'Solarized light': {
                 'monospaced': 'face:{mono},size:10',
                 'default': 'face:{sans},size:10,fore:{solarized_base00},back:{solarized_base3}',
                 'comment': 'face:{serif},size:9,fore:{solarized_base1},back:{solarized_base3}',
@@ -6280,13 +6461,14 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 'linenumber': 'face:{mono},fore:{solarized_base1},back:{solarized_base2}',
                 'foldmargin': 'fore:{solarized_base1},back:{solarized_base2}',
                 'scrapwindow': 'face:{mono},size:10,fore:{solarized_base01},back:{solarized_base2}',
+                'propwindow': 'face:{sans},size:9,fore:#dcdccc,back:#434443',
                 'sliderwindow': 'fore:#E4DEDA,back:#2B2B2B',
                 'sliderwindowtextctrl': 'fore:#EBEBEB,back:#353535',
                 'sliderwindowdefvalue': 'fore:#FFFD37,bold',
                 'sliderwindowextrabtn1': 'fore:#ADB7A4',
                 'sliderwindowbackslider': 'back:#2B2B2B',
             },
-            _('Solarized dark'): {
+            'Solarized dark': {
                 'monospaced': 'face:{mono},size:10',
                 'default': 'face:{sans},size:10,fore:{solarized_base0},back:{solarized_base03}',
                 'comment': 'face:{serif},size:9,fore:{solarized_base01},back:{solarized_base03}',
@@ -6321,6 +6503,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 'linenumber': 'face:{mono},fore:{solarized_base01},back:{solarized_base02}',
                 'foldmargin': 'fore:{solarized_base01},back:{solarized_base02}',
                 'scrapwindow': 'face:{mono},size:10,fore:{solarized_base1},back:{solarized_base02}',
+                'propwindow': 'face:{sans},size:9,fore:#dcdccc,back:#434443',
                 'sliderwindow': 'fore:#E4DEDA,back:#2B2B2B',
                 'sliderwindowtextctrl': 'fore:#EBEBEB,back:#353535',
                 'sliderwindowdefvalue': 'fore:#FFFD37,bold',
@@ -6332,10 +6515,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         for values in self.defaulttextstylesDict.itervalues():
             for key, value in values.items():
                 values[key] = value.format(**locals_dict)
-        textstylesDict = self.defaulttextstylesDict[_('Default')].copy()
+        textstylesDict = self.defaulttextstylesDict['Default'].copy()
         # Create the options dict
         self.options = global_vars.options
         self.options.update({
+            # Avisynth properties, header 8 must be at least version 3.71, previously C interface bug
+            'can_read_avisynth_props': False,
             # INTERNAL OPTIONS
             'templates': templateDict,
             'snippets': {},
@@ -6358,6 +6543,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'maximized': False,
             'maximized2': False,
             'dimensions': (intPPI(50), intPPI(50), intPPI(700), intPPI(550)), # TODO ppi_factor not set
+            'propwindowrect': None, # GPo propWindow dimensions
             'find_recent': [],
             'replace_recent': [],
             'cropchoice': 0,
@@ -6454,6 +6640,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'offsetbookmarks': False,
             'readmatrix': True, # GPo, read the BT. type (601,709) from source
             'defaultmatrix': 'auto,tv',
+            'resetmatrix': False, # for real.finder, reset the matrix if not found
             'displayfilter': utils.resource_str_displayfilter,
             # AUTOSLIDER OPTIONS
             'keepsliderwindowhidden': True,
@@ -6495,7 +6682,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'avithreadassignlater': True,            # GPo 2021, if true then thread assign AVI to script after canceling, else freeing the clip (True=Avisynth not always happy)
             'usenewframethread': True,               # GPo new, test
             'progressdelaytime': 10,                 # GPo new, delay before showing thread progress dialog (10s)
-            #'threadprogresshiden': False,            # GPo new, show only the progress dialog after press Ctrl + Shift ( not working )
             'bookmarktotrim': False,                 # GPo 2020
             'bookmarkshilightcolor': wx.Colour(233,122,122),   # GPo
             'selectionshilightcolor': wx.Colour(110,110,204),  # GPo 2020
@@ -6508,6 +6694,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'timelinehidenumbers': True,            # GPo, automatically hide the numbers if trim dialog shown
             'timelinenumdivisor': 5,                # GPo, timline number divisor e.g. 10 shows 9 numbers
             'autosnapshot': False,                  # GPo, automatically take snapshot 2 on clip refresh
+            'propwinhorzscroll': False,             # GPo
+            'propwinwordwarp': False,               # GPo
             'eol': 'auto',
             'loadstartupbookmarks': True,
             'nrecentfiles': 5,
@@ -7011,6 +7199,18 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.avisynthVersion = (env.invoke('VersionString'),
                                 env.invoke('VersionNumber'),
                                 env.invoke('Version').get_version())
+
+        # GPo, for frame properties minimum version 3.71 is required
+        if utils.CheckAvisynthVersion371(env, self.avisynthVersion[0]):
+            self.options['can_read_avisynth_props'] = True
+        else:
+            try:
+                if not env.check_version(6):
+                    raise
+            except:
+                wx.SafeShowMessage(' '.join((self.name, self.version)),
+                    '\n\n'.join((_('Error loading AviSynth!'), 'Minimum AviSynth+ header verion 6 is required')))
+                sys.exit(0)
 
         # retrieve existing filters (internal filters, autoloaded plugins and avsi files)
         self.avisynth_p = env.function_exists('AutoloadPlugins') # AviSynth+
@@ -8168,6 +8368,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         (reverseMatrixDict['swapuv'], '', self.OnMenuVideoYUV2RGB, _('Swap chroma channels (U and V)'), wx.ITEM_CHECK, False),
                         (''),
                         (_('Read from source or script'), '', self.OnMenuReadMatrix, _('Get the coefficients from source or script, if the matrix available'), wx.ITEM_CHECK, self.options['readmatrix']),
+                        (_('Reset matrix if not found'), '', self.OnMenuResetMatrix, _('Set matrix default value (options) if matrix not found'), wx.ITEM_CHECK, self.options['resetmatrix']),
                         (reverseMatrixDict['auto'], '', self.OnMenuVideoYUV2RGB, _('Use BT.709 coefficients for HD, BT.601 for SD'), wx.ITEM_RADIO, False),
                         (reverseMatrixDict['709'], '', self.OnMenuVideoYUV2RGB, _('Use BT.709 coefficients'), wx.ITEM_RADIO, False),
                         (reverseMatrixDict['601'], '', self.OnMenuVideoYUV2RGB, _('Use BT.601 coefficients'), wx.ITEM_RADIO, False),
@@ -8275,6 +8476,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     (_('External tool arg2'), '', self.OnMenuExternalToolArg2, _('Run the current script with an external program and arg2')),
                     ),
                 ),
+                (_('Frame properties'), '', self.OnMenuVideoTogglePropWindow, _('Show/Hide the properties window')),
                 (_('Video information'), '', self.OnMenuVideoInfo, _('Show information about the video in a dialog box')),
             ),
             (_('&Options'),
@@ -8323,7 +8525,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 (''),
                 (_('Changelog'), '', self.OnMenuHelpChangelog, _('Open the changelog file')),
                 (_('About AvsPmod'), '', self.OnMenuHelpAbout, _('About this program')),
-                #(_('test 2'), '', self.OnMenuTest2, _('Test2')),
+                #(_('Test'), '', self.OnMenuTest, _('Test')),
                 #(_('Zoom remove'), '', self.OnMenuTest3, _('Test3')),
                 #(_('Zoom 200%'), '', self.OnMenuTest4, _('Test4')),
             ),
@@ -8668,6 +8870,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.Refresh()
                 event.Skip()
             self.Bind(wx.EVT_SIZE, _OnSize)
+
             """
             def _OnPaint(event):
                 dc = wx.PaintDC(self)
@@ -8781,7 +8984,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         scriptWindow.snapShots = {
             'shot1': utils.emptySnapShot,  # [-1, None, "", 0] FrameNr, Bitmap, script, previewFilterIdx
             'shot2': utils.emptySnapShot   # also used for autosnapshot
-            #'shot3': utils.emptySnapShot   # GPo new, test autosnapshot
             }
         try:
             scriptWindow.contextMenu = self.menuBackups[0] if self.menuBackups else self.GetMenuBar().GetMenu(1)
@@ -10412,6 +10614,22 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         else:
             scrap.Show()
 
+    def OnMenuVideoTogglePropWindow(self, event):
+        self.propWindow.Toggle()
+
+    # GPo new, PropWindow show/hide calls this function and enable or disable read frame props
+    def SetReadFrameProps(self, enabled):
+        self.CheckPlayback()
+        self.readFrameProps = enabled
+        for i in xrange(self.scriptNotebook.GetPageCount()):
+            script = self.scriptNotebook.GetPage(i)
+            if script.AVI is not None:
+                script.AVI.SetReadFrameProps(self.readFrameProps,
+                    callBack=script==self.currentScript)
+        if not self.readFrameProps:
+            self.propWindow.Clear()
+        self.CheckPlayback() # playback disabled read frame props temporally
+
     def OnMenuVideoBookmark(self, event):
         framenum = self.GetFrameNumber()
         self.AddFrameBookmark(framenum)
@@ -11284,9 +11502,78 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     ##### test end
     """
-
     def OnMenuTest(self, event):
         pass
+
+    def OnMenuNext_I_Frame(self, event=None, reverse=False):
+        self.StopPlayback()
+        if not self.previewOK():
+            return
+        if wx.IsBusy():
+            return
+        readFrameProps = self.readFrameProps
+        script = self.currentScript
+        AVI = script.AVI
+        nr = start = self.currentframenum
+        if reverse:
+            maxcount = nr
+        maxcount = AVI.Framecount - nr
+        found = False
+        userBreake = False
+
+        if not self.readFrameProps:
+            self.SetReadFrameProps(True)
+        if AVI.properties.find('_PictType') < 0:
+           return
+
+        wx.BeginBusyCursor()
+        try:
+            for x in xrange(maxcount):
+                if wx.GetKeyState(wx.WXK_ESCAPE):
+                    userBracke = True
+                    break
+                if reverse:
+                    nr-= 1
+                    if nr < 0:
+                        break
+                else:
+                    nr += 1
+                    if nr >= AVI.Framecount:
+                        break
+                #self.GetAviDisplayFrame(script, nr, False)
+                AVI._GetFrame(nr)
+                err = AVI.clip.get_error()
+                if err:
+                    wx.MessageBox(u'\n\n'.join((_('Error requesting frame {number}').format(number=nr),
+                                  err)), _('Error'), style=wx.OK|wx.ICON_ERROR)
+                    break
+                sp = AVI.properties.split('_PictType (')
+                if len(sp) == 2:
+                    s = sp[1][:1]
+                    if s == 'I':
+                        found = True
+                        break
+                    elif not s in ('P','B'):
+                        break
+                else:
+                    break
+                if reverse:
+                    if nr + 300 < start:
+                        break
+                elif nr > start + 300:
+                    break
+        finally:
+            wx.EndBusyCursor()
+            if not readFrameProps:
+                self.SetReadFrameProps(False)
+            if found:
+                self.ShowVideoFrame(nr)
+            else:
+                self.ShowVideoFrame(start)
+                if not userBracke:
+                    wx.Bell()
+
+
         """
         # For thread test only
         tcount = 0
@@ -11866,6 +12153,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 script.matrix[0] = value
             if AVI:
                 refresh = AVI.IsYUV
+            # save the user selected matrix for reset ( real.finder for you )
+            self.options['selectedmatrix'] = script.matrix[:]
 
         if refresh:
             script.display_clip_refresh_needed = True
@@ -11877,20 +12166,36 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.options['readmatrix'] = not self.options['readmatrix']
         self.UpdateVideoMenuItem(_('Display'), _('YUV -> RGB'), _('Read from source or script'), self.options['readmatrix'])
 
+    def OnMenuResetMatrix(self, event):
+        script = self.currentScript
+        self.options['resetmatrix'] = not self.options['resetmatrix']
+        self.UpdateVideoMenuItem(_('Display'), _('YUV -> RGB'), _('Reset matrix if not found'), self.options['resetmatrix'])
+
     def OnMenuResetDisplayProps(self, event):
+        matrix = self.options['defaultmatrix'].split(',')
+        def _update_MatrixMenu():
+            if matrix[0] == 'auto':
+                s1 = _('Resolution-based')
+            else: s1 = _('BT.' + matrix[0])
+            s2 = _(matrix[1].upper() + ' levels')
+            self.UpdateVideoMenuItem(_('Display'), _('YUV -> RGB'), s1, True)
+            self.UpdateVideoMenuItem(_('Display'), _('YUV -> RGB'), s2, True)
         for index in xrange(self.scriptNotebook.GetPageCount()):
             script = self.scriptNotebook.GetPage(index)
             if self.AviThread_Running(script):
                 continue
             script.display_clip_refresh_needed = True
-            script.matrix = ['auto', 'tv']
+            script.matrix = matrix[:]
 
         self.swapuv = False
         self.interlaced = False
         self.options['readmatrix'] = True
+        self.options['resetmatrix'] = False
         self.UpdateVideoMenuItem(_('Display'), _('YUV -> RGB'), _('Read from source or script'), True)
-        self.UpdateVideoMenuItem(_('Display'), _('YUV -> RGB'), _('Resolution-based'), True)
-        self.UpdateVideoMenuItem(_('Display'), _('YUV -> RGB'), _('TV levels'), True)
+        self.UpdateVideoMenuItem(_('Display'), _('YUV -> RGB'), _('Reset matrix if not found'), False)
+        #~self.UpdateVideoMenuItem(_('Display'), _('YUV -> RGB'), _('Resolution-based'), True)
+        #~self.UpdateVideoMenuItem(_('Display'), _('YUV -> RGB'), _('TV levels'), True)
+        _update_MatrixMenu()
         self.UpdateVideoMenuItem(_('Display'), _('YUV -> RGB'), _('Progressive'), True)
         self.UpdateVideoMenuItem(_('Display'), _('YUV -> RGB'), _('Swap UV'), False)
         if self.previewWindowVisible and self.previewOK():
@@ -11932,7 +12237,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     def OnMenuReadMatrixNow(self, event):
         def _getMatrix(script, q):
-            matrix = script.AVI.GetMatrix(False)
+            matrix = script.AVI.GetMatrix()
             q.put(matrix)
 
         script = self.currentScript
@@ -11959,7 +12264,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 except:
                     pass
             else:
-                src_matrix = script.AVI.GetMatrix(False)
+                src_matrix = script.AVI.GetMatrix()
             ss = 'from source'
 
         if not src_matrix:
@@ -12216,6 +12521,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             script.lastpreviewFilterIdx = 0
         self.SetPreviewFilterMenus()
         self.UpdateScriptTabname(allTabs=True) # GPo
+        if self.readFrameProps:
+            self.AVICallBack('property','')
 
     def OnMenuScriptReleaseMemory(self, event=None): # GPo
         self.splitView = False
@@ -12225,6 +12532,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             return
         shown = self.previewWindowVisible
         self.HidePreviewWindow()
+        if self.readFrameProps:
+            self.AVICallBack('property','')
         for key in script.snapShots.keys():
             script.snapShots[key][1] = None # Releas only the bitmap ?
         script.lastpreviewFilterIdx = 0
@@ -12291,6 +12600,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         script = self.currentScript
         if self.AviThread_Running(script):
             return
+        if self.readFrameProps:
+            self.propWindow.Close()
         self.refreshAVI = True
         if self.UpdateScriptAVI(forceRefresh=True) is None:
             wx.MessageBox(_('Error loading the script'), _('Error'), style=wx.OK|wx.ICON_ERROR)
@@ -12614,16 +12925,18 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     ((_('Selection highlight:'), 'highlight_fore', _('If checked, highlight also foreground')), 'highlight'),
                     ((_('Current line highlight:'), 'highlightline', _('Highlight the line that the caret is currently in')), 'highlightline'),
                     (_('Fold margin:'), 'foldmargin'),
-                    (_('Scrap window:'), 'scrapwindow'),
                 ),
             ),
             (_('Advanced 2'),
                 (
+                    (_('Scrap window:'), 'scrapwindow'),
+                    (_('Properties window:'), 'propwindow'),
                     (_('Slider window:'), 'sliderwindow'),
                     (_('Slider window text field:'), 'sliderwindowtextctrl'),
                     (_('Slider window default value:'), 'sliderwindowdefvalue'),
                     ((_('Use sparate slider background:'), 'usesliderwindowbackslider', _('Use another color for the sliders background')), 'sliderwindowbackslider'),
                     (_('Slider window extras (Snapshot):'), 'sliderwindowextrabtn1'),
+
                 ),
             )
         )
@@ -12682,6 +12995,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
             self.SetMinimumScriptPaneSize()
             self.scrapWindow.Style()
+            self.propWindow.Style()
             if self.currentSliderWindow.customTheme:
                 self.OnSliderUpdate(None) # Update only the current sliderWindow
             #if readExOptions:
@@ -12689,6 +13003,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         else:
             if exOptions:
                 self.colour_data.FromString(self.options['colourdata'])
+
         dlg.Destroy()
 
     def OnMenuOptionsTemplates(self, event):
@@ -13828,6 +14143,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.splitView = False
             self.playing_video = False
             UpdateMenus(script)
+            if self.readFrameProps:
+                self.AVICallBack(ident='property', value='Error',
+                    framenr=script.lastFramenum if script.lastFramenum else -1)
 
         # Get the newly selected script
         currIndex = event.GetSelection()
@@ -14004,14 +14322,28 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.ResetZoomAntialias()
             if boolNewAvi:
                 self.ShowFreeMemory()
+            else:
+                pass
+                """
+                if self.options['readframeproperties']:
+                    if self.previewOK:
+                        self.AVICallBack(ident='property', value=self.script.AVI.properties, framenr=self.currentframenum)
+                    else:
+                        self.AVICallBack(ident='property', value='', framenr=self.currentframenum)
+                """
         else:
+            if self.readFrameProps:
+                if self.previewOK():
+                    self.AVICallBack(ident='property', value=script.AVI.properties, framenr=-1)
+                else:
+                    self.AVICallBack(ident='property', value='', framenr=self.GetFrameNumber())
             if forceShow:
                 self.zoom_antialias = False
                 wx.CallAfter(self.ShowVideoFrame, forceLayout=True, scroll=script.videoXY, focus=False, forceCursor=True, forceThread=self.UseAviThread)
                 wx.CallAfter(self.ResetZoomAntialias)
             else:
                 self.zoom_antialias = self.options['zoom_antialias']
-        self.scriptNotebook.GetCurrentPage().SetBackgroundColour(wx.BLUE)
+        #self.scriptNotebook.GetCurrentPage().SetBackgroundColour(wx.BLUE)
 
     def OnNotebookPageChanging(self, event):
         def resetViewPos():
@@ -15571,6 +15903,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if self.separatevideowindow:
             x, y, w, h = self.videoDialog.GetRect()
             self.options['dimensions2'] = (x, y, w, h)
+        x, y, w, h = self.propWindow.GetRect()
+        self.options['propwindowrect'] = (max(-5,x), max(-5,y), w, h)
         # Save the crop choice
         self.options['cropchoice'] = self.cropDialog.ctrls['choiceInsert'].GetCurrentSelection()
         # Save the trim options
@@ -18936,12 +19270,16 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.frameTextCtrl2.ChangeValue(str(framenum))
                 self.frameTextCtrl2.Update()
 
+            same_frame_num = script.AVI.current_frame == framenum
+
             # get the frame from avisynth. forceThread=True only on pagechange event
-            if not forceThread and script.AVI.current_frame == framenum: # make it faster don't use thread (sliders and other funcs that uses ShowFrame)
+            if not forceThread and same_frame_num: # make it faster don't use thread (sliders and other funcs that uses ShowFrame)
                 script.AVI.display_clip.get_frame(framenum)
             elif self.UseAviThread:
                 if not self.GetAviDisplayFrame(script, framenum): # then user cancel the thread
                     self.HidePreviewWindow()
+                    if self.readFrameProps:
+                        self.AVICallBack('property', 'Error', framenum)
                     if wx.IsBusy():
                         wx.EndBusyCursor()
                     return False
@@ -18952,6 +19290,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             error = script.AVI.display_clip.get_error()
             if error is not None:
                 self.HidePreviewWindow()
+                if self.readFrameProps:
+                    self.AVICallBack('property', 'Error', framenum)
                 if wx.IsBusy():
                     wx.EndBusyCursor()
                 ID = wx.MessageBox(u'\n\n'.join((_('Error requesting frame {number}').format(number=framenum),
@@ -19071,31 +19411,25 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         pass
             else:
                 # GPo, antialias
-                if (self.zoomfactor != 1 or self.zoomwindow) and self.zoom_antialias: # and not self.playing_video:
+                if (self.zoomfactor != 1 or self.zoomwindow) and self.zoom_antialias:
                     self.IdleCallDict['videoWindowRefresh'] = self.videoWindow.Refresh # only one refresh
 
             if doFocusScript:
                 script.SetFocus()
                 script.EnsureCaretVisible()
             else:
-                if focus or self.playing_video:
-                    if focus:
-                        self.videoWindow.SetFocus()
-                    # Update pixel info if cursor in preview windows or playing  'GPo, why pixelinfo on playing? disabled
-                    if self.playing_video:
-                        self.SetVideoStatusText(framenum, primary=True, addon0=addon0)
-                    else:
-                        #self.SetVideoStatusText(framenum, primary=True)
-                        self.IdleCallDict['OnMouseMotionVideoWindow'] = self.OnMouseMotionVideoWindow
+                if focus:
+                    self.videoWindow.SetFocus()
+                    primary = True
                 else:
                     primary = self.FindFocus() == self.videoWindow
-                    addon = ''
-                    if primary:        # GPo
-                        if self.zoomwindowfit: # ? zoomwindow
-                            pixelInfo = self.GetPixelInfo(event=None, string_=True)
-                            if pixelInfo[1] is not None:
-                                addon = pixelInfo
-                    self.SetVideoStatusText(framenum, primary=primary, addon=addon, addon0=addon0)
+                addon = None
+                if primary:
+                    pixelInfo = self.GetPixelInfo(event=None, string_=True)
+                    if pixelInfo[1] is not None:
+                        addon = pixelInfo
+                self.SetVideoStatusText(framenum, primary=primary, addon=addon)
+
             # is only called if preview was not visible on create the new avi
             if boolNewAVI:
                 self.ShowFreeMemory()
@@ -19109,6 +19443,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             script.oldToggleTags = script.toggleTags
             script.lastFramenum = framenum
             script.lastLength = script.AVI.Framecount
+            if script.AVI.readFrameProps:
+                self.AVICallBack('property', script.AVI.properties)
         finally:
             if wx.IsBusy():
                 wx.EndBusyCursor()
@@ -19391,13 +19727,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     def AVICallBack(self, ident, value, framenr=-1):
         if ident == 'preview':
             wx.CallAfter(self.OnMenuPreviewFilter, index=value)
+        elif ident == 'property':
+            if framenr == -1:
+                self.propWindow.SetText(value)
+            else:
+                self.propWindow.SetText('Frame: ' + str(framenr) + '\n' + value)
         elif ident == 'errorclip':
             pass
-            #self.zoomfactor = 100
-            #self.zoomwindowfill = True
-            #self.zoomwindow = True
-            #self.splitView = False
-            #self.snapShotIdx = 0
         return True
 
     def AviFree(self, script, updateTabname=False):
@@ -19458,7 +19794,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.StatusbarTimer_Start(3000, _('Clip successful released'))
             else:
                 script.AviThread = None
-                #self.StatusbarTimer_Start(3000, _('Clip successful released'))
+
             if updateTabname:
                 self.UpdateScriptTabname(script)
         else:
@@ -19470,17 +19806,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     def UpdateScriptAVI(self, script=None, forceRefresh=False, keep_env=None,
                         prompt=True, showCursor=True):
-        """
-        def _createDisplayClip(script):
-            script.AVI.CreateDisplayClip(matrix=self.matrix, interlaced=self.interlaced,
-                            swapuv=self.swapuv, bit_depth=self.bit_depth, readmatrix=self.options['readmatrix'])
-        def TH_CreateDisplayClip(script):
-            th = threading.Thread(target=_createDisplayClip, args=(script,))
-            th.daemon = True
-            th.start()
-            th.join(10)
-            return not th.isAlive()
-        """
 
         def updateAbandonedScript(qr, AVI, script, scripttxt, scr_filename):
             # check the clip and script again in the main thread, ignor AVI.isErrorClip
@@ -19524,7 +19849,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                 scripttxt, filename, workdir=workdir, env=env,
                                 fitHeight=fitHeight, fitWidth=fitWidth, oldFramecount=oldFramecount,
                                 matrix=matrix, interlaced=interlaced, swapuv=swapuv,
-                                bit_depth=bit_depth,callBack=callBack,readmatrix=readmatrix,displayFilter=displayFilter)
+                                bit_depth=bit_depth,callBack=callBack,readmatrix=readmatrix,displayFilter=displayFilter,
+                                readFrameProps=self.readFrameProps)
                 time.sleep(0.05) # wait a little, give priority to the main thread
             except:
                 #script.Enable(True)
@@ -19654,9 +19980,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if self.options['readmatrix']:
                 if script.AVI and not script.AVI.IsErrorClip() and script.AVI.matrix_found:
                     script.matrix = script.AVI.matrix_found[:]
+                #return # Display anyway the matrix? disabled for now
                 if script == self.currentScript:
                     if script.matrix[0] != lastmatrix[0] or script.matrix[1] != lastmatrix[1]:
-                        s1 = _('BT.' + script.matrix[0])
+                        if script.matrix[0] == 'auto':
+                            s1 = _('Resolution-based')
+                        else: s1 = _('BT.' + script.matrix[0])
                         s2 = _(script.matrix[1].upper() + ' levels')
                         self.UpdateVideoMenuItem(_('Display'), _('YUV -> RGB'), s1, True)
                         self.UpdateVideoMenuItem(_('Display'), _('YUV -> RGB'), s2, True)
@@ -19709,6 +20038,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     if self.playing_video:
                         self.PlayPauseVideo(refreshFrame=False)
                         self.playing_video = ''
+                    if self.readFrameProps:
+                        self.AVICallBack('property','', -1)
                     # GPo new, place change
                     if self.AviThread_Running(script):
                         return None
@@ -19754,6 +20085,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         return None
                     # returns true if MatrixFromScript not found and options read matrix set
                     readmatrix = mustReadMatrix(script)
+                    if readmatrix and self.options['resetmatrix']:
+                        script.matrix = list(self.options['selectedmatrix'])
 
                     if self.displayFilter:
                         displayFilter = self.options['displayfilter']
@@ -19779,7 +20112,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                             fitHeight=None, fitWidth=None, oldFramecount=oldFramecount,
                             matrix=script.matrix, interlaced=self.interlaced, swapuv=self.swapuv,
                             bit_depth=self.bit_depth,callBack=self.AVICallBack,
-                            readmatrix=readmatrix, displayFilter=displayFilter)
+                            readmatrix=readmatrix, displayFilter=displayFilter, readFrameProps=self.readFrameProps)
                         if not script.AVI or script.AVI.IsErrorClip():
                             self.GetStatusBar().SetStatusText(_('Clip not initialized'))
 
@@ -22259,6 +22592,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             inputdc.Blit(0, 0, w, h, dc, 0, 0)
             inputdc.DrawLabel("Snapshot " + str(self.snapShotIdx),(x+2,y+2,x+52,y+102))
 
+    def DrawFrameProps(self, script, inputdc):
+        inputdc.SetFont(wx.Font(pointSize=9, family=wx.FONTFAMILY_DEFAULT, style=wx.FONTSTYLE_NORMAL, weight=wx.FONTWEIGHT_BOLD))
+        inputdc.SetTextForeground(wx.YELLOW)
+        inputdc.SetTextBackground(wx.BLACK)
+        inputdc.SetBackgroundMode(wx.BRUSHSTYLE_SOLID)
+        inputdc.DrawLabel(script.AVI.properties,(10,10,1000,1000))
+
     def PaintCropWarnings(self, spinCtrl=None):
         script = self.currentScript
         keys = ('left', 'top', '-right', '-bottom')
@@ -22580,6 +22920,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
             if refreshFrame:
                 self.ShowVideoFrameFast(self.currentframenum)  # GPo 2020, leave it call fast, fast checks errors
+            if self.readFrameProps:
+                script.AVI.SetReadFrameProps(True)
 
         else:
             script = self.currentScript
@@ -22611,7 +22953,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 if not self.ShowVideoFrame(framenum=fr, focus=False, forceLayout=True, forceCursor=self.ScriptChanged(script)) \
                     or self.currentScript.AVI.IsErrorClip():
                     return
-
+            if script.AVI.readFrameProps:
+                script.AVI.SetReadFrameProps(False)
             self.playing_video = True
             self.zoom_antialias = False
             self.play_button.SetBitmapLabel(self.bmpPause)

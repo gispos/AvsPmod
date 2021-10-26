@@ -1,6 +1,6 @@
-# Version 2.6.9.6 GPo   
+# Version 2.6.9.8 GPo   
 - With pinterf (pfmod) modifications   
-- Avisynth header version 6   
+- Avisynth header version 6 + needed part's from H8   
 - For more see changelog   
 ##### AvsPmod needs write permissions in its own directory. So please do not unzip into a system program directory!   
 -----   

@@ -40,6 +40,7 @@ import sys
 import os
 import ctypes
 import re
+import func
 
 x86_64 = sys.maxsize > 2**32
 if x86_64:
@@ -53,6 +54,8 @@ import time
 try: _
 except NameError:
     def _(s): return s
+
+#can_read_avisynth_props = False
 
 """
 def avs_plus_get_colorspace_name(pixel_type):
@@ -126,40 +129,22 @@ def avs_plus_get_colorspace_name(pixel_type):
         return avs_ColorspaceDict[pixel_type]
     return ''
 """
-Matrix_Dict = {
-    0: 'RGB',
-    1: 'BT.709',
-    2: 'undef',
-    #3: 'reserved',
-    4: 'FCC T47',
-    5: 'BT.470 B/G',
-    6: 'BT.601',
-    7: 'SMPTE ST 240',
-    8: 'YCgCo',
-    9: 'BT.2020ncl',
-    10: 'BT.2020cl',
-    11: 'SMPTE ST 2085',
-    12: 'Chroma ncl',
-    13: 'Chroma cl',
-    14: 'BT.2100'
-}
-
-def GetMatrixName(idx):
-    if idx in Matrix_Dict.keys():
-        return Matrix_Dict[idx]
-    return '..'
 
 class AvsClipBase:
 
-    def __init__(self, script, filename='', workdir='', env=None, fitHeight=None,
+    def __init__(self,  script, filename='', workdir='', env=None, fitHeight=None,
                  fitWidth=None, oldFramecount=240, display_clip=True, reorder_rgb=False,
                  matrix=['auto', 'tv'], interlaced=False, swapuv=False, bit_depth=None,
-                 callBack=None, readmatrix=None, displayFilter=None):
+                 callBack=None, readmatrix=None, displayFilter=None, readFrameProps=False):
 
         def CheckVersion(env):
             try:
-                if env.check_version(8): self.avisynth_version = 8
+                if env.check_version(9): self.avisynth_version = 9
             except: pass
+            if self.avisynth_version is None:
+                try:
+                    if env.check_version(8): self.avisynth_version = 8
+                except: pass
             if self.avisynth_version is None:
                 try:
                     if env.check_version(6): self.avisynth_version = 6
@@ -169,6 +154,7 @@ class AvsClipBase:
                 return
             return True
         # Internal variables
+        #self.app = app
         self.initialized = False
         self.env = None
         self.callBack = callBack
@@ -209,7 +195,6 @@ class AvsClipBase:
         self.IsYV12 = None
         self.IsYV411 = None
         self.IsY8 = None
-        self.avsplus_colorspace = False
         self.bits_per_component = None
         self.IsPlanar = None
         self.IsInterleaved = None
@@ -227,7 +212,9 @@ class AvsClipBase:
         self.Thread = None
         self.avisynth_version = None
         self.displayFilter = displayFilter
-
+        # Test getProps
+        self.properties = ''
+        #global can_read_avisynth_props
         # threading get frame
         #self.UseFrameThread = UseFrameThread
         #self.RunningThreads = []
@@ -253,6 +240,10 @@ class AvsClipBase:
 
         if not CheckVersion(env):
             return
+
+        # Set frameProps reading. do not set it manuelly !!!!
+        self.can_read_avisynth_props = (self.avisynth_version >= 8) and (global_vars.options['can_read_avisynth_props'] == True)
+        self.readFrameProps = self.can_read_avisynth_props and readFrameProps
 
         if hasattr(env, 'get_error'):
             self.error_message = env.get_error()
@@ -387,8 +378,7 @@ class AvsClipBase:
             cName = self.env.invoke("PixelType", self.clip)
             #cName = avs_plus_get_colorspace_name(self.vi.pixel_type)
         if cName:
-            self.avsplus_colorspace = True
-            self.Colorspace = (cName*self.avsplus_colorspace)
+            self.Colorspace = (cName*True)
         else:
             self.Colorspace = ('RGB24'*self.IsRGB24 + 'RGB32'*self.IsRGB32 + 'YUY2'*self.IsYUY2 + 'YV12'*self.IsYV12 +
                                'YV24'*self.IsYV24 + 'YV16'*self.IsYV16 + 'YV411'*self.IsYV411 + 'Y8'*self.IsY8
@@ -400,19 +390,7 @@ class AvsClipBase:
         self.GetParity = self.clip.get_parity(0) #self.vi.image_type
         self.HasAudio = self.vi.has_audio()
         self.interlaced = interlaced
-        """
-        if not x86_64:
-            # frame matrix
-            frame = self.clip.get_frame(0)
-            if frame:
-                err = self.clip.get_error()
-                if not err:
-                    i = frame.get_matrix()
-                    if isinstance(i, int):
-                        self.FrameMatrix = i
-                        print('matrix = ' + str(i))
-                frame = None
-        """
+
         if display_clip and not self.CreateDisplayClip(matrix, interlaced, swapuv, bit_depth, readmatrix):
             return
         if self.IsRGB and reorder_rgb:
@@ -436,6 +414,7 @@ class AvsClipBase:
             self.clip = None
             self.env = None # GPo new
             self.initialized = False
+            self.properties = ''
             if __debug__:
                 print(u"Deleting allocated video memory for '{0}'".format(self.name))
 
@@ -557,7 +536,7 @@ class AvsClipBase:
                 self.display_clip = self.env.invoke('SwapUV', self.display_clip)
             except avisynth.AvisynthError as err:
                 return self.CreateErrorClip(display_clip_error=True)
-        # test
+        # display filter
         if self.displayFilter:
             self.env.set_var("avsp_filter_clip", self.clip)
             args = 'avsp_filter_clip\n' + self.displayFilter
@@ -565,18 +544,16 @@ class AvsClipBase:
                 self.display_clip = self.env.invoke('Eval', args)
             except avisynth.AvisynthError as err:
                 return self.CreateErrorClip(display_clip_error=True)
-        else: self.env.set_var("avsp_filter_clip", None)
-        # test end
+        else:
+            self.env.set_var("avsp_filter_clip", None)
 
         vi = self.display_clip.get_video_info()
         self.DisplayWidth = vi.width
         self.DisplayHeight = vi.height
 
-        # test
         if vi.num_frames != self.Framecount:
             avisynth.AvisynthError = "Display filter error: \nDisplay-Clip length different"
             return self.CreateErrorClip(display_clip_error=True)
-        # test end
 
         if not self._ConvertToRGB():
             return self.CreateErrorClip(display_clip_error=True)
@@ -657,8 +634,9 @@ class AvsClipBase:
                 self.CreateDisplayClip(self.matrix, self.interlaced, False, self.bit_depth, False)
         except:
             pass
+
     # thread not used, for test only, thread extern ( avsp )
-    def GetMatrix(self, useThread=False):
+    def GetMatrix_2(self, useThread=False):
         def _get_matrix():
             try:
                 self.env.set_global_var("avsp_var", -1)
@@ -694,11 +672,60 @@ class AvsClipBase:
                 m = -1
             if m in (1, 5, 6, 7):
                 matrix = ['709','tv'] if m in (1,7) else ['601','tv']
-            self.sourceMatrix = GetMatrixName(m)
+            self.sourceMatrix = func.GetMatrixName(m)
             self.env.set_var("avsp_var_clip", None)
         return matrix
 
+    def GetMatrix(self):
+        def _get_matrix():
+            re = -1
+            try:
+                if self.current_frame > -1:
+                    nr = min(self.current_frame, self.Framecount-1)
+                else: nr = 0
+                frame = self.clip.get_frame(nr)
+                err = self.clip.get_error()
+                if not err:
+                    re = self.env.props_get_matrix(frame) #frame.props_get_matrix(self.env)
+                frame = None
+            except:
+                pass
+            return re
+
+        matrix = None
+        if self.clip and not self.IsErrorClip() and self.avisynth_version >= 8:
+            if self.can_read_avisynth_props:
+                m = _get_matrix()
+            else:
+                return self.GetMatrix_2()
+            if m in (1, 5, 6, 7):
+                matrix = ['709','tv'] if m in (1,7) else ['601','tv']
+            self.sourceMatrix = func.GetMatrixName(m)
+        return matrix
+
+    # Only switch readFrameProps on here, do not set AVI.readFrameProps = True
+    def SetReadFrameProps(self, enabled, callBack=True, readNow=True):
+        if not self.initialized or not self.can_read_avisynth_props:
+            self.readFrameProps = False
+            self.properties = ''
+            return
+        if self.clip and not self.IsErrorClip():
+            if enabled and readNow:
+                self.properties = 'Frame: ' + str(self.current_frame) + '\n' + self.env.props_get_all(self.src_frame) #self.src_frame.props_get_all(self.env)
+        else:
+            self.properties = ''
+        self.readFrameProps = enabled
+        if not enabled:
+            self.properties = ''
+        if callBack:
+            self.callBack(ident='property', value=self.properties, framenr=-1)
+
     def _GetFrame(self, frame):
+        def Error():
+            if self.readFrameProps and self.avisynth_version >= 8:
+                self.properties = 'Error'
+                self.callBack(ident='property', value='Error', framenr=frame)
+
         if self.initialized:
             if self.current_frame == frame:
                 return True
@@ -711,7 +738,9 @@ class AvsClipBase:
             # Original clip
             self.src_frame = self.clip.get_frame(frame)
             if self.clip.get_error():
+                Error()
                 return False
+
             self.pitch = self.src_frame.get_pitch()
             self.pitchUV = self.src_frame.get_pitch(avisynth.avs.AVS_PLANAR_U)
             self.ptrY = self.src_frame.get_read_ptr()
@@ -722,64 +751,22 @@ class AvsClipBase:
             if self.display_clip:
                 self.display_frame = self.display_clip.get_frame(frame)
                 if self.display_clip.get_error():
+                    Error()
                     return False
                 self.display_pitch = self.display_frame.get_pitch()
                 self.pBits = self.display_frame.get_read_ptr()
                 #~if self.RGB48: ## -> RGB24
                     #~pass
+
+            ## test getProps
+            if self.readFrameProps:
+                self.properties = 'Frame: ' + str(frame) + '\n' + self.env.props_get_all(self.src_frame) #self.src_frame.props_get_all(self.env)
+                #self.callBack(ident='property', value=self.properties, framenr=frame)
+            ###
+
             self.current_frame = frame
             return True
         return False
-
-    # test for fast playback, but not faster
-    def _GetDisplayFrame(self, frame):
-        if self.initialized and self.display_clip:
-            if self.current_frame == frame:
-                return True
-                if frame < 0:
-                    frame = 0
-                if frame >= self.Framecount:
-                    frame = self.Framecount - 1
-                    if self.current_frame == frame:
-                        return True
-            #Display clip
-            self.display_frame = self.display_clip.get_frame(frame)
-            if self.display_clip.get_error():
-                return False
-            self.display_pitch = self.display_frame.get_pitch()
-            self.pBits = self.display_frame.get_read_ptr()
-            self.current_frame = frame
-            return True
-        return False
-
-
-    """
-    def _GetFrame(self, frame):
-        #if not self.UseFrameThread:
-            #return self.th_GetFrame(frame)
-        if self.initialized:
-            if self.current_frame == frame:
-                return True
-            if frame < 0:
-                frame = 0
-            if frame >= self.Framecount:
-                frame = self.Framecount - 1
-            t = time.time()
-            th = threading.Thread(target=self.th_GetFrame, args=(frame,))
-            th.daemon = True
-            th.start()
-            th.join(60)
-            if th.isAlive():
-                #self.RunningThreads.append(th)
-                #if self.callBack:
-                    #self.callBack('framethreaderror', th, frame)
-                #print(str(time.time()-t))
-                return self.current_frame == frame
-            else:
-                #print(str(time.time()-t))
-                return self.current_frame == frame
-        return False
-    """
 
     def GetPixelYUV(self, x, y):
         if self.bits_per_component > 8: # TODO
@@ -1125,8 +1112,8 @@ if os.name == 'nt':
                 self.pInfo = ctypes.pointer(self.bmih)
             return True, ''
 
-        def GetMatrix(self, useThread=False):
-            return AvsClipBase.GetMatrix(self, useThread)
+        def GetMatrix(self):
+            return AvsClipBase.GetMatrix(self)
 
         def _ConvertToRGB(self):
             if not self.IsRGB32: # bug in avisynth v2.6 alphas with ConvertToRGB24
@@ -1142,14 +1129,6 @@ if os.name == 'nt':
                 self.bmih.biWidth = self.display_pitch * 8 / self.bmih.biBitCount
                 return True
             return False
-
-        # test for fast playback, but not faster
-        def _GetDisplayFrame(self, frame):
-            if AvsClipBase._GetDisplayFrame(self, frame):
-                self.bmih.biWidth = self.display_pitch * 8 / self.bmih.biBitCount
-                return True
-            return False
-
 
         def DrawFrame(self, frame, dc=None, offset=(0,0), size=None, srcXY=(0,0)):
             if not self._GetFrame(frame):

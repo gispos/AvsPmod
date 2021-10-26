@@ -16,7 +16,7 @@
 
 # Übersetzt von Henrik . AvsP 2.0.1  Danke für die Hilfe, besonders LigH ,doxville,Brother John, Selur und Rippraff !
 
-version = "2.6.9.5"
+version = "2.6.9.8"
 
 messages = {
     "AviSynth script" : u"", # New in v2.3.0
@@ -31,6 +31,9 @@ messages = {
     "Cancel" : u"Abbrechen",
     "Page:" : u"", # New in v2.3.1
     "Page: %d" : u"", # New in v2.3.1
+    "Frame properties" : u"", # New in v2.6.9.8
+    "Word warp" : u"", # New in v2.6.9.8
+    "Horz scroll" : u"", # New in v2.6.9.8
     "Scrap Window" : u"Ablagefenster",
     "Undo" : u"Rückgängig",
     "Redo" : u"Wiederherstellen",
@@ -162,9 +165,6 @@ messages = {
     "Translation updated" : u"", # New in v2.3.0
     "%s translation file updated.  No new messages to translate." : u"", # New in v2.3.0
     "%s language couldn't be loaded" : u"", # New in v2.3.0
-    "Default dark" : u"", # New in v2.6.6.6
-    "Solarized light" : u"", # New in v2.5.1 r452
-    "Solarized dark" : u"", # New in v2.5.1 r452
     "Cannot read the avisynth plugins directory from the registry\n" : u"", # New in v2.6.1.5
     "HKLM\\Software\\Avisynth'plugindir2_5' or 'plugindir+' is missing or wrong.\n\n" : u"", # New in v2.6.1.5
     "You should set the plugins path under options manually or register it." : u"", # New in v2.6.1.5
@@ -524,8 +524,8 @@ messages = {
     "&File" : u"&Datei",
     "Create a new tab" : u"Neuen Tab erstellen",
     "New tab" : u"Neuer Tab",
-    "Create a new tab from template **" : u"", # New in v2.6.9.4
-    "New tab from template" : u"", # New in v2.6.9.4
+    "Create a new tab from template **" : u"Neuen Tab von Vorlage ertellen", # New in v2.6.9.4
+    "New tab from template" : u"Neuer Tab von Vorlage", # New in v2.6.9.4
     "Open an existing script" : u"Öffne ein vorhandenes Skript",
     "Open..." : u"Öffnen...",
     "Reopen the last closed tab" : u"Zuletzt geschlossenen Tab öffnen",
@@ -567,8 +567,8 @@ messages = {
     "Switch to next script tab" : u"Schalte zum nächsten Skript-Tab",
     "Previous tab" : u"Vorheriger Tab",
     "Switch to previous script tab" : u"Schalte zum vorherigen Skript-Tab",
-    "Previously selected tab" : u"Zuvor selektierter Tab", # New in v2.6.9.5
-    "Toggle between the last two selected tabs" : u"Schalte zwischen den 2 zuletzt selektierten Tabs", # New in v2.6.9.5
+    "Previously selected tab" : u"Zuvor selektierter Tab",
+    "Toggle between the last two selected tabs" : u"Schalte zwischen den 2 zuletzt selektierten Tabs",
     "Show the scrap window" : u"Zeige das Ablage Fenster",
     "Clear file history" : u"Datei History löschen",
     "Clear the recent file list" : u"Liste der zuletzt verwendeten Dateien löschen",
@@ -773,6 +773,8 @@ messages = {
     "Swap chroma channels (U and V)" : u"", # New in v2.2.1
     "Get the coefficients from source or script, if the matrix available" : u"", # New in v2.6.7.0
     "Read from source or script" : u"", # New in v2.6.7.0
+    "Set matrix default value (options) if matrix not found" : u"", # New in v2.6.9.8
+    "Reset matrix if not found" : u"", # New in v2.6.9.8
     "Use BT.709 coefficients for HD, BT.601 for SD" : u"", # New in v2.6.7.0
     "Use BT.709 coefficients" : u"", # New in v2.3.0
     "Use BT.601 coefficients" : u"", # New in v2.3.0
@@ -873,6 +875,7 @@ messages = {
     "Run the current script with an external program and arg1" : u"", # New in v2.6.3.5
     "External tool arg2" : u"", # New in v2.6.3.5
     "Run the current script with an external program and arg2" : u"", # New in v2.6.3.5
+    "Show/Hide the properties window" : u"", # New in v2.6.9.8
     "Show information about the video in a dialog box" : u"Zeige Informationen über das Video in der Dialogbox.",
     "Video information" : u"Videoinformation",
     "&Options" : u"&Optionen",
@@ -1102,8 +1105,9 @@ messages = {
     "Current line highlight:" : u"", # New in v2.2.1
     "Highlight the line that the caret is currently in" : u"Zeile mit Einschaltungszeichen hervorheben",
     "Fold margin:" : u"", # New in v2.2.1
+    "Advanced 2" : u"Erweitert 2", # New in v2.6.6.6
     "Scrap window:" : u"", # New in v2.6.7.7
-    "Advanced 2" : u"", # New in v2.6.6.6
+    "Properties window:" : u"", # New in v2.6.9.8
     "Slider window:" : u"", # New in v2.6.7.7
     "Slider window text field:" : u"", # New in v2.6.7.7
     "Slider window default value:" : u"", # New in v2.6.7.7
@@ -1123,7 +1127,7 @@ messages = {
     "Only alphanumeric and underscores allowed!" : u"", # New in v2.5.0
     "Tag" : u"", # New in v2.5.0
     "Snippet" : u"", # New in v2.5.0
-    "A maximum of 30 entries are allowed!" : u"", # New in v2.6.9.4
+    "A maximum of 30 entries are allowed!" : u"Maximal 30 Einträge erlaubt!", # New in v2.6.9.4
     "Edit insertable timeline selection filters" : u"", # New in v2.6.9.4
     "Avisynth filter ( %start %stop is replaced by selection start stop )" : u"", # New in v2.6.9.4
     "%* insert the selected text, %join joins the filters from each selected line" : u"", # New in v2.6.9.4

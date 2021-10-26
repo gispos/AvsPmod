@@ -38,6 +38,23 @@ If, for example, there is a '-' in the file name of the dll, AvsPmod will report
 please rename this dll and replace the '-' with a '_'
 
 --------------------------
+Version 2.6.9.8 [2021-10-25] GPo
+--------------------------
+* Added reading frame properties (At least AviSynth+ 3.71 is required for full support).
+- deactivated during playback
+- if the property window is closed, reading is also deactivated
+* Added Options > Font & colors > Advanced 2 'Properties window' set text style for the property window
+* Added Display > YUV -> RGB > 'Reset matrix if not found' 
+- normally the matrix is retained if it could be read once, if this option is selected it is reset to the
+- default value if it cannot be read. 
+* Fixed: Loading older font & colors backup files
+* Bugfix Statusbar ads are not updated immediately
+
+--------------------------
+Version 2.6.9.7xx only test versions
+--------------------------
+
+--------------------------
 Version 2.6.9.6 [2021-09-29] GPo
 --------------------------
 * Change menu naming File > 'Toggle last two tabs' to 'Previously selected tab', you must recreate the shortcut for it.

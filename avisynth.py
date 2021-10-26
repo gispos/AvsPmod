@@ -38,6 +38,7 @@ import traceback
 import collections
 import weakref
 import wx
+import func
 
 # Initialization routines.  Assume AvxSynth/Linux if os.name is not NT.
 try:
@@ -437,12 +438,74 @@ class AVS_ScriptEnvironment(object):
                         new_height, rel_offsetU, rel_offsetV, new_pitchUV):
         return avs_subframe(self, src, rel_offset, new_pitch, new_row_size,
                             new_height, rel_offsetU, rel_offsetV, new_pitchUV)
-    """
-    def get_matrix(self, AVS_VideoFrame):
-        avsmap = avs_get_prop_ro(ctypes.byref(AVS_VideoFrame.cdata))
-    """
-# Now in interface.cpp
 
+    def propToChar(self, key, value):
+        if key == '_Matrix': return ' [' + func.GetMatrixName(value) + ']'
+        elif key == '_Primaries': return ' [' + func.GetColorPrimariesName(value) + ']'
+        elif key == '_ChromaLocation': return ' [' + func.GetChromaLocationName(value) + ']'
+        elif key == '_FieldBased': return ' [' + func.GetFieldBasedName(value) + ']'
+        elif key == '_Transfer': return ' [' + func.GetTransferName(value) + ']'
+        elif key == '_ColorRange': return ' [' + func.GetColorRangeName(value) + ']'
+        elif key == '_GOPClosed': return ' [' + func.GetGOPClosedName(value) + ']'
+        return ''
+
+    def props_get_picture_type(self, frame):
+        r = 0
+        avsmap = avs_get_frame_props_ro(self, frame.cdata)
+        if avsmap is not None:
+            c = avs_prop_num_keys(self, avsmap)
+            if c > 0:
+                for i in range(c):
+                    key_name = avs_prop_get_key(self, avsmap, i)
+                    if key_name == '_PictureType':
+                        return str(avs_prop_get_data(self, avsmap, key_name, 0, r))
+        return ''
+
+    def props_get_matrix(self, frame):
+        r = 0
+        avsmap = avs_get_frame_props_ro(self, frame.cdata)
+        if avsmap is not None:
+            c = avs_prop_num_keys(self, avsmap)
+            if c > 0:
+                for i in range(c):
+                    key_name = avs_prop_get_key(self, avsmap, i)
+                    if key_name == '_Matrix':
+                        typ = avs_prop_get_type(self, avsmap, key_name)
+                        if typ == 'i':
+                            return int(avs_prop_get_int(self, avsmap, key_name,  0, r))
+        return -1
+
+    def props_get_all(self, frame):
+        s = ''
+        r = 0
+        avsmap = avs_get_frame_props_ro(self, frame.cdata)
+        if avsmap is not None:
+            c = avs_prop_num_keys(self, avsmap)
+            if c > 0:
+                s = 'Keys: ' + str(c) + '\n'
+                for i in range(c):
+                    key_name = avs_prop_get_key(self, avsmap, i)
+                    num_elements = avs_prop_num_elements(self, avsmap, key_name)
+                    typ = avs_prop_get_type(self, avsmap, key_name)
+                    s +=  key_name + ' ('
+                    for j in range(num_elements):
+                        if typ == 'i':
+                            re = avs_prop_get_int(self, avsmap, key_name,  j, r)
+                            s += str(re) + self.propToChar(key_name, re) + ', '
+                        elif typ == 'f':
+                            s += str(avs_prop_get_float(self, avsmap, key_name,  j, r)) + ', '
+                        elif typ == 's':
+                            s += str(avs_prop_get_data(self, avsmap, key_name, j, r)) + ', '
+                        elif typ == 'c':
+                            s += 'clip, '
+                        elif typ == 'v':
+                            s += 'frame, '
+                        elif typ == 'u':
+                            s += 'unset, '
+                        else:
+                            s += '?, '
+                    s = s[:-2] + ')\n'
+        return s #.rstrip() # bug in styledTextctrl
 
 class AVS_VideoInfo_C(ctypes.Structure):
     _fields_ = [("width",ctypes.c_int), # 0 means no video
@@ -729,6 +792,9 @@ class AVS_Clip:
     def get_version(self):
         return avs_get_version(self)
 
+    def prop_get_num_keys(self):
+        return avs_prop_num_keys(self)
+
 
 GETFRAMEPROPS = FUNCTYPE(ctypes.c_void_p)
 class AVS_Map_C(ctypes.Structure):
@@ -800,14 +866,7 @@ class AVS_VideoFrame(object):
 
     def get_write_ptr(self, plane=avs.AVS_PLANAR_Y):
         return avs_get_write_ptr_p(self.cdata, plane) #V6
-    """
-    def get_matrix(self):
-        pmap = avs_get_frame_props_ro(self.cdata)
-        if pmap is not None:
-            return 1
-        #return avs_prop_get_int(self.cdata.contents.properties, "_Matrix")
-        return -1
-    """
+
 
 class AVS_Value(object):
 
@@ -1240,11 +1299,14 @@ def internal_fake_num_components(arg):
 def internal_fake_bits_per_component(arg):
     return 8 # always 8 bits/component for classic Avisynth
 
-def internal_fake_get_frame_props(arg):
+def internal_fake_get_frame_props_2(arg1, arg2):
     return None
 
-def internal_fake_prop_get_int(arg1, arg2):
-    return -1
+def internal_fake_get_frame_props_3(arg1, arg2, arg3):
+    return None
+
+def internal_fake_get_frame_props_5(arg1, arg2, arg3, arg4, arg5):
+    return None
 
 # AVS+ function in "safe mode" to accept classic Avisynth which have such no new functions
 try: # AVS+ ?
@@ -1477,47 +1539,77 @@ avs_release_value.restype=None
 avs_release_value.argtypes=[AVS_Value]
 AVS_Value.avs_release_value=avs_release_value
 
-# test frame props
-"""
-try:
-    avs_create_map=avidll.avs_create_map
-except:
-    avs_create_map=internal_fake_get_frame_props
-
-try:
-    avs_free_map=avidll.avs_free_map
-except:
-    avs_free_map=internal_fake_get_frame_props
-
-try:
-    avs_prop_get_key=avidll.avs_prop_get_key
-    avs_prop_get_key.restype=ctypes.c_int
-    avs_prop_get_key.argtypes=[ctypes.c_char_p]
-except:
-    avs_prop_get_key=internal_fake_get_frame_props
-
-try:
-    avs_get_frame_props_rw=avidll.avs_get_frame_props_rw
-    #avs_get_frame_props_rw.restype=ctypes.POINTER(ctypes.c_ubyte)
-    avs_get_frame_props_rw.restype=ctypes.POINTER(AVS_Map_C)
-    avs_get_frame_props_rw.argtypes=[ctypes.POINTER(AVS_VideoFrame_C)]
-except:
-    avs_get_frame_props_rw=internal_fake_get_frame_props
+#### frame props ####
 
 try:
     avs_get_frame_props_ro=avidll.avs_get_frame_props_ro
     avs_get_frame_props_ro.restype=ctypes.POINTER(AVS_Map_C)
-    avs_get_frame_props_ro.argtypes=[ctypes.POINTER(AVS_VideoFrame_C)]
+    avs_get_frame_props_ro.argtypes=[AVS_ScriptEnvironment, ctypes.POINTER(AVS_VideoFrame_C)]
 except:
-    avs_get_frame_props_ro=internal_fake_get_frame_props
+    avs_get_frame_props_ro=internal_fake_get_frame_props_2
+
+try:
+    avs_get_frame_props_rw=avidll.avs_get_frame_props_rw
+    avs_get_frame_props_rw.restype=ctypes.POINTER(AVS_Map_C)
+    avs_get_frame_props_rw.argtypes=[AVS_ScriptEnvironment, ctypes.POINTER(AVS_VideoFrame_C)]
+except:
+    avs_get_frame_props_rw=internal_fake_get_frame_props_2
+
+try:
+    avs_prop_num_keys=avidll.avs_prop_num_keys
+    avs_prop_num_keys.restype=ctypes.c_int
+    avs_prop_num_keys.argtypes=[AVS_ScriptEnvironment, ctypes.POINTER(AVS_Map_C)]
+except:
+   avs_prop_num_keys=internal_fake_get_frame_props_2
+
+try:
+    avs_prop_num_elements=avidll.avs_prop_num_elements
+    avs_prop_num_elements.restype=ctypes.c_int
+    avs_prop_num_elements.argtypes=[AVS_ScriptEnvironment, ctypes.POINTER(AVS_Map_C), ctypes.c_char_p]
+except:
+    avs_prop_num_elements=internal_fake_get_frame_props_3
+
+try:
+    avs_prop_get_key=avidll.avs_prop_get_key
+    avs_prop_get_key.restype=ctypes.c_char_p
+    avs_prop_get_key.argtypes=[AVS_ScriptEnvironment, ctypes.POINTER(AVS_Map_C), ctypes.c_int]
+except:
+    avs_prop_get_key=internal_fake_get_frame_props_3
+
+try:
+    avs_prop_get_type=avidll.avs_prop_get_type
+    avs_prop_get_type.restype=ctypes.c_char
+    avs_prop_get_type.argtypes=[AVS_ScriptEnvironment, ctypes.POINTER(AVS_Map_C), ctypes.c_char_p]
+except:
+    avs_prop_get_type=internal_fake_get_frame_props_3
 
 try:
     avs_prop_get_int=avidll.avs_prop_get_int
-    avs_prop_get_int.restype=ctypes.c_int
-    avs_prop_get_int.argtypes=[ctypes.POINTER(AVS_Map_C), ctypes.c_char_p]
+    avs_prop_get_int.restype=ctypes.c_int                                        # keyname, element_index, return error
+    avs_prop_get_int.argtypes=[AVS_ScriptEnvironment, ctypes.POINTER(AVS_Map_C), ctypes.c_char_p, ctypes.c_int, ctypes.c_int]
 except:
-    avs_prop_get_int=internal_fake_prop_get_int
-"""
+    avs_prop_get_int=internal_fake_get_frame_props_5
+
+try:
+    avs_prop_get_float=avidll.avs_prop_get_float
+    avs_prop_get_float.restype=ctypes.c_double                                     # keyname, element_index, return error
+    avs_prop_get_float.argtypes=[AVS_ScriptEnvironment, ctypes.POINTER(AVS_Map_C), ctypes.c_char_p, ctypes.c_int, ctypes.c_int]
+except:
+    avs_prop_get_int=internal_fake_get_frame_props_5
+
+try:
+    avs_prop_get_data=avidll.avs_prop_get_data
+    avs_prop_get_data.restype=ctypes.c_char_p                                       # keyname, element_index, return error
+    avs_prop_get_data.argtypes=[AVS_ScriptEnvironment, ctypes.POINTER(AVS_Map_C), ctypes.c_char_p, ctypes.c_int, ctypes.c_int]
+except:
+    avs_prop_get_data=internal_fake_get_frame_props_5
+
+try:
+    avs_prop_get_data_size=avidll.avs_prop_get_data_size
+    avs_prop_get_data_size.restype=ctypes.c_int                                        # keyname, element_index, return error
+    avs_prop_get_data_size.argtypes=[AVS_ScriptEnvironment, ctypes.POINTER(AVS_Map_C), ctypes.c_char_p, ctypes.c_int, ctypes.c_int]
+except:
+    avs_prop_get_data=internal_fake_get_frame_props_5
 
 def test():
     env = AVS_ScriptEnvironment(6)

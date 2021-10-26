@@ -46,6 +46,7 @@ import os.path
 import collections
 import ctypes
 import cffi
+import func
 
 # Try to load the library from the selected directory
 try:
@@ -334,9 +335,83 @@ enum {
   AVS_CACHE_GETCHILD_ACCESS_COST=260, // Cache ask Child for preferred access pattern.
   AVS_CACHE_ACCESS_RAND=261, // Filter is access order agnostic.
   AVS_CACHE_ACCESS_SEQ0=262, // Filter prefers sequential access (low cost)
-  AVS_CACHE_ACCESS_SEQ1=263  // Filter needs sequential access (high cost)
+  AVS_CACHE_ACCESS_SEQ1=263,  // Filter needs sequential access (high cost)
+
+  AVS_CACHE_AVSPLUS_CONSTANTS = 500,    // Smaller values are reserved for classic Avisynth
+
+  AVS_CACHE_DONT_CACHE_ME = 501,        // Filters that don't need caching (eg. trim, cache etc.) should return 1 to this request
+  AVS_CACHE_SET_MIN_CAPACITY = 502,
+  AVS_CACHE_SET_MAX_CAPACITY = 503,
+  AVS_CACHE_GET_MIN_CAPACITY = 504,
+  AVS_CACHE_GET_MAX_CAPACITY = 505,
+  AVS_CACHE_GET_SIZE = 506,
+  AVS_CACHE_GET_REQUESTED_CAP = 507,
+  AVS_CACHE_GET_CAPACITY = 508,
+  AVS_CACHE_GET_MTMODE = 509,
+
+  AVS_CACHE_IS_CACHE_REQ = 510,
+  AVS_CACHE_IS_CACHE_ANS = 511,
+  AVS_CACHE_IS_MTGUARD_REQ = 512,
+  AVS_CACHE_IS_MTGUARD_ANS = 513,
+
+  AVS_CACHE_AVSPLUS_CUDA_CONSTANTS = 600,
+
+  AVS_CACHE_GET_DEV_TYPE = 601,          // Device types a filter can return
+  AVS_CACHE_GET_CHILD_DEV_TYPE = 602,    // Device types a fitler can receive
+
+  AVS_CACHE_USER_CONSTANTS = 1000       // Smaller values are reserved for the core
   };
 
+
+// enums for frame property functions
+// AVSPropTypes
+enum {
+  AVS_PROPTYPE_UNSET = 'u',
+  AVS_PROPTYPE_INT = 'i',
+  AVS_PROPTYPE_FLOAT = 'f',
+  AVS_PROPTYPE_DATA = 's',
+  AVS_PROPTYPE_CLIP = 'c',
+  AVS_PROPTYPE_FRAME = 'v'
+};
+
+// AVSGetPropErrors for avs_prop_get_...
+enum {
+  AVS_GETPROPERROR_UNSET = 1,
+  AVS_GETPROPERROR_TYPE = 2,
+  AVS_GETPROPERROR_INDEX = 4
+};
+
+// AVSPropAppendMode for avs_prop_set_...
+enum {
+  AVS_PROPAPPENDMODE_REPLACE = 0,
+  AVS_PROPAPPENDMODE_APPEND = 1,
+  AVS_PROPAPPENDMODE_TOUCH = 2
+};
+
+// AvsEnvProperty for avs_get_env_property
+enum
+{
+  AVS_AEP_PHYSICAL_CPUS = 1,
+  AVS_AEP_LOGICAL_CPUS = 2,
+  AVS_AEP_THREADPOOL_THREADS = 3,
+  AVS_AEP_FILTERCHAIN_THREADS = 4,
+  AVS_AEP_THREAD_ID = 5,
+  AVS_AEP_VERSION = 6,
+
+  // Neo additionals
+  AVS_AEP_NUM_DEVICES = 901,
+  AVS_AEP_FRAME_ALIGN = 902,
+  AVS_AEP_PLANE_ALIGN = 903,
+
+  AVS_AEP_SUPPRESS_THREAD = 921,
+  AVS_AEP_GETFRAME_RECURSIVE = 922
+};
+
+// enum AvsAllocType for avs_allocate
+enum {
+  AVS_ALLOCTYPE_NORMAL_ALLOC = 1,
+  AVS_ALLOCTYPE_POOLED_ALLOC = 2
+};
 
 #define AVS_FRAME_ALIGN ...
 
@@ -429,6 +504,7 @@ typedef struct AVS_VideoFrameBuffer {
   volatile long sequence_number;
 
   volatile long refcount;
+  void * device; // avs+
 } AVS_VideoFrameBuffer;
 
 // VideoFrame holds a "window" into a VideoFrameBuffer.
@@ -448,8 +524,8 @@ typedef struct AVS_VideoFrame {
   // AVS+ extension, avisynth.h: class does not break plugins if appended here
   int offsetA;
   int pitchA, row_sizeA; // 4th alpha plane support, pitch and row_size is 0 is none
+  void * properties;
 } AVS_VideoFrame;
-
 
 // Access functions for AVS_VideoFrame
 
@@ -487,6 +563,24 @@ typedef struct AVS_VideoFrame {
 typedef void (*avs_release_video_frame_func)(AVS_VideoFrame *);
 // makes a shallow copy of a video frame
 typedef AVS_VideoFrame * (*avs_copy_video_frame_func)(AVS_VideoFrame *);
+
+// typedef int (*avs_row_size_func)(const AVS_VideoInfo * p, int plane);
+
+// Properties
+typedef struct AVS_Map {
+  void* data;
+} AVS_Map;
+
+// Properties new V8 Interface
+typedef const AVS_Map* (*avs_get_frame_props_ro_func)(AVS_ScriptEnvironment* p, const AVS_VideoFrame* frame);
+typedef int (*avs_prop_num_keys_func)(AVS_ScriptEnvironment* p, const AVS_Map* map);
+typedef int (*avs_prop_num_elements_func)(AVS_ScriptEnvironment* p, const AVS_Map* map, const char* key);
+typedef const char* (*avs_prop_get_key_func)(AVS_ScriptEnvironment* p, const AVS_Map* map, int index);
+typedef char (*avs_prop_get_type_func)(AVS_ScriptEnvironment* p, const AVS_Map* map, const char* key);
+typedef int64_t (*avs_prop_get_int_func)(AVS_ScriptEnvironment* p, const AVS_Map* map, const char* key, int index, int error);
+typedef double (*avs_prop_get_float_func)(AVS_ScriptEnvironment* p, const AVS_Map* map, const char* key, int index, int error);
+typedef const char* (*avs_prop_get_data_func)(AVS_ScriptEnvironment* p, const AVS_Map* map, const char* key, int index, int error);
+typedef int (*avs_prop_get_data_size_func)(AVS_ScriptEnvironment* p, const AVS_Map* map, const char* key, int index, int error);
 
 // ------------- currently done until this
 
@@ -619,6 +713,8 @@ typedef int (*avs_get_height_p_func)(const AVS_VideoFrame * p, int plane);
 typedef const BYTE * (*avs_get_read_ptr_p_func)(const AVS_VideoFrame * p, int plane);
 typedef int (*avs_is_writable_func)(const AVS_VideoFrame * p);
 typedef BYTE * (*avs_get_write_ptr_p_func)(const AVS_VideoFrame * p, int plane);
+
+
 // Avisynth+ extensions
 typedef int (*avs_is_rgb48_func)(const AVS_VideoInfo * p);
 typedef int (*avs_is_rgb64_func)(const AVS_VideoInfo * p);
@@ -781,7 +877,6 @@ typedef void (*avs_delete_script_environment_func)(AVS_ScriptEnvironment *);
 typedef AVS_VideoFrame * (*avs_subframe_planar_func)(AVS_ScriptEnvironment *, AVS_VideoFrame * src, int rel_offset, int new_pitch, int new_row_size, int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV);
 // The returned video frame must be be released
 
-
 void* malloc(size_t);
 void free(void*);
 
@@ -874,6 +969,18 @@ avs_is_planar_rgba_func avs_is_planar_rgba;
 avs_num_components_func avs_num_components;
 avs_component_size_func avs_component_size;
 avs_bits_per_component_func avs_bits_per_component;
+
+// _Properties avs+
+avs_get_frame_props_ro_func avs_get_frame_props_ro;
+avs_prop_num_keys_func avs_prop_num_keys;
+avs_prop_get_key_func avs_prop_get_key;
+avs_prop_num_elements_func avs_prop_num_elements;
+avs_prop_get_type_func avs_prop_get_type;
+avs_prop_get_int_func avs_prop_get_int;
+avs_prop_get_float_func avs_prop_get_float;
+avs_prop_get_data_func avs_prop_get_data;
+avs_prop_get_data_size_func avs_prop_get_data_size;
+// _End_Properties
 // end of Avisynth+ specific
 
 ;AVS_Library * avs_load_library();
@@ -888,11 +995,11 @@ verify_str = r"""
 #include <windows.h>
 #define AVSC_NO_DECLSPEC
 #include "avisynth_c.h"
+#define AVS_H8
 
 AVS_Library * library;
 
 static const AVS_Value * avs_void_p = &avs_void;
-
 
 // no wrapper needed for the following functions
 
@@ -978,12 +1085,26 @@ avs_is_planar_rgba_func avs_is_planar_rgba;
 avs_num_components_func avs_num_components;
 avs_component_size_func avs_component_size;
 avs_bits_per_component_func avs_bits_per_component;
+
+// _Properties avs+
+#ifdef AVS_H8
+avs_get_frame_props_ro_func avs_get_frame_props_ro;
+avs_prop_num_keys_func avs_prop_num_keys;
+avs_prop_get_key_func avs_prop_get_key;
+avs_prop_num_elements_func avs_prop_num_elements;
+avs_prop_get_type_func avs_prop_get_type;
+avs_prop_get_int_func avs_prop_get_int;
+avs_prop_get_float_func avs_prop_get_float;
+avs_prop_get_data_func avs_prop_get_data;
+avs_prop_get_data_size_func avs_prop_get_data_size;
+#endif
 // end of Avisynth+ specific
 
 AVS_Library * avs_load_library_w(){
     library = avs_load_library();
     if (library == NULL)
         return NULL;
+
     avs_add_function=library->avs_add_function;
     avs_at_exit=library->avs_at_exit;
     avs_bit_blt=library->avs_bit_blt;
@@ -1065,6 +1186,19 @@ AVS_Library * avs_load_library_w(){
     avs_num_components=library->avs_num_components;
     avs_component_size=library->avs_component_size;
     avs_bits_per_component=library->avs_bits_per_component;
+
+    // _Properties avs+
+#ifdef AVS_H8
+    avs_get_frame_props_ro=library->avs_get_frame_props_ro;
+    avs_prop_num_keys=library->avs_prop_num_keys;
+    avs_prop_get_key=library->avs_prop_get_key;
+    avs_prop_num_elements=library->avs_prop_num_elements;
+    avs_prop_get_type=library->avs_prop_get_type;
+    avs_prop_get_int=library->avs_prop_get_int;
+    avs_prop_get_float=library->avs_prop_get_float;
+    avs_prop_get_data=library->avs_prop_get_data;
+    avs_prop_get_data_size=library->avs_prop_get_data_size;
+#endif
     // end of Avisynth+ specific
     return library;
 }
@@ -1172,6 +1306,7 @@ else:
     if avs.avs_load_library_w() == ffi.NULL:
         raise OSError(*ffi.getwinerror())
     avs.library = avs.avs_load_library_w()
+
 
 class AVS_VideoInfo(object):
 
@@ -1394,7 +1529,6 @@ class AVS_VideoFrame(object):
                 avs.avs_get_write_ptr_p(self.cdata, plane))),
                 ctypes.POINTER(ctypes.c_ubyte)
                 )
-
 
 class AVS_Value(object):
 
@@ -1805,6 +1939,73 @@ class AVS_ScriptEnvironment(object):
             new_dir = new_dir.encode(encoding, 'backslashreplace')
         return avs.avs_set_working_dir(self.cdata, new_dir)
 
+    def propToChar(self, key, value):
+        if key == '_Matrix': return ' [' + func.GetMatrixName(value) + ']'
+        elif key == '_Primaries': return ' [' + func.GetColorPrimariesName(value) + ']'
+        elif key == '_ChromaLocation': return ' [' + func.GetChromaLocationName(value) + ']'
+        elif key == '_FieldBased': return ' [' + func.GetFieldBasedName(value) + ']'
+        elif key == '_Transfer': return ' [' + func.GetTransferName(value) + ']'
+        elif key == '_ColorRange': return ' [' + func.GetColorRangeName(value) + ']'
+        elif key == '_GOPClosed': return ' [' + func.GetGOPClosedName(value) + ']'
+        return ''
+
+    def props_get_picture_type(self, frame):
+        r = 0
+        avsmap = avs.avs_get_frame_props_ro(self.cdata, frame.cdata)
+        if avsmap is not None:
+            c = avs.avs_prop_num_keys(self.cdata, avsmap)
+            if c > 0:
+                for i in range(c):
+                    key_name = ffi.string(avs.avs_prop_get_key(self.cdata, avsmap, i))
+                    if key_name == '_PictureType':
+                         return ffi.string(avs.avs_prop_get_data(self.cdata, avsmap, key_name, 0, r))
+        return ''
+
+    def props_get_matrix(self, frame):
+        r = 0
+        avsmap = avs.avs_get_frame_props_ro(self.cdata, frame.cdata)
+        if avsmap is not None:
+            c = avs.avs_prop_num_keys(self.cdata, avsmap)
+            if c > 0:
+                for i in range(c):
+                    key_name = ffi.string(avs.avs_prop_get_key(self.cdata, avsmap, i))
+                    if key_name == '_Matrix':
+                        typ = avs.avs_prop_get_type(self.cdata, avsmap, key_name)
+                        if typ == 'i':
+                            return int(avs.avs_prop_get_int(self.cdata, avsmap, key_name, 0, r))
+        return -1
+
+    def props_get_all(self, frame):
+        s = ''
+        r = 0
+        avsmap = avs.avs_get_frame_props_ro(self.cdata, frame.cdata)
+        if avsmap is not None:
+            c = avs.avs_prop_num_keys(self.cdata, avsmap)
+            if c > 0:
+                s = 'Keys: ' + str(c) + '\n'
+                for i in range(c):
+                    key_name = ffi.string(avs.avs_prop_get_key(self.cdata, avsmap, i))
+                    num_elements = avs.avs_prop_num_elements(self.cdata, avsmap, key_name)
+                    typ = avs.avs_prop_get_type(self.cdata, avsmap, key_name)
+                    s +=  key_name + ' ('
+                    for j in range(num_elements):
+                        if typ == 'i':
+                            re = avs.avs_prop_get_int(self.cdata, avsmap, key_name, j, r)
+                            s += str(re) + self.propToChar(key_name, re) + ', '
+                        elif typ == 'f':
+                            s += str(avs.avs_prop_get_float(self.cdata, avsmap, key_name, j, r)) + ', '
+                        elif typ == 's':
+                            s += ffi.string(avs.avs_prop_get_data(self.cdata, avsmap, key_name, j, r)) + ', '
+                        elif typ == 'c':
+                            s += 'clip, '
+                        elif typ == 'v':
+                            s += 'frame, '
+                        elif typ == 'u':
+                            s += 'unset, '
+                        else:
+                            s += '?, '
+                    s = s[:-2] + ')\n'
+        return s #.rstrip() # bug in styledTextctrl
 
 class AvisynthError(Exception):
     pass
