@@ -41,6 +41,7 @@ import os
 import ctypes
 import re
 import func
+import struct
 
 x86_64 = sys.maxsize > 2**32
 if x86_64:
@@ -135,7 +136,8 @@ class AvsClipBase:
     def __init__(self,  script, filename='', workdir='', env=None, fitHeight=None,
                  fitWidth=None, oldFramecount=240, display_clip=True, reorder_rgb=False,
                  matrix=['auto', 'tv'], interlaced=False, swapuv=False, bit_depth=None,
-                 callBack=None, readmatrix=None, displayFilter=None, readFrameProps=False):
+                 callBack=None, readmatrix=None, displayFilter=None, readFrameProps=False,
+                 resizeFilter=None, app=None):
 
         def CheckVersion(env):
             try:
@@ -157,6 +159,7 @@ class AvsClipBase:
         #self.app = app
         self.initialized = False
         self.env = None
+        self.app = app
         self.callBack = callBack
         self.name = filename
         self.error_message = None
@@ -178,7 +181,6 @@ class AvsClipBase:
         self.FramerateDenominator = -1
         self.Audiorate = -1.0
         self.Audiolength = -1
-        #~ self.AudiolengthF = None
         self.Audiochannels = -1
         self.Audiobits = -1
         self.IsAudioFloat = None
@@ -195,7 +197,10 @@ class AvsClipBase:
         self.IsYV12 = None
         self.IsYV411 = None
         self.IsY8 = None
+        self.IsY = None
         self.bits_per_component = None
+        self.component_size = None
+        self.num_components = None
         self.IsPlanar = None
         self.IsInterleaved = None
         self.IsFieldBased = None
@@ -204,7 +209,6 @@ class AvsClipBase:
         self.HasAudio = None
         self.HasVideo = None
         self.Colorspace = None
-        #self.ffms_info_cache = {}
         self.sourceMatrix = '..'
         self.matrix_found = None
         self.matrix = 'Rec709'
@@ -212,16 +216,9 @@ class AvsClipBase:
         self.Thread = None
         self.avisynth_version = None
         self.displayFilter = displayFilter
-        # Test getProps
+        self.resizeFilter = None#resizeFilter
+        # getProps
         self.properties = ''
-        #global can_read_avisynth_props
-        # threading get frame
-        #self.UseFrameThread = UseFrameThread
-        #self.RunningThreads = []
-
-        #self.num_components = None   # not yet needed
-        #self.component_size = None
-        #self.bits_per_component = None
 
         # Create the Avisynth script clip
         if env is not None:
@@ -325,7 +322,8 @@ class AvsClipBase:
         self.Framecount = self.vi.num_frames
         self.Width = self.vi.width
         self.Height = self.vi.height
-        if self.vi.is_yuv() and not self.vi.is_y8():
+        #if self.vi.is_yuv() and not self.vi.is_y8():
+        if self.vi.is_yuv() and not self.vi.is_y():
             self.WidthSubsampling = self.vi.get_plane_width_subsampling(avisynth.avs.AVS_PLANAR_U)
             self.HeightSubsampling = self.vi.get_plane_height_subsampling(avisynth.avs.AVS_PLANAR_U)
         self.DisplayWidth, self.DisplayHeight = self.Width, self.Height
@@ -351,15 +349,19 @@ class AvsClipBase:
         self.IsRGB = self.vi.is_rgb()
         self.IsRGB24 = self.vi.is_rgb24()
         self.IsRGB32 = self.vi.is_rgb32()
+        self.IsRGB48 = self.vi.is_rgb48()
+        self.IsRGB64 = self.vi.is_rgb64()
         self.IsYUV = self.vi.is_yuv()
         self.IsYUY2 = self.vi.is_yuy2()
         self.IsYV24 = self.vi.is_yv24()
         self.IsYV16 = self.vi.is_yv16()
         self.IsYV12 = self.vi.is_yv12()
         self.IsYV411 = self.vi.is_yv411()
+        self.IsY = self.vi.is_y()
         self.IsY8 = self.vi.is_y8()
         self.bits_per_component = self.vi.bits_per_component() # 8,10,12,14,16,32
-
+        self.component_size = self.vi.component_size() # 1, 2, 4 (in bytes)
+        self.num_components = self.vi.num_components() # 1-4
         # Possible even for classic avs:
         '''
         self.IsRGB48 = self.vi.isRGB48
@@ -597,6 +599,12 @@ class AvsClipBase:
             err = "Preview filter error: ConvertToRGB failed"
             self.env.set_var("avsp_filter_clip", None)
             return None, err
+        if self.resizeFilter:
+            args = [clip, self.resizeFilter[1], self.resizeFilter[2]]
+            try:
+                clip = self.env.invoke(self.resizeFilter[0], args)
+            except avisynth.AvisynthError as err:
+                return None, err
         vi = clip.get_video_info()
         if vi.num_frames != self.Framecount:
             clip = None
@@ -720,6 +728,10 @@ class AvsClipBase:
         if callBack:
             self.callBack(ident='property', value=self.properties, framenr=-1)
 
+    def SetResizeFilter(self, f):
+        self.resizeFilter = f
+        #self.CreateDisplayClip(self.matrix, self.interlaced, False, self.bit_depth, False)
+
     def _GetFrame(self, frame):
         def Error():
             if self.readFrameProps and self.avisynth_version >= 8:
@@ -744,7 +756,8 @@ class AvsClipBase:
             self.pitch = self.src_frame.get_pitch()
             self.pitchUV = self.src_frame.get_pitch(avisynth.avs.AVS_PLANAR_U)
             self.ptrY = self.src_frame.get_read_ptr()
-            if not self.IsY8:
+            #if not self.IsY8:
+            if not self.IsY:
                 self.ptrU = self.src_frame.get_read_ptr(avisynth.avs.AVS_PLANAR_U)
                 self.ptrV = self.src_frame.get_read_ptr(avisynth.avs.AVS_PLANAR_V)
             # Display clip
@@ -768,12 +781,12 @@ class AvsClipBase:
             return True
         return False
 
+    # coded: pfmod 2021
     def GetPixelYUV(self, x, y):
-        if self.bits_per_component > 8: # TODO
-            return (-1,-1,-1)
         # if a resize filter used in the preview filter. CRASH if not check here
         if self.DisplayWidth != self.Width or self.DisplayHeight != self.Height:
             return (-1,-1,-1)
+        x = x * self.component_size # (1,2,4) 8bit, up to 16bit, 32float
         if self.IsPlanar:
             indexY = x + y * self.pitch
             if self.IsY8:
@@ -787,16 +800,71 @@ class AvsClipBase:
             indexV = 4*(x/2) + 3 + y * self.pitch
         else:
             return (-1,-1,-1)
-        return (self.ptrY[indexY], self.ptrU[indexU], self.ptrV[indexV])
+        if self.bits_per_component == 8:
+            return (self.ptrY[indexY], self.ptrU[indexU], self.ptrV[indexV])
+        if self.bits_per_component <= 16:
+            # struct.unpack needs import struct, and returns a single element tuple
+            # =H: unsigned short (2 bytes), native byte order
+            bufferY = [self.ptrY[indexY], self.ptrY[indexY + 1]]
+            valY = struct.unpack('=H', bytearray(bufferY))[0]
+            bufferU = [self.ptrU[indexU], self.ptrU[indexU + 1]]
+            valU = struct.unpack('=H', bytearray(bufferU))[0]
+            bufferV = [self.ptrV[indexV], self.ptrV[indexV + 1]]
+            valV = struct.unpack('=H', bytearray(bufferV))[0]
+            return (valY, valU, valV)
+        #float # =f: float (4 bytes), native byte order
+        bufferY = [self.ptrY[indexY], self.ptrY[indexY + 1], self.ptrY[indexY + 2], self.ptrY[indexY + 3]]
+        valY = struct.unpack('=f', bytearray(bufferY))[0]
+        bufferU = [self.ptrU[indexU], self.ptrU[indexU + 1], self.ptrU[indexU + 2], self.ptrU[indexU + 3]]
+        valU = struct.unpack('=f', bytearray(bufferU))[0]
+        bufferV = [self.ptrV[indexV], self.ptrV[indexV + 1], self.ptrV[indexV + 2], self.ptrV[indexV + 3]]
+        valV = struct.unpack('=f', bytearray(bufferV))[0]
+        return (valY, valU, valV)
 
     def GetPixelRGB(self, x, y, BGR=True):
         if self.IsRGB:
-            if self.bits_per_component > 8: # Todo
-                return (-1,-1,-1)
             # if a resize filter used in the preview filter. CRASH if not check here
             if self.DisplayWidth != self.Width or self.DisplayHeight != self.Height:
                 return (-1,-1,-1)
             bytes = self.vi.bytes_from_pixels(1)
+
+            if self.bits_per_component == 16:
+                #x = x * 8 64bit
+                #x = x * 6 48bit
+                if BGR:
+                    indexB = (x * bytes) + (self.Height - 1 - y) * self.pitch # same for 48, 64 bit
+                    bufferB = [self.ptrY[indexB], self.ptrY[indexB+1]]
+                    valB = struct.unpack('=H', bytearray(bufferB))[0]
+                    bufferG = [self.ptrY[indexB+2], self.ptrY[indexB+3]]
+                    valG = struct.unpack('=H', bytearray(bufferG))[0]
+                    bufferR = [self.ptrY[indexB+4], self.ptrY[indexB+5]]
+                    valR = struct.unpack('=H', bytearray(bufferR))[0]
+                    """
+                    if self.HasAlpha:
+                        bufferA = [self.ptrY[indexB+6], self.ptrY[indexB+7]]
+                        valA = struct.unpack('=H', bytearray(bufferA))[0]
+                        return (valR, valG, valB, valA)
+                    """
+                    return (valR, valG, valB)
+                else:
+                    indexR = (x * bytes) + y * self.pitch
+                    bufferR = [self.ptrY[indexR], self.ptrY[indexR+1]]
+                    valR = struct.unpack('=H', bytearray(bufferR))[0]
+                    bufferG = [self.ptrY[indexR+2], self.ptrY[indexR+3]]
+                    valG = struct.unpack('=H', bytearray(bufferG))[0]
+                    bufferB = [self.ptrY[indexR+4], self.ptrY[indexR+5]]
+                    valB = struct.unpack('=H', bytearray(bufferB))[0]
+                    """
+                    if self.HasAlpha:
+                        bufferA = [self.ptrY[indexB+6], self.ptrY[indexB+7]]
+                        valA = struct.unpack('=H', bytearray(bufferA))[0]
+                        return (valR, valG, valB, valA)
+                    """
+                    return (valR, valG, valB)
+
+            if self.bits_per_component > 8:
+                return (-1,-1,-1)
+
             if BGR:
                 indexB = (x * bytes) + (self.Height - 1 - y) * self.pitch
                 indexG = indexB + 1
@@ -813,7 +881,7 @@ class AvsClipBase:
         if self.IsRGB32:
             # if a resize filter used in the preview filter. CRASH if not check here
             if self.DisplayWidth != self.Width or self.DisplayHeight != self.Height:
-                return (-1,-1,-1)
+                return (-1,-1,-1,-1)
             bytes = self.vi.bytes_from_pixels(1)
             if BGR:
                 indexB = (x * bytes) + (self.Height - 1 - y) * self.pitch
@@ -1000,6 +1068,39 @@ class AvsClipBase:
 
         return left, top, right, bottom
 
+    def CalcResizeFilter(self, cSize, fitHeight=True):
+        if not self.app:
+            return
+        zoom = 1
+        #yS = app.mainSplitter.GetSashPosition()
+        #cSize = self.app.videoWindow.GetSize()
+        if cSize[0] < 12 or cSize[1] < 12:
+            return
+        cSize[1] -= self.app.xo*2
+        cSize[0] -= self.app.yo*2
+        vW, vH = self.Width, self.Height
+        ratio = float(vW)/vH
+        if zoom == 1:
+            factorWidth = float(cSize[0]) / vW
+            factorHeight = float(cSize[1]) / vH
+            if fitHeight or factorWidth >= factorHeight:
+                H = int(float(cSize[1])/2)*2
+                W = int(float(H)*ratio/2)*2
+                if fitHeight and not self.app.options['hidescrollbars'] and W > cSize[0]:
+                    H -= utils.GetScrollbarMetric_X() - 2
+                    H = int(H/2.0)*2
+                    W = int(float(H)*ratio/2)*2
+            else:
+                W = int(float(cSize[0])/2)*2
+                H = int(float(W)/ratio/2)*2
+        else:
+            W = int(vW* float(zoom))/2*2
+            H = int(vH* float(zoom))/2*2
+
+        if W < 12 or H < 12:
+            return
+        self.resizeFilter = ("Spline36Resize", W, H)
+        return self.resizeFilter
 
 # on Windows is faster to use DrawDib (VFW)
 if os.name == 'nt':
@@ -1122,6 +1223,21 @@ if os.name == 'nt':
                     self.display_clip = self.env.invoke("ConvertToRGB32", args)
                 except avisynth.AvisynthError as err:
                     return False
+
+            # test resze
+            if self.resizeFilter:
+                args = [self.display_clip, self.resizeFilter[1], self.resizeFilter[2]]
+                try:
+                    self.display_clip = self.env.invoke(self.resizeFilter[0], args)
+                except avisynth.AvisynthError as err:
+                    return False
+                vi = self.display_clip.get_video_info()
+                if vi.width != self.DisplayWidth or vi.height != self.DisplayHeight:
+                    self.DisplayWidth, self.DisplayHeight = vi.width, vi.height
+                    self.bmih = BITMAPINFOHEADER()
+                    CreateBitmapInfoHeader(self.display_clip, self.bmih)
+                    self.pInfo = ctypes.pointer(self.bmih)
+
             return True
 
         def _GetFrame(self, frame):
@@ -1155,7 +1271,7 @@ if os.name == 'nt':
                 return True
 
         """
-        # GPo, alternativ, I see visual no problems, it is mutch faster
+        # GPo, alternativ, I see visual no problems, it is faster
         def DrawFrame(self, frame, dc=None, offset=(0,0), size=None, srcXY=(0,0)):
             if not self._GetFrame(frame):
                 return

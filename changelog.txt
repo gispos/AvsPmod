@@ -38,6 +38,14 @@ If, for example, there is a '-' in the file name of the dll, AvsPmod will report
 please rename this dll and replace the '-' with a '_'
 
 --------------------------
+Version 2.6.9.9 [2021-11-07] GPo
+--------------------------
+* Pixel values higher than 8bit can now be displayed (thanks to pinterf (pfmode) for the code)
+- Hex values are now also calculated from the returned avisynth YUV / RGB values
+- if the value is read from the display, it is preceded by an asterisk  
+* Fixed slider windows show/hide exclusions filter list
+
+--------------------------
 Version 2.6.9.8 [2021-10-25] GPo
 --------------------------
 * Added reading frame properties (At least AviSynth+ 3.71 is required for full support).

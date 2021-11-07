@@ -5514,6 +5514,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.defineFilterInfo()
         self.optionsPreviewFilters = {}
         self.readFrameProps = False
+        self.resizeFilter = None
 
         if os.path.isfile(self.macrosfilename):
             try:
@@ -11504,6 +11505,29 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     """
     def OnMenuTest(self, event):
         pass
+        """
+        self.resizeFilter = not self.resizeFilter
+        for i in xrange(self.scriptNotebook.GetPageCount()):
+            script = self.scriptNotebook.GetPage(i)
+            if script.AVI is not None:
+                script.display_clip_refresh_needed = True
+                if self.resizeFilter:
+                    script.AVI.CalcResizeFilter(self.videoWindow.GetSize())
+            	else:
+                    script.AVI.SetResizeFilter(None)
+        """
+        """
+        script = self.currentScript
+        if script.AVI is not None:
+            rf = self.currentScript.AVI.resizeFilter
+            if rf:
+                script.AVI.SetResizeFilter(None)
+            else:
+                script.AVI.CalcResizeFilter(self.videoWindow.GetSize())
+            script.display_clip_refresh_needed = True
+            self.ShowVideoFrame()
+        """
+
 
     def OnMenuNext_I_Frame(self, event=None, reverse=False):
         self.StopPlayback()
@@ -11989,14 +12013,23 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 #else:
                     #script.AVI.displayFilter = ''
         macroTxt = ''
+        macrofilename = 'intern'
         txt = self.options['displayfilter']
-        if txt:
+        if txt and self.previewOK():
             for line in txt.split('\n'):
                 line = line.lstrip()
                 if line.startswith('#>'):
-                    macroTxt += line[2:] + '\n'
-            if macroTxt and self.previewOK():
-                self.ExecuteMacro(macrofilename='intern', macroTxt=macroTxt)
+                    if line.startswith('#>macro>'): # run a macro from file
+                        macrofilename = os.path.join(self.macrofolder, line[8:].strip())
+                        if not os.path.isfile(macrofilename):
+                            macrofilename = 'intern'
+                            wx.Bell()
+                        macroTxt = ''
+                        break
+                    else:
+                        macroTxt += line[2:] + '\n'
+            if macroTxt or macrofilename != 'intern':
+                self.ExecuteMacro(macrofilename=macrofilename, macroTxt=macroTxt)
 
         if self.previewWindowVisible:
             if curIdx > 0:
@@ -15024,7 +15057,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             else:
                 self.GotoNextBookmark(reverse=reverse, forceCursor=True)
 
-
         CTRL = wx.GetKeyState(wx.WXK_CONTROL)
         SHIFT = wx.GetKeyState(wx.WXK_SHIFT)
         ALT = wx.GetKeyState(wx.WXK_ALT)
@@ -15200,6 +15232,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         event.Skip()
 
     def OnLeftUpVideoWindow(self, event):
+        #xystring, hexstring, rgbstring, rgbastring, yuvstring = self.GetPixelInfo(None, string_=True)
+        #print(rgbstring + '  ' + yuvstring)
         if self.videoWindow.HasCapture():
             try:
                 self.videoWindow.ReleaseMouse()
@@ -18780,11 +18814,22 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             rgb = dc.GetPixel(x, y)
             R,G,B = rgb.Get()
             A = 0
-            cR = cY = '*'
-            hexcolor = '$%02x%02x%02x' % (R,G,B)
-            Y = 0.257*R + 0.504*G + 0.098*B + 16
-            U = -0.148*R - 0.291*G + 0.439*B + 128
-            V = 0.439*R - 0.368*G - 0.071*B + 128
+            cR = cY = cH = '*'
+
+            depth = script.AVI.bits_per_component - 8
+            if depth > 0:
+                R = int((257.0/256) * (R << depth))
+                G = int((257.0/256) * (G << depth))
+                B = int((257.0/256) * (B << depth))
+                hexcolor = '$%04x,%04x,%04x' % (R,G,B)
+                Y = 0.257*R + 0.504*G + 0.098*B + (16 << depth)
+                U = -0.148*R - 0.291*G + 0.439*B + (128 << depth)
+                V = 0.439*R - 0.368*G - 0.071*B + (128 << depth)
+            else:
+                hexcolor = '$%02x%02x%02x' % (R,G,B)
+                Y = 0.257*R + 0.504*G + 0.098*B + 16
+                U = -0.148*R - 0.291*G + 0.439*B + 128
+                V = 0.439*R - 0.368*G - 0.071*B + 128
 
             if 'flipvertical' in self.flip:
                 y = script.AVI.DisplayHeight - 1 - y
@@ -18796,33 +18841,45 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     avsYUV = script.AVI.GetPixelYUV(x, y)
                     if avsYUV != (-1,-1,-1):
                         Y,U,V = avsYUV
-                        cY = ''
+                        cY = cH = ''
+                        if script.AVI.bits_per_component == 8:
+                            hexcolor = '$%02x%02x%02x' % (Y,U,V)
+                        elif script.AVI.bits_per_component <= 16:
+                            hexcolor = '$%04x,%04x,%04x' % (Y,U,V) # comma separated is more visible
+                        else: # 32 bit
+                            hexcolor = '%.5f,%.5f,%.5f' % (Y,U,V) # no reason for 32 bit float in hex
+
                     if script.AVI.IsRGB32:
                         avsRGBA = script.AVI.GetPixelRGBA(x, y)
                         if avsRGBA != (-1,-1,-1,-1):
                             R,G,B,A = avsRGBA
-                            cR = ''
+                            hexcolor = '$%02x%02x%02x%02x' % (R,G,B,A)
+                            cR = cH = ''
                     else:
                         avsRGB = script.AVI.GetPixelRGB(x, y)
                         if avsRGB != (-1,-1,-1):
                             R,G,B = avsRGB
+                            if script.AVI.bits_per_component == 8:
+                                hexcolor = '$%02x%02x%02x' % (R,G,B)
+                                cH = ''
+                            elif script.AVI.bits_per_component <= 16:
+                                hexcolor = '$%04x,%04x,%04x' % (R,G,B)
+                                cH = ''
                             cR = ''
+                        """
+                        elif script.AVI.HasAlpha:
+                            if avsRGB != (-1,-1,-1,-1):
+                                R,G,B,A = avsRGB
+                                hexcolor = '$%04x,%04x,%04x,%04x' % (R,G,B,A)
+                                cR = cH = ''
+                        """
                 except:
                     pass
 
-            # GPo test, calc the hex and yuv from the returned values
-            """
-            hexcolor = '$%02x%02x%02x' % (R,G,B)
-            if cY != '':
-                Y = 0.257*R + 0.504*G + 0.098*B + 16
-                U = -0.148*R - 0.291*G + 0.439*B + 128
-                V = 0.439*R - 0.368*G - 0.071*B + 128
-            # GPo end
-            """
             if not string_:
                 return (x, y), hexcolor.upper()[1:], (R, G, B), (R, G, B, A), (Y, U, V)
             xystring = '%s=(%i,%i)' % (_('pos'),x,y)
-            hexstring = '%s=%s' % (_('*hex'),hexcolor.upper())
+            hexstring = '%s=%s' % (_(cH+'hex'),hexcolor.upper())
             rgbstring = '%s=(%i,%i,%i)' % (_(cR+'rgb'),R,G,B)
             rgbastring = '%s=(%i,%i,%i,%i)' % (_(cR+'rgba'),R,G,B,A)
             yuvstring = '%s=(%i,%i,%i)' % (_(cY+'yuv'),Y,U,V)
@@ -19850,7 +19907,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                 fitHeight=fitHeight, fitWidth=fitWidth, oldFramecount=oldFramecount,
                                 matrix=matrix, interlaced=interlaced, swapuv=swapuv,
                                 bit_depth=bit_depth,callBack=callBack,readmatrix=readmatrix,displayFilter=displayFilter,
-                                readFrameProps=self.readFrameProps)
+                                readFrameProps=self.readFrameProps, resizeFilter=self.resizeFilter, app=self)
                 time.sleep(0.05) # wait a little, give priority to the main thread
             except:
                 #script.Enable(True)
@@ -20112,7 +20169,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                             fitHeight=None, fitWidth=None, oldFramecount=oldFramecount,
                             matrix=script.matrix, interlaced=self.interlaced, swapuv=self.swapuv,
                             bit_depth=self.bit_depth,callBack=self.AVICallBack,
-                            readmatrix=readmatrix, displayFilter=displayFilter, readFrameProps=self.readFrameProps)
+                            readmatrix=readmatrix, displayFilter=displayFilter, readFrameProps=self.readFrameProps,
+                            resizeFilter=self.resizeFilter)
                         if not script.AVI or script.AVI.IsErrorClip():
                             self.GetStatusBar().SetStatusText(_('Clip not initialized'))
 
@@ -21831,7 +21889,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     def OnSliderToggleExclusionsFilters(self, event):
         self.slidersShowExclusionFilters = not self.slidersShowExclusionFilters
-        self.createAutoUserSliders(self.currentScript)
+        self.UpdateUserSliders(forceUpdate=True)
 
     def addAvsSliderSeparatorNew(self, script, label='', menu=None, row=None, sizer=None):
         if sizer is None:

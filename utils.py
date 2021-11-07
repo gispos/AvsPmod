@@ -11,6 +11,7 @@
 
 import sys
 import os
+import wx
 
 resource_str_threadwait = _("Waiting for Avisynth, thread still running.\n" \
                             "This dialog is automatically closed when avisynth returns.\n" \
@@ -89,7 +90,11 @@ def CheckAvisynthVersion371(env, VersionString):
         return False
     return True
 
+def GetScrollbarMetric_X():
+    return wx.SystemSettings.GetMetric(wx.SYS_VSCROLL_X)
 
+def GetScrollbarMetric_Y():
+    return wx.SystemSettings.GetMetric(wx.SYS_VSCROLL_Y)
 
 ##### Test ####
 
