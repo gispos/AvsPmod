@@ -2853,7 +2853,7 @@ class PropWindow(wx.Dialog):
         self.textCtrl.SetEOLMode(stc.STC_EOL_LF)
         if wx.VERSION > (2, 9):
             self.textCtrl.SetScrollWidth(intPPI(300))
-            self.textCtrl.SetScrollWidthTracking(True)
+            #self.textCtrl.SetScrollWidthTracking(True)
         self.Style()
         self.zoom = (1,1)
         #self.textCtrl.SetZoom(0)
@@ -2952,13 +2952,20 @@ class PropWindow(wx.Dialog):
         self.textCtrl.SetText(txt)
         self.textCtrl.Update()
         self.textCtrl.SetReadOnly(True)
-    def Show(self):
-        ctrl = self.parent.FindFocus()
-        if (ctrl and ctrl == self) or not ctrl:
+    def OnShow(self):
+        #ctrl = self.parent.FindFocus()
+        """
+        if (ctrl and ctrl == self.parent) or not ctrl:
             if self.parent.previewWindowVisible:
                 ctrl = self.parent.videoWindow
         else:
             ctrl = self.parent
+        """
+        if self.parent.previewWindowVisible:
+            ctrl = self.parent.videoWindow
+        else:
+            ctrl = self.parent
+
         self.parent.SetReadFrameProps(True)
         super(PropWindow, self).Show()
         if ctrl:
@@ -2971,7 +2978,7 @@ class PropWindow(wx.Dialog):
         if self.IsShown():
             self.Close()
         else:
-            self.Show()
+            self.OnShow()
 
 # Dialog for scrap window
 class ScrapWindow(wx.Dialog): # PPI Font Size set under Font and Colors
@@ -5507,6 +5514,20 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.optionsFilters = None # bad, was not here declerared
         self.loaderror = []
         self.getOptionsDict()
+        # property window
+        try:
+            sw, sh = wx.ScreenDC().GetSize()
+            x,y,w,h = self.options['propwindowrect']
+            _pos = (min(max(x,-5),sw-60), min(max(y,0),sh-50))
+            w = max(w, 80)
+            h = max(h, 50)
+            _size = (min(w,sw),min(h,sh))
+        except:
+            _pos = wx.DefaultPosition
+            _size = tuplePPI(200,260)
+
+        self.propWindow = PropWindow(self, pos=_pos, size=_size)
+        self.scrapWindow = ScrapWindow(self)
         self.SetPaths()
         self.LoadAvisynth()
         self.IdleCall = []      # old one, allows multiple entries of the same function
@@ -5736,18 +5757,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         # Create all the program's controls and dialogs
         self.blockStatusbar = False  # GPo 2020
         self.NewFileName = _('New File')
-        # property window
-        try:
-            sw, sh = wx.ScreenDC().GetSize()
-            x,y,w,h = self.options['propwindowrect']
-            _pos = (min(max(x,-5),sw-50), min(max(y,0),sh-50))
-            _size = (min(w,sw),min(h,sh))
-        except:
-            _pos = wx.DefaultPosition
-            _size = tuplePPI(200,260)
 
-        self.propWindow = PropWindow(self, pos=_pos, size=_size)
-        self.scrapWindow = ScrapWindow(self)
         self.titleDict = {}
         self.recentframes = []
         self.bmpVideo = None
@@ -6009,8 +6019,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         # Warn if option files are damaged
         if self.loaderror:
-            print>>sys.stderr, '{0}: {1}'.format(_('Error'), _('Damaged {0}. Using default settings.').format(', '.join(self.loaderror)))
-
+            #print>>sys.stderr, '{0}: {1}'.format(_('Error'), _('Damaged {0}. Using default settings.').format(', '.join(self.loaderror)))
+            wx.SafeShowMessage(' '.join((self.name, self.version)),'{0}: {1}'.format(_('Error'), _('Damaged {0}. Using default settings.').format(', '.join(self.loaderror))))
         # Update the translation file if necessary
         for path, lang in self.getTranslations(return_paths=True):
             if not os.stat(path).st_size:
@@ -7238,6 +7248,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             pluginfuncList = []
             baddllnameList = []
             short_name = None
+            #error_shown = False
 
             for name in pluginfunc.split():
                 if short_name is None:
@@ -7248,15 +7259,24 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 pos = long_name.find('_' + short_name)
                 if pos == -1:
                     if self.options['dllfuncparseerror']:
+                        #if not error_shown:
+                            #error_shown = True
+                            #wx.SafeShowMessage(' '.join((self.name, self.version)),'Error parsing plugin string at function "%s"' % long_name)
                         print>>sys.stderr, 'Error parsing plugin string at function "%s"\n' % long_name
-                    break
+                    short_name = None
+                    continue # GPo, We don't stop, we load all other functions
 
                 dllname = long_name[:pos]
 
                 if not dllname.strip():
                     if self.options['dllfuncparseerror']:
+                        #if not error_shown:
+                            #error_shown = True
+                            #wx.SafeShowMessage(' '.join((self.name, self.version)),'Error parsing function "%s"' % long_name)
                         print>>sys.stderr, 'Error parsing function "%s"\n' % long_name
-                    break
+
+                    short_name = None
+                    continue # GPo, We don't stop, we load all other functions
 
                 self.installed_plugins.add(dllname)
 
@@ -20473,8 +20493,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     try:
                         mod = int(splitlabel[1])
                     except ValueError:
-                        #~ print>>sys.stderr, _('Error: invalid slider text:'), text
-                        #~ continue
                         self.displaySliderWarning(script, text, splitlabel[1].strip(), _('Invalid slider text: bad modulo label'))
                         return False
                 if mod is not None:
