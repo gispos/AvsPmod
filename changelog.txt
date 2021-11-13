@@ -38,6 +38,16 @@ If, for example, there is a '-' in the file name of the dll, AvsPmod will report
 please rename this dll and replace the '-' with a '_'
 
 --------------------------
+Version 2.7.0.0 [2021-11-13] GPo
+--------------------------
+* Added Program options > Misc > 'Show warning for plugin functions parse errors'
+- if it is deactivated, no error message appears with incompatible (wrong) plugin function names. 
+- the plugin (the function) does not get any support for extended AvsPmod functions.
+* User wishes: editor popup menu entry 'Delete'
+* Bugfix: display of pixel values higher than 8bit (thanks again to pinterf)
+* A nice version number that should stick for a while... I hope.
+
+--------------------------
 Version 2.6.9.9 [2021-11-07] GPo
 --------------------------
 * Pixel values higher than 8bit can now be displayed (thanks to pinterf (pfmode) for the code)

@@ -6573,6 +6573,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'alwaysworkdir': False,
             'customplugindir': False,   # GPo
             'plugindirregister': False, # GPo
+            'dllfuncparseerror': True, # GPo, False = no error message on parse plugin and function names
             'externalplayer': '',
             'externalplayerargs': '',
             'externaltool': '',         # GPo 2020
@@ -7242,13 +7243,20 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 if short_name is None:
                     short_name = name
                     continue
+
                 long_name = name
                 pos = long_name.find('_' + short_name)
                 if pos == -1:
-                    print>>sys.stderr, 'Error parsing plugin string at function "%s"\n' % long_name
-                    continue # GPo new 2021
-                    #break
+                    if self.options['dllfuncparseerror']:
+                        print>>sys.stderr, 'Error parsing plugin string at function "%s"\n' % long_name
+                    break
+
                 dllname = long_name[:pos]
+
+                if not dllname.strip():
+                    if self.options['dllfuncparseerror']:
+                        print>>sys.stderr, 'Error parsing function "%s"\n' % long_name
+                    break
 
                 self.installed_plugins.add(dllname)
 
@@ -7579,6 +7587,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 ((_('Warning tab bookmarks different'), wxp.OPT_ELEM_CHECK, 'warnscriptbookmarksdif', _('Warn if tab bookmarks and from script reading bookmarks different.'), dict(ident=20) ), ),
                 ((_('Only allow a single instance of AvsPmod')+' *', wxp.OPT_ELEM_CHECK, 'singleinstance', _('Only allow a single instance of AvsPmod'), dict() ), ),
                 ((_('Show warning for bad plugin naming at startup'), wxp.OPT_ELEM_CHECK, 'dllnamewarning', _('Show warning at startup if there are dlls with bad naming in default plugin folder'), dict() ), ),
+                ((_('Show warning for plugin functions parse errors'), wxp.OPT_ELEM_CHECK, 'dllfuncparseerror', _('Show warning at startup if there are plugin functions parse errors in default plugin folder'), dict() ), ),
                 ((_('Mouse browse buttons'), wxp.OPT_ELEM_LIST, 'mouseauxdown', _("Mouse browse buttons (forward/backward) on video and script window\nIf 'Tab change' and tab count less than 2, 'Bookmark jump' is used\nIf 'Tab change' press CTRL or left mouse and 'Bookmark jump' is used\nIf 'Bookmark jump', vice versa"),dict(choices=[(_('Tab change'),'tab change'),(_('Custom jump'),'custom jump'),(_('Bookmark jump'),'bookmark jump'),(_('Frame step'),'frame step')]) ), # GPo 2020
                  (_('Middle mouse on script'), wxp.OPT_ELEM_LIST, 'middlemousefunc', _('Middle mouse button behavior on the script, if script empty open source is used'), dict(choices=[(_('Show video frame'), 'show video frame'), (_('Open source'), 'open source')]) ), ), # GPo 2020
                 ((_('Max number of recent filenames'), wxp.OPT_ELEM_SPIN, 'nrecentfiles', _('This number determines how many filenames to store in the recent files menu'), dict(min_val=0) ), ),
@@ -8153,6 +8162,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 (_('Cut'), 'Ctrl+X', self.OnMenuEditCut, _('Cut the selected text')),
                 (_('Copy'), 'Ctrl+C', self.OnMenuEditCopy, _('Copy the selected text')),
                 (_('Paste'), 'Ctrl+V', self.OnMenuEditPaste, _('Paste the selected text')),
+                (_('Delete'), '', self.OnMenuEditDelete, _('Delete the selected text')),
                 (''),
                 (_('Find...'), 'Ctrl+F', self.OnMenuEditFind, _('Open a find text dialog box')),
                 (_('Find next'), 'F3', self.OnMenuEditFindNext, _('Find the next instance of given text')),
@@ -10306,6 +10316,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     def OnMenuEditPaste(self, event):
         script = self.currentScript
         script.Paste()
+
+    def OnMenuEditDelete(self, event):
+        script = self.currentScript
+        script.ReplaceSelection('')
 
     def OnMenuEditFind(self, event):
         script = self.currentScript
@@ -15232,8 +15246,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         event.Skip()
 
     def OnLeftUpVideoWindow(self, event):
-        #xystring, hexstring, rgbstring, rgbastring, yuvstring = self.GetPixelInfo(None, string_=True)
-        #print(rgbstring + '  ' + yuvstring)
         if self.videoWindow.HasCapture():
             try:
                 self.videoWindow.ReleaseMouse()
@@ -18777,6 +18789,22 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         return info, showVideoPixelInfo
 
     def GetPixelInfo(self, event, string_=False):
+        """
+        def RGBToYUV(R, G, B, depth):
+            depth -= 8
+            if depth > 0 and depth <= 8:
+                Y = int(0.257*R + 0.504*G + 0.098*B + (16 << depth))
+                U = int(-0.148*R - 0.291*G + 0.439*B + (128 << depth))
+                V = int(0.439*R - 0.368*G - 0.071*B + (128 << depth))
+                hexcolor = '$%04x,%04x,%04x' % (R,G,B)
+            else:
+                Y = int(0.257*R + 0.504*G + 0.098*B + 16)
+                U = int(-0.148*R - 0.291*G + 0.439*B + 128)
+                V = int(0.439*R - 0.368*G - 0.071*B + 128)
+                hexcolor = '$%02x%02x%02x' % (R,G,B)
+            return Y, U, V, hexcolor
+        """
+
         if self.splitView:
             return '' if string_ else (0, 0), None, None, None, None
 
@@ -18817,19 +18845,20 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             cR = cY = cH = '*'
 
             depth = script.AVI.bits_per_component - 8
-            if depth > 0:
+            # 10 to 16 bits
+            if depth > 0 and depth <= 8:
                 R = int((257.0/256) * (R << depth))
                 G = int((257.0/256) * (G << depth))
                 B = int((257.0/256) * (B << depth))
                 hexcolor = '$%04x,%04x,%04x' % (R,G,B)
-                Y = 0.257*R + 0.504*G + 0.098*B + (16 << depth)
-                U = -0.148*R - 0.291*G + 0.439*B + (128 << depth)
-                V = 0.439*R - 0.368*G - 0.071*B + (128 << depth)
-            else:
+                Y = int(0.257*R + 0.504*G + 0.098*B + ((257.0/256) * (16 << depth))) #(16 << depth))
+                U = int(-0.148*R - 0.291*G + 0.439*B + ((257.0/256) * (128 << depth))) #(128 << depth))
+                V = int(0.439*R - 0.368*G - 0.071*B + ((257.0/256) * (128 << depth))) #(128 << depth))
+            else: # 8bit, on 32bit is 8bit RGB from display used
                 hexcolor = '$%02x%02x%02x' % (R,G,B)
-                Y = 0.257*R + 0.504*G + 0.098*B + 16
-                U = -0.148*R - 0.291*G + 0.439*B + 128
-                V = 0.439*R - 0.368*G - 0.071*B + 128
+                Y = int(0.257*R + 0.504*G + 0.098*B + 16)
+                U = int(-0.148*R - 0.291*G + 0.439*B + 128)
+                V = int(0.439*R - 0.368*G - 0.071*B + 128)
 
             if 'flipvertical' in self.flip:
                 y = script.AVI.DisplayHeight - 1 - y
@@ -18849,7 +18878,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         else: # 32 bit
                             hexcolor = '%.5f,%.5f,%.5f' % (Y,U,V) # no reason for 32 bit float in hex
 
-                    if script.AVI.IsRGB32:
+                    elif script.AVI.IsRGB32:
                         avsRGBA = script.AVI.GetPixelRGBA(x, y)
                         if avsRGBA != (-1,-1,-1,-1):
                             R,G,B,A = avsRGBA
@@ -18866,13 +18895,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                 hexcolor = '$%04x,%04x,%04x' % (R,G,B)
                                 cH = ''
                             cR = ''
-                        """
-                        elif script.AVI.HasAlpha:
-                            if avsRGB != (-1,-1,-1,-1):
-                                R,G,B,A = avsRGB
-                                hexcolor = '$%04x,%04x,%04x,%04x' % (R,G,B,A)
-                                cR = cH = ''
-                        """
                 except:
                     pass
 
@@ -18882,7 +18904,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             hexstring = '%s=%s' % (_(cH+'hex'),hexcolor.upper())
             rgbstring = '%s=(%i,%i,%i)' % (_(cR+'rgb'),R,G,B)
             rgbastring = '%s=(%i,%i,%i,%i)' % (_(cR+'rgba'),R,G,B,A)
-            yuvstring = '%s=(%i,%i,%i)' % (_(cY+'yuv'),Y,U,V)
+            if isinstance(Y, int):
+                yuvstring = '%s=(%i,%i,%i)' % (_(cY+'yuv'),Y,U,V)
+            else:
+                yuvstring = '%s=(%.5f,%.5f,%.5f)' % (_(cY+'yuv'),Y,U,V)
             return xystring, hexstring, rgbstring, rgbastring, yuvstring
         else:
             if not 0 <= x < w:

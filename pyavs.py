@@ -198,9 +198,9 @@ class AvsClipBase:
         self.IsYV411 = None
         self.IsY8 = None
         self.IsY = None
-        self.bits_per_component = None
-        self.component_size = None
-        self.num_components = None
+        #self.bits_per_component = None
+        #self.component_size = None
+        #self.num_components = None
         self.IsPlanar = None
         self.IsInterleaved = None
         self.IsFieldBased = None
@@ -364,8 +364,6 @@ class AvsClipBase:
         self.num_components = self.vi.num_components() # 1-4
         # Possible even for classic avs:
         '''
-        self.IsRGB48 = self.vi.isRGB48
-        self.IsRGB64 = self.vi.isRGB64
         self.Is444 = self.vi.is_444() # use this one instead of IsYV24
         self.Is422 = self.vi.is_422() # use this one instead of IsYV16
         self.Is420 = self.vi.is_420() # use this one instead of IsYV12
@@ -373,7 +371,6 @@ class AvsClipBase:
         self.num_components = self.vi.num_components() # 1-4
         self.component_size = self.vi.component_size() # 1, 2, 4 (in bytes)
         '''
-
         # GPo, avs plus get colorspace
         cName = ''
         if self.env.function_exists('PixelType') and self.clip:
@@ -533,7 +530,7 @@ class AvsClipBase:
             self.matrix = matrix[1] + matrix[0]
         if interlaced is not None:
             self.interlaced = interlaced
-        if swapuv and self.IsYUV and not self.IsY8:
+        if swapuv and self.IsYUV and not self.IsY:
             try:
                 self.display_clip = self.env.invoke('SwapUV', self.display_clip)
             except avisynth.AvisynthError as err:
@@ -644,6 +641,7 @@ class AvsClipBase:
             pass
 
     # thread not used, for test only, thread extern ( avsp )
+    # for avisynth from H8 but lower then 3.71 (bug C Interface)
     def GetMatrix_2(self, useThread=False):
         def _get_matrix():
             try:
@@ -756,7 +754,6 @@ class AvsClipBase:
             self.pitch = self.src_frame.get_pitch()
             self.pitchUV = self.src_frame.get_pitch(avisynth.avs.AVS_PLANAR_U)
             self.ptrY = self.src_frame.get_read_ptr()
-            #if not self.IsY8:
             if not self.IsY:
                 self.ptrU = self.src_frame.get_read_ptr(avisynth.avs.AVS_PLANAR_U)
                 self.ptrV = self.src_frame.get_read_ptr(avisynth.avs.AVS_PLANAR_V)
@@ -773,7 +770,7 @@ class AvsClipBase:
 
             ## test getProps
             if self.readFrameProps:
-                self.properties = 'Frame: ' + str(frame) + '\n' + self.env.props_get_all(self.src_frame) #self.src_frame.props_get_all(self.env)
+                self.properties = 'Frame: ' + str(frame) + '\n' + self.env.props_get_all(self.src_frame)
                 #self.callBack(ident='property', value=self.properties, framenr=frame)
             ###
 
@@ -786,14 +783,24 @@ class AvsClipBase:
         # if a resize filter used in the preview filter. CRASH if not check here
         if self.DisplayWidth != self.Width or self.DisplayHeight != self.Height:
             return (-1,-1,-1)
-        x = x * self.component_size # (1,2,4) 8bit, up to 16bit, 32float
         if self.IsPlanar:
-            indexY = x + y * self.pitch
-            if self.IsY8:
-                return (self.ptrY[indexY], -1, -1)
+            indexY = x * self.component_size + y * self.pitch
+            # IsY8 does not detect Y10..Y16,Y32
+            # Probably IsY is not implemented, so we use num_components
+            if self.num_components == 1:
+                if self.bits_per_component == 8:
+                    return (self.ptrY[indexY], -1, -1)
+                elif self.bits_per_component <= 16:
+                    bufferY = [self.ptrY[indexY], self.ptrY[indexY + 1]]
+                    valY = struct.unpack('=H', bytearray(bufferY))[0]
+                    return (valY, -1, -1)
+                else:
+                    bufferY = [self.ptrY[indexY], self.ptrY[indexY + 1], self.ptrY[indexY + 2], self.ptrY[indexY + 3]]
+                    valY = struct.unpack('=f', bytearray(bufferY))[0]
+                    return (valY, -1, -1)
             x = x >> self.WidthSubsampling
             y = y >> self.HeightSubsampling
-            indexU = indexV = x + y * self.pitchUV
+            indexU = indexV = x * self.component_size + y * self.pitchUV
         elif self.IsYUY2:
             indexY = (x*2) + y * self.pitch
             indexU = 4*(x/2) + 1 + y * self.pitch
@@ -989,7 +996,7 @@ class AvsClipBase:
             buf[0:y4m_header_len] = y4m_header
             write_addr = ctypes.addressof(buf) + y4m_header_len
             P_UBYTE = ctypes.POINTER(ctypes.c_ubyte)
-            if self.IsPlanar and not self.IsY8:
+            if self.IsPlanar and not self.IsY:
                 for plane in (avisynth.avs.AVS_PLANAR_Y, avisynth.avs.AVS_PLANAR_U, avisynth.avs.AVS_PLANAR_V):
                     if x86_64:
                         write_ptr = avisynth.ffi.cast('unsigned char *', write_addr)
