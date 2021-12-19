@@ -21,12 +21,13 @@ resource_str_threadwait2 = _("Waiting for Avisynth, thread still running.\n" \
                              "This dialog is automatically closed when avisynth returns.\n" \
                              "If you abort this process, the clip will assign later.")
 
-resource_str_displayfilter = ("# you can run short macro with line start: #>\n"
-                              "#>avsp.GetWindow().OnMenuVideoZoom(zoomfactor=1)\n\n"
-                              "# Set zoom fill for playback\n"
+resource_str_displayfilter = ("## you can run short macro with line start: #>\n"
+                              "## or run a macro file by adding #>macro>MacroFilename.py\n"
+                              "## Below resample example with fixed height\n\n"
+                              "#>avsp.GetWindow().OnMenuVideoZoom(zoomfactor=1)\n"
                               "w=float(last.Width())\n"
                               "h=float(last.Height())\n"
-                              "#  set the height\n"
+                              "# set fixed height\n"
                               "ch = 920\n"
                               "ch = ch/4*4\n"
                               "Spline36Resize((round(ch*(w/h))/4)*4, ch)")

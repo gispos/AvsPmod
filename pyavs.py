@@ -42,6 +42,7 @@ import ctypes
 import re
 import func
 import struct
+import utils
 
 x86_64 = sys.maxsize > 2**32
 if x86_64:
@@ -156,7 +157,6 @@ class AvsClipBase:
                 return
             return True
         # Internal variables
-        #self.app = app
         self.initialized = False
         self.env = None
         self.app = app
@@ -198,9 +198,9 @@ class AvsClipBase:
         self.IsYV411 = None
         self.IsY8 = None
         self.IsY = None
-        #self.bits_per_component = None
-        #self.component_size = None
-        #self.num_components = None
+        self.bits_per_component = None
+        self.component_size = None
+        self.num_components = None
         self.IsPlanar = None
         self.IsInterleaved = None
         self.IsFieldBased = None
@@ -213,10 +213,9 @@ class AvsClipBase:
         self.matrix_found = None
         self.matrix = 'Rec709'
         self.readmatrix = readmatrix
-        self.Thread = None
         self.avisynth_version = None
         self.displayFilter = displayFilter
-        self.resizeFilter = None#resizeFilter
+        self.resizeFilter = resizeFilter
         # getProps
         self.properties = ''
 
@@ -290,6 +289,7 @@ class AvsClipBase:
                     raise
                 self.env.set_var("last", self.clip)
             self.env.set_var("avsp_raw_clip", self.clip)
+            self.env.set_var("avsp_resize_clip", self.clip)
             if self.env.function_exists('AutoloadPlugins'): # AviSynth+
                 try:
                     self.env.invoke('AutoloadPlugins')
@@ -300,6 +300,7 @@ class AvsClipBase:
 
         # Set the video properties
         self.vi = self.clip.get_video_info()
+        self.vi_org = self.vi
         self.HasVideo = self.vi.has_video()
         if not self.HasVideo:
             self.clip = None
@@ -362,14 +363,12 @@ class AvsClipBase:
         self.bits_per_component = self.vi.bits_per_component() # 8,10,12,14,16,32
         self.component_size = self.vi.component_size() # 1, 2, 4 (in bytes)
         self.num_components = self.vi.num_components() # 1-4
+
         # Possible even for classic avs:
         '''
         self.Is444 = self.vi.is_444() # use this one instead of IsYV24
         self.Is422 = self.vi.is_422() # use this one instead of IsYV16
         self.Is420 = self.vi.is_420() # use this one instead of IsYV12
-        self.IsY = self.vi.is_y() # use this one instead of IsY8
-        self.num_components = self.vi.num_components() # 1-4
-        self.component_size = self.vi.component_size() # 1, 2, 4 (in bytes)
         '''
         # GPo, avs plus get colorspace
         cName = ''
@@ -427,6 +426,10 @@ class AvsClipBase:
                 err = _('Error trying to display the clip')
                 if self.bit_depth:
                     err += '\n' + _('Is bit-depth set correctly?')
+                if self.resizeFilter:
+                    err += '\n' + _('Is resample filter insert correctly?')
+                if self.displayFilter:
+                    err += '\n' + _('Is display filter set correctly?')
         else:
             err = str(err)
             self.error_message = err
@@ -456,11 +459,11 @@ class AvsClipBase:
                 self.clip = clip
         except avisynth.AvisynthError as err:
             return False
-        if self.callBack is not None:
-            self.callBack('errorclip', 0)
+        if self.callBack:
+            self.callBack('errorclip',0)
         return True
 
-    def CreateDisplayClip(self, matrix=['auto', 'tv'], interlaced=None, swapuv=False, bit_depth=None, readmatrix=False):
+    def CreateDisplayClip(self, matrix=['auto', 'tv'], interlaced=None, swapuv=False, bit_depth=None, readmatrix=False, reset=True):
         if self.preview_filter:
             self.preview_filter = False
             if self.callBack is not None:
@@ -535,6 +538,7 @@ class AvsClipBase:
                 self.display_clip = self.env.invoke('SwapUV', self.display_clip)
             except avisynth.AvisynthError as err:
                 return self.CreateErrorClip(display_clip_error=True)
+        """
         # display filter
         if self.displayFilter:
             self.env.set_var("avsp_filter_clip", self.clip)
@@ -542,6 +546,28 @@ class AvsClipBase:
             try:
                 self.display_clip = self.env.invoke('Eval', args)
             except avisynth.AvisynthError as err:
+                return self.CreateErrorClip(display_clip_error=True)
+        else:
+            self.env.set_var("avsp_filter_clip", None)
+        """
+        # display and resize filter
+        args = ''
+        if self.displayFilter:
+            args = self.displayFilter + '\n'
+
+        if self.resizeFilter:
+            rf = self.CalcResizeFilter()
+            if rf:
+                args += '%s(%i,%i)' % (rf[0], rf[1], rf[2])
+        if args:
+            args = 'avsp_filter_clip\n' + args
+            self.env.set_var("avsp_filter_clip", self.clip)
+            try:
+                self.display_clip = self.env.invoke('Eval', args)
+            except avisynth.AvisynthError as err:
+                return self.CreateErrorClip(display_clip_error=True)
+            if not isinstance(self.display_clip, avisynth.AVS_Clip):
+                avisynth.AvisynthError = "Display filter error: \nCannot create display clip"
                 return self.CreateErrorClip(display_clip_error=True)
         else:
             self.env.set_var("avsp_filter_clip", None)
@@ -558,6 +584,87 @@ class AvsClipBase:
             return self.CreateErrorClip(display_clip_error=True)
         return True
 
+    """ # Test
+    def ResizeOn(self):
+        args = ('avsp_resize_clip\n')
+        if self.resizeFilter:
+            rf = self.CalcResizeFilter()
+            if rf:
+                args += '%s(%i,%i)' % (rf[0], rf[1], rf[2])
+                try:
+                    clip = self.env.invoke("Eval", args)
+                except:
+                    args = ('avsp_resize_clip\n')
+                else:
+                    self.clip = clip
+                    self.vi=self.clip.get_video_info()
+                    self.Width, self.Height = self.vi.width, self.vi.height
+                    self.CreateDisplayClip(self.matrix, self.interlaced, False, self.bit_depth, False)
+
+    def ResizeOff(self):
+        args = ('avsp_resize_clip\n')
+        self.clip = self.env.invoke("Eval", args)
+        self.vi=self.clip.get_video_info()
+        self.Width, self.Height = self.vi.width, self.vi.height
+        self.CreateDisplayClip(self.matrix, self.interlaced, False, self.bit_depth, False)
+
+    def CreateFilterClip2(self, f_args):
+        args = ('avsp_filter_clip\n' + f_args)
+        if self.displayFilter:
+            args += '\n' + self.displayFilter
+
+        if self.resizeFilter:
+            rf = self.CalcResizeFilter()
+            if rf:
+                args += '\n%s(%i,%i)' % (rf[0], rf[1], rf[2])
+        try:
+            clip = self.env.invoke("Eval", args)
+        except:
+            if self.error_message is None:
+                err = self.env.get_error()
+                if not err:
+                    err = "Preview filter error: Not a clip"
+            return None, err
+        if not isinstance(clip, avisynth.AVS_Clip):
+            if self.error_message is None:
+                err = "Preview filter error: Not a clip"
+            return None, err
+
+        args = [clip, self.matrix, self.interlaced]
+        try:
+            clip2 = self.env.invoke("ConvertToRGB32", args)
+        except:
+            err = "Preview filter error: ConvertToRGB failed"
+            return None, err
+        if not isinstance(clip2, avisynth.AVS_Clip):
+            err = "Preview filter error: ConvertToRGB failed"
+            return None, err
+
+        framenr = self.current_frame
+        frame = clip2.get_frame(framenr)
+        err = clip2.get_error()
+        if err:
+            clip2 = None
+            frame = None
+            return None, err
+
+        self.clip = clip
+        self.vi = clip.get_video_info()
+        self.Width, self.Height = self.vi.width, self.vi.height
+
+        self.display_clip = clip2
+        vi = clip2.get_video_info()
+        self.DisplayWidth, self.DisplayHeight = vi.width, vi.height
+
+        self.preview_filter = True
+        self.preview_filter_args = f_args
+        self.display_clip = clip2
+        self.display_frame = frame
+        self.display_pitch = frame.get_pitch()
+        self.pBits = frame.get_read_ptr()
+        return True, ''
+    """
+
     def CreateFilterClip(self, f_args='', idx=0):
         err = ''
         self.preview_filter = False
@@ -570,6 +677,11 @@ class AvsClipBase:
         args = ('avsp_filter_clip\n' + f_args)
         if self.displayFilter:
             args += '\n' + self.displayFilter
+
+        if self.resizeFilter:
+            rf = self.CalcResizeFilter()
+            if rf:
+                args += '\n%s(%i,%i)' % (rf[0], rf[1], rf[2])
         try:
             clip = self.env.invoke("Eval", args)
         except:
@@ -579,11 +691,13 @@ class AvsClipBase:
                     err = "Preview filter error: Not a clip"
             self.env.set_var("avsp_filter_clip", None)
             return None, err
+
         if not isinstance(clip, avisynth.AVS_Clip):
             if self.error_message is None:
                 err = "Preview filter error: Not a clip"
             self.env.set_var("avsp_filter_clip", None)
             return None, err
+
         args = [clip, self.matrix, self.interlaced]
         try:
             clip = self.env.invoke("ConvertToRGB32", args)
@@ -596,12 +710,7 @@ class AvsClipBase:
             err = "Preview filter error: ConvertToRGB failed"
             self.env.set_var("avsp_filter_clip", None)
             return None, err
-        if self.resizeFilter:
-            args = [clip, self.resizeFilter[1], self.resizeFilter[2]]
-            try:
-                clip = self.env.invoke(self.resizeFilter[0], args)
-            except avisynth.AvisynthError as err:
-                return None, err
+
         vi = clip.get_video_info()
         if vi.num_frames != self.Framecount:
             clip = None
@@ -640,9 +749,8 @@ class AvsClipBase:
         except:
             pass
 
-    # thread not used, for test only, thread extern ( avsp )
     # for avisynth from H8 but lower then 3.71 (bug C Interface)
-    def GetMatrix_2(self, useThread=False):
+    def GetMatrix_2(self):
         def _get_matrix():
             try:
                 self.env.set_global_var("avsp_var", -1)
@@ -660,18 +768,7 @@ class AvsClipBase:
 
         matrix = None
         if self.clip and not self.IsErrorClip() and self.avisynth_version >= 8:
-            if self.Thread and self.Thread.isAlive():
-                return None
-            self.Thread = None
-            if useThread:
-                th = threading.Thread(target=_get_matrix, args=())
-                th.daemon = True
-                th.name = 'avisynth'
-                self.Thread = th
-                th.start()
-                th.join(15)
-            else:
-                _get_matrix()
+            _get_matrix()
             try:
                 m = self.env.get_var("avsp_var", None)
             except:
@@ -692,7 +789,7 @@ class AvsClipBase:
                 frame = self.clip.get_frame(nr)
                 err = self.clip.get_error()
                 if not err:
-                    re = self.env.props_get_matrix(frame) #frame.props_get_matrix(self.env)
+                    re = self.env.props_get_matrix(frame)
                 frame = None
             except:
                 pass
@@ -726,15 +823,22 @@ class AvsClipBase:
         if callBack:
             self.callBack(ident='property', value=self.properties, framenr=-1)
 
-    def SetResizeFilter(self, f):
-        self.resizeFilter = f
-        #self.CreateDisplayClip(self.matrix, self.interlaced, False, self.bit_depth, False)
+    # resize filter must be a tuple (filter string, resize W, resize H, zoom, fit height, isScrollbar visible)
+    # set rfilter to None to remove the resize filter
+    def SetResizeFilter(self, rfilter):
+        if rfilter:
+            try:
+                f,dw,dh,zoom,fit,hidescroll = rfilter
+            except:
+                return
+        self.resizeFilter = rfilter
+        return True
 
     def _GetFrame(self, frame):
         def Error():
             if self.readFrameProps and self.avisynth_version >= 8:
                 self.properties = 'Error'
-                self.callBack(ident='property', value='Error', framenr=frame)
+                #self.callBack(ident='property', value='Error', framenr=frame) # not thread safe
 
         if self.initialized:
             if self.current_frame == frame:
@@ -768,11 +872,9 @@ class AvsClipBase:
                 #~if self.RGB48: ## -> RGB24
                     #~pass
 
-            ## test getProps
+            ## getProps
             if self.readFrameProps:
                 self.properties = 'Frame: ' + str(frame) + '\n' + self.env.props_get_all(self.src_frame)
-                #self.callBack(ident='property', value=self.properties, framenr=frame)
-            ###
 
             self.current_frame = frame
             return True
@@ -787,7 +889,7 @@ class AvsClipBase:
             indexY = x * self.component_size + y * self.pitch
             # IsY8 does not detect Y10..Y16,Y32
             # Probably IsY is not implemented, so we use num_components
-            if self.num_components == 1:
+            if self.num_components == 1: # GPo, It is, but num_components is just as good
                 if self.bits_per_component == 8:
                     return (self.ptrY[indexY], -1, -1)
                 elif self.bits_per_component <= 16:
@@ -846,12 +948,6 @@ class AvsClipBase:
                     valG = struct.unpack('=H', bytearray(bufferG))[0]
                     bufferR = [self.ptrY[indexB+4], self.ptrY[indexB+5]]
                     valR = struct.unpack('=H', bytearray(bufferR))[0]
-                    """
-                    if self.HasAlpha:
-                        bufferA = [self.ptrY[indexB+6], self.ptrY[indexB+7]]
-                        valA = struct.unpack('=H', bytearray(bufferA))[0]
-                        return (valR, valG, valB, valA)
-                    """
                     return (valR, valG, valB)
                 else:
                     indexR = (x * bytes) + y * self.pitch
@@ -861,17 +957,11 @@ class AvsClipBase:
                     valG = struct.unpack('=H', bytearray(bufferG))[0]
                     bufferB = [self.ptrY[indexR+4], self.ptrY[indexR+5]]
                     valB = struct.unpack('=H', bytearray(bufferB))[0]
-                    """
-                    if self.HasAlpha:
-                        bufferA = [self.ptrY[indexB+6], self.ptrY[indexB+7]]
-                        valA = struct.unpack('=H', bytearray(bufferA))[0]
-                        return (valR, valG, valB, valA)
-                    """
                     return (valR, valG, valB)
 
             if self.bits_per_component > 8:
                 return (-1,-1,-1)
-
+            # 8bit
             if BGR:
                 indexB = (x * bytes) + (self.Height - 1 - y) * self.pitch
                 indexG = indexB + 1
@@ -1074,40 +1164,70 @@ class AvsClipBase:
             break
 
         return left, top, right, bottom
-
-    def CalcResizeFilter(self, cSize, fitHeight=True):
-        if not self.app:
+    """
+    # calculate the resize values needed for the display clip for the given client area (dw, dh)
+    def CalcResizeFilter(self):
+        try:
+            f, dw, dh, zoom, fitHeight, hidescrollbars = self.resizeFilter
+        except:
             return
-        zoom = 1
-        #yS = app.mainSplitter.GetSashPosition()
-        #cSize = self.app.videoWindow.GetSize()
-        if cSize[0] < 12 or cSize[1] < 12:
+        if dw < 24 or dh < 24:
             return
-        cSize[1] -= self.app.xo*2
-        cSize[0] -= self.app.yo*2
         vW, vH = self.Width, self.Height
         ratio = float(vW)/vH
         if zoom == 1:
-            factorWidth = float(cSize[0]) / vW
-            factorHeight = float(cSize[1]) / vH
+            factorWidth = float(dw) / vW
+            factorHeight = float(dh) / vH
             if fitHeight or factorWidth >= factorHeight:
-                H = int(float(cSize[1])/2)*2
+                H = int(float(dh)/2)*2
                 W = int(float(H)*ratio/2)*2
-                if fitHeight and not self.app.options['hidescrollbars'] and W > cSize[0]:
+                if fitHeight and not hidescrollbars and W > dw:
                     H -= utils.GetScrollbarMetric_X() - 2
                     H = int(H/2.0)*2
                     W = int(float(H)*ratio/2)*2
             else:
-                W = int(float(cSize[0])/2)*2
+                W = int(float(dw)/2)*2
                 H = int(float(W)/ratio/2)*2
         else:
-            W = int(vW* float(zoom))/2*2
-            H = int(vH* float(zoom))/2*2
+            W = round(vW* zoom) //2*2
+            H = round(vH* zoom) //2*2
 
         if W < 12 or H < 12:
             return
-        self.resizeFilter = ("Spline36Resize", W, H)
-        return self.resizeFilter
+
+        return (f, W, H)
+    """
+    # calculate the resize values needed for the display clip for the given client area (dw, dh)
+    def CalcResizeFilter(self):
+        mod = 2 if not self.vi.is_yv411() else 4
+        try:
+            f, dw, dh, zoom, fitHeight, hidescrollbars = self.resizeFilter
+        except:
+            return
+        if dw < 12 or dh < 12:
+            return
+        vW, vH = self.Width, self.Height
+        ratio = float(vW)/vH
+        if zoom == 1:
+            factorWidth = float(dw) / vW
+            factorHeight = float(dh) / vH
+            if fitHeight or factorWidth >= factorHeight:
+                H = int(float(dh)/mod)*mod
+                W = int(float(H)*ratio/mod)*mod
+                if fitHeight and not hidescrollbars and W > dw:
+                    H -= utils.GetScrollbarMetric_X() - 2
+                    H = int(float(H)/mod)*mod
+                    W = int(float(H)*ratio/mod)*mod
+            else:
+                W = int(float(dw)/mod)*mod
+                H = int(float(W)/ratio/mod)*mod
+        else:
+            W = round(vW* zoom) //mod*mod
+            H = round(vH* zoom) //mod*mod
+        # return if new size < 12 or zoomfactor > 2.5
+        if W < 12 or H < 12 or (float(W + H) / (self.Width + self.Height) > 2.5):
+            return
+        return (f, W, H)
 
 # on Windows is faster to use DrawDib (VFW)
 if os.name == 'nt':
@@ -1167,7 +1287,7 @@ if os.name == 'nt':
             bmih.biBitCount = 32
         elif vi.is_rgb24():
             bmih.biBitCount = 24
-        else: raise AvisynthError("Input colorspace is not RGB24 or RGB32")
+        else: raise avisynth.AvisynthError("Input colorspace is not RGB24 or RGB32")
         bmih.biCompression = BI_RGB
         bmih.biSizeImage = 0 # ignored with biCompression == BI_RGB
         bmih.biXPelsPerMeter = 0
@@ -1224,6 +1344,17 @@ if os.name == 'nt':
             return AvsClipBase.GetMatrix(self)
 
         def _ConvertToRGB(self):
+            # (resizeFilter) resize after RGB32 is mutch slower
+            """ moved to CreateDisplayClip
+            if self.resizeFilter:
+                rf = self.CalcResizeFilter()
+                if rf:
+                    args = [self.display_clip, rf[1], rf[2]]
+                    try:
+                        self.display_clip = self.env.invoke(rf[0], args)
+                    except avisynth.AvisynthError as err:
+                        return False
+            """
             if not self.IsRGB32: # bug in avisynth v2.6 alphas with ConvertToRGB24
                 args = [self.display_clip, self.matrix, self.interlaced]
                 try:
@@ -1231,20 +1362,14 @@ if os.name == 'nt':
                 except avisynth.AvisynthError as err:
                     return False
 
-            # test resze
-            if self.resizeFilter:
-                args = [self.display_clip, self.resizeFilter[1], self.resizeFilter[2]]
-                try:
-                    self.display_clip = self.env.invoke(self.resizeFilter[0], args)
-                except avisynth.AvisynthError as err:
-                    return False
-                vi = self.display_clip.get_video_info()
-                if vi.width != self.DisplayWidth or vi.height != self.DisplayHeight:
-                    self.DisplayWidth, self.DisplayHeight = vi.width, vi.height
-                    self.bmih = BITMAPINFOHEADER()
-                    CreateBitmapInfoHeader(self.display_clip, self.bmih)
-                    self.pInfo = ctypes.pointer(self.bmih)
-
+            """ only needed for resizeFilter
+            vi = self.display_clip.get_video_info()
+            if vi.width != self.DisplayWidth or vi.height != self.DisplayHeight:
+                self.DisplayWidth, self.DisplayHeight = vi.width, vi.height
+                self.bmih = BITMAPINFOHEADER()
+                CreateBitmapInfoHeader(self.display_clip, self.bmih)
+                self.pInfo = ctypes.pointer(self.bmih)
+            """
             return True
 
         def _GetFrame(self, frame):

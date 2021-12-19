@@ -38,6 +38,31 @@ If, for example, there is a '-' in the file name of the dll, AvsPmod will report
 please rename this dll and replace the '-' with a '_'
 
 --------------------------
+Version 2.7.0.1 [2021-12-19] GPo, It's Christmas soon
+--------------------------
+* Added a preview resize filter, please read the readme_resampleFilter.txt (Help > 'Resample filter readme')
+- in order not to overwhelm beginners or people who rarely use AvsPmod, the resample menu is switched off by default.
+- the menu (off, as submenu, normal) can be changed under the program options > Misc2 'Show resample zoom menu'
+* Added Video > 'Save pos & zoom on tab change' 
+- if it is activated, the position as well as the zoom settings (zoom, fit, fill) are saved
+- and restored (if possible) when changing tabs. It is a supplement to 'Save view pos on tab change' 
+- which only saves the position.
+* The _last_session.ses is saved at program start as '_last_session_backup.ses'
+- the next time the program is started, it will be saved with a date name in the 'ProgramDir\SessionBackups' directory.
+- the number of backups can be set under program options > Save/Load (default 3) 
+- Warning! Do not save any sessions yourself in the 'SessionBackups' directory with name begin _session_backup_ 
+- these files can be deleted.
+* Added menu File > 'Reload startup session'
+- saves the current tabs as session in the 'SessionBackups' folder, closes all tabs 
+- and opens the _last_session_backup (the backup of the _last_session on startup).   
+* The video window is no longer automatically resized as often.
+* The video slider button changes the color when a video frame is requested or again readed or the button pressed. 
+* 32bit Version: fix for classic avisynth 32bit versions.
+* Some other small fixes.
+* Hint: So that the session is saved at the end of the program, 
+- 'Save session for next launch' must be activated under the program options 'Save \ Load'. 
+
+--------------------------
 Version 2.7.0.0 [2021-11-13] GPo
 --------------------------
 * Added Program options > Misc > 'Show warning for plugin functions parse errors'
