@@ -57,8 +57,6 @@ try: _
 except NameError:
     def _(s): return s
 
-#can_read_avisynth_props = False
-
 """
 def avs_plus_get_colorspace_name(pixel_type):
 
@@ -289,7 +287,6 @@ class AvsClipBase:
                     raise
                 self.env.set_var("last", self.clip)
             self.env.set_var("avsp_raw_clip", self.clip)
-            self.env.set_var("avsp_resize_clip", self.clip)
             if self.env.function_exists('AutoloadPlugins'): # AviSynth+
                 try:
                     self.env.invoke('AutoloadPlugins')
@@ -300,7 +297,6 @@ class AvsClipBase:
 
         # Set the video properties
         self.vi = self.clip.get_video_info()
-        self.vi_org = self.vi
         self.HasVideo = self.vi.has_video()
         if not self.HasVideo:
             self.clip = None
@@ -323,7 +319,7 @@ class AvsClipBase:
         self.Framecount = self.vi.num_frames
         self.Width = self.vi.width
         self.Height = self.vi.height
-        #if self.vi.is_yuv() and not self.vi.is_y8():
+        #~if self.vi.is_yuv() and not self.vi.is_y8():
         if self.vi.is_yuv() and not self.vi.is_y():
             self.WidthSubsampling = self.vi.get_plane_width_subsampling(avisynth.avs.AVS_PLANAR_U)
             self.HeightSubsampling = self.vi.get_plane_height_subsampling(avisynth.avs.AVS_PLANAR_U)
@@ -395,6 +391,7 @@ class AvsClipBase:
             self.clip = self.BGR2RGB(self.clip)
 
         self.initialized = True
+
         if __debug__:
             print(u"AviSynth clip created successfully: '{0}'".format(self.name))
 
@@ -459,16 +456,13 @@ class AvsClipBase:
                 self.clip = clip
         except avisynth.AvisynthError as err:
             return False
-        if self.callBack:
-            self.callBack('errorclip',0)
+        self.callBack('errorclip', 0)
         return True
 
     def CreateDisplayClip(self, matrix=['auto', 'tv'], interlaced=None, swapuv=False, bit_depth=None, readmatrix=False, reset=True):
         if self.preview_filter:
             self.preview_filter = False
-            if self.callBack is not None:
-                self.callBack('preview', 0)
-            else:
+            if not self.callBack('preview', 0):
                 self.env.set_var("avsp_filter_clip", None)
         self.current_frame = -1
         self.display_clip = self.clip
@@ -512,6 +506,7 @@ class AvsClipBase:
                     self.DisplayHeight = vi.height
             except avisynth.AvisynthError as err:
                 return self.CreateErrorClip(display_clip_error=True)
+
         if isinstance(matrix, basestring):
             self.matrix = matrix
         else:
@@ -531,6 +526,7 @@ class AvsClipBase:
                     matrix[0] = '601'
             matrix[1] = 'Rec' if matrix[1] == 'tv' else 'PC.'
             self.matrix = matrix[1] + matrix[0]
+
         if interlaced is not None:
             self.interlaced = interlaced
         if swapuv and self.IsYUV and not self.IsY:
@@ -538,18 +534,7 @@ class AvsClipBase:
                 self.display_clip = self.env.invoke('SwapUV', self.display_clip)
             except avisynth.AvisynthError as err:
                 return self.CreateErrorClip(display_clip_error=True)
-        """
-        # display filter
-        if self.displayFilter:
-            self.env.set_var("avsp_filter_clip", self.clip)
-            args = 'avsp_filter_clip\n' + self.displayFilter
-            try:
-                self.display_clip = self.env.invoke('Eval', args)
-            except avisynth.AvisynthError as err:
-                return self.CreateErrorClip(display_clip_error=True)
-        else:
-            self.env.set_var("avsp_filter_clip", None)
-        """
+
         # display and resize filter
         args = ''
         if self.displayFilter:
@@ -561,7 +546,7 @@ class AvsClipBase:
                 args += '%s(%i,%i)' % (rf[0], rf[1], rf[2])
         if args:
             args = 'avsp_filter_clip\n' + args
-            self.env.set_var("avsp_filter_clip", self.clip)
+            self.env.set_var("avsp_filter_clip", self.display_clip)
             try:
                 self.display_clip = self.env.invoke('Eval', args)
             except avisynth.AvisynthError as err:
@@ -671,7 +656,7 @@ class AvsClipBase:
         if not f_args or not self.clip or self.IsErrorClip():
             return None, ''
 
-        self.env.set_var("avsp_filter_clip", None)
+        #self.env.set_var("avsp_filter_clip", None)
         self.env.set_var("avsp_filter_clip", self.clip)
 
         args = ('avsp_filter_clip\n' + f_args)
@@ -757,7 +742,7 @@ class AvsClipBase:
                 self.env.set_var("avsp_var_clip", self.clip)
                 args = ('avsp_var_clip\nScriptClip("""Global avsp_var=propGetInt("_Matrix")""")')
                 clip = self.env.invoke("Eval", args)
-                if isinstance(clip, avisynth.AVS_Clip)and not clip.get_error():
+                if isinstance(clip, avisynth.AVS_Clip) and not clip.get_error():
                     if self.current_frame > -1:
                         nr = min(self.current_frame, self.Framecount-1)
                     else: nr = 0
@@ -837,8 +822,7 @@ class AvsClipBase:
     def _GetFrame(self, frame):
         def Error():
             if self.readFrameProps and self.avisynth_version >= 8:
-                self.properties = 'Error'
-                #self.callBack(ident='property', value='Error', framenr=frame) # not thread safe
+                self.properties = 'Get frame %i error' % frame
 
         if self.initialized:
             if self.current_frame == frame:

@@ -91,6 +91,13 @@ def CheckAvisynthVersion371(env, VersionString):
         return False
     return True
 
+"""
+def writeLog(s):
+    nfile = os.path.join('E:\\Temp', 'AvsPmod.log')
+    with open(nfile, 'w') as f:
+        f.write(s)
+"""
+
 def GetScrollbarMetric_X():
     return wx.SystemSettings.GetMetric(wx.SYS_VSCROLL_X)
 

@@ -38,6 +38,20 @@ If, for example, there is a '-' in the file name of the dll, AvsPmod will report
 please rename this dll and replace the '-' with a '_'
 
 --------------------------
+Version 2.7.0.2 [2021-12-25] GPo, It's New Year's Eve soon
+--------------------------
+* Added Video > 'Resize video window'
+- if switched on (default off), the video window is adapted to the size of the video when the tab or
+- the zoom factor is changed (exception zooming with the mouse).
+- if the resize filter is used, I recommend deactivating this option when there are small and large videos in the tabs. 
+* Bugfix zoom menu, the values are not displayed visually in the menu.
+* Bugfix for double clicking on the script / video window splitter
+* Bugfix for menu 'Video information' while resize filter is activated
+* Bugfix for avisynth versions smaller then 3.71  
+- AvsPmod crashes while trying reading the matrix from the properties (the bug was created in 2.6.9.9)
+* Some minor changes
+
+--------------------------
 Version 2.7.0.1 [2021-12-19] GPo, It's Christmas soon
 --------------------------
 * Added a preview resize filter, please read the readme_resampleFilter.txt (Help > 'Resample filter readme')
