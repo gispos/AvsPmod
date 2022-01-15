@@ -581,7 +581,7 @@ typedef int64_t (*avs_prop_get_int_func)(AVS_ScriptEnvironment* p, const AVS_Map
 typedef double (*avs_prop_get_float_func)(AVS_ScriptEnvironment* p, const AVS_Map* map, const char* key, int index, int error);
 typedef const char* (*avs_prop_get_data_func)(AVS_ScriptEnvironment* p, const AVS_Map* map, const char* key, int index, int error);
 typedef int (*avs_prop_get_data_size_func)(AVS_ScriptEnvironment* p, const AVS_Map* map, const char* key, int index, int error);
-
+typedef void (*avs_clear_map_func)(AVS_ScriptEnvironment* p, AVS_Map* map);
 // ------------- currently done until this
 
 /////////////////////////////////////////////////////////////////////
@@ -980,6 +980,7 @@ avs_prop_get_int_func avs_prop_get_int;
 avs_prop_get_float_func avs_prop_get_float;
 avs_prop_get_data_func avs_prop_get_data;
 avs_prop_get_data_size_func avs_prop_get_data_size;
+avs_clear_map_func avs_clear_map;
 // _End_Properties
 // end of Avisynth+ specific
 
@@ -1097,6 +1098,7 @@ avs_prop_get_int_func avs_prop_get_int;
 avs_prop_get_float_func avs_prop_get_float;
 avs_prop_get_data_func avs_prop_get_data;
 avs_prop_get_data_size_func avs_prop_get_data_size;
+avs_clear_map_func avs_clear_map;
 #endif
 // end of Avisynth+ specific
 
@@ -1198,6 +1200,7 @@ AVS_Library * avs_load_library_w(){
     avs_prop_get_float=library->avs_prop_get_float;
     avs_prop_get_data=library->avs_prop_get_data;
     avs_prop_get_data_size=library->avs_prop_get_data_size;
+    avs_clear_map=library->avs_clear_map;
 #endif
     // end of Avisynth+ specific
     return library;
@@ -1952,7 +1955,7 @@ class AVS_ScriptEnvironment(object):
     def props_get_picture_type(self, frame):
         r = 0
         avsmap = avs.avs_get_frame_props_ro(self.cdata, frame.cdata)
-        if avsmap is not None:
+        if avsmap:
             c = avs.avs_prop_num_keys(self.cdata, avsmap)
             if c > 0:
                 for i in range(c):
@@ -1964,7 +1967,7 @@ class AVS_ScriptEnvironment(object):
     def props_get_matrix(self, frame):
         r = 0
         avsmap = avs.avs_get_frame_props_ro(self.cdata, frame.cdata)
-        if avsmap is not None:
+        if avsmap:
             c = avs.avs_prop_num_keys(self.cdata, avsmap)
             if c > 0:
                 for i in range(c):
@@ -1979,7 +1982,7 @@ class AVS_ScriptEnvironment(object):
         s = ''
         r = 0
         avsmap = avs.avs_get_frame_props_ro(self.cdata, frame.cdata)
-        if avsmap is not None:
+        if avsmap:
             c = avs.avs_prop_num_keys(self.cdata, avsmap)
             if c > 0:
                 s = 'Keys: ' + str(c) + '\n'
@@ -2005,7 +2008,7 @@ class AVS_ScriptEnvironment(object):
                         else:
                             s += '?, '
                     s = s[:-2] + ')\n'
-        return s #.rstrip() # bug in styledTextctrl
+        return s
 
 class AvisynthError(Exception):
     pass

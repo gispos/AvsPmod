@@ -37,6 +37,23 @@ AvsPmod can only provide a user-friendly editor if he has no problems with the n
 If, for example, there is a '-' in the file name of the dll, AvsPmod will report it at startup, 
 please rename this dll and replace the '-' with a '_'
 
+
+--------------------------
+Version 2.7.0.3 [2022-01-15] GPo
+--------------------------
+* Add program options > Misc2 'Show video control button tooptips', show/hide tooltips.
+* Add Video > Additional > 'Use previous frame time'
+- when refreshing with F5 or Video window focus or mouse middle button: 
+- if frame count <> previous frame count and frame rate <> previous frame rate 
+- then the new frame number is generated from the previous frame time. 
+* Improved error messages: On create display clip more information in case of errors, 
+- and an attempt is made to use an alternative RGB32 conversion, this is then displayed as an error in a dialog. 
+- but note: Something is wrong and the displayed result may be wrong.  
+* Fixed: display filter text was converted to lower case. So eg. propSet("_Matrix") don't work.
+* Some glitches with the 'Resize filter' fixed.
+* Fixed: the preview was not updated if text was changed in the script and the script did not have the focus.
+* New Russian translation file from Doom9 user Arx1meD.
+
 --------------------------
 Version 2.7.0.2 [2021-12-25] GPo, It's New Year's Eve soon
 --------------------------

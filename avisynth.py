@@ -452,7 +452,7 @@ class AVS_ScriptEnvironment(object):
     def props_get_picture_type(self, frame):
         r = 0
         avsmap = avs_get_frame_props_ro(self, frame.cdata)
-        if avsmap is not None:
+        if avsmap:
             c = avs_prop_num_keys(self, avsmap)
             if c > 0:
                 for i in range(c):
@@ -464,7 +464,7 @@ class AVS_ScriptEnvironment(object):
     def props_get_matrix(self, frame):
         r = 0
         avsmap = avs_get_frame_props_ro(self, frame.cdata)
-        if avsmap is not None:
+        if avsmap:
             c = avs_prop_num_keys(self, avsmap)
             if c > 0:
                 for i in range(c):
@@ -479,7 +479,7 @@ class AVS_ScriptEnvironment(object):
         s = ''
         r = 0
         avsmap = avs_get_frame_props_ro(self, frame.cdata)
-        if avsmap is not None:
+        if avsmap:
             c = avs_prop_num_keys(self, avsmap)
             if c > 0:
                 s = 'Keys: ' + str(c) + '\n'
@@ -1228,6 +1228,9 @@ avs_new_video_frame_a.argtypes=[AVS_ScriptEnvironment,AVS_VideoInfo,ctypes.c_int
 #avs_new_video_frame_a.errcheck=CreateAVS_VideoFrameCT
 
 # AVS_VideoInfo
+#avs_is_rgb32=avidll.avs_is_rgb32
+#avs_is_rgb32.restype=ctypes.c_int
+#avs_is_rgb32.argtypes=[ctypes.POINTER(AVS_VideoInfo_C)]
 
 avs_is_yv24=avidll.avs_is_yv24 #V6
 avs_is_yv24.restype=ctypes.c_int
@@ -1293,7 +1296,8 @@ def internal_fake_component_size(arg):
 
 def internal_fake_num_components(arg):
     if avs_is_y8(arg) != 0: return 1 # Y only
-    if avs_is_rgb32(arg) != 0: return 4 # R,G,B,A
+    #if avs_is_rgb32(arg) != 0: return 4 # R,G,B,A
+    if AVS_VideoInfo(arg).is_rgb32: return 4 # GPo 2021
     return 3 # all other is 3 (planes, components)
 
 def internal_fake_bits_per_component(arg):
@@ -1610,6 +1614,22 @@ try:
     avs_prop_get_data_size.argtypes=[AVS_ScriptEnvironment, ctypes.POINTER(AVS_Map_C), ctypes.c_char_p, ctypes.c_int, ctypes.c_int]
 except:
     avs_prop_get_data=internal_fake_get_frame_props_5
+
+try:
+    avs_clear_map=avidll.avs_clear_map
+    avs_clear_map.resypes=None
+    avs_clear_map.argtypes=[AVS_ScriptEnvironment, ctypes.POINTER(AVS_Map_C)]
+except:
+    avs_clear_map=internal_fake_get_frame_props_2
+
+"""
+try:
+    avs_free_map=avidll.avs_prop_free_map
+    avs_free_map.resypes=None
+    avs_free_map.argtypes=[AVS_ScriptEnvironment, ctypes.POINTER(AVS_Map_C)]
+except:
+    avs_free_map=internal_fake_get_frame_props_1
+"""
 
 def test():
     env = AVS_ScriptEnvironment(6)

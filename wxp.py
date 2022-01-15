@@ -589,7 +589,7 @@ class Frame(wx.Frame):
             button.Bind(wx.EVT_BUTTON, handler)
         return button
 
-    def createToolbarButton(self, parent, label, handler, pos=(0, 0), size=wx.DefaultSize, style=wx.NO_BORDER, toolTipTxt=None, statusTxt=None):
+    def createToolbarButton(self, parent, label, handler, pos=(0, 0), size=wx.DefaultSize, style=wx.NO_BORDER, toolTipTxt=None, statusTxt=None, showStatusTxt=True):
         # Return a static line if empty
         if type(label) == type('') and label == '':
             return wx.StaticLine(parent, style=wx.LI_VERTICAL)
@@ -608,16 +608,16 @@ class Frame(wx.Frame):
             button.SetToolTipString(toolTipTxt)
         # Define mouse event functions (change status bar text and button bevel width)
         def OnMouseMove(event):
-            if statusTxt:
+            if statusTxt and self.options['showbuttontooltip']:
                 self.SetStatusText(statusTxt)
         def OnMouseOver(event):
-            if statusTxt:
+            if statusTxt and self.options['showbuttontooltip']:
                 self.SetStatusText(statusTxt)
             b = event.GetEventObject()
             b.SetBezelWidth(b.GetBezelWidth()+1)
             b.Refresh()
         def OnMouseLeave(event):
-            if statusTxt:
+            if statusTxt and self.options['showbuttontooltip']:
                 try:
                     self.ResetStatusText()
                 except AttributeError:

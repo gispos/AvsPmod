@@ -2702,8 +2702,12 @@ int "threads"=0,
 int "seek_mode"=0 (0 / 1 / 2),
 int "seek_threshold"=10 (0 to 60),
 bool "dr"=False,
-bool "stacked"=False,
-string "format"="" (""/ "YUV420P8"/ "YUV422P8"/ "YUV444P8"/ "YUV410P8"/ "YUV411P8"/ "YUV420P9"/ "YUV422P9"/ "YUV444P9"/ "YUV420P10"/ "YUV422P10"/ "YUV444P10"/ "YUV420P12"/ "YUV422P12"/ "YUV444P12"/ "YUV420P14"/ "YUV422P14"/ "YUV444P14"/ "YUV420P16"/ "YUV422P16"/ "YUV444P16"/ "YUY2"/ "RGB24")
+int "fpsnum"=0,
+int "fpsden"=1,
+string "format"="" (""/"YUV420P8"/"YUV422P8"/"YUV444P8"/"YUV410P8"/"YUV411P8"/"YUV420P9"/"YUV422P9"/"YUV444P9"/"YUV420P10"/"YUV422P10"/"YUV444P10"/"YUV420P12"/"YUV422P12"/"YUV444P12"/"YUV420P14"/"YUV422P14"/"YUV444P14"/"YUV420P16"/"YUV422P16"/"YUV444P16"/"YUVA420P8"/"YUVA422P8"/"YUVA444P8"/"YUVA420P10"/"YUVA422P10"/"YUVA444P10/"YUVA420P12"/"YUVA422P12"/"YUVA444P12"/"YUVA420P16"/"YUVA422P16"/"YUVA420P16"/"Y8"/"Y10"/"Y12"/"Y16"/"YUY2"/"RGB24"/"RGB32"/"RGB48"/"RGB64"/"GBRP8"/"GBRP10"/"GBRP12"/"GBRP14"/"GBRP16"/"GBRAP8"/"GBRAP10"/"GBRAP12"/"GBRAP14"/"GBRAP16"), 
+string "decoder"="",
+int "prefer_hw"=0 (0/1/2),
+int "ff_loglevel"=0 (0/1/2/3/4/5/6/7/8)
 )
 
 LSMASHSource_LWLibavAudioSource(
@@ -2722,11 +2726,15 @@ int "threads"=0,
 bool "cache"=True,
 int "seek_mode"=0 (0 / 1 / 2),
 int "seek_threshold"=10 (0 to 60),
+bool "indexingpr"=False,
 bool "dr"=False,
 bool "repeat"=False,
+int "fpsnum"=0,
+int "fpsden"=1,
 int "dominance"=0 (0 / 1 / 2),
-bool "stacked"=False,
-string "format"="" (""/ "YUV420P8"/ "YUV422P8"/ "YUV444P8"/ "YUV410P8"/ "YUV411P8"/ "YUV420P9"/ "YUV422P9"/ "YUV444P9"/ "YUV420P10"/ "YUV422P10"/ "YUV444P10"/ "YUV420P12"/ "YUV422P12"/ "YUV444P12"/ "YUV420P14"/ "YUV422P14"/ "YUV444P14"/ "YUV420P16"/ "YUV422P16"/ "YUV444P16"/ "YUY2"/ "RGB24")
+string "format"="" (""/"YUV420P8"/"YUV422P8"/"YUV444P8"/"YUV410P8"/"YUV411P8"/"YUV420P9"/"YUV422P9"/"YUV444P9"/"YUV420P10"/"YUV422P10"/"YUV444P10"/"YUV420P12"/"YUV422P12"/"YUV444P12"/"YUV420P14"/"YUV422P14"/"YUV444P14"/"YUV420P16"/"YUV422P16"/"YUV444P16"/"YUVA420P8"/"YUVA422P8"/"YUVA444P8"/"YUVA420P10"/"YUVA422P10"/"YUVA444P10/"YUVA420P12"/"YUVA422P12"/"YUVA444P12"/"YUVA420P16"/"YUVA422P16"/"YUVA420P16"/"Y8"/"Y10"/"Y12"/"Y16"/"YUY2"/"RGB24"/"RGB32"/"RGB48"/"RGB64"/"GBRP8"/"GBRP10"/"GBRP12"/"GBRP14"/"GBRP16"/"GBRAP8"/"GBRAP10"/"GBRAP12"/"GBRAP14"/"GBRAP16"), 
+string "decoder"="",
+int "ff_loglevel"=0 (0/1/2/3/4/5/6/7/8) 
 )
 
 MedianBlur2_MedianBlur(
@@ -4040,7 +4048,7 @@ ex_contrast(
 clip,
 float "cont"=0.00 (-1.00 to 1.00),
 float "pivot"=127.5 (0.0 to 192.0), 
-float "sat"=0.00 (-1.00 to 1.00),
+float "sat"=1.00 (0.00 to 2.00),
 [int "UV"=1 (1 / 2 / 3)],
 [bool "tv_range"=True],
 [bool "fulls"]
