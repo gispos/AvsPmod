@@ -212,7 +212,6 @@ class AvsClipBase:
         self.avisynth_version = None
         self.displayFilter = displayFilter
         self.resizeFilter = resizeFilter
-        # getProps
         self.properties = ''
         self.convert_to_rgb_error = None
 
@@ -566,9 +565,11 @@ class AvsClipBase:
 
         self.convert_to_rgb_error = None
         if not self._ConvertToRGB():
-            err = 'Display clip error ConvertToRGB32\n' + str(self.env.get_error())
+            err = self.convert_to_rgb_error
+            if not err:
+                err = 'Display clip error ConvertToRGB32\n' + str(self.env.get_error())
             return self.CreateErrorClip(err=err, display_clip_error=True)
-        if self.convert_to_rgb_error:
+        elif self.convert_to_rgb_error:
             self.callBack('displayerror', self.convert_to_rgb_error)
         return True
 
@@ -710,7 +711,7 @@ class AvsClipBase:
             self.sourceMatrix = func.GetMatrixName(m)
         return matrix
 
-    # Only switch readFrameProps on here, do not set AVI.readFrameProps = True
+    # Only switch readFrameProps on/off here, do not set AVI.readFrameProps = True
     def SetReadFrameProps(self, enabled, callBack=True, readNow=True):
         if not self.initialized or not self.can_read_avisynth_props:
             self.readFrameProps = False
@@ -718,7 +719,7 @@ class AvsClipBase:
             return
         if self.clip and not self.IsErrorClip():
             if enabled and readNow:
-                self.properties = 'Frame: ' + str(self.current_frame) + '\n' + self.env.props_get_all(self.src_frame) #self.src_frame.props_get_all(self.env)
+                self.properties = 'Frame: ' + str(self.current_frame) + '\n' + self.env.props_get_all(self.src_frame)
         else:
             self.properties = ''
         self.readFrameProps = enabled
@@ -1222,13 +1223,13 @@ if os.name == 'nt':
                 except:
                     err = str(self.env.get_error())
                     if err:
-                        self.convert_to_rgb_error = 'Trying alternative RGB32 conversion:\n' + err
+                        self.convert_to_rgb_error = err + '\nTrying alternative RGB32 conversion'
                     else:
-                        self.convert_to_rgb_error = 'Error while convert to RGB32\n Trying alternative RGB32 conversion'
+                        self.convert_to_rgb_error = 'Unknown convert to RGB32 error\n Trying alternative RGB32 conversion'
 
-                    bol_interlaced = 'True' if self.interlaced else 'False'
-                    args = 'ConvertToYUV444(matrix="%s", interlaced=%s, ChromaInPlacement="left")\n' % (self.matrix, bol_interlaced) + \
-                           'ConvertToRGB32(matrix="%s", interlaced=%s)' % (self.matrix, bol_interlaced)
+                    b_interlaced = 'True' if self.interlaced else 'False'
+                    args = 'ConvertToYUV444(matrix="%s", interlaced=%s, ChromaInPlacement="left")\n' % (self.matrix, b_interlaced) + \
+                           'ConvertToRGB32(matrix="%s", interlaced=%s)' % (self.matrix, b_interlaced)
                     try:
                         self.display_clip = self.env.invoke('Eval', [self.display_clip, args])
                     except avisynth.AvisynthError as err:
@@ -1239,8 +1240,6 @@ if os.name == 'nt':
                         if self.convert_to_rgb_error:
                             self.convert_to_rgb_error += '\nAttempt failed !'
                         return False
-                #except avisynth.AvisynthError as err:
-                    #return False
             return True
 
         def _GetFrame(self, frame):

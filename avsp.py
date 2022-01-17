@@ -19451,8 +19451,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.toggleButton.Refresh()
         self.currentScript.SetFocus()
 
-    # GPo, for zoom layout bugfix, for wx. 2.93 not needed (issues with other funcs)
-    def fix_zoom(self, zoom ):
+    # GPo, for zoom layout bugfix, for wx. 2.93 not needed
+    def fix_zoom(self, zoom):
         return zoom
 
     def previewOK(self, script=None):
@@ -19480,59 +19480,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.ShowVideoFrame(forceRefresh=forceRefresh, forceCursor=forceCursor and self.options['refreshpreview'],
                 resize=resize, scroll=scroll, frameToFrametime=self.options['frametoframetime'])
         self.ResetZoomAntialias()
-
-
-    """ Out of date
-    def UpdateSelf(self, script, framenum, addon0):
-        self.videoSlider.SetValue(framenum)
-        self.frameTextCtrl.Replace(0, -1, str(framenum))
-        if self.separatevideowindow:
-            self.videoSlider2.SetValue(framenum)
-            self.frameTextCtrl2.Replace(0, -1, str(framenum))
-        dc = wx.ClientDC(self.videoWindow)
-        self.PaintAVIFrame(dc, script, framenum)
-        self.currentScript.lastFramenum = framenum
-        self.SetVideoStatusText(framenum, primary=True, addon0=addon0)
-
-
-    def PlayThreadShowVideoFrame(self, framenum, addon0=''):
-        #wx.GetApp().ProcessPendingEvents()
-        script = self.currentScript
-        #if self.AviThread_Running(script, prompt=False):
-            #return
-
-        self.currentframenum = framenum
-        #wx.CallAfter(self.videoSlider.SetValue, framenum)
-        #wx.CallAfter(self.frameTextCtrl.Replace, 0, -1, str(framenum))
-
-        #if self.separatevideowindow:
-            #wx.CallAfter(self.videoSlider2.SetValue, framenum)
-            #wx.CallAfter(self.frameTextCtrl2.Replace, 0, -1, str(framenum))
-
-        script.AVI.display_clip.get_frame(framenum)
-
-        error = script.AVI.display_clip.get_error()
-        if error is not None:
-            return -1
-
-        #dc = wx.ClientDC(self.videoWindow)
-        #wx.CallAfter(self.PaintAVIFrame, dc, script, framenum)
-
-        # If error clip, highlight the line with the error
-        errmsg = script.AVI.error_message
-        if errmsg is not None:
-            return errmsg
-
-        script.lastFramenum = framenum
-        #wx.CallAfter(self.SetVideoStatusText, framenum, primary=True, addon0=addon0)
-        #if self.playing_video:
-            #wx.CallAfter(self.UpdateSelf, script, framenum, addon0)
-        AsyncCall(self.UpdateSelf, script, framenum, addon0).Wait()
-        #self.IdleCallDict['UpdateSelf'] = self.UpdateSelf(script, framenum, addon0)
-            #wx.GetApp().ProcessPendingEvents()
-        #self.UpdateSelf(script, framenum, addon0)
-        return True
-    """
 
     # GPo 2020, only for playback without threads ( with threads there are new routine in PlayPauseVideo )
     # for initial values must call ShowVideoFrame bevor and after
@@ -19712,9 +19659,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 framenum = 0
             else: # GPo new, convert framenum to previous frame time
                 if frameToFrametime and _lastFramerate != script.AVI.Framerate \
-                    and script.lastFramenum == framenum and script.lastLength != script.AVI.Framecount and framenum > 0:
+                    and script.lastLength != script.AVI.Framecount and script.lastFramenum == framenum and framenum > 0:
                         try:
                             framenum = int(round((float(script.AVI.Framerate) / _lastFramerate) * framenum))
+                            """ # alternative
+                            ms = float(framenum) / _lastFramerate
+                            framenum = int(round(script.AVI.Framerate * ms))
+                            """
                         except:
                             pass
 
