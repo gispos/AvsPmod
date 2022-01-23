@@ -165,7 +165,7 @@ class AvsClipBase:
         self.pBits = None
         self.display_clip = None
         self.preview_filter = None
-        self.ptrY = self.ptrU = self.ptrV = None
+        self.ptrY = self.ptrU = self.ptrV = self.ptrA = None
         # Avisynth script properties
         self.Width = -1
         self.Height = -1
@@ -184,9 +184,10 @@ class AvsClipBase:
         self.IsRGB = None
         self.IsRGB24 = None
         self.IsRGB32 = None
-        #self.IsRGB48 = None  # not yet needed
-        #self.IsRGB64 = None
+        self.IsRGB48 = None
+        self.IsRGB64 = None
         self.IsYUV = None
+        self.IsYUVA = None
         self.IsYUY2 = None
         self.IsYV24 = None
         self.IsYV16 = None
@@ -198,12 +199,14 @@ class AvsClipBase:
         self.component_size = None
         self.num_components = None
         self.IsPlanar = None
+        self.IsPlanarRGBA = None
         self.IsInterleaved = None
         self.IsFieldBased = None
         self.IsFrameBased = None
         self.GetParity  = None
         self.HasAudio = None
         self.HasVideo = None
+        self.IsRGBA = None
         self.Colorspace = None
         self.sourceMatrix = '..'
         self.matrix_found = None
@@ -317,8 +320,8 @@ class AvsClipBase:
         self.Framecount = self.vi.num_frames
         self.Width = self.vi.width
         self.Height = self.vi.height
-        #~if self.vi.is_yuv() and not self.vi.is_y8():
-        if self.vi.is_yuv() and not self.vi.is_y():
+
+        if (self.vi.is_yuv() or self.vi.is_yuva()) and not self.vi.is_y():
             self.WidthSubsampling = self.vi.get_plane_width_subsampling(avisynth.avs.AVS_PLANAR_U)
             self.HeightSubsampling = self.vi.get_plane_height_subsampling(avisynth.avs.AVS_PLANAR_U)
         self.DisplayWidth, self.DisplayHeight = self.Width, self.Height
@@ -346,7 +349,10 @@ class AvsClipBase:
         self.IsRGB32 = self.vi.is_rgb32()
         self.IsRGB48 = self.vi.is_rgb48()
         self.IsRGB64 = self.vi.is_rgb64()
+        self.IsPlanar = self.vi.is_planar()
+        self.IsPlanarRGBA = self.vi.is_planar_rgba()
         self.IsYUV = self.vi.is_yuv()
+        self.IsYUVA = self.vi.is_yuva()
         self.IsYUY2 = self.vi.is_yuy2()
         self.IsYV24 = self.vi.is_yv24()
         self.IsYV16 = self.vi.is_yv16()
@@ -357,6 +363,7 @@ class AvsClipBase:
         self.bits_per_component = self.vi.bits_per_component() # 8,10,12,14,16,32
         self.component_size = self.vi.component_size() # 1, 2, 4 (in bytes)
         self.num_components = self.vi.num_components() # 1-4
+        self.IsRGBA = self.IsRGB32 or self.IsRGB64 or self.IsPlanarRGBA
 
         # Possible even for classic avs:
         '''
@@ -376,15 +383,16 @@ class AvsClipBase:
                                'YV24'*self.IsYV24 + 'YV16'*self.IsYV16 + 'YV411'*self.IsYV411 + 'Y8'*self.IsY8
                                )
 
-        self.IsPlanar = self.vi.is_planar()
         self.IsFieldBased = self.vi.is_field_based()
         self.IsFrameBased = not self.IsFieldBased
-        self.GetParity = self.clip.get_parity(0) #self.vi.image_type
+        self.GetParity = self.clip.get_parity(0)
         self.HasAudio = self.vi.has_audio()
         self.interlaced = interlaced
 
         if display_clip and not self.CreateDisplayClip(matrix, interlaced, swapuv, bit_depth, readmatrix):
             return
+        # GPo, no clue for wath it is and is it compatible with Planar or 16bit
+        # must check it later
         if self.IsRGB and reorder_rgb:
             self.clip = self.BGR2RGB(self.clip)
 
@@ -762,9 +770,13 @@ class AvsClipBase:
             self.pitch = self.src_frame.get_pitch()
             self.pitchUV = self.src_frame.get_pitch(avisynth.avs.AVS_PLANAR_U)
             self.ptrY = self.src_frame.get_read_ptr()
+
             if not self.IsY:
                 self.ptrU = self.src_frame.get_read_ptr(avisynth.avs.AVS_PLANAR_U)
                 self.ptrV = self.src_frame.get_read_ptr(avisynth.avs.AVS_PLANAR_V)
+                if self.IsPlanar and self.num_components == 4:
+                    self.ptrA = self.src_frame.get_read_ptr(avisynth.avs.AVS_PLANAR_A)
+
             # Display clip
             if self.display_clip:
                 self.display_frame = self.display_clip.get_frame(frame)
@@ -773,8 +785,6 @@ class AvsClipBase:
                     return False
                 self.display_pitch = self.display_frame.get_pitch()
                 self.pBits = self.display_frame.get_read_ptr()
-                #~if self.RGB48: ## -> RGB24
-                    #~pass
 
             ## getProps
             if self.readFrameProps:
@@ -834,14 +844,64 @@ class AvsClipBase:
         valV = struct.unpack('=f', bytearray(bufferV))[0]
         return (valY, valU, valV)
 
+    def GetPixelYUVA(self, x, y):
+        # if a resize filter used in the preview filter. CRASH if not check here
+        if self.DisplayWidth != self.Width or self.DisplayHeight != self.Height:
+            return (-1,-1,-1,-1)
+        indexY = x * self.component_size + y * self.pitch
+        x = x >> self.WidthSubsampling
+        y = y >> self.HeightSubsampling
+        indexU = indexV = indexA = x * self.component_size + y * self.pitchUV
+        if self.bits_per_component == 8:
+            return (self.ptrY[indexY], self.ptrU[indexU], self.ptrV[indexV], self.ptrA[indexA])
+        if self.bits_per_component <= 16:
+            bufferY = [self.ptrY[indexY], self.ptrY[indexY + 1]]
+            valY = struct.unpack('=H', bytearray(bufferY))[0]
+            bufferU = [self.ptrU[indexU], self.ptrU[indexU + 1]]
+            valU = struct.unpack('=H', bytearray(bufferU))[0]
+            bufferV = [self.ptrV[indexV], self.ptrV[indexV + 1]]
+            valV = struct.unpack('=H', bytearray(bufferV))[0]
+            bufferA = [self.ptrA[indexA], self.ptrA[indexA + 1]]
+            valA = struct.unpack('=H', bytearray(bufferA))[0]
+            return (valY, valU, valV, valA)
+        # 32bit
+        bufferY = [self.ptrY[indexY], self.ptrY[indexY + 1], self.ptrY[indexY + 2], self.ptrY[indexY + 3]]
+        valY = struct.unpack('=f', bytearray(bufferY))[0]
+        bufferU = [self.ptrU[indexU], self.ptrU[indexU + 1], self.ptrU[indexU + 2], self.ptrU[indexU + 3]]
+        valU = struct.unpack('=f', bytearray(bufferU))[0]
+        bufferV = [self.ptrV[indexV], self.ptrV[indexV + 1], self.ptrV[indexV + 2], self.ptrV[indexV + 3]]
+        valV = struct.unpack('=f', bytearray(bufferV))[0]
+        bufferA = [self.ptrA[indexA], self.ptrA[indexA + 1], self.ptrA[indexA + 2], self.ptrA[indexA + 3]]
+        valA = struct.unpack('=f', bytearray(bufferA))[0]
+        return (valY, valU, valV, valA)
+
     def GetPixelRGB(self, x, y, BGR=True):
         if self.IsRGB:
             # if a resize filter used in the preview filter. CRASH if not check here
             if self.DisplayWidth != self.Width or self.DisplayHeight != self.Height:
                 return (-1,-1,-1)
-            bytes = self.vi.bytes_from_pixels(1)
+            if self.IsPlanar: # plane order is GBR
+                index = x * self.component_size + y * self.pitch
+                if self.component_size == 1: # 8bit
+                    return (self.ptrV[index], self.ptrY[index], self.ptrU[index])
+                elif self.component_size == 2: # 10 to 16bit
+                    bufferG = [self.ptrY[index], self.ptrY[index + 1]]
+                    valG = struct.unpack('=H', bytearray(bufferG))[0]
+                    bufferB = [self.ptrU[index], self.ptrU[index + 1]]
+                    valB = struct.unpack('=H', bytearray(bufferB))[0]
+                    bufferR = [self.ptrV[index], self.ptrV[index + 1]]
+                    valR = struct.unpack('=H', bytearray(bufferR))[0]
+                else: # 32bit
+                    bufferG = [self.ptrY[index], self.ptrY[index + 1], self.ptrY[index + 2], self.ptrY[index + 3]]
+                    valG = struct.unpack('=f', bytearray(bufferG))[0]
+                    bufferB = [self.ptrU[index], self.ptrU[index + 1], self.ptrU[index + 2], self.ptrU[index + 3]]
+                    valB = struct.unpack('=f', bytearray(bufferB))[0]
+                    bufferR = [self.ptrV[index], self.ptrV[index + 1], self.ptrV[index + 2], self.ptrV[index + 3]]
+                    valR = struct.unpack('=f', bytearray(bufferR))[0]
+                return (valR, valG, valB)
 
-            if self.bits_per_component == 16:
+            bytes = self.vi.bytes_from_pixels(1)
+            if self.bits_per_component == 16: # return also RGB48 and RGB64 if needed
                 #x = x * 8 64bit
                 #x = x * 6 48bit
                 if BGR:
@@ -863,40 +923,87 @@ class AvsClipBase:
                     valB = struct.unpack('=H', bytearray(bufferB))[0]
                     return (valR, valG, valB)
 
-            if self.bits_per_component > 8:
-                return (-1,-1,-1)
-            # 8bit
-            if BGR:
-                indexB = (x * bytes) + (self.Height - 1 - y) * self.pitch
-                indexG = indexB + 1
-                indexR = indexB + 2
-            else:
-                indexR = (x * bytes) + y * self.pitch
-                indexG = indexR + 1
-                indexB = indexR + 2
-            return (self.ptrY[indexR], self.ptrY[indexG], self.ptrY[indexB])
-        else:
-            return (-1,-1,-1)
+            if self.bits_per_component == 8: # return also RGB24 and RGB32
+                if BGR:
+                    indexB = (x * bytes) + (self.Height - 1 - y) * self.pitch
+                    indexG = indexB + 1
+                    indexR = indexB + 2
+                else:
+                    indexR = (x * bytes) + y * self.pitch
+                    indexG = indexR + 1
+                    indexB = indexR + 2
+                return (self.ptrY[indexR], self.ptrY[indexG], self.ptrY[indexB])
+
+        return (-1,-1,-1)
 
     def GetPixelRGBA(self, x, y, BGR=True):
-        if self.IsRGB32:
-            # if a resize filter used in the preview filter. CRASH if not check here
-            if self.DisplayWidth != self.Width or self.DisplayHeight != self.Height:
-                return (-1,-1,-1,-1)
-            bytes = self.vi.bytes_from_pixels(1)
-            if BGR:
-                indexB = (x * bytes) + (self.Height - 1 - y) * self.pitch
-                indexG = indexB + 1
-                indexR = indexB + 2
-                indexA = indexB + 3
-            else:
-                indexR = (x * bytes) + y * self.pitch
-                indexG = indexR + 1
-                indexB = indexR + 2
-                indexA = indexB + 3
-            return (self.ptrY[indexR], self.ptrY[indexG], self.ptrY[indexB], self.ptrY[indexA])
-        else:
+        # if a resize filter used in the preview filter. CRASH if not check here
+        if self.DisplayWidth != self.Width or self.DisplayHeight != self.Height:
             return (-1,-1,-1,-1)
+
+        if not self.IsPlanarRGBA:
+            if self.IsRGB32:
+                bytes = self.vi.bytes_from_pixels(1)
+                if BGR:
+                    indexB = (x * bytes) + (self.Height - 1 - y) * self.pitch
+                    indexG = indexB + 1
+                    indexR = indexB + 2
+                    indexA = indexB + 3
+                else:
+                    indexR = (x * bytes) + y * self.pitch
+                    indexG = indexR + 1
+                    indexB = indexR + 2
+                    indexA = indexB + 3
+                return (self.ptrY[indexR], self.ptrY[indexG], self.ptrY[indexB], self.ptrY[indexA])
+            elif self.IsRGB64:
+                bytes = self.vi.bytes_from_pixels(1)
+                if BGR:
+                    indexB = (x * bytes) + (self.Height - 1 - y) * self.pitch # same for 48, 64 bit
+                    bufferB = [self.ptrY[indexB], self.ptrY[indexB+1]]
+                    valB = struct.unpack('=H', bytearray(bufferB))[0]
+                    bufferG = [self.ptrY[indexB+2], self.ptrY[indexB+3]]
+                    valG = struct.unpack('=H', bytearray(bufferG))[0]
+                    bufferR = [self.ptrY[indexB+4], self.ptrY[indexB+5]]
+                    valR = struct.unpack('=H', bytearray(bufferR))[0]
+                    bufferA = [self.ptrY[indexB+6], self.ptrY[indexB+7]]
+                    valA = struct.unpack('=H', bytearray(bufferA))[0]
+                else:
+                    indexR = (x * bytes) + y * self.pitch
+                    bufferR = [self.ptrY[indexR], self.ptrY[indexR+1]]
+                    valR = struct.unpack('=H', bytearray(bufferR))[0]
+                    bufferG = [self.ptrY[indexR+2], self.ptrY[indexR+3]]
+                    valG = struct.unpack('=H', bytearray(bufferG))[0]
+                    bufferB = [self.ptrY[indexR+4], self.ptrY[indexR+5]]
+                    valB = struct.unpack('=H', bytearray(bufferB))[0]
+                    bufferA = [self.ptrY[indexR+6], self.ptrY[indexR+7]]
+                    valA = struct.unpack('=H', bytearray(bufferA))[0]
+                return (valR, valG, valB, valA)
+            else:
+                return (-1, -1, -1, -1)
+        else:
+            # plane order is GBR
+            index = x * self.component_size + y * self.pitch
+            if self.component_size == 1: # 8bit
+                return (self.ptrV[index], self.ptrY[index], self.ptrU[index], self.ptrA[index])
+            elif self.component_size == 2: # 10 to 16bit
+                bufferG = [self.ptrY[index], self.ptrY[index + 1]]
+                valG = struct.unpack('=H', bytearray(bufferG))[0]
+                bufferB = [self.ptrU[index], self.ptrU[index + 1]]
+                valB = struct.unpack('=H', bytearray(bufferB))[0]
+                bufferR = [self.ptrV[index], self.ptrV[index + 1]]
+                valR = struct.unpack('=H', bytearray(bufferR))[0]
+                bufferA = [self.ptrA[index], self.ptrA[index + 1]]
+                valA = struct.unpack('=H', bytearray(bufferA))[0]
+            else: # 32bit
+                bufferG = [self.ptrY[index], self.ptrY[index + 1], self.ptrY[index + 2], self.ptrY[index + 3]]
+                valG = struct.unpack('=f', bytearray(bufferG))[0]
+                bufferB = [self.ptrU[index], self.ptrU[index + 1], self.ptrU[index + 2], self.ptrU[index + 3]]
+                valB = struct.unpack('=f', bytearray(bufferB))[0]
+                bufferR = [self.ptrV[index], self.ptrV[index + 1], self.ptrV[index + 2], self.ptrV[index + 3]]
+                valR = struct.unpack('=f', bytearray(bufferR))[0]
+                bufferA = [self.ptrA[index], self.ptrA[index + 1], self.ptrA[index + 2], self.ptrA[index + 3]]
+                valA = struct.unpack('=f', bytearray(bufferA))[0]
+            return (valR, valG, valB, valA)
 
     def GetVarType(self, str_var):
         try:

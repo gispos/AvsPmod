@@ -1777,7 +1777,8 @@ class AvsStyledTextCtrl(stc.StyledTextCtrl):
         if self.app.options['numlinechars']:
             self.fitNumberMarginWidth()
         self.flagTextChanged = True
-        self.app.currentScript.refreshAVI = True
+        # Now OnContextMenu and MenuBar
+        #self.app.currentScript.refreshAVI = True # this place is bad for preview filter
 
     def OnTextCharAdded(self, event):
         if unichr(event.GetKey()) == '\n':
@@ -6067,11 +6068,16 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.IdleCall.append((self.ShowVideoFrame, (self.startupframe,), {'forceRefresh':False}))
         if self.mainSplitter.IsSplit():
             self.SplitVideoWindow()
-        self.Show()
+
         if self.options.get('maximized'):
             self.Maximize(True)
         if self.options.get('maximized2') and self.separatevideowindow:
             self.videoDialog.Maximize(True)
+
+        self.Show()
+        self.Refresh()
+        self.Update()
+
         index = self.scriptNotebook.GetSelection()
         self.ReloadModifiedScripts()
         self.scriptNotebook.SetSelection(index)
@@ -9146,7 +9152,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             }
         scriptWindow.resizeFilter = (False, self.options['resizefilter'], 1, True)
         scriptWindow.lastZoom = None # GPo, 2021 script last zoom settings
-        scriptWindow.refreshAVI = True  # GPo self.refreshAVI isn't optimal
+        scriptWindow.refreshAVI = True  # GPo self.refreshAVI isn't optimal, it is Global!
         try:
             scriptWindow.contextMenu = self.menuBackups[0] if self.menuBackups else self.GetMenuBar().GetMenu(1)
         except AttributeError:
@@ -9823,6 +9829,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     menu = x_menu.FindItemById(menu_id)
                     menu.Check(self.saveViewPos==2)
                 self.UpdatePreviewFilterMenu(self.ParseScriptPreviewFilters())
+            """
+            else:
+                if x_menu.FindItem(_('Paste')) != wx.NOT_FOUND:
+                    self.currentScript.refreshAVI = True
+            """
+            self.currentScript.refreshAVI = True
 
         event.Skip()
 
@@ -11406,6 +11418,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         self.refreshAVI = True #updateUserSliders
                     else:
                         script.display_clip_refresh_needed = False # GPo new resizeFilter
+                        #script.refreshAVI = False
                     self.ShowVideoFrame(userScrolling=not updateUserSliders)
                 else:
                     updateState(0)
@@ -14500,7 +14513,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.oldTabIndex = event.GetOldSelection()
         script = self.scriptNotebook.GetPage(currIndex)
         self.currentScript = script
-        self.refreshAVI = True
+        #self.refreshAVI = True
+        self.currentScript.refreshAVI = True
         self.snapShotIdx = 0
 
         # Check split View
@@ -16046,6 +16060,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         scriptContextMenu = isinstance(win, AvsStyledTextCtrl)
         if scriptContextMenu:
+            self.currentScript.refreshAVI = True
             if wx.GetMouseState().LeftIsDown():
                 script = self.currentScript
                 sel = script.GetSelectedText()
@@ -17087,7 +17102,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             scriptText = script.GetText()
             txt = self.getCleanText(scriptText, not self.options['savetoggletags'])
             if txt != scriptText:
-                self.refreshAVI = True
+                script.refreshAVI = True
                 if self.previewWindowVisible:
                     self.HidePreviewWindow()
                 if self.options['savemarkedavs']:
@@ -18057,7 +18072,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 pass
             elif newlinenum != self.oldlinenum or force:
                 script.OnUpdateUI(None)
-                self.refreshAVI = True
+                script.refreshAVI = True
                 self.IdleCall.append((self.ShowVideoFrame, tuple(), {'focus': False, 'forceCursor': True}))
 
         self.oldlinenum = newlinenum
@@ -18261,7 +18276,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 wx.TheClipboard.SetData(text_data)
                 wx.TheClipboard.Close()
         if insertMode in (0,1):
-            self.refreshAVI = True
+            script.refreshAVI = True
             # Kill all bookmarks (rebuild non-selection bookmarks...)
             bookmarks = [value for value, title in self.GetBookmarkFrameList().items()]
             newbookmarks = bookmarks[:]
@@ -19057,60 +19072,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         else:
             self.SetScriptStatusText()
 
-    def GetVideoFrameInfoDict(self, script=None, frame=None, addon=''):
-        if script is None:
-            script = self.currentScript
-        if script.AVI is None:
-            self.UpdateScriptAVI(script)
-        if not frame:
-            frame = self.videoSlider.GetValue()
-        v = script.AVI
-        timelinerange = '' if self.timelineRange == 0 else '[%i]' % self.timelineRange
-        time = self.FormatTime(frame/v.Framerate)
-        bookmarktitle = self.titleDict.get(frame, '')
-        zoom = ''
-        if self.zoomfactor != 1:
-            """
-            if self.zoomfactor < 1 or self.zoomwindow:
-                zoom = '(%.2fx) ' % self.zoomfactor
-            else:
-                zoom = '(%ix) ' % self.zoomfactor
-            """
-            zoom = '(%.2fx) ' % self.zoomfactor
-        if addon:
-            pixelpos, pixelhex, pixelrgb, pixelrgba, pixelyuv = addon
-            if v.IsYUV:
-                pixelclr = pixelyuv
-            elif v.IsRGB32:
-                pixelclr = pixelrgba
-            else:
-                pixelclr = pixelrgb
-        else:
-            pixelpos, pixelhex, pixelrgb, pixelrgba, pixelyuv, pixelclr = '', '', '', '', '', ''
-        return locals()
-
-    def ParseVideoStatusBarFrameInfo(self, info):
-        showVideoPixelInfo = False
-        for item in ('%POS', '%HEX', '%RGB', '%YUV', '%CLR'):
-            if info.count(item) > 0:
-                showVideoPixelInfo = True
-                break
-        keyList = [
-            ('%POS', '{pixelpos}'),
-            ('%HEX', '{pixelhex}'),
-            ('%RGB', '{pixelrgb}'),
-            ('%YUV', '{pixelyuv}'),
-            ('%CLR', '{pixelclr}'),
-            ('%TR', '{timelinerange}'),
-            ('%BM', '{bookmarktitle}'),
-            ('%F', '{frame}'),
-            ('%T', '{time}'),
-            ('%Z', '{zoom}'),
-        ]
-        for key, item in keyList:
-            info = info.replace(key, item)
-        return info, showVideoPixelInfo
-
     def GetVideoInfoDict(self, script=None, frame=None, addon='', clean=False):
         if script is None:
             script = self.currentScript
@@ -19137,15 +19098,17 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             else:
                 zoom = '(r%.2fx) ' % (float(width) / v.Width)
         if addon:
-            pixelpos, pixelhex, pixelrgb, pixelrgba, pixelyuv = addon
+            pixelpos, pixelhex, pixelrgb, pixelrgba, pixelyuv, pixelyuva = addon
             if v.IsYUV:
                 pixelclr = pixelyuv
-            elif v.IsRGB32:
+            elif v.IsYUVA:
+                pixelclr = pixelyuva
+            elif v.IsRGBA:
                 pixelclr = pixelrgba
             else:
                 pixelclr = pixelrgb
         else:
-            pixelpos, pixelhex, pixelrgb, pixelrgba, pixelyuv, pixelclr = '', '', '', '', '', ''
+            pixelpos, pixelhex, pixelrgb, pixelrgba, pixelyuv, pixelyuva, pixelclr = '', '', '', '', '', '', ''
         frameratenum, framerateden, audiorate, audiolength, audiochannels, audiobits, colorspace, parity, bitdepth = v.FramerateNumerator, v.FramerateDenominator, v.Audiorate, v.Audiolength, v.Audiochannels, v.Audiobits, v.Colorspace, v.GetParity, v.bits_per_component
         if v.IsFrameBased:
             fieldframebased = _('Frame Based')
@@ -19224,6 +19187,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         return info, showVideoPixelInfo
 
     def GetPixelInfo(self, event, string_=False):
+        def calcYUV(R,G,B):
+            Y = int(0.257*R + 0.504*G + 0.098*B + 16)
+            U = int(-0.148*R - 0.291*G + 0.439*B + 128)
+            V = int(0.439*R - 0.368*G - 0.071*B + 128)
+            return (Y,U,V)
+
         if self.splitView:
             return '' if string_ else (0, 0), None, None, None, None
 
@@ -19235,7 +19204,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         else:
             xpos, ypos = videoWindow.ScreenToClient(wx.GetMousePosition())
             # if not in client then return, speed up
-            if not self.videoWindow.GetClientRect().Inside((xpos, ypos)):
+            if not videoWindow.GetClientRect().Inside((xpos, ypos)):
                 return '' if string_ else (0, 0), None, None, None, None
 
         script = self.currentScript
@@ -19255,79 +19224,104 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         x = dc.DeviceToLogicalX(xpos)
         y = dc.DeviceToLogicalY(ypos)
 
-        xposScrolled, yposScrolled = self.videoWindow.CalcUnscrolledPosition(xpos,ypos)
+        xposScrolled, yposScrolled = videoWindow.CalcUnscrolledPosition(xpos,ypos)
         if 0 <= x < w and 0 <= y < h and xposScrolled>=self.xo and yposScrolled>=self.yo:
             # Get color from display
             rgb = dc.GetPixel(x, y)
-            R,G,B = rgb.Get()
-            A = 0
-            cR = cY = cH = '*'
+            dR,dG,dB = rgb.Get()
+            A = yA = -1
 
-            depth = script.AVI.bits_per_component - 8
-            # 10 to 16 bits
-            if depth > 0 and depth <= 8:
-                R = int((257.0/256) * (R << depth))
-                G = int((257.0/256) * (G << depth))
-                B = int((257.0/256) * (B << depth))
-                hexcolor = '$%04x,%04x,%04x' % (R,G,B)
-                Y = int(0.257*R + 0.504*G + 0.098*B + ((257.0/256) * (16 << depth))) #(16 << depth))
-                U = int(-0.148*R - 0.291*G + 0.439*B + ((257.0/256) * (128 << depth))) #(128 << depth))
-                V = int(0.439*R - 0.368*G - 0.071*B + ((257.0/256) * (128 << depth))) #(128 << depth))
-            else: # 8bit, on 32bit is 8bit RGB from display used
-                hexcolor = '$%02x%02x%02x' % (R,G,B)
-                Y = int(0.257*R + 0.504*G + 0.098*B + 16)
-                U = int(-0.148*R - 0.291*G + 0.439*B + 128)
-                V = int(0.439*R - 0.368*G - 0.071*B + 128)
+            if script.AVI.bits_per_component == 8:
+                cR = cY = cH = '*'
+            else:
+                cR = cY = cH = '8bit_'
 
             if 'flipvertical' in self.flip:
                 y = script.AVI.DisplayHeight - 1 - y
             if 'fliphorizontal' in self.flip:
                 x = script.AVI.DisplayWidth - 1 - x
+
             # Get color from AviSynth
             if not self.bit_depth and (self.snapShotIdx < 1): # disable avisynth if snapshot visible
                 try:
-                    avsYUV = script.AVI.GetPixelYUV(x, y)
-                    if avsYUV != (-1,-1,-1):
-                        Y,U,V = avsYUV
-                        cY = cH = ''
-                        if script.AVI.bits_per_component == 8:
-                            hexcolor = '$%02x%02x%02x' % (Y,U,V)
-                        elif script.AVI.bits_per_component <= 16:
-                            hexcolor = '$%04x,%04x,%04x' % (Y,U,V) # comma separated is more visible
-                        else: # 32 bit
-                            hexcolor = '%.5f,%.5f,%.5f' % (Y,U,V) # no reason for 32 bit float in hex
+                    if script.AVI.IsYUV:
+                        avsYUV = script.AVI.GetPixelYUV(x, y)
+                        if avsYUV != (-1,-1,-1):
+                            Y,U,V = avsYUV
+                            cY = cH = ''
+                            if script.AVI.component_size == 1: # 8bit
+                                hexcolor = '$%02x%02x%02x' % (Y,U,V)
+                            elif script.AVI.component_size == 2: # 10 to 16bit
+                                hexcolor = '$%04x,%04x,%04x' % (Y,U,V) # comma separated is more visible
+                            else: # 32 bit
+                                hexcolor = '%.5f,%.5f,%.5f' % (Y,U,V) # no reason for 32 bit float in hex
 
-                    elif script.AVI.IsRGB32:
+                    elif script.AVI.IsYUVA:
+                        avsYUVA = script.AVI.GetPixelYUVA(x, y)
+                        if avsYUVA != (-1,-1,-1,-1):
+                            Y,U,V,yA = avsYUVA
+                            cY = cH = ''
+                            if script.AVI.component_size == 1:
+                                hexcolor = '$%02x%02x%02x%02x' % (Y,U,V,yA)
+                            elif script.AVI.component_size == 2:
+                                hexcolor = '$%04x,%04x,%04x,%04x' % (Y,U,V,yA) # comma separated is more visible
+                            else: # 32 bit
+                                hexcolor = '%.5f,%.5f,%.5f,%.5f' % (Y,U,V,yA) # no reason for 32 bit float in hex
+
+                    elif script.AVI.IsRGBA: # RGB32, RGB64, PlanarRGBA
                         avsRGBA = script.AVI.GetPixelRGBA(x, y)
                         if avsRGBA != (-1,-1,-1,-1):
                             R,G,B,A = avsRGBA
-                            hexcolor = '$%02x%02x%02x%02x' % (R,G,B,A)
                             cR = cH = ''
-                    else:
+                            if script.AVI.component_size == 1:
+                                hexcolor = '$%02x%02x%02x%02x' % (R,G,B,A)
+                            elif script.AVI.component_size == 2:
+                                hexcolor = '$%04x,%04x,%04x,%04x' % (R,G,B,A)
+                            else:
+                                hexcolor = '%.5f,%.5f,%.5f,%.5f' % (R,G,B,A)
+
+                    elif script.AVI.IsRGB:
                         avsRGB = script.AVI.GetPixelRGB(x, y)
                         if avsRGB != (-1,-1,-1):
                             R,G,B = avsRGB
-                            if script.AVI.bits_per_component == 8:
+                            cR = cH = ''
+                            if script.AVI.component_size == 1: # 8bit
                                 hexcolor = '$%02x%02x%02x' % (R,G,B)
-                                cH = ''
-                            elif script.AVI.bits_per_component <= 16:
+                            elif script.AVI.component_size == 2: # 10 to 16bit
                                 hexcolor = '$%04x,%04x,%04x' % (R,G,B)
-                                cH = ''
-                            cR = ''
+                            else: # 32bit
+                                hexcolor = '%.5f,%.5f,%.5f' % (R,G,B) # no reason for 32 bit float in hex
                 except:
                     pass
+
+            # return only 8bit calculated values
+            if cY:
+                Y,U,V = calcYUV(dR,dG,dB)
+            if cR:
+                R,G,B = (dR,dG,dB)
+            if cH:
+                hexcolor = '$%02x%02x%02x' % (dR,dG,dB)
 
             if not string_:
                 return (x, y), hexcolor.upper()[1:], (R, G, B), (R, G, B, A), (Y, U, V)
             xystring = '%s=(%i,%i)' % (_('pos'),x,y)
             hexstring = '%s=%s' % (_(cH+'hex'),hexcolor.upper())
-            rgbstring = '%s=(%i,%i,%i)' % (_(cR+'rgb'),R,G,B)
-            rgbastring = '%s=(%i,%i,%i,%i)' % (_(cR+'rgba'),R,G,B,A)
+
+            if isinstance(R, int):
+                rgbstring = '%s=(%i,%i,%i)' % (_(cR+'rgb'),R,G,B)
+                rgbastring = '%s=(%i,%i,%i,%i)' % (_(cR+'rgba'),R,G,B,A)
+            else:
+                rgbstring = '%s=(%.5f,%.5f,%.5f)' % (_(cR+'rgb'),R,G,B)
+                rgbastring = '%s=(%.5f,%.5f,%.5f,%.5f)' % (_(cR+'rgba'),R,G,B,A)
+
             if isinstance(Y, int):
                 yuvstring = '%s=(%i,%i,%i)' % (_(cY+'yuv'),Y,U,V)
+                yuvastring = '%s=(%i,%i,%i,%i)' % (_(cY+'yuva'),Y,U,V,yA)
             else:
                 yuvstring = '%s=(%.5f,%.5f,%.5f)' % (_(cY+'yuv'),Y,U,V)
-            return xystring, hexstring, rgbstring, rgbastring, yuvstring
+                yuvastring = '%s=(%.5f,%.5f,%.5f,%.5f)' % (_(cY+'yuva'),Y,U,V,yA)
+
+            return xystring, hexstring, rgbstring, rgbastring, yuvstring, yuvastring
         else:
             if not 0 <= x < w:
                 x = 0 if x < 0 else w - 1
@@ -19493,7 +19487,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         if not self.playing_video and not forceShow:
             if self.previewOK:
-                return self.ShowVideoFrame(forceLayout=True)
+                self.GetPixelInfo(None, string_=True)
+                return self.ShowVideoFrame(forceLayout=True, focus=True)
             return
 
         script = self.currentScript
@@ -19913,6 +19908,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     primary = self.FindFocus() == self.videoWindow
                 addon = None
                 if primary:
+                    if self.videoWindow.IsFrozen(): # cannot read rgb from display
+                        self.videoWindow.Thaw()
                     pixelInfo = self.GetPixelInfo(event=None, string_=True)
                     if pixelInfo[1] is not None:
                         addon = pixelInfo
@@ -20677,6 +20674,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             newRefreshed = False
             force_new_display_clip = False
             if forceRefresh or ((self.refreshAVI or script.refreshAVI) and self.options['refreshpreview']):
+                #print('refresh')
                 if not script.previewtxt:
                     script.Colourise(0, script.GetTextLength())
                 if forceRefresh or self.ScriptChanged(script):
@@ -20801,7 +20799,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 # end new AVi
                 if script == self.currentScript:
                     self.refreshAVI = False
-                script.refreshAVI = False # only set to True on script text change
+                script.refreshAVI = False
 
             # end refresh Avi
             if (script.display_clip_refresh_needed and not boolNewAVI) or force_new_display_clip:
@@ -20995,6 +20993,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.ShowVideoFrame(forceRefresh=True, userScrolling=userScrolling, keep_env=keep_env, forceCursor=True)
             else:
                 self.refreshAVI = True
+                script.refreshAVI = True
                 if script.previewFilterIdx > 0:
                     self.KillFilterClip()
         """
@@ -22224,14 +22223,17 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 if not script.chkDisableRefresh.IsChecked():
                     keep_env = script.previewFilterIdx == 0
                     self.refreshAVI = True
+                    script.refreshAVI = True
                     self.ShowVideoFrame(userScrolling=True, keep_env=keep_env, forceCursor=True)
                 else:
                     script.Colourise(posA, posA+len(newValue)) # needed for ScriptChanged
                     self.refreshAVI = True
+                    script.refreshAVI = True
                     if script.previewFilterIdx > 0:
                         self.KillFilterClip()
         else:
             self.refreshAVI = True
+            script.refreshAVI = True
 
             """
             if control.filterName.find(' - P') > 0: # faster on preview filter
@@ -23600,7 +23602,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 pass
 
             if refreshFrame:
-                self.ShowVideoFrameFast(self.currentframenum)  # GPo 2020, leave it call fast, fast checks errors
+                if self.previewOK():
+                    self.ShowVideoFrame(self.currentframenum, forceLayout=True)
+                #self.ShowVideoFrameFast(self.currentframenum)  # GPo 2020, leave it call fast, fast checks errors
             if self.readFrameProps:
                 script.AVI.SetReadFrameProps(True)
 
@@ -25683,6 +25687,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         '''
         if self.getPixelInfo:
             wx.MessageBox(_('A get pixel info operation has already started'),
+                             _('Error'), style=wx.OK|wx.ICON_ERROR)
+            return
+        script = self.currentScript
+        if not self.previewOK():
+            return
+        if script.AVI.DisplayWidth != script.AVI.Width or script.AVI.DisplayHeight != script.AVI.Height:
+            wx.MessageBox(_('Display clip and source clip dimensions different'),
                              _('Error'), style=wx.OK|wx.ICON_ERROR)
             return
         if not self.MacroShowVideoFrame():
