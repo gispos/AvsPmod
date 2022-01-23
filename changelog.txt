@@ -37,16 +37,16 @@ AvsPmod can only provide a user-friendly editor if he has no problems with the n
 If, for example, there is a '-' in the file name of the dll, AvsPmod will report it at startup, 
 please rename this dll and replace the '-' with a '_'
 
-
 --------------------------
-Version 2.7.0.5 [2022-01-23] GPo
+Version 2.7.0.6 [2022-01-23] GPo
 --------------------------
 * Pixel values of all color formats can now be displayed. (a big 'thank you' to StvG for the active help) 
 * Changed the display of the calculated pixel values in the status bar.
 - the not readable values now only calculated from 8bit. If the source is 8bit, 
 - an asterisk is displayed in front of the value as usual, otherwise 8bit_ is put in front. 
 - if you want to show the alpha channel you must set %CLR for the status bar value modifiers. 
-- 
+* fixed some errors on closing tabs
+-
 *** Avisynth 3.71 final version has problems with prefetch and frame properties. ***
 AvsPmod also reads the frame properties when creating a clip, so avisynth hangs. 
 There are two ways to avoid this:

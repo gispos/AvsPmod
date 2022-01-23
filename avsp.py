@@ -8022,12 +8022,14 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.mainSplitter.SplitHorizontally(self.scriptNotebook, self.videoPane)
             else:
                 self.mainSplitter.SplitVertically(self.scriptNotebook, self.videoPane)
-            self.mainSplitter.Thaw()
+            if self.mainSplitter.IsFrozen():
+                self.mainSplitter.Thaw()
         else:
             self.mainSplitter.Freeze()
             self.mainSplitter.SplitHorizontally(self.scriptNotebook, wx.Panel(self.mainSplitter, wx.ID_ANY))
             self.mainSplitter.Unsplit()
-            self.mainSplitter.Thaw()
+            if self.mainSplitter.IsFrozen():
+                self.mainSplitter.Thaw()
             # Layout the separate video window (create first the statusbar !)
             self.videoStatusBar = wx.StatusBar(self.videoDialog, wx.ID_ANY)#self.videoDialog.CreateStatusBar()
             self.videoStatusBar.SetFieldsCount(2)
@@ -12836,7 +12838,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.SetPreviewFilterMenus()
         if not self.AviFree(script, updateTabname=True):
             return
-        self.Freeze()
+        #self.Freeze()
         try:
             self.SetVideoStatusText()
             if shown:
@@ -12848,7 +12850,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         self.ShowVideoFrame(script=script)
                         break
         finally:
-           self.Thaw()
+            pass
+            #if self.IsFrozen():
+                #self.Thaw()
         if event is None:
             return True
 
@@ -14757,7 +14761,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.oldSliderWindowShown = oldScript.sliderWindowShown
                 self.oldBoolSliders = bool(oldScript.sliderTexts or oldScript.sliderProperties or oldScript.toggleTags or oldScript.autoSliderInfo)
                 #self.oldVideoSize = (oldScript.AVI.Width, oldScript.AVI.Height)
-                self.oldDisplayVideoSize = (oldScript.AVI.DisplayWidth, oldScript.AVI.DisplayHeight)
+                try:
+                    self.oldDisplayVideoSize = (oldScript.AVI.DisplayWidth, oldScript.AVI.DisplayHeight)
+                except:
+                    self.oldDisplayVideoSize = (None, None)
                 # save zoom
                 self.SaveZoom(oldScript)
             else:
@@ -14978,7 +14985,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     try:
                         self.LayoutVideoWindows(forcefit=True)
                     finally:
-                        self.Thaw()
+                        if self.IsFrozen():
+                            self.Thaw()
                         self.ResetZoomAntialias(True)
                 else:
                     self.LayoutVideoWindows(forcefit=True)
@@ -19428,7 +19436,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.SaveZoom()
             self.mainSplitter.Freeze()
             self.mainSplitter.Unsplit()
-            self.mainSplitter.Thaw()
+            if self.mainSplitter.IsFrozen():
+                self.mainSplitter.Thaw()
         else:
             if self.videoDialog.IsShown():
                 self.SaveZoom()
@@ -19830,7 +19839,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         self.toggleButton.SetBitmapLabel(self.bmpVidDown)
                         self.toggleButton.Refresh()
                     finally:
-                        self.mainSplitter.Thaw()
+                        if self.mainSplitter.IsFrozen():
+                            self.mainSplitter.Thaw()
 
             newSize = self.videoWindow.GetVirtualSize()
             # Force a refresh when resizing the preview window
@@ -20033,7 +20043,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.mainSplitter.SplitHorizontally(self.scriptNotebook, self.videoPane, sash_pos)
             else:
                 self.mainSplitter.SplitVertically(self.scriptNotebook, self.videoPane, sash_pos)
-            self.mainSplitter.Thaw()
+            if self.mainSplitter.IsFrozen():
+                self.mainSplitter.Thaw()
         if self.previewOK():
             self.currentScript.lastSplitVideoPos = sash_pos # GPo new
 
@@ -20091,7 +20102,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.videoSplitter.SetSashPosition(self.currentScript.lastSplitSliderPos)
         else:
             self.videoSplitter.SplitVertically(self.videoWindow, script.sliderWindow, self.currentScript.lastSplitSliderPos)
-        self.videoSplitter.Thaw()
+        if self.videoSplitter.IsFrozen():
+            self.videoSplitter.Thaw()
         script.sliderWindow.Show()
         script.sliderWindowShown = True
         button.SetBitmapLabel(button.bmpHide)
