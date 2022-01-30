@@ -774,7 +774,7 @@ class AvsClipBase:
             if not self.IsY:
                 self.ptrU = self.src_frame.get_read_ptr(avisynth.avs.AVS_PLANAR_U)
                 self.ptrV = self.src_frame.get_read_ptr(avisynth.avs.AVS_PLANAR_V)
-                if self.IsPlanar and self.num_components == 4:
+                if self.num_components == 4 and self.IsPlanar:
                     self.ptrA = self.src_frame.get_read_ptr(avisynth.avs.AVS_PLANAR_A)
 
             # Display clip
@@ -848,10 +848,10 @@ class AvsClipBase:
         # if a resize filter used in the preview filter. CRASH if not check here
         if self.DisplayWidth != self.Width or self.DisplayHeight != self.Height:
             return (-1,-1,-1,-1)
-        indexY = x * self.component_size + y * self.pitch
+        indexY = indexA = x * self.component_size + y * self.pitch
         x = x >> self.WidthSubsampling
         y = y >> self.HeightSubsampling
-        indexU = indexV = indexA = x * self.component_size + y * self.pitchUV
+        indexU = indexV = x * self.component_size + y * self.pitchUV
         if self.bits_per_component == 8:
             return (self.ptrY[indexY], self.ptrU[indexU], self.ptrV[indexV], self.ptrA[indexA])
         if self.bits_per_component <= 16:

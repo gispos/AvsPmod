@@ -37,6 +37,21 @@ AvsPmod can only provide a user-friendly editor if he has no problems with the n
 If, for example, there is a '-' in the file name of the dll, AvsPmod will report it at startup, 
 please rename this dll and replace the '-' with a '_'
 
+
+--------------------------
+Version 2.7.0.7 [2022-01-29] GPo
+--------------------------
+* Keyboard zoom +- synchronized with mouse zoom (no more big jumps)
+* Fixed YUVA, displayed alpha pixel values where not correct (again thanks to StvG)  
+-
+*** Avisynth 3.71 final version has problems with prefetch and frame properties. ***
+AvsPmod also reads the frame properties when creating a clip, so avisynth hangs. 
+There are two ways to avoid this:
+Video > Display > YUV -> RGB > 'Read from source or script' must be disabled.
+or
+Use Avisynth version 3.72 test 1, the problem was fixed here.
+This version is available on Doom9: https://forum.doom9.org/showthread.php?t=181351
+
 --------------------------
 Version 2.7.0.6 [2022-01-23] GPo
 --------------------------

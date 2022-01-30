@@ -12851,7 +12851,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         break
         finally:
             pass
-            #if self.IsFrozen():
+            #if self.IsFrozen(): # shit python, error nonetheless
                 #self.Thaw()
         if event is None:
             return True
@@ -15187,10 +15187,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 rf = script.resizeFilter
                 rotation = event.GetWheelRotation()
                 if self.options['invertscrolling']: rotation = -rotation
-                if rotation > 0:
-                    zoom = czoom + 0.1
-                else:
-                    zoom = czoom - 0.1
+                zoom = czoom + 0.1 if rotation > 0 else czoom - 0.1
                 if zoom > 2.0 or zoom < 0.1:
                     return
                 if zoom == 1:
@@ -15212,15 +15209,16 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             else:
                 self.zoomfactor = self.fix_zoom(self.zoomfactor / factor)
 
-            self.videoWindow.Freeze()
+            #self.videoWindow.Freeze()
             try:
                 self.ZoomAndScroll(old_zoomfactor, self.zoomfactor)
                 if leftdown:
                     self.videoWindow.oldPoint = event.GetPosition()
                     self.videoWindow.oldOrigin = self.videoWindow.GetViewStart()
             finally:
-                if self.videoWindow.IsFrozen():
-                    self.videoWindow.Thaw()
+                pass
+                #if self.videoWindow.IsFrozen():
+                    #self.videoWindow.Thaw()
             return
         elif self.options['mousewheelfunc'] == 'frame_step':
             # GPo 2018  frame skip with mouse wheel
@@ -16224,6 +16222,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if event is not None:
             event.Skip()
 
+    # GPo, changed (sync with zoomfactor)
     def OnZoomInOut(self, event):
         id = event.GetId()
         vidmenus = [self.videoWindow.contextMenu, self.GetMenuBar().GetMenu(2)]
@@ -16233,14 +16232,26 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if menuItem:
                 label = menuItem.GetLabel()
                 break
-        for i in range(6):
-            menuItem = menu.FindItemByPosition(i)
-            if menuItem.IsChecked():
-                if label == _('Zoom in') and i < 5:
-                    self.OnMenuVideoZoom(None, menu.FindItemByPosition(i+1))
-                elif label == _('Zoom out') and i > 0:
-                    self.OnMenuVideoZoom(None, menu.FindItemByPosition(i-1))
-                    break
+
+        zoom = int(round(self.zoomfactor*100))
+        if label == _('Zoom in'):
+            for i in range(6):
+                menuItem = menu.FindItemByPosition(i)
+                if menuItem:
+                    label = menuItem.GetLabel()
+                    z = label[:label.find('%')]
+                    if int(z) > zoom or i == 5:
+                        self.OnMenuVideoZoom(None, menu.FindItemByPosition(i))
+                        break
+        else:
+            for i in reversed(range(5)):
+                menuItem = menu.FindItemByPosition(i)
+                if menuItem:
+                    label = menuItem.GetLabel()
+                    z = label[:label.find('%')]
+                    if int(z) < zoom or i == 0:
+                        self.OnMenuVideoZoom(None, menu.FindItemByPosition(i))
+                        break
 
     def OnCharHook(self, event):
         if event.GetKeyCode() != wx.WXK_ESCAPE or not self.useEscape:
