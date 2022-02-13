@@ -1,6 +1,6 @@
-# Version 2.7.0.7 GPo   
+# Version 2.7.0.8 GPo   
 - With pinterf (pfmod) modifications   
-- Avisynth header version 6 + needed part's from H8   
+- Avisynth header version 6 + needed part's from H8,H9   
 - For more see changelog   
 ##### AvsPmod needs write permissions in its own directory. So please do not unzip into a system program directory!   
 -----   
@@ -19,10 +19,20 @@
 
 ##### On slider window:
 - If direct slider update enabled (only with preview filters), can then be deactivated by pressing Ctrl on slider move
+
+##### On the status bar:
+- A right click open a context menu for the video slider range
    
 ##### Furthermore   
-- On the video slider right click to add or remove a bookmark   
-- Standard functions for mouse middle button, browse buttons and the wheel can be set under Options.   
+- On the video slider right click to add or remove a bookmark
+- Right click on a marked area in the video slider opens an area menu
+- Right click on the play or frame step button opens a selection menu   
+- Standard functions for mouse middle button, browse buttons and the wheel can be set under Options.
+
+##### Preview Filter:
+- Are an essential part of AvsPmod. They allow near real-time display of filter parameter changes.
+- Help > Preview filter example (readme)
+   
    
 ##### Releases GPo:      
 <https://github.com/gispos/AvsPmod/releases>
@@ -135,8 +145,18 @@ used, these are the relevant files:
 - macros/macros.dat: macro preferences
 - _last_session_.ses: auto-saved session info
 
+Links GPo forked version
+-----
+Discussion:
+<https://forum.doom9.org/showthread.php?t=175823>
 
-Links
+Development:
+https://github.com/gispos/AvsPmod
+
+Releases:
+https://github.com/gispos/AvsPmod/releases
+
+Links original version
 -----
 
 Development:

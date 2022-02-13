@@ -436,6 +436,7 @@ class AvsClipBase:
                     err += '\n' + _('Is display filter set correctly?')
             else:
                 err = str(err)
+                #self.error_message = err
         else:
             err = str(err)
             self.error_message = err
@@ -543,8 +544,8 @@ class AvsClipBase:
 
         # display and resize filter
         args = ''
-        if self.preview_filter and not killFilterClip: # GPo new
-            args = self.preview_filter + '\n'
+        #if self.preview_filter and not killFilterClip: # GPo new test
+            #args = self.preview_filter + '\n'
 
         if self.displayFilter:
             args += self.displayFilter + '\n'
@@ -556,11 +557,20 @@ class AvsClipBase:
         if args:
             try:
                 self.display_clip = self.env.invoke('Eval', [self.display_clip, args])
-            except avisynth.AvisynthError as err:
-                err = "Display filter error: Cannot create display clip"
+            except:
+                try:
+                    err = self.error_message or self.display_clip.get_error()
+                except:
+                    err = None
+                if not err:
+                    err = self.env.get_error()
+                if not err:
+                    err = "Unknown Display or Resize filter error: Cannot create display clip"
+                else:
+                    err = 'Display or Resize filter error:\n' + str(err)
                 return self.CreateErrorClip(err=err, display_clip_error=True)
             if not isinstance(self.display_clip, avisynth.AVS_Clip):
-                err = "Display filter error: Cannot create display clip"
+                err = "Unknown Display or Resize filter error: Cannot create display clip"
                 return self.CreateErrorClip(err=err, display_clip_error=True)
 
         vi = self.display_clip.get_video_info()
@@ -610,7 +620,7 @@ class AvsClipBase:
 
         if not isinstance(clip, avisynth.AVS_Clip):
             if self.error_message is None:
-                err = "Preview filter error: Not a clip"
+                err = "Unknown Preview filter error: Not a clip"
             self.env.set_var("avsp_filter_clip", None)
             return None, err
 

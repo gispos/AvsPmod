@@ -37,6 +37,27 @@ AvsPmod can only provide a user-friendly editor if he has no problems with the n
 If, for example, there is a '-' in the file name of the dll, AvsPmod will report it at startup, 
 please rename this dll and replace the '-' with a '_'
 
+--------------------------
+Version 2.7.0.8 [2022-01-29] GPo
+--------------------------
+* Frame properties can now be displayed in the slider window. Program options > Misc 2 > 'Show frame properties*'
+- the height can be changed in the context menu of the property text field.
+- double click in the property text field to increase the height by 50%
+- Note: If the property window is visible, the properties are read for each frame (Even with closed slider window). 
+- If you want to save some CPU time you should close the property window when the properties are not needed.
+- During playback no properties are read. 
+* On Display or Resize filter error, avisynths error message is now shown is it available.
+* Some minor fixes
+* I mention the "preview filters" that have become an essential part of AvsPmod. 
+- (Near real time display of filter changes). Help > 'Preview Filter readme'
+-  
+** Avisynth 3.71 final version has problems with prefetch and frame properties. **
+AvsPmod also reads the frame properties when creating a clip, so avisynth hangs. 
+There are two ways to avoid this:
+Video > Display > YUV -> RGB > 'Read from source or script' must be disabled.
+or
+Use Avisynth version 3.72 test 3, the problem was fixed here.
+This version is available on Doom9: https://forum.doom9.org/showthread.php?t=181351
 
 --------------------------
 Version 2.7.0.7 [2022-01-29] GPo
