@@ -130,6 +130,80 @@ def avs_plus_get_colorspace_name(pixel_type):
     return ''
 """
 
+# for e.g. analysis pass
+class AvsSimpleClipBase:
+    def __init__(self,  script, filename='', workdir=''):
+        self.initialized = False
+        self.env = None
+        self.clip = None
+        self.error_message = None
+        try:
+            env = avisynth.AVS_ScriptEnvironment(6)
+        except OSError: # only on OSError
+            return
+        except:
+            self.error_message = 'At least Avisynth version 6 is required'
+            return
+        self.env = env
+
+        scriptdirname, scriptbasename = os.path.split(filename)
+        curdir = os.getcwdu()
+        workdir = os.path.isdir(workdir) and workdir or scriptdirname
+        if os.path.isdir(workdir):
+            self.env.set_working_dir(workdir)
+        self.env.set_global_var("$ScriptFile$", scriptbasename)
+        self.env.set_global_var("$ScriptName$", filename)
+        self.env.set_global_var("$ScriptDir$", scriptdirname + os.path.sep)
+
+        try:
+            self.clip = self.env.invoke('Eval', [script, filename])
+            if not isinstance(self.clip, avisynth.AVS_Clip):
+                err = self.env.get_error()
+                self.error_message = err or 'Not a clip'
+                self.env = None
+                return
+        except:
+            err = self.env.get_error()
+            self.error_message = err or 'Unknown error'
+            self.clip = None
+            self.env = None
+            return
+        finally:
+            os.chdir(curdir)
+
+        self.vi = self.clip.get_video_info()
+        if not self.vi.has_video():
+            self.error_message = 'Clip has no video'
+            self.clip = None
+            self.env = None
+            return
+
+        self.Framecount = self.vi.num_frames
+        #self.current_frame = -1
+        #self.scr_frame = None
+        self.initialized = True
+    """ not needed
+    def _GetFrame(self, frame):
+        if self.initialized:
+            if self.current_frame == frame:
+                return True
+            if frame < 0:
+                frame = 0
+            if frame >= self.Framecount:
+                frame = self.Framecount - 1
+                if self.current_frame == frame:
+                    return True
+            self.src_frame = self.clip.get_frame(frame)
+            self.current_frame = frame
+            return True
+        return False
+    """
+    def __del__(self):
+        #self.src_frame = None
+        self.clip = None
+        self.env = None
+        self.initialized = False
+
 class AvsClipBase:
 
     def __init__(self,  script, filename='', workdir='', env=None, fitHeight=None,

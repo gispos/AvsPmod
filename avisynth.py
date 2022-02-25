@@ -506,6 +506,12 @@ class AVS_ScriptEnvironment(object):
                             s += '?, '
                     s = s[:-2] + ')\n'
         return s #.rstrip() # bug in styledTextctrl
+    """
+    def props_clear_all(self, frame):
+        avsmap = avs_get_frame_props_ro(self, frame.cdata)
+        if avsmap:
+            avs_clear_map(avsmap)
+    """
 
 class AVS_VideoInfo_C(ctypes.Structure):
     _fields_ = [("width",ctypes.c_int), # 0 means no video
@@ -791,9 +797,6 @@ class AVS_Clip:
 
     def get_version(self):
         return avs_get_version(self)
-
-    def prop_get_num_keys(self):
-        return avs_prop_num_keys(self)
 
 
 GETFRAMEPROPS = FUNCTYPE(ctypes.c_void_p)

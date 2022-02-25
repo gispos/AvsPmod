@@ -7061,7 +7061,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.plugin_shortnames = collections.defaultdict(list)
         self.optionsFilters = self.getFilterInfoFromAvisynth()
 
-        if not self.avisynth_p: # parse avsi files for user script functions
+        #~if not self.avisynth_p: # parse avsi files for user script functions
+        # vdcrim 2019 update
+        # Parse avsi files for user script functions
+        # This info is already provided by AviSynth+
+        if not self.avisynth_p and self.options['pluginsdir']:
 
             parse_avsi = self.options['autoloadedavsi']
             pluginsdir = self.ExpandVars(self.options['pluginsdir'])
@@ -7977,7 +7981,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     self.ResizeFilterUpdateSplitView()
                 else:
                     script.display_clip_refresh_needed = True
-                    script.AVI.SetResizeFilter(self.GetResizeFilterInfo(script))
+                    if script.AVI is not None:
+                        script.AVI.SetResizeFilter(self.GetResizeFilterInfo(script))
             if resize or self.zoomwindow or (self.zoomfactor != 1 and self.zoom_antialias):
                 if resize and script.previewFilterIdx > 0:
                     self.OnMenuPreviewFilter(index=script.previewFilterIdx, updateUserSliders=False)
@@ -8008,7 +8013,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     self.ResizeFilterUpdateSplitView()
                 else:
                     script.display_clip_refresh_needed = True
-                    script.AVI.SetResizeFilter(self.GetResizeFilterInfo(script))
+                    if script.AVI is not None:
+                        script.AVI.SetResizeFilter(self.GetResizeFilterInfo(script))
             if resize or self.zoomwindowfit or (self.zoomfactor != 1 and self.zoom_antialias) or self.splitView:
                 if resize and script.previewFilterIdx > 0:
                     self.OnMenuPreviewFilter(index=script.previewFilterIdx, updateUserSliders=False)
@@ -8705,6 +8711,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 (_('Tools'),
                     (
                     (_('Run analysis pass'), '', self.OnMenuVideoRunAnalysisPass, _('Request every video frame once (analysis pass for two-pass filters)')),
+                    (_('Run FPS analysis'), '', self.OnMenuVideoRunFPSAnalysis, _('Analysis pass for frame per second (Average)')),
                     (_('External player'), 'F6', self.OnMenuVideoExternalPlayer, _('Play the current script in an external program')),
                     (_('External tool arg1'), '', self.OnMenuExternalToolArg1, _('Run the current script with an external program and arg1')),
                     (_('External tool arg2'), '', self.OnMenuExternalToolArg2, _('Run the current script with an external program and arg2')),
@@ -12936,13 +12943,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if self.readFrameProps:
             self.AVICallBack('property','')
 
-    def OnMenuScriptReleaseMemory(self, event=None): # GPo
+    def OnMenuScriptReleaseMemory(self, event=None, show=True): # GPo
         self.splitView = False
         self.snapShotIdx = 0
         script = self.currentScript
         if self.AviThread_Running(script):
             return
-        shown = self.previewWindowVisible
+        shown = self.previewWindowVisible and show
         self.HidePreviewWindow()
         if self.readFrameProps:
             self.AVICallBack('property','')
@@ -13015,24 +13022,86 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     def OnMenuVideoRunAnalysisPass(self, event):
         self.StopPlayback()
+        if self.readFrameProps:
+            self.propWindow.Close()
+        script = self.currentScript
+        if script.AVI:
+            if not self.OnMenuScriptReleaseMemory(event=None, show=False):
+                wx.MessageBox('Cannot close the current script', 'Analysis pass error')
+                return
+            self.SaveCallYield()
+        filename = workdir = script.filename
+        if not filename:
+            workdir = tempfile.gettempdir()
+
+        progress = wx.ProgressDialog(message=_('Starting analysis pass...'), title=_('Run analysis pass'),
+                                     style=wx.PD_CAN_ABORT|wx.PD_ELAPSED_TIME|wx.PD_REMAINING_TIME|wx.PD_APP_MODAL)
+        AVI = pyavs.AvsSimpleClipBase(script.GetText(), filename=filename, workdir=workdir)
+        if AVI is None:
+            progress.Destroy()
+            wx.MessageBox('Cannot create AvsSimpleClipBase', 'Analysis pass error')
+            return
+        if AVI.error_message is not None:
+            progress.Destroy()
+            AVI = None
+            wx.MessageBox(AVI.error_message, 'Analysis pass error')
+            return
+
+        frame_count = AVI.Framecount
+        previous_frame = -1
+        #progress = wx.ProgressDialog(message=_('Starting analysis pass...'), title=_('Run analysis pass'),
+                                     #style=wx.PD_CAN_ABORT|wx.PD_ELAPSED_TIME|wx.PD_REMAINING_TIME|wx.PD_APP_MODAL)
+        initial_time = previous_time = time.time()
+        for frame in range(frame_count):
+            AVI.clip.get_frame(frame)
+            error = AVI.clip.get_error()
+            if error:
+                progress.Destroy()
+                AVI = None
+                wx.MessageBox(u'\n\n'.join((_('Error requesting frame {number}').format(number=frame),
+                              error)), _('Error'), style=wx.OK|wx.ICON_ERROR)
+                return
+            now = time.time()
+            delta = now - previous_time
+            elapsed_time = now - initial_time
+            if delta >= 0.1: # then elapsed_time > 0, so no check is needed (if elapsed_time else 'INF')
+                fps = (frame - previous_frame) / delta
+                previous_time = now
+                previous_frame = frame
+                if not progress.Update(frame * 100/ frame_count, _('Average %#.4g fps\nFrame %s/%s (%#.4g fps)') %   # GPo 2020
+                                      ((frame+1)/ elapsed_time, frame, frame_count, fps))[0]:
+                    progress.Destroy()
+                    AVI = None
+                    return
+        elapsed_time = time.time() - initial_time
+        AVI = None
+        progress.Update(100, _('Finished (%s fps average)\n*** live and let live ***') % (
+                        '%#.4g' % (frame_count / elapsed_time) if elapsed_time else 'INF'))
+        progress.Destroy()
+        return True
+
+    def OnMenuVideoRunFPSAnalysis(self, event):
+        self.StopPlayback()
         script = self.currentScript
         if self.AviThread_Running(script):
             return
         if self.readFrameProps:
             self.propWindow.Close()
+
         self.refreshAVI = True
-        if self.UpdateScriptAVI(forceRefresh=True) is None:
+        #if self.UpdateScriptAVI(forceRefresh=True) is None:
+        if self.UpdateScriptAVI() is None:
             wx.MessageBox(_('Error loading the script'), _('Error'), style=wx.OK|wx.ICON_ERROR)
             return False
         if script.AVI.IsErrorClip():
             wx.MessageBox(script.AVI.error_message, _('Error'), style=wx.OK|wx.ICON_ERROR)
             return False
-        progress = wx.ProgressDialog(message=_('Starting analysis pass...'), title=_('Run analysis pass'),
+        progress = wx.ProgressDialog(message=_('Starting FPS analysis...'), title=_('Run FPS analysis'),
                                      style=wx.PD_CAN_ABORT|wx.PD_ELAPSED_TIME|wx.PD_REMAINING_TIME|wx.PD_APP_MODAL)
         frame_count = script.AVI.Framecount
-        initial_time = previous_time = time.time()
         previous_frame = -1
         frame_read = 0  # GPo 2020
+        initial_time = previous_time = time.time()
         for frame in range(frame_count):
             script.AVI.clip.get_frame(frame)
             error = script.AVI.clip.get_error()
@@ -13057,7 +13126,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         progress.Update(100, _('Finished (%s fps average)\n*** live and let live ***') % (
                         '%#.4g' % (frame_count / elapsed_time) if elapsed_time else 'INF'))
         progress.Destroy()
-        self.OnMenuScriptReleaseMemory(None) # real.finder, close env https://forum.doom9.org/showthread.php?p=1939250#post1939250
         return True
 
     def OnMenuVideoPlay(self, event):
@@ -15397,7 +15465,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.ResizeFilterUpdateSplitView()
             else:
                 script.display_clip_refresh_needed = True
-        if resize and script.previewFilterIdx > 0:
+        if resize and script.previewFilterIdx > 0 and script.AVI:
             script.AVI.SetResizeFilter(self.GetResizeFilterInfo(script))
             self.OnMenuPreviewFilter(index=script.previewFilterIdx, updateUserSliders=False)
         else:
@@ -16493,6 +16561,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.options['maximized'] = True
             self.Maximize(False)
         else: self.options['maximized'] = False
+        self.Refresh()
+        self.Update()
 
         x, y, w, h = self.GetRect()
         self.options['dimensions'] = (max(x,20), max(y,20), w, h)
@@ -24455,8 +24525,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         pos = txt2.find('|')
         if pos > 1:
             name2 = txt2[:pos]
-
-        idx = 2  # start index for 1. External Tool menu
+        # start index for first External Tool menu, must change if tools submenu changed
+        # real python shit
+        idx = 3
         if name1 or name2:
             vidmenus = [self.videoWindow.contextMenu, self.GetMenuBar().GetMenu(2)]
             for vidmenu in vidmenus:

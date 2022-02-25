@@ -1306,9 +1306,10 @@ else:
     avs = ffi.verify(verify_str, libraries=[], library_dirs=[],
         modulename=os.path.splitext(__file__)[0] + '_ext', # comment out on debugging
         )
-    if avs.avs_load_library_w() == ffi.NULL:
-        raise OSError(*ffi.getwinerror())
+    # code update by vdcrim 2019 ( Yes, thats better;) )
     avs.library = avs.avs_load_library_w()
+    if avs.library == ffi.NULL:
+        raise OSError(*ffi.getwinerror())
 
 
 class AVS_VideoInfo(object):
@@ -2009,6 +2010,12 @@ class AVS_ScriptEnvironment(object):
                             s += '?, '
                     s = s[:-2] + ')\n'
         return s
+    """
+    def props_clear_all(self, frame):
+        avsmap = avs.avs_get_frame_props_ro(self.cdata, frame.cdata)
+        if avsmap:
+            avs.avs_clear_map(avsmap)
+    """
 
 class AvisynthError(Exception):
     pass

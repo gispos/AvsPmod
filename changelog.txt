@@ -38,7 +38,18 @@ If, for example, there is a '-' in the file name of the dll, AvsPmod will report
 please rename this dll and replace the '-' with a '_'
 
 --------------------------
-Version 2.7.0.8 [2022-01-29] GPo
+Version 2.7.0.9 [2022-02-25] GPo
+--------------------------
+* 'Run analysis pass' changed, no 'extra avisynth frames' are triggered.
+* Added 'Run FPS analysis', similar to 'Run analysis pass' but no extra clip is created and nothing is released. 
+* Fixed resize filter on copy tab
+* Fixed ? CLI Encoder, win OS cannot find encode.bat (x264 doesn't start)
+- if you only update the AvsPmod files you have to delete the file 'encoder_gui.pyo' under AvsPmod\tools 
+- and replace 'encoder_gui.py' with the new one.
+* New macro 'Run analysis pass', explanations are in the macro.
+
+--------------------------
+Version 2.7.0.8 [2022-??-??] GPo
 --------------------------
 * Frame properties can now be displayed in the slider window. Program options > Misc 2 > 'Show frame properties*'
 - the height can be changed in the context menu of the property text field.
