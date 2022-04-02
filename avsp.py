@@ -232,6 +232,7 @@ class AvsStyledTextCtrl(stc.StyledTextCtrl):
         }
 
         self.avsfilterdict = AvsFilterDict(self.app.avsfilterdict)
+        self.avsfilterdictEx = AvsFilterDict(self.app.avsfilterdictEx)
         self.avsazdict = collections.defaultdict(list)
         self.styling_refresh_needed = False
         self.SetUserOptions()
@@ -244,7 +245,8 @@ class AvsStyledTextCtrl(stc.StyledTextCtrl):
         self.showLinenumbers = 1
         #~ self.enableFolding = 1
         self.calltipFilter = None
-        self.calltiptext = None
+        #self.calltiptext = None
+        self.hintShown = 0
         self.calltipOpenpos = None
         self.flagTextChanged = self.flagCodeFolding = False
         self.flagModified = False
@@ -947,6 +949,160 @@ class AvsStyledTextCtrl(stc.StyledTextCtrl):
                 self.autocomplete_params = pos
                 self.UserListShow(1, '\n'.join(sorted(tag_list)))
 
+    # GPo 2022, changed to display comments (e.g. alternative args)
+    # filterdb.dat type #hint
+    def UpdateCalltip(self, force=False):
+        caretPos = self.GetCurrentPos()
+        # Cancel under certain conditions
+        boolHasFocus = (self.app.FindFocus() == self)
+        boolIsComment = (self.GetStyleAt(caretPos - 1) in self.commentStyle)
+        if (not self.app.options['calltips'] and not self.app.calltipstemporal) or not boolHasFocus or self.AutoCompActive() or boolIsComment: # GPo 2020, temporal
+            self.CallTipCancelCustom()
+            return
+        # Determine the positions of the filter within the script
+        openpos = self.GetOpenParenthesesPos(caretPos-1)
+        if openpos is None:
+            if force:
+                openpos = self.WordEndPosition(caretPos,1) #+ 1
+            else:
+                self.CallTipCancelCustom()
+                return
+        closepos = self.BraceMatch(openpos)
+        if closepos == -1:
+            closepos = self.GetLength()
+        # Set the force flag to true if there's an appropriate highlight
+        selA, selB = self.GetSelection()
+        if selA != selB:
+            if selA >= openpos and selB <= closepos+1:
+                force = True
+            else:
+                self.CallTipCancelCustom()
+                return
+        startwordpos = self.WordStartPosition(self.WordStartPosition(openpos, 0), 1)
+        endwordpos = self.WordEndPosition(startwordpos, 1)
+        # Show the calltip
+        self.calltipFilter = None
+        word = self.GetTextRange(startwordpos, endwordpos)
+        iArgPos = None
+        if self.GetStyleAt(startwordpos) in self.highlightwordStyleList:
+            # Show the calltip
+            wordWidth = self.TextWidth(stc.STC_STYLE_DEFAULT, '%s(' % word)
+            spaceWidth = self.TextWidth(stc.STC_STYLE_DEFAULT, ' ')
+            spaces = ' ' * int(round(wordWidth / float(spaceWidth)))
+            args = self.avsfilterdict[word.lower()][0]
+            if args  in ('', '()'):
+                self.CallTipCancelCustom()
+                self.calltipFilter = word
+                return
+            # Get the argument index based on the cursor position
+            self.cursorFilterScriptArgIndex = None
+            filterMatchedArgs = self.GetFilterMatchedArgs(startwordpos, args)
+            try:
+                iArgPos = filterMatchedArgs[self.cursorFilterScriptArgIndex][0]
+            except IndexError:
+                iArgPos = None
+            boolOutOfOrder = False
+            if iArgPos is not None:
+                currentArgName = filterMatchedArgs[self.cursorFilterScriptArgIndex][2]
+                if not currentArgName:
+                    for item in filterMatchedArgs[:self.cursorFilterScriptArgIndex]:
+                        if item[2]:
+                            boolOutOfOrder = True
+                            break
+            # TODO: fix iArgPos to not be None if unfinished arg...?
+            # Format the calltip
+            splitargs = args.split('\n\n', 1)
+            tempList = []
+            callTipInfo, hint = self.GetFilterCalltipArgInfo(word=word, calltip=splitargs[0], returnHint=True)
+            #~for iTemp, tempInfo in enumerate(self.GetFilterCalltipArgInfo(calltip=splitargs[0])):
+            for iTemp, tempInfo in enumerate(callTipInfo):
+                cArgTotal, cArgType, cArgName, boolMulti, boolOptional, cArgInfo = tempInfo
+                s = '%s %s' % (cArgType, cArgName)
+                if iTemp == iArgPos and cArgInfo and not boolOutOfOrder:
+                    s += '=%s' % cArgInfo
+                if boolMulti:
+                    s += ' [, ...]'
+                tempList.append(s)
+            args0 = '(%s)' % (','.join(tempList))
+            args0 = self.app.wrapFilterCalltip(args0)
+            args0 = args0.replace('\n', '\n'+spaces)
+            if len(splitargs) == 2:
+                args = '%s\n\n%s' % (args0, splitargs[1])
+            else:
+                args = args0
+            text = '%s%s' % (word, args)
+
+            # show two times default calltip note
+            if not hint and self.hintShown < 2:
+                self.hintShown += 1
+                hint = _('Note: When clicking on the calltip press Ctrl for file search '
+                         'or Shift for web search only.')
+
+            c_text = text + '\n\n' + hint if hint else text
+
+            if self.LineFromPosition(startwordpos) == self.GetCurrentLine():
+                showpos = startwordpos
+            else:
+                showpos = self.PositionFromLine(self.LineFromPosition(caretPos))
+            xpoint, ypoint = self.PointFromPosition(showpos)
+
+            if openpos == self.calltipOpenpos or self.flagTextChanged:
+                force = True
+            if self.app.options['frequentcalltips'] or force:# or (charBefore and unichr(charBefore) == '('):
+                if xpoint >= 0:
+                    self.CallTipShow(showpos, c_text)
+                else:
+                    xpoint = self.GetMarginWidth(0) + self.GetMarginWidth(1) + self.GetMarginWidth(2)
+                    newpos = self.PositionFromPoint(wx.Point(xpoint, ypoint))
+                    self.CallTipShow(newpos, c_text)
+            #self.calltiptext = text # never used
+            self.calltipFilter = word
+        if self.CallTipActive():
+            self.calltipOpenpos = openpos
+            # BOLD THE CURRENT ARGUMENT
+            a, b = 1,1
+            if iArgPos is not None and not boolOutOfOrder:
+                # Get the calltip arguments text positions
+                try:
+                    calltiptext = text
+                except UnboundLocalError:
+                    return
+                openpos = calltiptext.find('(')
+                if openpos == -1:
+                    return
+                argPosList = []
+                startpos = openpos+1
+                stoppos = startpos
+                nopenSquare = 0
+                argString = calltiptext[stoppos:]
+                imax = len(argString)-1
+                for i, c in enumerate(argString):
+                    if c == '[':
+                        nopenSquare += 1
+                    if c == ']':
+                        nopenSquare -= 1
+                    if nopenSquare > 0:
+                        c = 'x'
+                    if c == ',' or i == imax:
+                        argPosList.append((startpos, stoppos))
+                        startpos = stoppos + 1
+                    stoppos += 1
+                if len(argPosList) == 1 and iArgPos == 1:
+                    pass
+                else:
+                    try:
+                        a, b = argPosList[iArgPos]
+                    except IndexError:
+                        if __debug__:
+                            print>>sys.stderr, 'Error in UpdateCalltip: invalid iArgPos'
+            self.CallTipSetHighlight(a,b)
+        else:
+            self.calltipOpenpos = None
+
+    # GPo 2022, test to display comments and alternative parameters
+    # test with same funktion names and different args returned as list by self.GetFilterCalltipArgInfo
+    # but now filterdb.dat type #hint is used
+    """
     def UpdateCalltip(self, force=False):
         caretPos = self.GetCurrentPos()
         # Cancel under certain conditions
@@ -1009,23 +1165,44 @@ class AvsStyledTextCtrl(stc.StyledTextCtrl):
             # TODO: fix iArgPos to not be None if unfinished arg...?
             # Format the calltip
             splitargs = args.split('\n\n', 1)
-            tempList = []
-            for iTemp, tempInfo in enumerate(self.GetFilterCalltipArgInfo(calltip=splitargs[0])):
-                cArgTotal, cArgType, cArgName, boolMulti, boolOptional, cArgInfo = tempInfo
-                s = '%s %s' % (cArgType, cArgName)
-                if iTemp == iArgPos and cArgInfo and not boolOutOfOrder:
-                    s += '=%s' % cArgInfo
-                if boolMulti:
-                    s += ' [, ...]'
-                tempList.append(s)
-            args0 = '(%s)' % (','.join(tempList))
-            args0 = self.app.wrapFilterCalltip(args0)
-            args0 = args0.replace('\n', '\n'+spaces)
-            if len(splitargs) == 2:
-                args = '%s\n\n%s' % (args0, splitargs[1])
-            else:
-                args = args0
-            text = '%s%s' % (word, args)
+            text = ''
+            ex_text = ''
+            filterCallTipList, hint = self.GetFilterCalltipArgInfo(word=word, calltip=splitargs[0], returnList=True, returnHint=True)
+            for i, callTip in enumerate(filterCallTipList):
+                tempList = []
+                for iTemp, tempInfo in enumerate(callTip):
+                    cArgTotal, cArgType, cArgName, boolMulti, boolOptional, cArgInfo = tempInfo
+                    s = '%s %s' % (cArgType, cArgName)
+                    if iTemp == iArgPos and cArgInfo and not boolOutOfOrder:
+                        s += '=%s' % cArgInfo
+                    if boolMulti:
+                        s += ' [, ...]'
+                    tempList.append(s)
+                args0 = '(%s)' % (','.join(tempList))
+                args0 = self.app.wrapFilterCalltip(args0)
+                args0 = args0.replace('\n', '\n'+spaces)
+                if len(splitargs) == 2:
+                    args = '%s\n\n%s' % (args0, splitargs[1])
+                else:
+                    args = args0
+                # first filter is used and next filters are alternative parameters
+                # but not used, alternative args now from arg #hint
+                if i == 0:
+                    text += '%s%s' % (word, args)
+                else:
+                    ex_text += '\n%s%s' % (word, args)
+                ###
+
+            if not hint and self.hintShown < 2:
+                self.hintShown += 1
+                hint = 'Note: For an internet search press Ctrl when clicking on the calltip'
+
+            # join calltips for displaying
+            c_text = text + '\n' + ex_text if ex_text else text
+            if hint:
+                c_text += '\n\n' + hint
+            ###
+
             if self.LineFromPosition(startwordpos) == self.GetCurrentLine():
                 showpos = startwordpos
             else:
@@ -1036,12 +1213,12 @@ class AvsStyledTextCtrl(stc.StyledTextCtrl):
                 force = True
             if self.app.options['frequentcalltips'] or force:# or (charBefore and unichr(charBefore) == '('):
                 if xpoint >= 0:
-                    self.CallTipShow(showpos, text)
+                    self.CallTipShow(showpos, c_text)
                 else:
                     xpoint = self.GetMarginWidth(0) + self.GetMarginWidth(1) + self.GetMarginWidth(2)
                     newpos = self.PositionFromPoint(wx.Point(xpoint, ypoint))
-                    self.CallTipShow(newpos, text)
-            self.calltiptext = text
+                    self.CallTipShow(newpos, c_text)
+            #self.calltiptext = text # GPo ? not used
             self.calltipFilter = word
         if self.CallTipActive():
             self.calltipOpenpos = openpos
@@ -1050,7 +1227,7 @@ class AvsStyledTextCtrl(stc.StyledTextCtrl):
             if iArgPos is not None and not boolOutOfOrder:
                 # Get the calltip arguments text positions
                 try:
-                    calltiptext = text
+                    calltiptext = text #+ '\n' + ex_text if ex_text else text # use only the real calltip, speedup
                 except UnboundLocalError:
                     return
                 openpos = calltiptext.find('(')
@@ -1084,11 +1261,12 @@ class AvsStyledTextCtrl(stc.StyledTextCtrl):
             self.CallTipSetHighlight(a,b)
         else:
             self.calltipOpenpos = None
+    """
 
     def CallTipCancelCustom(self):
         self.CallTipCancel()
         self.calltipFilter = None
-        self.calltiptext = None
+        #self.calltiptext = None
         self.calltipOpenpos = None
         #self.app.calltiptemporal = False
 
@@ -1258,7 +1436,8 @@ class AvsStyledTextCtrl(stc.StyledTextCtrl):
         self.cursorFilterScriptArgIndex = currentIndex
         return argInfo
 
-    def GetFilterCalltipArgInfo(self, word=None, calltip=None, ignore_opt_args=False):
+     # GPo, added comments (hint)
+    def GetFilterCalltipArgInfo(self, word=None, calltip=None, ignore_opt_args=False, returnHint=False):
         if calltip is None:
             # Get the user slider info from the filter's calltip
             try:
@@ -1274,14 +1453,21 @@ class AvsStyledTextCtrl(stc.StyledTextCtrl):
             calltip = calltip[:-1]
 
         # Delete/mark optional arguments
+        hint = ''
         new_calltip = []
         for arg in calltip.split(','):
             arg = arg.strip()
+            # GPo, looking for hint or comment line
+            if arg.startswith('#'):
+                if returnHint and arg.startswith('#hint'):
+                    hint += arg[6:].replace(';',',') + '\n' # TODO cannot find the split for ','
+                continue
             if arg.startswith('[') and arg.endswith(']'):
                 if not ignore_opt_args:
                     new_calltip.append(arg[1:-1] + 'OPT')
             else:
                 new_calltip.append(arg)
+
         calltip = ', '.join(new_calltip)
 
         # Get rid of any commas in square brackets
@@ -1303,6 +1489,18 @@ class AvsStyledTextCtrl(stc.StyledTextCtrl):
                 item = item[:-3]
             else:
                 boolOptional = False
+
+            # GPo, replace short colorspace to calltip colorspace or replace to full
+            # and change c_string to argtype string
+            if item.startswith('c_string'):
+                if returnHint: # then calltip
+                    item = item[2:].replace('"avsRGBP"', utils.avsRGBP_s, 1).\
+                            replace('"avsY"', utils.avsY_s, 1).\
+                                replace('"avsYUV"', utils.avsYUV_s, 1)
+                else: # then sliders etc.
+                    item = item[2:].replace('"avsRGBP"', utils.avsRGBP, 1).\
+                            replace('"avsY"', utils.avsY, 1).\
+                                replace('"avsYUV"', utils.avsYUV, 1)
             try:
                 argtype, nameAndInfo = [s.strip() for s in item.split(' ', 1)]
                 try:
@@ -1312,12 +1510,126 @@ class AvsStyledTextCtrl(stc.StyledTextCtrl):
                     info = u''
                 argInfo.append((item, argtype.lower(), name, boolMulti, boolOptional, info))
             except ValueError:
-                if item.lower() in ('clip', 'int', 'float', 'bool', 'string', 'func', 'array'):          # GPo 'func', 'array' Neo or >= v3.52
+                if item.lower() in ('clip', 'int', 'float', 'bool', 'string'):
                     argInfo.append((item, item.lower(), u'', boolMulti, boolOptional, u''))
                 else:
                     # Assume it's a clip
                     argInfo.append((item, u'clip', item, boolMulti, boolOptional, u''))
-        return argInfo
+        if returnHint:
+            return argInfo, hint.rstrip()
+        else:
+            return argInfo
+
+    # GPo test, return list with alternative args, but now type #hint is used
+    # self.avsfilterdictEx and the functions can be removed
+    """
+    def GetFilterCalltipArgInfo(self, word=None, calltip=None, ignore_opt_args=False, returnList=False, returnHint=False):
+        '''
+        # GPo, new get functions alternative args only for calltip, on UpdateCalltip: returnList, returnHint must be True
+        # Entries for this can be made in the filterdb.dat. *Filtername_0 to 4
+        # this is then displayed as an alternative in the calltip
+        # There is a new arg type '#hint' which can be used to display information in the calltip.
+        # And now I have changed it and only hint is used for displaying alternative args ( #hint blah blah )
+        '''
+        calltiplist = []
+        hint = ''
+        if calltip is None:
+            # Get the user slider info from the filter's calltip
+            try:
+                calltip = self.avsfilterdict[word.lower()][0].split('\n\n')[0]
+            except KeyError:
+                return
+        calltiplist.append(calltip)
+        # check for alternative parameters (now changed, hint is used for alternative args)
+        '''
+        if returnList:
+            for i in xrange(4):
+                ex_call = '*' + word.lower() + '_' + str(i)
+                if ex_call in self.avsfilterdictEx:
+                    calltiplist.append(self.avsfilterdictEx[ex_call][0].split('\n\n')[0])
+                else:
+                    break
+        '''
+
+        argInfoList = []
+        for i, calltip in enumerate(calltiplist):
+            # Delete open and close parentheses
+            if calltip.startswith('(') and calltip.endswith(')'):
+                calltip = calltip[1:-1]
+            elif calltip.startswith('('):
+                calltip = calltip[1:]
+            elif calltip.endswith(')'):
+                calltip = calltip[:-1]
+
+            # Delete/mark optional arguments
+            new_calltip = []
+            for arg in calltip.split(','):
+                arg = arg.strip()
+                # looking for hint or comment line
+                if arg.startswith('#'):
+                    if returnHint and arg.startswith('#hint'):
+                        hint += arg[6:].replace(';',',') + '\n' # TODO cannot find the split for ','
+                    continue
+                if arg.startswith('[') and arg.endswith(']'):
+                    if not ignore_opt_args:
+                        new_calltip.append(arg[1:-1] + 'OPT')
+                else:
+                    new_calltip.append(arg)
+
+            calltip = ', '.join(new_calltip)
+
+            # Get rid of any commas in square brackets
+            calltip = re.sub(r'\[.*\]', '[...]', calltip)
+
+            # Split the arguments by commas
+            argInfo = []
+            for item in calltip.split(','):
+                item = item.strip()
+                if not item.strip():
+                    continue
+                if item.count('[...]') > 0:
+                    boolMulti = True
+                    item = item.replace('[...]', '')
+                else:
+                    boolMulti = False
+                if item.endswith('OPT'):
+                    boolOptional = True
+                    item = item[:-3]
+                else:
+                    boolOptional = False
+
+                # GPo, replace short colorspace to calltip colorspace or replace to full
+                # and change c_string to argtype string
+                if item.startswith('c_string'):
+                    if returnHint: # then calltip
+                        item = item[2:].replace('"avsRGBP"', utils.avsRGBP_s, 1).\
+                                replace('"avsY"', utils.avsY_s, 1).\
+                                    replace('"avsYUV"', utils.avsYUV_s, 1)
+                    else: # then sliders etc.
+                        item = item[2:].replace('"avsRGBP"', utils.avsRGBP, 1).\
+                                replace('"avsY"', utils.avsY, 1).\
+                                    replace('"avsYUV"', utils.avsYUV, 1)
+
+                try:
+                    argtype, nameAndInfo = [s.strip() for s in item.split(' ', 1)]
+                    try:
+                        name, info = [s.strip() for s in nameAndInfo.split('=', 1)]
+                    except ValueError:
+                        name = nameAndInfo
+                        info = u''
+                    argInfo.append((item, argtype.lower(), name, boolMulti, boolOptional, info))
+                except ValueError:
+                    if item.lower() in ('clip', 'int', 'float', 'bool', 'string'):
+                        argInfo.append((item, item.lower(), u'', boolMulti, boolOptional, u''))
+                    else:
+                        # Assume it's a clip
+                        argInfo.append((item, u'clip', item, boolMulti, boolOptional, u''))
+            argInfoList.append(argInfo)
+        if returnHint:
+            return argInfoList if returnList else argInfoList[0], hint.rstrip()
+        else:
+            return argInfoList if returnList else argInfoList[0]
+    """
 
     def CreateDefaultPreset(self, filtername, calltip=None):
         if calltip is None:
@@ -1444,19 +1756,7 @@ class AvsStyledTextCtrl(stc.StyledTextCtrl):
             pos += 1
         return None
 
-    def ShowFilterDocumentation(self, name=None):
-        if name is None:
-            name = self.calltipFilter
-        if not name:
-            return
-        docsearchpaths = []
-        avisynthdir = self.app.ExpandVars(self.app.avisynthdir)
-        docsearchpathstring = self.app.ExpandVars(self.app.options['docsearchpaths'])
-        for path in docsearchpathstring.split(';'):
-            path = path.strip()
-            if os.path.isdir(path):
-                docsearchpaths.append(path)
-        extensions = ['.htm', '.html', '.txt', '.lnk', '']
+    def ShowFilterDocumentation(self, name=None, onlyWeb=False):
 
         def get_names(name):
             name = name.lower()
@@ -1476,19 +1776,34 @@ class AvsStyledTextCtrl(stc.StyledTextCtrl):
                 else:
                     yield display_name
 
-        for find_name in get_names(name):
-            for dir in docsearchpaths:
-                filenames = []
-                for filename in os.listdir(dir):
-                    base, ext = os.path.splitext(filename)
-                    if ext in extensions:
-                        if re.findall(r'(\b|[_\W]|readme)%s(\b|[_\W]|readme)' % find_name, base, re.IGNORECASE):
-                            filenames.append((extensions.index(ext), filename))
-                if filenames:
-                    filenames.sort()
-                    filename = os.path.join(dir, filenames[0][1])
-                    startfile(filename)
-                    return True
+        if name is None:
+            name = self.calltipFilter
+        if not name:
+            return
+
+        if not onlyWeb:
+            docsearchpaths = []
+            avisynthdir = self.app.ExpandVars(self.app.avisynthdir)
+            docsearchpathstring = self.app.ExpandVars(self.app.options['docsearchpaths'])
+            for path in docsearchpathstring.split(';'):
+                path = path.strip()
+                if os.path.isdir(path):
+                    docsearchpaths.append(path)
+            extensions = ['.htm', '.html', '.txt', '.lnk', '']
+
+            for find_name in get_names(name):
+                for dir in docsearchpaths:
+                    filenames = []
+                    for filename in os.listdir(dir):
+                        base, ext = os.path.splitext(filename)
+                        if ext in extensions:
+                            if re.findall(r'(\b|[_\W]|readme)%s(\b|[_\W]|readme)' % find_name, base, re.IGNORECASE):
+                                filenames.append((extensions.index(ext), filename))
+                    if filenames:
+                        filenames.sort()
+                        filename = os.path.join(dir, filenames[0][1])
+                        startfile(filename)
+                        return True
         url = self.app.options['docsearchurl'].replace('%filtername%', name.replace('_', '+'))
         startfile(url)
         return False
@@ -1885,8 +2200,8 @@ class AvsStyledTextCtrl(stc.StyledTextCtrl):
             self.GotoPos(start + self.ReplaceTarget(self.app.options['snippets'][event.GetText()]))
 
     def OnCalltipClick(self, event):
-        if wx.GetKeyState(wx.WXK_ALT) or wx.GetKeyState(wx.WXK_CONTROL) or wx.GetKeyState(wx.WXK_SHIFT):
-            self.ShowFilterDocumentation()
+        if wx.GetKeyState(wx.WXK_CONTROL) or wx.GetKeyState(wx.WXK_SHIFT):
+            self.ShowFilterDocumentation(onlyWeb=wx.GetKeyState(wx.WXK_SHIFT))
         else:
             self.CallTipCancelCustom()
 
@@ -4234,6 +4549,15 @@ class AvsFunctionDialog(wx.Dialog): # PPI set
             return
         # Fill out default values
         defaultName, defaultArgs, defaultType = self.filterDict.get(lowername, ('', '', None))
+        countHint = defaultArgs.count('#hint')
+        if defaultArgs.find('c_string ') > -1:
+            msd = wx.MessageDialog(self, 'Args containing type c_string.\nWarning! do not change the c_string arg\n\n'+
+                                     'Note:\navsYUV stands for all YUV types\n'+
+                                     'avsRGBP for all RGBP types\n\nThis information may be incomplete.',
+                                      _('Warning'), wx.OK|wx.ICON_INFORMATION)
+            ID = msd.ShowModal()
+            msd.Destroy()
+
         enteredName = name
         enteredType = functiontype
         enteredArgs = self.overrideDict.get(lowername, (None, defaultArgs, None))[1] if not arg else arg
@@ -4269,6 +4593,13 @@ class AvsFunctionDialog(wx.Dialog): # PPI set
             newPreset = dlg.presetBox.GetValue()
             boolAutoPreset = dlg.autopresetCheckbox.GetValue()
             extra = ' '
+            if countHint > newArgs.count('#hint'):
+                msd = wx.MessageDialog(self, 'Arg #hint has been removed, are you sure?',
+                                    _('Question'), wx.YES_NO|wx.ICON_QUESTION)
+                ID = msd.ShowModal()
+                msd.Destroy()
+                if ID != wx.ID_YES:
+                    return
             # Update the override dict
             if (newName != defaultName) or (newArgs != defaultArgs):
                 self.overrideDict[lowername] = (newName, newArgs, newType)
@@ -6122,7 +6453,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         # Display the program
         if self.separatevideowindow:
             self.videoStatusBar.SetDoubleBuffered(True) # GPo
-            self.Show()
+            #self.Show()
         vidmenu = self.videoWindow.contextMenu
         menu = vidmenu.FindItemById(vidmenu.FindItem(_('&Zoom'))).GetSubMenu()
         menuItem = menu.FindItemByPosition(self.options['zoomindex'])
@@ -6136,14 +6467,19 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if self.mainSplitter.IsSplit():
             self.SplitVideoWindow()
 
+        # GPo 2020, scrptWindow and videoWindow binds on create, videoControls also on create but to another func
+        # exclude Statusbar, it's binding with videoControls, exclude all scriptNotebook children
+        self.BindObjMouseAux(self, self.GetStatusBar().GetHandle())
+        self.BindObjMouseAux(self.scriptNotebook, -3)
+
         if self.options.get('maximized'):
             self.Maximize(True)
         if self.options.get('maximized2') and self.separatevideowindow:
             self.videoDialog.Maximize(True)
 
+        self.Freeze()
         self.Show()
-        self.Refresh()
-        self.Update()
+        self.Thaw()
 
         index = self.scriptNotebook.GetSelection()
         self.ReloadModifiedScripts()
@@ -6153,10 +6489,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if self.tabChangeLoadBookmarks:
             self.SetSelectionsDict(self.currentScript.selections)
 
-        # GPo 2020, scrptWindow and videoWindow binds on create, videoControls also on create but to another func
-        # exclude Statusbar, it's binding with videoControls, exclude all scriptNotebook children
-        self.BindObjMouseAux(self, self.GetStatusBar().GetHandle())
-        self.BindObjMouseAux(self.scriptNotebook, -3)
         if len(self.optionsPreviewFilters['previewfilters']) > 0:
             self.UpdatePreviewFilterMenu(self.optionsPreviewFilters['previewfilters'], isRestoreMenu=True)
 
@@ -7106,8 +7438,19 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             '-', '*', ',', '.', '/', ':', '?', '\\', '+', '<', '>', '=',
             '(', ')', '[', ']', '{', '}', '!', '%', '&', '|',
         ]
+
         self.avsmiscwords = ['__end__']
         if os.path.isfile(self.filterdbfilename):
+            # GPo test naming STGMC>QTGMC other name same args
+            linkNamings = []
+            filters_ex = {}
+            def testNaming(s):
+                splitstring = s.split('>', 1)
+                if len(splitstring) == 2 and splitstring[1].lower() in self.optionsFilters:
+                    args = self.optionsFilters[splitstring[1].lower()][1]
+                    return splitstring[0].strip(), args
+                return '', ''
+            # test end
             try:
                 with open(self.filterdbfilename, mode='r') as f:
                     text = '\n'.join([line.strip() for line in f.readlines()])
@@ -7131,7 +7474,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                             else:
                                 filtername = item
                                 filterargs = ''
-                            self.optionsFilters[filtername.lower()] = (filtername, filterargs, 1)
+                            if filtername.startswith('*'):
+                                filters_ex[filtername.lower()] = (filtername, filterargs, 1)
+                            else:
+                                self.optionsFilters[filtername.lower()] = (filtername, filterargs, 1)
                     elif title == 'scriptfunctions':
                         for item in data.split('\n'):
                             if not item.strip():
@@ -7150,7 +7496,16 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                             if len(splitstring) == 2:
                                 filtername = splitstring[0].strip()
                                 filterargs = '('+splitstring[1].strip(' ')
-                                self.optionsFilters[filtername.lower()] = (filtername, filterargs, 0)
+                                if filtername.startswith('*'):
+                                    filters_ex[filtername.lower()] = (filtername, filterargs, 0)
+                                else:
+                                    self.optionsFilters[filtername.lower()] = (filtername, filterargs, 0)
+                            """
+                            else: # GPo, other name but same args
+                                splitstring = s.split('>', 1)
+                                if len(splitstring) == 2:
+                                    linkNamings.append((s, 0))
+                            """
                     elif title == 'plugins':
                         if not self.options['fdb_plugins']:
                             continue
@@ -7176,6 +7531,17 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                 filtername = splitstring[0].strip()
                                 filterargs = '('+splitstring[1].strip(' ')
                                 self.optionsFilters[filtername.lower()] = (filtername, filterargs, 3)
+                            else: # GPo, other name but same args STGMC>QTGMC
+                                splitstring = s.split('>', 1)
+                                if len(splitstring) == 2:
+                                    linkNamings.append((s, 3))
+                # GPo, other name but same args ( only on 'userfunctions' used)
+                if linkNamings:
+                    for i, (s, typ) in enumerate(linkNamings):
+                        filtername, filterargs = testNaming(s)
+                        if filtername:
+                            self.optionsFilters[filtername.lower()] = (filtername, filterargs, typ)
+                # end test
             except:
                 self.loaderror.append(os.path.basename(self.filterdbfilename))
                 bad0 = os.path.splitext(self.filterdbfilename)[0]
@@ -7199,7 +7565,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.options['filteroverrides'][key] = value
         # Define data structures that are used by each script
         self.avsfilterdict = {}
-        self.defineScriptFilterInfo()
+        self.avsfilterdictEx = {}
+        self.defineScriptFilterInfo(ex_filterList=filters_ex)
 
     def ExportFilterData(self, filterDict, filename, onlylongnames=False):
         order = [1, 4, 0, 2, 3]
@@ -7239,7 +7606,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         f.writelines(lines)
         f.close()
 
-    def defineScriptFilterInfo(self):
+    def defineScriptFilterInfo(self, ex_filterList=None):
         # Create the basic filter dictionnary - {lowername: (args, style_constant)}
         styleList = [  # order is important here!
             AvsStyledTextCtrl.STC_AVS_COREFILTER,
@@ -7264,6 +7631,14 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             for lowername,(name,args,ftype) in self.optionsFilters.items()
             ]
         ))
+        self.avsfilterdictEx.clear()
+        if ex_filterList:
+            self.avsfilterdictEx.update(dict(
+                [
+                (lowername, (args, styleList[ftype], name, None))
+                for lowername,(name,args,ftype) in ex_filterList.items()
+                ]
+            ))
         overridedict = dict()
         for lowername, (name, args, ftype) in self.options['filteroverrides'].iteritems():
             overridedict[lowername] = args, styleList[ftype], name, None
@@ -8067,10 +8442,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.toolbarHeight = spos
 
         if wx.VERSION < (2, 9):
-            self.programSplitter.Freeze()
             self.programSplitter.SetSashSize(0)
             self.programSplitter.SplitHorizontally(self.mainSplitter, self.videoControls, -spos)
-            self.programSplitter.Thaw()
+
         # Set the minimum pane sizes
         self.SetMinimumScriptPaneSize()
         self.videoSplitter.SetMinimumPaneSize(intPPI(3))
@@ -8092,19 +8466,14 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.programSplitter.Bind(wx.EVT_SIZE, OnProgramSplitterSize)
 
         if not self.separatevideowindow:
-            self.mainSplitter.Freeze()
+
             if self.mainSplitter.GetSplitMode() == wx.SPLIT_HORIZONTAL:
                 self.mainSplitter.SplitHorizontally(self.scriptNotebook, self.videoPane)
             else:
                 self.mainSplitter.SplitVertically(self.scriptNotebook, self.videoPane)
-            if self.mainSplitter.IsFrozen():
-                self.mainSplitter.Thaw()
         else:
-            self.mainSplitter.Freeze()
             self.mainSplitter.SplitHorizontally(self.scriptNotebook, wx.Panel(self.mainSplitter, wx.ID_ANY))
             self.mainSplitter.Unsplit()
-            if self.mainSplitter.IsFrozen():
-                self.mainSplitter.Thaw()
             # Layout the separate video window (create first the statusbar !)
             self.videoStatusBar = wx.StatusBar(self.videoDialog, wx.ID_ANY)#self.videoDialog.CreateStatusBar()
             self.videoStatusBar.SetFieldsCount(2)
@@ -8131,6 +8500,15 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         # Misc
         scriptWindow.SetFocus()
         self.SetMinSize(tuplePPI(320, 240))
+
+        # GPo new, update the matrix menu items
+        script = self.currentScript
+        if script.matrix[0] == 'auto':
+            s1 = _('Resolution-based')
+        else: s1 = _('BT.' + script.matrix[0])
+        s2 = _(script.matrix[1].upper() + ' levels')
+        self.UpdateVideoMenuItem(_('Display'), _('YUV -> RGB'), s1, True)
+        self.UpdateVideoMenuItem(_('Display'), _('YUV -> RGB'), s2, True)
 
     def SaveLastSplitVideoPos(self, backup=False):
         if not self.previewOK():
@@ -8697,7 +9075,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 (_('Toggle extended left move'), '', self.OnMenuExtendedMove, _('Expands the left shift area of the video window')),
                 (_('Save view pos on tab change'), '', self.OnMenuVideoSaveViewPos, _('Save/Restore last display viewing position on tab change'), wx.ITEM_CHECK, False),
                 (_('Save pos && zoom on tab change'), '', self.OnMenuVideoSaveZoom, _('Save/Restore last zoom settings on tab change'), wx.ITEM_CHECK, False),
-                (_('Resize video window'), '', self.OnMenuVideoResizeOnZoom, _('Sizeing the video window on setting zoom or tab change'), wx.ITEM_CHECK, self.options['resizevideowindow']),
+                (_('On zoom resize video window'), '', self.OnMenuVideoResizeOnZoom, _('Sizeing the video window on setting zoom or tab change'), wx.ITEM_CHECK, self.options['resizevideowindow']),
                 (''),
                 (_('Additional'),
                     (
@@ -9032,7 +9410,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             (_('Tab change loads bookmarks'), '', self.OnMenuTabChangeLoadBookmarks, '', wx.ITEM_CHECK, self.options['tabsbookmarksfromscript']), # GPo 2019
             (_('Save view pos on tab change'), '', self.OnMenuVideoSaveViewPos, _('Save/Restore last display viewing position on tab change'), wx.ITEM_CHECK, False),
             (_('Save pos && zoom on tab change'), '', self.OnMenuVideoSaveZoom, _('Save/Restore last zoom settings on tab change'), wx.ITEM_CHECK, False),
-            (_('Resize video window'), '', self.OnMenuVideoResizeOnZoom, _('Sizeing the video window on setting zoom or tab change'), wx.ITEM_CHECK, self.options['resizevideowindow']),
+            (_('On zoom resize video window'), '', self.OnMenuVideoResizeOnZoom, _('Sizeing the video window on setting zoom or tab change'), wx.ITEM_CHECK, self.options['resizevideowindow']),
             (''),
             (_('Copy to new tab'), '', self.OnMenuEditCopyToNewTab),
             (_('Split View insert tab'), '', self.OnMenuCopyToNewTabNext),
@@ -11453,7 +11831,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.currentScript.previewFilterIdx = setIdx
 
     #@AsyncCallWrapper
-    def OnMenuPreviewFilter(self, event=None, index=None, updateUserSliders=True):
+    def OnMenuPreviewFilter(self, event=None, index=None, updateUserSliders=True, scroll=None):
         def updateState(state):
             # update the menu items
             if state < 1: # filter disabled
@@ -11523,12 +11901,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     else:
                         script.display_clip_refresh_needed = False # GPo new resizeFilter
                         #script.refreshAVI = False
-                    self.ShowVideoFrame(userScrolling=not updateUserSliders)
+                    self.ShowVideoFrame(userScrolling=not updateUserSliders, scroll=scroll)
                 else:
                     updateState(0)
                     if script.AVI is not None and script.AVI.preview_filter:
                         script.AVI.KillFilterClip()
-                        self.ShowVideoFrame(userScrolling=not updateUserSliders)
+                        self.ShowVideoFrame(userScrolling=not updateUserSliders, scroll=scroll)
             else:
                 updateState(0) # bevor showing the frame, it's better to update the State
                 self.KillFilterClip()
@@ -11537,7 +11915,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if script.AVI is not None and script.AVI.preview_filter:
                 script.AVI.KillFilterClip()
             if lKey > -1 and self.previewOK(script):
-                self.ShowVideoFrame(userScrolling=not updateUserSliders)
+                self.ShowVideoFrame(userScrolling=not updateUserSliders, scroll=scroll)
 
         if updateUserSliders:
             self.UpdateUserSliders()
@@ -11766,7 +12144,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         else:
             rf = script.resizeFilter
 
-        self.resizeFilter = (False, rf[1], rf[2], rf[3])
+        #~self.resizeFilter = (False, rf[1], rf[2], rf[3])
+        self.resizeFilter = (False, rf[1], 1, rf[3]) # new, reset zoom to 1 (scroll)
         if not script:
             for i in xrange(self.scriptNotebook.GetPageCount()):
                 _script = self.scriptNotebook.GetPage(i)
@@ -11835,7 +12214,14 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.OnMenuVideoZoomResampleFit(fitHeight=False, single=not strg)
 
     # this is the main function for setting the resize filter
-    def OnMenuVideoZoomResampleFit(self, event=None, zoom=1, fitHeight=True, single=True, sameSize=None):
+    def OnMenuVideoZoomResampleFit(self, event=None, zoom=1, fitHeight=True, single=True, sameSize=None, doScroll=False):
+        def calc_scroll(new_zoom, old_zoom):
+            xrel, yrel = self.videoWindow.ScreenToClient(wx.GetMousePosition())
+            xpos, ypos = self.videoWindow.CalcUnscrolledPosition(xrel, yrel)
+            xpos = (xpos - self.xo) * new_zoom / old_zoom + self.xo
+            ypos = (ypos - self.yo) * new_zoom / old_zoom + self.yo
+            return xpos - xrel, ypos - yrel
+
         if self.cropDialog.IsShown() or self.options['showresamplemenu'] == 0:
             return
 
@@ -11855,8 +12241,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         else:
             resizeFilter = (not rf[0], rf[1], abs(zoom), fitHeight)
 
+        scroll = None
         if single:
             script.resizeFilter = resizeFilter
+            if doScroll: # only if single and shift is down in mouse event OnMouseWheelVideoWindow
+                scroll = calc_scroll(abs(zoom), rf[2])
         elif sameSize and self.previewOK():
             script.resizeFilter = resizeFilter
             vW, vH = script.AVI.Width, script.AVI.Height
@@ -11886,12 +12275,17 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         if script.previewFilterIdx > 0 and script.AVI:
             script.AVI.SetResizeFilter(self.GetResizeFilterInfo(script))
-            self.OnMenuPreviewFilter(index=script.previewFilterIdx, updateUserSliders=False)
+            self.OnMenuPreviewFilter(index=script.previewFilterIdx, updateUserSliders=False, scroll=scroll)
         else:
             script.display_clip_refresh_needed = True
-            if self.ShowVideoFrame() and need_update:
+            if self.ShowVideoFrame(scroll=scroll) and need_update:
                 script.display_clip_refresh_needed = True
                 self.ShowVideoFrame()
+
+        if scroll:
+            self.videoWindow.oldPoint = self.videoWindow.ScreenToClient(wx.GetMousePosition())
+            self.videoWindow.oldOrigin = self.videoWindow.GetViewStart()
+
 
     # test, jump to next I frame
     def OnMenuNext_I_Frame(self, event=None, reverse=False):
@@ -12807,7 +13201,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         x_menus = {
             _('Save view pos on tab change'): bool(self.saveViewPos==1),
             _('Save pos && zoom on tab change'): bool(self.saveViewPos==2),
-            _('Resize video window'): self.options['resizevideowindow'],
+            _('On zoom resize video window'): self.options['resizevideowindow'],
             _('Play video'): 'check'
         }
         vidmenus = [self.videoWindow.contextMenu, self.GetMenuBar().GetMenu(2)]
@@ -13189,7 +13583,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     def OnMenuVideoResizeOnZoom(self, event):
         self.options['resizevideowindow'] = event.IsChecked()
-        self.UpdateVideoMenuItem(_('Resize video window'), '', '', event.IsChecked())
+        self.UpdateVideoMenuItem(_('On zoom resize video window'), '', '', event.IsChecked())
 
     def OnMenuAutoHidePreview(self, event):
         self.options['tabautopreview'] = event.IsChecked()
@@ -15068,7 +15462,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 item = menu.FindItemById(menu.FindItem(_('Save pos && zoom on tab change')))
                 if item:
                     item.Check(self.saveViewPos==2)
-                item = menu.FindItemById(menu.FindItem(_('Resize video window')))
+                item = menu.FindItemById(menu.FindItem(_('On zoom resize video window')))
                 if item:
                     item.Check(self.options['resizevideowindow'])
                 item = menu.FindItemById(menu.FindItem(_('Auto preview')))
@@ -15367,13 +15761,14 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if event:
                 xpos, ypos = event.GetPosition()
             else:
-                xpos, ypos = videoWindow.ScreenToClient(wx.GetMousePosition())
+                xpos, ypos = self.videoWindow.ScreenToClient(wx.GetMousePosition())
+            shiftdown = event.ShiftDown()
             int50 = intPPI(50)
             cRect = self.videoWindow.GetClientRect()
-            single = wx.Rect(cRect[2]-int50,0,int50,int50).ContainsXY(xpos,ypos) or event.ShiftDown()
+            single = wx.Rect(cRect[2]-int50,0,int50,int50).ContainsXY(xpos,ypos) or shiftdown
             #force = False if single else wx.Rect(cRect[2]-int50,cRect[3]-int50,int50,int50).ContainsXY(xpos,ypos)
             #sameSize = False if single else wx.Rect(cRect[2]-int50,(cRect[3]/2)-intPPI(25),int50,int50).ContainsXY(xpos,ypos)
-            if single:
+            if single and self.options['showresamplemenu'] != 0:
                 script = self.currentScript
                 # round to one decimales e.g 0.46765 to 0.5
                 czoom = round(float(script.AVI.DisplayWidth) / script.AVI.Width, 1)
@@ -15385,7 +15780,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     return
                 if zoom == 1:
                     zoom = -1 # disable resize filter
-                self.OnMenuVideoZoomResampleFit(zoom=zoom, fitHeight=rf[3], single=single)
+                self.OnMenuVideoZoomResampleFit(zoom=zoom, fitHeight=rf[3], single=single, doScroll=shiftdown)
                 return
             # if not in client then return, speed up
             if not self.videoWindow.GetClientRect().Inside((xpos, ypos)):
@@ -15402,16 +15797,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             else:
                 self.zoomfactor = self.fix_zoom(self.zoomfactor / factor)
 
-            #self.videoWindow.Freeze()
-            try:
-                self.ZoomAndScroll(old_zoomfactor, self.zoomfactor)
-                if leftdown:
-                    self.videoWindow.oldPoint = event.GetPosition()
-                    self.videoWindow.oldOrigin = self.videoWindow.GetViewStart()
-            finally:
-                pass
-                #if self.videoWindow.IsFrozen():
-                    #self.videoWindow.Thaw()
+            self.ZoomAndScroll(old_zoomfactor, self.zoomfactor)
+            if leftdown:
+                self.videoWindow.oldPoint = event.GetPosition()
+                self.videoWindow.oldOrigin = self.videoWindow.GetViewStart()
             return
         elif self.options['mousewheelfunc'] == 'frame_step':
             # GPo 2018  frame skip with mouse wheel
@@ -15527,14 +15916,16 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     # GPo 2018
     def OnRightUpVideoWindow(self, event):
         if event.LeftIsDown():
-            # get used to it, never show context menu left is down
-            int50 = intPPI(50)
-            cRect = self.videoWindow.GetClientRect()
-            single = wx.Rect(cRect[2]-int50,0,int50,int50).Inside(event.GetPosition())
-            if single:
-                rf = self.currentScript.resizeFilter
-                self.OnMenuVideoZoomResampleFit(zoom=2 if rf[2] != 2 else 1, fitHeight=rf[3])
-                return
+            if self.options['showresamplemenu'] != 0:
+                shiftdown = event.ShiftDown()
+                int50 = intPPI(50)
+                cRect = self.videoWindow.GetClientRect()
+                single = wx.Rect(cRect[2]-int50,0,int50,int50).Inside(event.GetPosition()) or shiftdown
+                if single:
+                    rf = self.currentScript.resizeFilter
+                    #zoom = 2 if rf[2] != 2 else -1 if shiftdown else 1
+                    self.OnMenuVideoZoomResampleFit(zoom=2 if rf[2] != 2 else -1, fitHeight=rf[3], doScroll=shiftdown)
+                    return
 
             if self.zoomwindow:
                 self.zoomwindow = False
@@ -16253,10 +16644,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 pass
             self.videoWindow.SetCursor(wx.StockCursor(wx.CURSOR_DEFAULT))
         win = event.GetEventObject()
+
         if isinstance(win, wx.ListCtrl): # autocomplete list
             return
-        # GPo, on script enable/disable avisynth lines or change boolean word
 
+        # GPo, on script enable/disable avisynth lines or change boolean word
         scriptContextMenu = isinstance(win, AvsStyledTextCtrl)
         if scriptContextMenu:
             self.currentScript.refreshAVI = True
@@ -16271,6 +16663,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     script.BlockComment('#', ['~','#','>'], True)
                 return
 
+        if not hasattr(win,'contextMenu'): # GPo new, script tooltip
+            return
         self.lastContextMenuWin = win
         pos = win.ScreenToClient(event.GetPosition())
 
@@ -19410,7 +19804,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             V = int(0.439*R - 0.368*G - 0.071*B + 128)
             return (Y,U,V)
 
-        if self.splitView:
+        script = self.currentScript
+
+        if self.splitView or script.AVI is None:
             return '' if string_ else (0, 0), None, None, None, None
 
         videoWindow = self.videoWindow
@@ -19424,9 +19820,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if not videoWindow.GetClientRect().Inside((xpos, ypos)):
                 return '' if string_ else (0, 0), None, None, None, None
 
-        script = self.currentScript
-        if script.AVI is None:
-            return '' if string_ else (0, 0), None, None, None, None    # if not AVI so return false
         w, h = script.AVI.DisplayWidth, script.AVI.DisplayHeight
         dc = wx.ClientDC(videoWindow)
         dc.SetDeviceOrigin(self.xo, self.yo)
@@ -19826,8 +20219,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             forceRefresh = True
             forceCursor = True
             frameToFrametime = False
-        elif frameToFrametime:
-            _lastFramerate = script.AVI.Framerate
+        else:
+            if frameToFrametime:
+                _lastFramerate = script.AVI.Framerate
+            if framenum:
+                if abs(framenum - script.lastFramenum) > 1:
+                    forceCursor = True
 
         display_clip_refresh_needed = script.display_clip_refresh_needed
 
@@ -19963,8 +20360,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     self.HidePreviewWindow()
                     if self.readFrameProps:
                         self.AVICallBack('property', 'Error', framenum)
-                    if wx.IsBusy():
-                        wx.EndBusyCursor()
                     return False
             else:
                 script.AVI.display_clip.get_frame(framenum)
@@ -20020,8 +20415,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.videoWindow.SetVirtualSize((0,0))
             if doLayout:
                 if forceLayout or not self.previewWindowVisible or (videoWidth != self.oldWidth) or (videoHeight != self.oldHeight):
-                    # GPo new, freeze always if forceLayout
-                    self.videoWindow.Freeze()
                     # GPo 2018, 2020
                     if not self.splitView:
                         zfa = 3 if self.zoomfactor <= 2 else 4  # GPo, make the free space larger over 2.0 zoom, must also change OnEraseBackground()
@@ -20041,24 +20434,18 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                             resize = False
                         else:
                             resize = True
-
-                    self.mainSplitter.Freeze()
-                    try:
-                        self.LayoutVideoWindows(w, h, resize, forceRefresh=forceRefresh or
-                                                              display_clip_refresh_needed)
-                        self.toggleButton.SetBitmapLabel(self.bmpVidDown)
-                        self.toggleButton.Refresh()
-                    finally:
-                        if self.mainSplitter.IsFrozen():
-                            self.mainSplitter.Thaw()
+                    # GPo new, freeze always if forceLayout
+                    self.videoWindow.Freeze()
+                    self.LayoutVideoWindows(w, h, resize, forceRefresh=forceRefresh or
+                                                          display_clip_refresh_needed)
+                    self.toggleButton.SetBitmapLabel(self.bmpVidDown)
+                    self.toggleButton.Refresh()
 
             newSize = self.videoWindow.GetVirtualSize()
             # Force a refresh when resizing the preview window
             oldVideoSize = (self.oldWidth, self.oldHeight)
             newVideoSize = (videoWidth, videoHeight)
             self.bmpVideo = None
-            #if scroll is not None: # GPo new changed (freeze always if ForceLayout)
-                #self.videoWindow.Freeze()
             if newSize != oldSize or newVideoSize != oldVideoSize or not self.previewWindowVisible:
                 self.previewWindowVisible = True
                 self.UpdateScriptTabname(script) # GPo
@@ -20156,6 +20543,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 wx.EndBusyCursor()
             if self.videoWindow.IsFrozen():
                 self.videoWindow.Thaw()
+
         return True
 
     def LayoutVideoWindows(self, w=None, h=None, resize=True, forcefit=False, forceRefresh=False):
@@ -20252,7 +20640,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             #if self.zoomwindow:(
                 #self.currentScript.lastSplitVideoPos = sash_pos #GPo moved to OnFocusVideoWindow
         else:
-            self.mainSplitter.Freeze()  # GPo 2020, wx 2.9 yeeep flicker free !! GPo new deaktivated
+            self.mainSplitter.Freeze()  # GPo 2020, wx 2.9 yeeep flicker free !!
             if self.mainSplitter.GetSplitMode() == wx.SPLIT_HORIZONTAL:
                 self.mainSplitter.SplitHorizontally(self.scriptNotebook, self.videoPane, sash_pos)
             else:
@@ -20458,7 +20846,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             except TypeError:
                 pass
 
-    # GPo, call back for avi clip
+    # call back for avi clip
     def AVICallBack(self, ident, value, framenr=-1):
         def _showMessage(title, msg):
             wx.SafeShowMessage(title, msg)
@@ -20773,7 +21161,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 return
 
             disabler = wx.WindowDisabler()
-            #disabler = wx.WindowDisabler(self.GetStatusBar())
             th.join(self.progressDelayTime)
             try:
                 try:
@@ -23554,25 +23941,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             disabler = wx.WindowDisabler()
             msg = utils.resource_str_threadwait
             msg_1 = msg if self.WinVersion < 7 else ''
-            #progress = None
             try:
-                """
-                if self.options['threadprogresshiden']:
-                    while th.isAlive():
-                        if not progress and wx.GetKeyState(wx.WXK_CONTROL) and wx.GetKeyState(wx.WXK_SHIFT):
-                            progress = wx.ProgressDialog(_('Waiting for frame {0}'.format(nr)),msg_1,10, self,
-                                        style=wx.PD_ELAPSED_TIME|wx.PD_CAN_ABORT|wx.PD_APP_MODAL)
-                        if progress:
-                            if not msgShown:
-                                msgShown = True
-                                c,s = progress.Pulse(msg)
-                            else:
-                                c,s = progress.Pulse()
-                            if not c:
-                                break
-                        th.join(1.0)
-                else:
-                """
                 progress = wx.ProgressDialog(_('Waiting for frame {0}'.format(nr)),msg_1,10, self,
                             style=wx.PD_ELAPSED_TIME|wx.PD_CAN_ABORT|wx.PD_APP_MODAL)
                 while th.isAlive():
@@ -23590,7 +23959,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     th.join(0.5)
             finally:
                 disabler = False # must first called or progress cannot quickly destroy
-                #if progress:
                 progress.Destroy()
                 self.Raise() # bring window to top was dialog shown
 
@@ -24595,6 +24963,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     def ParseCalltipArgInfo(self, info, strValue=None):
         # TODO: handle repeating args [, ...]
         info = re.sub(r'\[.*\]', '', info)
+        if info.startswith('#'): # GPo, new
+            return (None, None, None, None, None)
         argtypename = info.split('=', 1)[0].strip()
         splitargtypename = argtypename.split()
         if len(splitargtypename) != 2:
@@ -24737,7 +25107,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     return (argtype, argname, 'boolradio', defaultValue, None)
                 else:
                     return (argtype, argname, 'error', defaultValue, None)
-            elif argtype == 'string':
+            elif argtype == 'string' or argtype == 'c_string':
                 splitargInfo = argInfo.split('(',1)
                 defaultValue = None
                 if len(splitargInfo) == 2:
@@ -24745,6 +25115,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     defaultValue = strDefaultValue.strip()
                     if defaultValue:
                         defaultValue = '"%s"' % defaultValue.strip('"')
+                    # GPo, new replace short colorspace to full colorspace
+                    if argtype == 'c_string':
+                        argtype = 'string'
+                        rest = rest.replace('"avsRGBP"', utils.avsRGBP, 1).\
+                            replace('"avsY"', utils.avsY, 1).\
+                                replace('"avsYUV"', utils.avsYUV, 1)
+                    ###
                     choices = ['"%s"' % s.strip(' "') for s in rest.split(')')[0].split('/')]
                 else:
                     return (argtype, argname, 'error', argInfo.strip(), None)

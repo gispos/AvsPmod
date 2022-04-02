@@ -106,6 +106,31 @@ def GetScrollbarMetric_X():
 def GetScrollbarMetric_Y():
     return wx.SystemSettings.GetMetric(wx.SYS_VSCROLL_Y)
 
+avsRGB = '"RGB24"/ "RGB32"/ "RGB48"/ "RGB64"'
+
+avsRGBP = '"RGBP8"/ "RGBP10"/ "RGBP12"/ "RGBP14"/ "RGBP16"'
+avsRGBAP = '"RGBPA8"/ "RGBAP10"/ "RGBAP12"/ "RGBAP14"/ "RGBAP16"'
+
+avsYUV = '"YV12"/ "YUV420P10"/ "YUV420P12"/ "YUV420P14"/ "YUV420P16"/\
+ "YV16"/ "YUV422P10"/ "YUV422P12"/ "YUV422P14"/ "YUV422P16"/\
+ "YV24"/ "YUV444P10"/ "YUV444P12"/ "YUV444P14"/ "YUV444P16"'
+
+avsYUVA = '"YUVA420P8"/ "YUVA420P10"/ "YUVA420P12"/ "YUVA420P14"/ "YUVA420P16"/\
+ "YUVA422P8"/ "YUVA422P10"/ "YUVA422P12"/ "YUVA422P14"/ "YUVA422P16"/\
+ "YUVA444P8"/ "YUVA444P10"/ "YUVA444P12"/ "YUVA444P14"/ "YUVA444P16"'
+
+avsY = '"Y8"/ "Y10"/ "Y12"/ "Y14"/ "Y16"'
+
+avs_RGB_RGBP_YUV = avsRGB + '/ ' + avsRGBP + '/ ' + avsYUV
+avs_RGB_RGBP_YUV_Y = avs_RGB_RGBP_YUV + '/ ' + avsY
+avs_RGB_RGBP_Y_YUV = avsRGB + '/ ' + avsY + '/ ' + avsYUV
+
+avsRGBP_s = ('"RGBP*" 8/10/12/14/16')
+avsY_s = '"Y*" 8/10/12/14/16'
+avsYUV_s = '"YUV420P*" "YUV422P*" "YUV444P*" 8/10/12/14/16'
+avsY_YUV_s = '"Y*" 8/10/12/14/16 - "YUV420P*" "YUV422P*" "YUV444P*" 8/10/12/14/16'
+
+
 ##### Test ####
 
 """

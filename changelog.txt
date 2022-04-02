@@ -38,6 +38,19 @@ If, for example, there is a '-' in the file name of the dll, AvsPmod will report
 please rename this dll and replace the '-' with a '_'
 
 --------------------------
+Version 2.7.1.0 [2022-04-02] GPo
+--------------------------
+* Update filterdb.dat, the new filterdb.dat is only usable from AvsPmod 2.7.10 (some things added)
+- update some internal avisynth filters to avs+ versions (you must override the old filterdb.dat with the new one).
+- also added as hints filters with different parameters e.g. AssumeFPS and comment hints e.g. Overlay.
+- calltip displays pixel types now in short format e.g. ColorBars.
+* Now the resize filter can also be used with the mouse wheel by pressing Shift and the left mouse button.
+- so: without shift normal zoom, with shift resample zoom ( when activated under Program Settings -> Misc 2)
+- this also applies to the 2x zoom function (press left mouse button and click right).
+* Fixed: on start up, matrix menus doesn't display the correct defaults if only one tab loaded.
+* Fixed: flicker on first displaying the video windwow or different video dimensions.
+
+--------------------------
 Version 2.7.0.9 [2022-02-25] GPo
 --------------------------
 * 'Run analysis pass' changed, no 'extra avisynth frames' are triggered.
