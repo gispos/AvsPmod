@@ -38,6 +38,19 @@ If, for example, there is a '-' in the file name of the dll, AvsPmod will report
 please rename this dll and replace the '-' with a '_'
 
 --------------------------
+Version 2.7.1.1 [2022-04-28] GPo
+--------------------------
+* When normal zoom and resample zoom are used together, the status bar shows it separately e.g. (1.25 x r0.8x) 
+* If there were tabs in a group, XY and Zoom were saved for the group,
+- this was bad when in a group there were videos with different dimensions. 
+- now the values are saved for each tab regardless of the group.
+* Fixed: If the trim or crop editor was showing and an attempt was made to switch tabs, 
+- the bookmarks were deleted from the timeline after the warning message (tab cannot be change).
+* Fixed script min text lines if tab multiline enabled and tabs row count > 1. 
+* Fixed flickering when zooming with the mouse wheel.
+* Some small other changes.
+
+--------------------------
 Version 2.7.1.0 [2022-04-02] GPo
 --------------------------
 * Update filterdb.dat, the new filterdb.dat is only usable from AvsPmod 2.7.10 (some things added)

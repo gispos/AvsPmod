@@ -6481,6 +6481,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.Show()
         self.Thaw()
 
+        # needed for row count calculation after loading the tabs if multiline
+        #if self.options['multiline']:
+        self.SetMinimumScriptPaneSize()
+
         index = self.scriptNotebook.GetSelection()
         self.ReloadModifiedScripts()
         self.scriptNotebook.SetSelection(index)
@@ -7233,6 +7237,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.options[key] = d1
 
         self.options['version'] = self.version
+        self.options['offsetbookmarks'] = False # GPo, disable it as default
 
         # Fix recentfiles as necessary???
         try:
@@ -8446,7 +8451,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.programSplitter.SplitHorizontally(self.mainSplitter, self.videoControls, -spos)
 
         # Set the minimum pane sizes
-        self.SetMinimumScriptPaneSize()
+        self.SetMinimumScriptPaneSize() #2022, moved to after loadsession, so we can calculate with row count
         self.videoSplitter.SetMinimumPaneSize(intPPI(3))
 
         # Manually implement splitter gravity (improper size updating with sub-splitters...)
@@ -8522,18 +8527,20 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         return spos
 
                                        # GPo 2018
-    def SetMinimumScriptPaneSize(self, mlines=-1):
+    def SetMinimumScriptPaneSize(self, mlines=-1, calcRow=True):
         if self.mainSplitter.GetSplitMode() == wx.SPLIT_HORIZONTAL:
             tabS = 0 if self.options['ppiscalingscripttabs'] < 1 else float(self.options['ppiscalingscripttabs']/10.0)
-            minpanesize = int((self.ppi_factor + tabS) * 23)
+            rows = self.scriptNotebook.RowCount if calcRow else 1 # for multi tab style
+            minpanesize = int((self.ppi_factor + tabS) * (rows * 23))
             if mlines < 0:
                 mintextlines = max(0, self.options['mintextlines'])
             else:
                 mintextlines = max(0, mlines)
             if mintextlines != 0:
                 scrollbarheight = wx.SystemSettings.GetMetric(wx.SYS_VSCROLL_X)
-                minpanesize = minpanesize + mintextlines * self.currentScript.TextHeight(0) + scrollbarheight + intPPI(5)
+                minpanesize = minpanesize + (mintextlines * self.currentScript.TextHeight(0)) + scrollbarheight + intPPI(5)
             self.mainSplitter.SetMinimumPaneSize(minpanesize)
+            #print((minpanesize, rows, mintextlines))
         else:
             self.mainSplitter.SetMinimumPaneSize(intPPI(100))
 
@@ -10452,8 +10459,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         re = False
                         break
             if not re:
-                dlg = wx.MessageDialog(self, 'Bookmarks different. Set tab last bookmarks?',
-                                            _('Bookmarks'), wx.YES_NO)
+                dlg = wx.MessageDialog(self,
+                    'Bookmarks different. Set tab last bookmarks?\nTab: %i - Script: %i'
+                    % (len(script.bookmarks), len(bookmarkDict)), _('Bookmarks'), wx.YES_NO)
                 ID = dlg.ShowModal()
                 dlg.Destroy()
                 if ID == wx.ID_YES:
@@ -10749,6 +10757,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.SetSelectionsDict(self.currentScript.selections)
                 if self.options['bookmarksfromscript']:
                     self.OnMenuBookmarksFromScript()
+            if self.options['offsetbookmarks']:
+                self.options['offsetbookmarks'] = False
+                wx.MessageBox(_("'Groups offset bookmarks' has been switched off, otherwise undefined assignments will occur"))
+
         menus = self.FindMenuItem(2, 'Bookmarks', 'Clear tab bookmarks')
         if menus:
             for menu in menus:
@@ -15185,7 +15197,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 if self.options['applygroupoffsets']:
                     offset = script.group_frame - self.oldGroupFrame
                     script.lastFramenum = max(0, self.oldLastFramenum + offset)
-                    if self.options['offsetbookmarks']:
+                    # GPo new 'self.tabChangeLoadBookmarks' do not offset bookmarks if autoload bookmarks enabled
+                    if self.options['offsetbookmarks'] and not self.tabChangeLoadBookmarks:
                         bmSet = SetBookmarks() # set bookmarks befor offset
                         self.OffsetBookmarks(offset)
                 else:
@@ -15197,8 +15210,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             videoXY = None
             self.forceZoom = False
             if self.saveViewPos > 0 and script.lastZoom is not None:
-                if script.lastFramenum is not None: # not in group
-                    self.forceZoom = True # ShowVideoFrame read and reset it
+                #~if script.lastFramenum is not None: # not in group (changed: group will also restore the last zoom and pos)
+                self.forceZoom = True # ShowVideoFrame read and reset it
 
             if not bmSet:
                 bmSet = SetBookmarks()
@@ -15313,9 +15326,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if self.cropDialog.IsShown():
             wx.MessageBox(_('Cannot switch tabs while crop editor is open!'), _('Error'), style=wx.OK|wx.ICON_ERROR)
             event.Veto()
+            return
         if self.trimDialog.IsShown():
             wx.MessageBox(_('Cannot switch tabs while trim editor is open!'), _('Error'), style=wx.OK|wx.ICON_ERROR)
-            event.Veto()
+            event.Veto() # Not enough, we have to return or bookmarks and other things go wrong
+            return
 
         if self.FindFocus() == self.videoWindow:
             self.boolVideoWindowFocused = True
@@ -15379,7 +15394,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     resetViewPos()
             else: resetViewPos()
             """
-        else: resetViewPos()
+        else:
+            resetViewPos()
+
 
     def OnMiddleDownNotebook(self, event):
         ipage = self.scriptNotebook.HitTest(event.GetPosition())[0]
@@ -15468,6 +15485,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 item = menu.FindItemById(menu.FindItem(_('Auto preview')))
                 if item:
                     item.Check(self.options['tabautopreview'])
+                item = menu.FindItemById(menu.FindItem(_('Tab change loads bookmarks')))
+                if item:
+                    item.Check(self.tabChangeLoadBookmarks)
 
                 win.PopupMenu(win.contextMenu, pos)
             except AttributeError:
@@ -15478,6 +15498,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     def OnGroupOffsetBookmarks(self, event):
         self.options['offsetbookmarks'] = not self.options['offsetbookmarks']
+        if self.options['offsetbookmarks'] and self.tabChangeLoadBookmarks:
+            self.tabChangeLoadBookmarks = False
+            wx.MessageBox(_("'Tab change load bookmarks' has been switched off, otherwise undefined assignments will occur"))
 
     def OnGroupClearTabGroup(self, event=None, group=None):
         if group is None:
@@ -15793,11 +15816,17 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             factor = 1 + 0.25 * abs(rotation) / event.GetWheelDelta()
             old_zoomfactor = self.zoomfactor
             if rotation > 0:
-                self.zoomfactor = self.fix_zoom(self.zoomfactor * factor)
+                self.zoomfactor = round(self.zoomfactor * factor, 2)
             else:
-                self.zoomfactor = self.fix_zoom(self.zoomfactor / factor)
-
-            self.ZoomAndScroll(old_zoomfactor, self.zoomfactor)
+                self.zoomfactor = round(self.zoomfactor / factor, 2)
+            if self.zoomfactor > 0.94 and self.zoomfactor < 1.06:
+                self.zoomfactor = 1
+            self.videoWindow.Freeze()
+            try:
+                self.ZoomAndScroll(old_zoomfactor, self.zoomfactor)
+            finally:
+                if self.videoWindow.IsFrozen():
+                    self.videoWindow.Thaw()
             if leftdown:
                 self.videoWindow.oldPoint = event.GetPosition()
                 self.videoWindow.oldOrigin = self.videoWindow.GetViewStart()
@@ -15891,7 +15920,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 elif self.currentScript.GetSize().height  > 4:
                     if self.mainSplitter.GetMinimumPaneSize() > 1:
                         self.oldLastSplitVideoPos = self.currentScript.lastSplitVideoPos
-                    self.SetMinimumScriptPaneSize(0)
+                    self.SetMinimumScriptPaneSize(0, calcRow=False)
                     sash_pos = self.mainSplitter.GetSashSize()
                 else:
                     self.SetMinimumScriptPaneSize()
@@ -15916,16 +15945,20 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     # GPo 2018
     def OnRightUpVideoWindow(self, event):
         if event.LeftIsDown():
-            if self.options['showresamplemenu'] != 0:
+            if self.options['showresamplemenu'] > 0: # then resample enabled
                 shiftdown = event.ShiftDown()
                 int50 = intPPI(50)
                 cRect = self.videoWindow.GetClientRect()
                 single = wx.Rect(cRect[2]-int50,0,int50,int50).Inside(event.GetPosition()) or shiftdown
                 if single:
                     rf = self.currentScript.resizeFilter
-                    #zoom = 2 if rf[2] != 2 else -1 if shiftdown else 1
-                    self.OnMenuVideoZoomResampleFit(zoom=2 if rf[2] != 2 else -1, fitHeight=rf[3], doScroll=shiftdown)
+                    if self.currentScript.AVI:
+                        zoom = -1 if self.currentScript.AVI.Width != self.currentScript.AVI.DisplayWidth else 2
+                        self.OnMenuVideoZoomResampleFit(zoom=zoom, fitHeight=rf[3], doScroll=shiftdown)
                     return
+                    #~self.OnMenuVideoZoomResampleFit(zoom=2 if rf[2] != 2 else -1, fitHeight=rf[3], doScroll=shiftdown)
+                    #~self.OnMenuVideoZoomResampleFit(zoom = -1 if rf[2] != 1 else 2, fitHeight=rf[3], doScroll=shiftdown)
+                    #return
 
             if self.zoomwindow:
                 self.zoomwindow = False
@@ -17126,8 +17159,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             scriptWindow.EnsureCaretVisible()
 
         self.UpdateTabImages()
+
         # GPo new, moved to if select
-        self.SetMinimumScriptPaneSize()
+        #self.SetMinimumScriptPaneSize()
         #scriptWindow.SetFocus()
         #scriptWindow.EnsureCaretVisible()
 
@@ -17137,6 +17171,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 w, h = self.scriptNotebook.GetSize()
                 self.scriptNotebook.SetSize((w, h-1))
                 self.scriptNotebook.SetSize((w, h))
+
+        self.SetMinimumScriptPaneSize()
 
         return curIndex
 
@@ -17637,6 +17673,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 w, h = self.scriptNotebook.GetSize()
                 self.scriptNotebook.SetSize((w, h-1))
                 self.scriptNotebook.SetSize((w, h))
+                self.SetMinimumScriptPaneSize() # GPo new
         return True
 
      # GPo 2020, changed
@@ -19701,13 +19738,19 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         bookmarktitle = self.titleDict.get(frame, '')
         zoom = ''
         width, height = v.DisplayWidth, v.DisplayHeight
-        if self.zoomfactor != 1:
-            zoom = '(%.2fx) ' % self.zoomfactor
-        elif script.resizeFilter[0]:
+        if script.resizeFilter[0]:
             if script.resizeFilter[2] != 1:
-                zoom = '(r%.2fx) ' % script.resizeFilter[2]
+                if self.zoomfactor != 1:
+                    zoom = '(%.2f x r%.2fx) ' % (self.zoomfactor, script.resizeFilter[2])
+                else:
+                    zoom = '(r%.2fx) ' % script.resizeFilter[2]
             else:
-                zoom = '(r%.2fx) ' % (float(width) / v.Width)
+                if self.zoomfactor != 1:
+                    zoom = '(%.2f x r%.2fx) ' % (self.zoomfactor, float(width) / v.Width)
+                else:
+                    zoom = '(r%.2fx) ' % (float(width) / v.Width)
+        elif self.zoomfactor != 1:
+            zoom = '(%.2fx) ' % self.zoomfactor
         if addon:
             pixelpos, pixelhex, pixelrgb, pixelrgba, pixelyuv, pixelyuva = addon
             if v.IsYUV:
@@ -20434,8 +20477,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                             resize = False
                         else:
                             resize = True
+
                     # GPo new, freeze always if forceLayout
                     self.videoWindow.Freeze()
+
                     self.LayoutVideoWindows(w, h, resize, forceRefresh=forceRefresh or
                                                           display_clip_refresh_needed)
                     self.toggleButton.SetBitmapLabel(self.bmpVidDown)
@@ -20464,20 +20509,19 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
                 dc = wx.ClientDC(self.videoWindow)
                 self.PaintAVIFrame(dc, script, self.currentframenum)
-                self.OnEraseBackground()
+                #~self.OnEraseBackground() # bevor needed, now not wx.2.93 ?!
 
                 if self.customHandler > 0:
                     self.PostMessage(self.customHandler, self.AVSP_VID_SIZE, videoWidth, videoHeight)
             else:
-                self.previewWindowVisible = True
-                # Paint the frame
+                # paint the frame
                 dc = wx.ClientDC(self.videoWindow)
                 self.PaintAVIFrame(dc, script, self.currentframenum)
 
             if scroll is not None:
-                self.videoWindow.Freeze()
+                #self.videoWindow.Freeze() # now OnMouseWheelVideoWindow
                 self.videoWindow.Scroll(*scroll)
-                self.videoWindow.Thaw()
+                #self.videoWindow.Thaw()
 
             # If error clip, highlight the line with the error
             errmsg = script.AVI.error_message
@@ -20640,13 +20684,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             #if self.zoomwindow:(
                 #self.currentScript.lastSplitVideoPos = sash_pos #GPo moved to OnFocusVideoWindow
         else:
-            self.mainSplitter.Freeze()  # GPo 2020, wx 2.9 yeeep flicker free !!
+            #self.mainSplitter.Freeze()  # GPo 2020, wx 2.9 yeeep flicker free !!
             if self.mainSplitter.GetSplitMode() == wx.SPLIT_HORIZONTAL:
                 self.mainSplitter.SplitHorizontally(self.scriptNotebook, self.videoPane, sash_pos)
             else:
                 self.mainSplitter.SplitVertically(self.scriptNotebook, self.videoPane, sash_pos)
-            if self.mainSplitter.IsFrozen():
-                self.mainSplitter.Thaw()
+            #if self.mainSplitter.IsFrozen():
+                #self.mainSplitter.Thaw()
         if self.previewOK():
             self.currentScript.lastSplitVideoPos = sash_pos # GPo new
 
@@ -20842,7 +20886,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     self.zoomfactor = zoomfactorHeight
                 else:
                     self.zoomfactor = min(zoomfactorWidth, zoomfactorHeight)
-                self.zoomfactor = self.fix_zoom(self.zoomfactor)
             except TypeError:
                 pass
 
