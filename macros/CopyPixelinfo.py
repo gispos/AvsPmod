@@ -32,7 +32,7 @@ timeout = 10
 simple = False
 # write to scrap window
 writeToScrap = True
-# includes also the position if not simple 
+# includes also the position
 includeXY = True 
 # draws a line to each clicked point, only if multi True and not simple
 drawLines = False

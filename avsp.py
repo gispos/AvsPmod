@@ -9178,7 +9178,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 (''),
                 (_('Changelog'), '', self.OnMenuHelpChangelog, _('Open the changelog file')),
                 (_('About AvsPmod'), '', self.OnMenuHelpAbout, _('About this program')),
-                (_('Test'), '', self.OnMenuTest, _('Test')),
+                #(_('Test'), '', self.OnMenuTest, _('Test')),
                 #(_('Test 3'), '', self.OnMenuTest3, _('Test3')),
             ),
         )
