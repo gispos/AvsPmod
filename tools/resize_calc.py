@@ -135,6 +135,17 @@ class ResizeCalculatorDialog(wx.Dialog):
         sizer.Add(textCtrl2, 0, wx.RIGHT, intPPI(2))
         #~ sizer.Add(wx.StaticText(self, wx.ID_ANY, '%'), 0, wx.RIGHT, 0)
         sizerResults.Add(sizer, 0, wx.EXPAND|wx.ALL, int5)
+
+        # Show pixel size, user wish (Left click copies it to the clipboard)
+        staticText2 = wx.StaticText(self, wx.ID_ANY, _('Pixel count:'))
+        textCtrl3 = wx.StaticText(self, wx.ID_ANY, '0')
+        textCtrl3.Bind(wx.EVT_LEFT_UP, self.CopyPixelSizeToClipboard)
+        self.ctrlDict['pixels'] = textCtrl3
+        sizer = wx.BoxSizer(wx.HORIZONTAL)
+        sizer.Add(staticText2, 0, wx.RIGHT, int5)
+        sizer.Add(textCtrl3, 0, wx.RIGHT, intPPI(2))
+        sizerResults.Add(sizer, 0, wx.EXPAND|wx.ALL, int5)
+
         # Settings
         sizerSettings = wx.StaticBoxSizer(wx.StaticBox(self, wx.ID_ANY, _('Settings')), wx.VERTICAL)
         info = (
@@ -264,10 +275,12 @@ class ResizeCalculatorDialog(wx.Dialog):
             width, height, error = self.ComputeWidthHeightError(target_width, widthi, heighti, pari_x, pari_y, wmod, hmod, paro_x, paro_y)
             self.ctrlDict['resize'].SetLabel('%i x %i' % (width, height))
             self.ctrlDict['error'].SetLabel('%.2f' % error+' %')
+            self.ctrlDict['pixels'].SetLabel('%i' % (width * height))
         except:
             width = height = -1
             self.ctrlDict['resize'].SetLabel('')
             self.ctrlDict['error'].SetLabel('')
+            self.ctrlDict['pixels'].SetLabel('')
         self.final_width = width
         self.final_height = height
 
@@ -371,6 +384,22 @@ class ResizeCalculatorDialog(wx.Dialog):
         par_x, par_y = label.split('-')[1].split(':', 1)
         self.ctrlDict['pari_x'].SetValue(par_x.strip())
         self.ctrlDict['pari_y'].SetValue(par_y.strip())
+
+    def CopyPixelSizeToClipboard(self, event):
+        def Upd():
+            self.ctrlDict['pixels'].Refresh()
+            self.ctrlDict['pixels'].Update()
+        txt = self.ctrlDict['pixels'].GetLabel()
+        if wx.TheClipboard.Open():
+            wx.TheClipboard.SetData(wx.TextDataObject(txt))
+            wx.TheClipboard.Close()
+            self.ctrlDict['pixels'].SetLabel('Copied')
+            Upd()
+            wx.Sleep(1)
+            self.ctrlDict['pixels'].SetLabel(txt)
+            Upd()
+        event.Skip()
+
 
 class ResizeCalculatorOptionsDialog(wx.Dialog):
     def __init__(self, parent):

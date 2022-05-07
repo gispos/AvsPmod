@@ -160,7 +160,8 @@ if use_classic_wx:
     lib_extra.append(os.path.join(os.path.dirname(wx.__file__), 'gdiplus.dll'))
 
 data_files = [
-        ('', [
+        ('', 
+            [
             'filterdb.dat',
             'readme.md',
             'changelog.txt',
@@ -168,7 +169,9 @@ data_files = [
             'previewFilterExample.txt',
             'previewFilterExample.avs',
             'readme_threads.txt',
-			'applyfilters_readme.txt',
+            'readme_resampleFilter.txt',
+            'applyfilters_readme.txt',
+            'readme_d2v_based_template.txt'
             ]
         ),
         ('lib', lib_extra),
@@ -200,7 +203,7 @@ data_files = [
                       'avs\\capi.h'
                       ]
          )
-    ]
+ ]
 
 # todo:
 # Python 3.7 uses VS2015 (2017) redistributables

@@ -38,6 +38,20 @@ If, for example, there is a '-' in the file name of the dll, AvsPmod will report
 please rename this dll and replace the '-' with a '_'
 
 --------------------------
+Version 2.7.1.2 [2022-05-06] GPo
+--------------------------
+* If tabs multiline style and tabs row count > 1: If you double-click on the video window, the tabs are hidden.
+- same as pressing Ctrl on double clicking the video window.
+* New macro CopyPixelinfo.py: Open the macro with a text editor for explanation and settings.
+* Fix: flickering when zooming with the keyboard and 'Resize video window' is selected.
+- note: option 'Resize video window' only works with keyboard zoom or if the video height changed.
+* Improved: separate video window and 'Resize filter' behavior. 
+* Fix: if use separate video window enabled, deleting bookmarks doesn't work properly.
+* Fix: separate video window saves now its size and position on exit.
+* Fixed some glitches with the separate video window, but I do not recommend using it. 
+* For the file extensions based templates there is a new modifier ><. readme_d2v_based_template.txt
+
+--------------------------
 Version 2.7.1.1 [2022-04-28] GPo
 --------------------------
 * When normal zoom and resample zoom are used together, the status bar shows it separately e.g. (1.25 x r0.8x) 
