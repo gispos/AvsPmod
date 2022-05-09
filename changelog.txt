@@ -38,6 +38,11 @@ If, for example, there is a '-' in the file name of the dll, AvsPmod will report
 please rename this dll and replace the '-' with a '_'
 
 --------------------------
+Version 2.7.1.3 [2022-05-09] GPo
+--------------------------
+* Fix for separate video window: Background was not deleted when zooming and flickering when showing. 
+
+--------------------------
 Version 2.7.1.2 [2022-05-06] GPo
 --------------------------
 * If tabs multiline style and tabs row count > 1: If you double-click on the video window, the tabs are hidden.

@@ -8291,7 +8291,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             #self.videoDialog.Bind(wx.EVT_ACTIVATE, OnVideoDialogActivate)
             """
 
-            """ We have already bound an EVT_SIZE event, so this one is not needed
+            """ # We have already bound an EVT_SIZE event, so this one is not needed
             self.videoDialog.oldSize = None
             def OnVideoDialogResizeEnd(event):
                 if self.zoomwindow:
@@ -15944,7 +15944,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 return
         if self.separatevideowindow:
             #self.zoom_antialias = False
+            #self.videoWindow.Freeze()
             self.videoDialog.Maximize(not self.videoDialog.IsMaximized())
+            #self.videoWindow.Thaw()
             #if script.resizeFilter[0] and script.resizeFilter[2] == 1:
                 #self.ShowVideoFrame_checkResizeFilter(script)
             #self.ResetZoomAntialias()
@@ -20547,6 +20549,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         oldSize = (-1,-1) # force calculate zoom and erase background
                     if script.AVI.IsErrorClip():
                         script.lastSplitVideoPos = None
+
                     if resize is None:
                         if self.currentScript.lastSplitVideoPos is not None:
                             resize = False
@@ -20571,8 +20574,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.bmpVideo = None
             if newSize != oldSize or newVideoSize != oldVideoSize or not self.previewWindowVisible:
                 self.previewWindowVisible = True
-                self.UpdateScriptTabname(script) # GPo
-                #self.IdleCall.append((self.UpdateScriptTabname, tuple(), {}))
+                # use IdleCall otherwise separate video window flickers on showing
+                self.IdleCall.append((self.UpdateScriptTabname, tuple(), {'script': script}))
+
                 # GPo 2020, if zoomwindow zoom must calc new, if preview wasn't visible
                 # also must new set the video size values (self.zoomfactor is changed)
                 if self.zoomwindow:
@@ -20587,7 +20591,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
                 dc = wx.ClientDC(self.videoWindow)
                 self.PaintAVIFrame(dc, script, self.currentframenum)
-                #~self.OnEraseBackground() # bevor needed, now not wx.2.93 ?!
+                self.OnEraseBackground() # bevor needed, now not wx.2.93 ?! (for separate video wnd needed)
 
                 if self.customHandler > 0:
                     self.PostMessage(self.customHandler, self.AVSP_VID_SIZE, videoWidth, videoHeight)
