@@ -37,6 +37,22 @@ AvsPmod can only provide a user-friendly editor if he has no problems with the n
 If, for example, there is a '-' in the file name of the dll, AvsPmod will report it at startup, 
 please rename this dll and replace the '-' with a '_'
 
+
+--------------------------
+Version 2.7.1.4 [2022-05-22] GPo
+--------------------------
+* New Fullscreen mode: Press Ctrl when double clicking the video window or use menu Video > 'Fullscreen'. (double click or Esc resets). 
+- if you press Ctrl on double clicking, the preview changes beetwen program Fullscreen and preview Fullsize mode.
+- note: if Fullscreen mode changed and the preview was not visible, the zoom resample filter turns off.
+* Separate video window: Again some glitches fixed.
+* DPI scaling for tabs and video controls can now also be reduced (maximum -20%, but not less than 100%)
+* The default width of the slider window at program start (for a new tab) can be saved in the context menu of the slider window.
+* New menu: Options > 'Multiline tab style' you can change it on the fly.
+* Video > 'Resize video window' has been moved to Video > 'Additional', you must create a new shortcut for it.
+* 'Toggle preview placement' revised, splitter for preview and editor should work better now.
+* Option move or resize the program automatically has been removed without replacement. Not compatible with the Resample Filter.
+* Some other changes.
+
 --------------------------
 Version 2.7.1.3 [2022-05-09] GPo
 --------------------------

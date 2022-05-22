@@ -37,6 +37,7 @@ import subprocess
 import threading
 import time
 import ctypes
+import wx
 self = avsp.GetWindow()
 locals_ignor = [k for k, v in locals().items()]
 locals_ignor += ['v', 'k', 'locals_ignor']
@@ -55,6 +56,7 @@ dnxhr_hqx = '-c:v dnxhd -profile:v dnxhr_hqx -vf format=yuv422p10le -c:a pcm_s16
 dnxhr_444 = '-c:v dnxhd -profile:v dnxhr_444 -vf format=yuv444p10le -c:a pcm_s16le .mov'
 x264_lossless_8 = '-c:v libx264 -preset ultrafast -qp 0 -vf format=yuv420p -c:a copy .mkv'
 x264_lossless_422 = '-c:v libx264 -preset ultrafast -qp 0 -vf format=yuv422p10le -c:a copy .mkv'
+x264_lossless_422_sar43 = '-c:v libx264 -preset ultrafast -qp 0 -vf format=yuv422p10le -vf setsar=sar=1.0667/1 -c:a copy .mkv'
 x264_lossless_444 = '-c:v libx264 -preset ultrafast -qp 0 -vf format=yuv444p10le -c:a copy .mkv'
 x264_nvenc_vbr_8 = '-c:v h264_nvenc -preset p7 -profile:v main -rc vbr -b:v 8000k -c:a aac -b:a 256k .mkv'
 x264_nvenc_vbr_422 = '-c:v h264_nvenc -preset P7 -profile:v main -rc vbr -b:v 18000k -c:a aac -b:a 256k .mkv'
@@ -208,12 +210,12 @@ saveScriptTxt = script.GetText().strip()
 global encoding_errors
 global encoding_file_size
 
-# if "return" is found in the script (that happens to me every now and then) 
+# if "return" is found in the script (that happens to me every now and then)
 pos = saveScriptTxt.lower().find('return ')
 if pos > 1 and saveScriptTxt[pos-2:pos].find('#') == -1:
     if not avsp.MsgBox('Found "return" in the script.\nThis can make the selected areas invalid. Keep going?', cancel=True):
         return
-    
+
 if self.UpdateScriptAVI() is None or not self.previewOK(script):
     avsp.MsgBox('Script not initialized.')
     return
@@ -387,42 +389,45 @@ if convertToScriptColorSpace:
     vSourceFilter = vSourceFilterEx
 
 start_time = time.time()
-
-for typ, line in encodings:
-    if typ == 0:
-        trimList.append((line, '', ''))
-        continue
-    txt = scriptTxt + line
-    txt = self.GetEncodedText(txt, bom=True)
-    clip = 'enc%d' % (i)
-    selTrims += line + '++'
-    selClips += clip + '++'
-    videoFile = os.path.join(savePath, '%s_%s%s' % (GetScriptFileName('tab_%i' % script_idx), clip, encoding_args[-1]))
-    avsFile = videoFile + '.avs'
-    try:
-        with open(avsFile, 'wb') as f:
-            f.write(txt)
-            f.close()
-    except IOError as err:
-        raise
-    time.sleep(0.1) # let the drive finished
-    trimList.append(('', clip, 'video = %s\naudio = %s\n%s = audioDub(video, audio)\n' % (vSourceFilter % videoFile, aSourceFilter % videoFile, clip)))
-    if useThreads:
-        # check every two seconds if a thread finished and force the next loop,
-        # so max_encoding_threads always should be running
-        while len(threadList) >= max_encoding_threads and not encoding_errors:
-            for x in xrange(len(threadList)):
-                threadList[x].join(2)
-                if not threadList[x].isAlive() or encoding_errors:
-                    del threadList[x]
-                    break
-        if not encoding_errors:
-            threadList.append(RunnThread(avsFile, videoFile))
-    elif not encoding_errors:
-        encodeAvs(avsFile, videoFile, not allEncodingsAtOnce)
-    if encoding_errors:
-        break
-    i += 1
+disabler = wx.WindowDisabler()
+try:
+    for typ, line in encodings:
+        if typ == 0:
+            trimList.append((line, '', ''))
+            continue
+        txt = scriptTxt + line
+        txt = self.GetEncodedText(txt, bom=True)
+        clip = 'enc%d' % (i)
+        selTrims += line + '++'
+        selClips += clip + '++'
+        videoFile = os.path.join(savePath, '%s_%s%s' % (GetScriptFileName('tab_%i' % script_idx), clip, encoding_args[-1]))
+        avsFile = videoFile + '.avs'
+        try:
+            with open(avsFile, 'wb') as f:
+                f.write(txt)
+                f.close()
+        except IOError as err:
+            raise
+        time.sleep(0.1) # let the drive finished
+        trimList.append(('', clip, 'video = %s\naudio = %s\n%s = audioDub(video, audio)\n' % (vSourceFilter % videoFile, aSourceFilter % videoFile, clip)))
+        if useThreads:
+            # check every two seconds if a thread finished and force the next loop,
+            # so max_encoding_threads always should be running
+            while len(threadList) >= max_encoding_threads and not encoding_errors:
+                for x in xrange(len(threadList)):
+                    threadList[x].join(2)
+                    if not threadList[x].isAlive() or encoding_errors:
+                        del threadList[x]
+                        break
+            if not encoding_errors:
+                threadList.append(RunnThread(avsFile, videoFile))
+        elif not encoding_errors:
+            encodeAvs(avsFile, videoFile, not allEncodingsAtOnce)
+        if encoding_errors:
+            break
+        i += 1
+finally:
+    del disabler
 
 if encoding_errors:
     avsp.MsgBox(_('Last encoding returns error. Process is canceled\n') + encoding_errors)

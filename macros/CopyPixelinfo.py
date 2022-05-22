@@ -19,7 +19,7 @@
 #####
 
 ##### user settings
-# set one of the value: 'xy, hex', 'rgb', 'rgba', 'yuv', 'yuva'
+# set one of the value: 'xy', 'hex', 'rgb', 'rgba', 'yuv', 'yuva'
 colorval = 'hex'
 # prefix e.g. for hex '$'
 prefix = ''
