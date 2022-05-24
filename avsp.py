@@ -3262,7 +3262,7 @@ class PropWindow(wx.Dialog):
             script.propertySizer.Layout()
             script.videoSidebarSizer.Layout()
             script.sliderWindow.FitInside()
-            script.sliderWindow.Thaw()
+            self.parent.TryThaw(script.sliderWindow)
         if newHeight is None:
             dlg = wx.TextEntryDialog(self, _('New height in pixels (50 to 1600):'), _('Frame properties'), str(self.textCtrl.GetSize()[1]))
             ID = dlg.ShowModal()
@@ -3332,7 +3332,7 @@ class PropWindow(wx.Dialog):
             #if self.propWindowParent == 1:
                 #script.videoSidebarSizer.Layout()
             script.sliderWindow.FitInside()
-            script.sliderWindow.Thaw()
+            self.parent.TryThaw(script.sliderWindow)
             return
         if not self.textCtrl.IsShown():
             self.textCtrl.Show()
@@ -3352,7 +3352,7 @@ class PropWindow(wx.Dialog):
             #if self.propWindowParent == 1:
                 #script.videoSidebarSizer.Layout()
             script.sliderWindow.FitInside()
-            script.sliderWindow.Thaw()
+            self.parent.TryThaw(script.sliderWindow)
     def Toggle(self):
         if self.IsShown() or self.Active:
             self.Close()
@@ -8423,7 +8423,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         def OnVideoSplitterPosChanged(event):
             #sliderWindowWidth = self.videoSplitter.GetClientSize()[0] - self.videoSplitter.GetSashPosition()
             if True:
-                newpos = self.videoSplitter.GetSashPosition() #- self.videoSplitter.GetClientSize()[0]
+                newpos = self.videoSplitter.GetSashPosition() - self.videoSplitter.GetClientSize()[0]
                 self.currentScript.lastSplitSliderPos = newpos
                 self.currentScript.sliderWindowShown = True
             else:
@@ -20456,7 +20456,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                        check_playing=False, forceCursor=False, addon0='', forceThread=False,
                        frameToFrametime=False):
 
-        def UpdateSliders(script):
+        def UpdateSliders():
             doFocusScript = False
             toggleTagNames = [a for a,b in script.toggleTags]
             oldToggleTagNames = [a for a,b in script.oldToggleTags]
@@ -20508,6 +20508,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     forceCursor = True
 
         display_clip_refresh_needed = script.display_clip_refresh_needed
+        #needLayout = False
 
         if forceCursor and not wx.IsBusy():
             wx.BeginBusyCursor()
@@ -20681,6 +20682,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             videoHeight = h = int(script.AVI.DisplayHeight * self.zoomfactor)
             if self.zoomwindowfit and not self.splitView:
                 self.videoWindow.SetVirtualSize((0,0))
+
+            ''' !!! Must be before Layout !!! '''
+            doFocusScript = UpdateSliders()
+
             if doLayout:
                 if forceLayout or not self.previewWindowVisible or (videoWidth != self.oldWidth) or (videoHeight != self.oldHeight):
                     # GPo 2018, 2020
@@ -20706,13 +20711,15 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
                     # freeze always if forceLayout (eliminate flickering)
                     if not self.separatevideowindow:
-                        self.videoWindow.Freeze()
                         if self.previewWindowVisible:
                             self.mainSplitter.Freeze()
+                        self.videoWindow.Freeze()
 
                     self.LayoutVideoWindows(w, h, resize, forceRefresh=forceRefresh or display_clip_refresh_needed)
                     self.toggleButton.SetBitmapLabel(self.bmpVidDown)
                     self.toggleButton.Refresh()
+
+                    #needLayout = True
 
             newSize = self.videoWindow.GetVirtualSize()
             # Force a refresh when resizing the preview window
@@ -20736,8 +20743,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         zfa = 3 if self.zoomfactor <= 2 else 4
                         self.videoWindow.SetVirtualSize((w + self.xo + zfa, 0))
 
-                # update the sliders after layout the preview ( see above )
-                doFocusScript = UpdateSliders(script)
                 dc = wx.ClientDC(self.videoWindow)
                 self.PaintAVIFrame(dc, script, self.currentframenum)
                 self.OnEraseBackground() # leave it!
@@ -20745,35 +20750,18 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 if self.customHandler > 0:
                     self.PostMessage(self.customHandler, self.AVSP_VID_SIZE, videoWidth, videoHeight)
             else:
-                # update sliders and paint the frame
-                doFocusScript = UpdateSliders(script)
                 dc = wx.ClientDC(self.videoWindow)
                 self.PaintAVIFrame(dc, script, self.currentframenum)
-
+            """
+            if needLayout: # seems a better place for Layout (after drawing the frame)
+                if not self.separatevideowindow:
+                    self.videoWindow.Freeze()
+                self.LayoutVideoWindows(w, h, resize, forceRefresh=forceRefresh or display_clip_refresh_needed)
+                self.toggleButton.SetBitmapLabel(self.bmpVidDown)
+                self.toggleButton.Refresh()
+            """
             if scroll is not None:
                 self.videoWindow.Scroll(*scroll)
-
-            """
-            # Update sliders... place here is not optimal, frame is painted and update sliders need time
-            doFocusScript = False
-            toggleTagNames = [a for a,b in script.toggleTags]
-            oldToggleTagNames = [a for a,b in script.oldToggleTags]
-            if forceRefresh:
-                script.oldSliderTexts = oldToggleTagNames = script.oldAutoSliderInfo = None
-            if not userScrolling and (script.sliderTexts != script.oldSliderTexts or toggleTagNames != oldToggleTagNames or script.autoSliderInfo != script.oldAutoSliderInfo):
-                if toggleTagNames != oldToggleTagNames:
-                    self.createToggleTagCheckboxes(script)
-                if script.autoSliderInfo != script.oldAutoSliderInfo:
-                    self.createAutoUserSliders(script)
-                if script.sliderTexts != script.oldSliderTexts:
-                    if not self.createUserSliders(script):
-                        doFocusScript = True
-                script.sliderWindow.Freeze()
-                script.videoSidebarSizer.Layout()
-                script.propertySizer.Layout()
-                script.sliderWindow.FitInside()
-                script.sliderWindow.Thaw()
-            """
 
             # If error clip, highlight the line with the error
             errmsg = script.AVI.error_message
@@ -20903,8 +20891,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     self.videoStatusBar.SetDoubleBuffered(True)
                     self.ResetZoomAntialias()
                 self.UpdateScriptTabname(script=script)
-                #self.videoDialog.Show()
                 wx.CallAfter(videoWndShow)
+            else:
+                wx.CallAfter(self.videoDialog.Show)
             return
         """ out of date, Not compatible with resample filter
         if not self.IsMaximized() and self.options['allowresize'] and resize:
@@ -21011,7 +21000,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if script.sliderWindow.Parent != self.videoSplitter:
             script.sliderWindow.Reparent(self.videoSplitter)
 
-        self.videoSplitter.Freeze() # GPo wx 2.9 GPo
+        self.videoSplitter.Freeze()
         if self.videoSplitter.IsSplit():
             self.videoSplitter.ReplaceWindow(self.videoSplitter.GetWindow2(), script.sliderWindow)
             self.videoSplitter.SetSashPosition(script.lastSplitSliderPos)
@@ -21041,7 +21030,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         isShown = self.videoSplitter.IsSplit()
         if isShown:
             self.zoom_antialias = False
-            script.lastSplitSliderPos = self.videoSplitter.GetSashPosition()
         button = self.toggleSliderWindowButton
 
         # Hide the sliders
@@ -21052,7 +21040,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         # So we change the parent to a hidden wnd (tempVideoDialog) if slider window hidden.
         '''
         # this happans also to the hole program (not only to the videoDialog)
-        script.sliderWindow.Reparent(self.tempVideoDialog)
+        if script.sliderWindow.Parent == self.videoSplitter:
+            script.sliderWindow.Reparent(self.tempVideoDialog)
 
         script.sliderWindowShown = False
         button.SetBitmapLabel(button.bmpShow)
@@ -22344,248 +22333,250 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     """
     def createAutoUserSliders(self, script):
         script.sliderWindow.Freeze()
-        script.sliderSizerNew.Clear(deleteWindows=True)
-        script.sliderToggleLabels = []
-        if not self.SlidersContextMenu: # GPo, save time
-            menuInfoGeneral = []
-            if not self.options['sliderhidetagmenu']:
-                menuInfoGeneral = [
-                    (_('Add toggle tag'), '', self.OnSliderAddToggleTag, ''),
-                    (_('Clear all tags and disable the filters'), '', self.OnMenuEditClearToggleTags2, ''),
-                    (_('Clear all tags && disabled filters'), '', self.OnMenuEditClearToggleTags, ''),
+        try:
+            script.sliderSizerNew.Clear(deleteWindows=True)
+            script.sliderToggleLabels = []
+            if not self.SlidersContextMenu: # GPo, save time
+                menuInfoGeneral = []
+                if not self.options['sliderhidetagmenu']:
+                    menuInfoGeneral = [
+                        (_('Add toggle tag'), '', self.OnSliderAddToggleTag, ''),
+                        (_('Clear all tags and disable the filters'), '', self.OnMenuEditClearToggleTags2, ''),
+                        (_('Clear all tags && disabled filters'), '', self.OnMenuEditClearToggleTags, ''),
+                        (''),
+                        ]
+                menuInfoGeneral += [
+                    (_('Edit filter database'), '', self.OnSliderLabelEditDatabase, ''),
                     (''),
-                    ]
-            menuInfoGeneral += [
-                (_('Edit filter database'), '', self.OnSliderLabelEditDatabase, ''),
-                (''),
-                (_('Toggle all folds'), '', self.OnSliderLabelToggleAllFolds, ''),
-                (_('Toggle exclusions filters'), '', self.OnSliderToggleExclusionsFilters, ''),
-                (_('General settings...'), '', self.OnSliderLabelSettings, ''),
-                (''),
-                (_('Set same width for all tabs'), '', self.OnSliderWindowsSameWidth, ''),
-                (_('Save width for startup'), '', self.OnSliderWindowsSaveWidth, ''),
-                (_('Slider update immediately'), '', self.OnSliderToggleUpdateMode, '', wx.ITEM_CHECK, False),
-                (''),
-                (_('Update sliders'), '', self.OnSliderUpdate, ''),
-            ]
-            self.SlidersContextMenu = self.createMenu(menuInfoGeneral)
+                    (_('Toggle all folds'), '', self.OnSliderLabelToggleAllFolds, ''),
+                    (_('Toggle exclusions filters'), '', self.OnSliderToggleExclusionsFilters, ''),
+                    (_('General settings...'), '', self.OnSliderLabelSettings, ''),
+                    (''),
+                    (_('Set same width for all tabs'), '', self.OnSliderWindowsSameWidth, ''),
+                    (_('Save width for startup'), '', self.OnSliderWindowsSaveWidth, ''),
+                    (_('Slider update immediately'), '', self.OnSliderToggleUpdateMode, '', wx.ITEM_CHECK, False),
+                    (''),
+                    (_('Update sliders'), '', self.OnSliderUpdate, ''),
+                ]
+                self.SlidersContextMenu = self.createMenu(menuInfoGeneral)
 
-        menuGeneral = self.SlidersContextMenu
+            menuGeneral = self.SlidersContextMenu
 
-        if self.slidersShowExclusionFilters:
-            exclusionList = []
-        else:
-            exclusionList = self.options['autosliderexclusions'].lower().split()
-        row = 0
-        addSnapshotPanel = True
+            if self.slidersShowExclusionFilters:
+                exclusionList = []
+            else:
+                exclusionList = self.options['autosliderexclusions'].lower().split()
+            row = 0
+            addSnapshotPanel = True
 
-        """ snapshot first, I can't make up my mind yet ;)
-        if addSnapshotPanel:
-                separator = self.addAvsSliderSeparatorNew(script, label='Snapshot', menu=None, row=row, sizer=script.sliderSizerNew)
-                row += 1
-                self.addAvsSnapshotPanel(script, separator, row)
-                row += 1
-        """
-        #for filterName, filterInfo in script.autoSliderInfo:
-        for filterName, filterInfo, extraInfo in script.autoSliderInfo: #GPo new extraInfo if previewFilter
-            filterN = filterName.lower().split(' (')[0] #~filterName.lower() if filterName.find(' (') < 0 else filterName.lower().split(' (')[0] # GPo
-            if filterN in exclusionList:
-                continue
-            separator = None
-            filterName += extraInfo
-            for info, enteredName, enteredValue, argIndex in filterInfo:
-                # Parse the argument info entered into the script
-                splitEnteredValue = enteredValue.split('=')
-                if len(splitEnteredValue) == 2:
-                    namedArg, strValue = splitEnteredValue
-                else:
-                    namedArg = None
-                    strValue = enteredValue
-                strValue = strValue.strip(string.whitespace+'\\')
-                if strValue.startswith(self.sliderOpenString) and strValue.endswith(self.sliderCloseString):
-                    continue
-                # Parse the calltip info and build the appropriate slider
-                argtype, argname, guitype, defaultValue, other = self.ParseCalltipArgInfo(info, strValue=strValue)
-                if argtype is None or argname is None or guitype is None or argtype not in ('int', 'float', 'bool', 'string'):
-                    continue
-                if enteredName is not None:
-                    if argname.startswith('"') and argname.endswith('"'):
-                        argname = '"%s"' % enteredName.strip('"')
-                    else:
-                        argname = enteredName
-                boolException = False
-                if guitype == 'slider':
-                    # Create a numerical slider
-                    if not self.options['autoslidermakeintfloat']:
-                        continue
-                    minValue, maxValue, nDecimal, mod = other
-                    try:
-                        value = float(strValue)
-                    except ValueError:
-                        boolException = True
-                        value = None
-                    if value is None:
-                        value = minValue
-                    if value < minValue:
-                        minValue = value
-                    if value > maxValue:
-                        maxValue = value
-                    if separator is None:
-                        separator = self.addAvsSliderSeparatorNew(script, label=filterName, menu=menuGeneral, row=row, sizer=script.sliderSizerNew)
-                        row += 1
-                    if boolException:
-                        self.addAvsGenericArg(script, argname, strValue, row, separator, filterName, argIndex)
-                    else:
-                        self.addAvsSliderNew(script, argname, value, minValue, maxValue, defaultValue, nDecimal, mod, row, sizer=script.sliderSizerNew, separator=separator, filterName=filterName, argIndex=argIndex)
+            """ snapshot first, I can't make up my mind yet ;)
+            if addSnapshotPanel:
+                    separator = self.addAvsSliderSeparatorNew(script, label='Snapshot', menu=None, row=row, sizer=script.sliderSizerNew)
                     row += 1
-                elif guitype == 'color':
-                    # Create a color picker button
-                    if not self.options['autoslidermakecolor']:
-                        continue
-                    if strValue.startswith('$'):
-                        try:
-                            value = strValue.split('$', 1)[1]
-                            int(value, 16)
-                        except ValueError:
-                            boolException = True
-                    else:
-                        try:
-                            value = '%X' % int(strValue)
-                            if len(value) <= 6:
-                                value = value.rjust(6, '0')
-                            else:
-                                boolException = True
-                        except ValueError:
-                            boolException = True
-                    if separator is None:
-                        separator = self.addAvsSliderSeparatorNew(script, label=filterName, menu=menuGeneral, row=row, sizer=script.sliderSizerNew)
-                        row += 1
-                    if boolException:
-                        self.addAvsGenericArg(script, argname, strValue, row, separator, filterName, argIndex)
-                    else:
-                        self.addAvsColorPicker(script, argname, value, defaultValue, row, separator, filterName, argIndex)
+                    self.addAvsSnapshotPanel(script, separator, row)
                     row += 1
-                elif guitype == 'boolradio':
-                    # Create a true/false radio box
-                    if not self.options['autoslidermakebool']:
+            """
+            #for filterName, filterInfo in script.autoSliderInfo:
+            for filterName, filterInfo, extraInfo in script.autoSliderInfo: #GPo new extraInfo if previewFilter
+                filterN = filterName.lower().split(' (')[0] #~filterName.lower() if filterName.find(' (') < 0 else filterName.lower().split(' (')[0] # GPo
+                if filterN in exclusionList:
+                    continue
+                separator = None
+                filterName += extraInfo
+                for info, enteredName, enteredValue, argIndex in filterInfo:
+                    # Parse the argument info entered into the script
+                    splitEnteredValue = enteredValue.split('=')
+                    if len(splitEnteredValue) == 2:
+                        namedArg, strValue = splitEnteredValue
+                    else:
+                        namedArg = None
+                        strValue = enteredValue
+                    strValue = strValue.strip(string.whitespace+'\\')
+                    if strValue.startswith(self.sliderOpenString) and strValue.endswith(self.sliderCloseString):
                         continue
-                    if strValue.lower() in ('true', 'false'):
-                        if strValue.lower() == 'true':
-                            value = True
+                    # Parse the calltip info and build the appropriate slider
+                    argtype, argname, guitype, defaultValue, other = self.ParseCalltipArgInfo(info, strValue=strValue)
+                    if argtype is None or argname is None or guitype is None or argtype not in ('int', 'float', 'bool', 'string'):
+                        continue
+                    if enteredName is not None:
+                        if argname.startswith('"') and argname.endswith('"'):
+                            argname = '"%s"' % enteredName.strip('"')
                         else:
-                            value = False
-                    else:
-                        boolException = True
-                    if separator is None:
-                        separator = self.addAvsSliderSeparatorNew(script, label=filterName, menu=menuGeneral, row=row, sizer=script.sliderSizerNew)
+                            argname = enteredName
+                    boolException = False
+                    if guitype == 'slider':
+                        # Create a numerical slider
+                        if not self.options['autoslidermakeintfloat']:
+                            continue
+                        minValue, maxValue, nDecimal, mod = other
+                        try:
+                            value = float(strValue)
+                        except ValueError:
+                            boolException = True
+                            value = None
+                        if value is None:
+                            value = minValue
+                        if value < minValue:
+                            minValue = value
+                        if value > maxValue:
+                            maxValue = value
+                        if separator is None:
+                            separator = self.addAvsSliderSeparatorNew(script, label=filterName, menu=menuGeneral, row=row, sizer=script.sliderSizerNew)
+                            row += 1
+                        if boolException:
+                            self.addAvsGenericArg(script, argname, strValue, row, separator, filterName, argIndex)
+                        else:
+                            self.addAvsSliderNew(script, argname, value, minValue, maxValue, defaultValue, nDecimal, mod, row, sizer=script.sliderSizerNew, separator=separator, filterName=filterName, argIndex=argIndex)
                         row += 1
-                    if boolException:
-                        self.addAvsGenericArg(script, argname, strValue, row, separator, filterName, argIndex)
-                    else:
-                        self.addAvsBooleanRadio(script, argname, value, defaultValue, row, separator, filterName, argIndex)
-                    row += 1
-                elif guitype in ('intlist', 'stringlist'):
-                    if guitype == 'intlist':
-                        if not self.options['autoslidermakeintlist']:
+                    elif guitype == 'color':
+                        # Create a color picker button
+                        if not self.options['autoslidermakecolor']:
                             continue
-                    else:
-                        if not self.options['autoslidermakestringlist']:
+                        if strValue.startswith('$'):
+                            try:
+                                value = strValue.split('$', 1)[1]
+                                int(value, 16)
+                            except ValueError:
+                                boolException = True
+                        else:
+                            try:
+                                value = '%X' % int(strValue)
+                                if len(value) <= 6:
+                                    value = value.rjust(6, '0')
+                                else:
+                                    boolException = True
+                            except ValueError:
+                                boolException = True
+                        if separator is None:
+                            separator = self.addAvsSliderSeparatorNew(script, label=filterName, menu=menuGeneral, row=row, sizer=script.sliderSizerNew)
+                            row += 1
+                        if boolException:
+                            self.addAvsGenericArg(script, argname, strValue, row, separator, filterName, argIndex)
+                        else:
+                            self.addAvsColorPicker(script, argname, value, defaultValue, row, separator, filterName, argIndex)
+                        row += 1
+                    elif guitype == 'boolradio':
+                        # Create a true/false radio box
+                        if not self.options['autoslidermakebool']:
                             continue
+                        if strValue.lower() in ('true', 'false'):
+                            if strValue.lower() == 'true':
+                                value = True
+                            else:
+                                value = False
+                        else:
+                            boolException = True
+                        if separator is None:
+                            separator = self.addAvsSliderSeparatorNew(script, label=filterName, menu=menuGeneral, row=row, sizer=script.sliderSizerNew)
+                            row += 1
+                        if boolException:
+                            self.addAvsGenericArg(script, argname, strValue, row, separator, filterName, argIndex)
+                        else:
+                            self.addAvsBooleanRadio(script, argname, value, defaultValue, row, separator, filterName, argIndex)
+                        row += 1
+                    elif guitype in ('intlist', 'stringlist'):
+                        if guitype == 'intlist':
+                            if not self.options['autoslidermakeintlist']:
+                                continue
+                        else:
+                            if not self.options['autoslidermakestringlist']:
+                                continue
+                            if not strValue.startswith('"') or not strValue.endswith('"'):
+                                boolException = True
+                            else:
+                                strValue = strValue.strip('"')
+                        choices = other
+                        if separator is None:
+                            separator = self.addAvsSliderSeparatorNew(script, label=filterName, menu=menuGeneral, row=row, sizer=script.sliderSizerNew)
+                            row += 1
+                        if boolException:
+                            self.addAvsGenericArg(script, argname, strValue, row, separator, filterName, argIndex)
+                        else:
+                            self.addAvsChoice(script, argname, strValue, choices, defaultValue, guitype, row, separator, filterName, argIndex)
+                        row += 1
+                    elif guitype == 'stringfilename':
+                        if not self.options['autoslidermakestringfilename']:
+                            continue
+                        extList = other
                         if not strValue.startswith('"') or not strValue.endswith('"'):
                             boolException = True
                         else:
-                            strValue = strValue.strip('"')
-                    choices = other
-                    if separator is None:
-                        separator = self.addAvsSliderSeparatorNew(script, label=filterName, menu=menuGeneral, row=row, sizer=script.sliderSizerNew)
+                            value = strValue.strip('"')
+                        if separator is None:
+                            separator = self.addAvsSliderSeparatorNew(script, label=filterName, menu=menuGeneral, row=row, sizer=script.sliderSizerNew)
+                            row += 1
+                        if boolException:
+                            self.addAvsGenericArg(script, argname, strValue, row, separator, filterName, argIndex)
+                        else:
+                            self.addAvsFilenamePicker(script, argname, value, extList, row, separator, filterName, argIndex)
                         row += 1
-                    if boolException:
+                    elif guitype in ('undocumented', 'error'):
+                        # Undocumented argument
+                        if not self.options['autoslidermakeunknown']:
+                            continue
+                        if separator is None:
+                            separator = self.addAvsSliderSeparatorNew(script, label=filterName, menu=menuGeneral, row=row, sizer=script.sliderSizerNew)
+                            row += 1
                         self.addAvsGenericArg(script, argname, strValue, row, separator, filterName, argIndex)
-                    else:
-                        self.addAvsChoice(script, argname, strValue, choices, defaultValue, guitype, row, separator, filterName, argIndex)
-                    row += 1
-                elif guitype == 'stringfilename':
-                    if not self.options['autoslidermakestringfilename']:
-                        continue
-                    extList = other
-                    if not strValue.startswith('"') or not strValue.endswith('"'):
-                        boolException = True
-                    else:
-                        value = strValue.strip('"')
-                    if separator is None:
-                        separator = self.addAvsSliderSeparatorNew(script, label=filterName, menu=menuGeneral, row=row, sizer=script.sliderSizerNew)
                         row += 1
-                    if boolException:
-                        self.addAvsGenericArg(script, argname, strValue, row, separator, filterName, argIndex)
-                    else:
-                        self.addAvsFilenamePicker(script, argname, value, extList, row, separator, filterName, argIndex)
-                    row += 1
-                elif guitype in ('undocumented', 'error'):
-                    # Undocumented argument
-                    if not self.options['autoslidermakeunknown']:
-                        continue
-                    if separator is None:
-                        separator = self.addAvsSliderSeparatorNew(script, label=filterName, menu=menuGeneral, row=row, sizer=script.sliderSizerNew)
-                        row += 1
-                    self.addAvsGenericArg(script, argname, strValue, row, separator, filterName, argIndex)
-                    row += 1
 
-        """ if snapshot first
-        if (addSnapshotPanel and row == 2) or (not addSnapshotPanel and row == 0):
-            script.autoSliderInfo = []
-        """
-        if row == 0:
-            script.autoSliderInfo = []
-        else:
-            if addSnapshotPanel:
-                separator = self.addAvsSliderSeparatorNew(script, label='Snapshot', menu=None, row=row, sizer=script.sliderSizerNew)
-                row += 1
-                self.addAvsSnapshotPanel(script, separator, row)
-                row += 1
-
-            # Add a spacer
-            height = 0
-            if script.sliderTexts != []:
-                height = intPPI(20)
-            script.sliderSizerNew.Add((5, height), (row, 7))
-
-        if wx.VERSION > (2, 9):
-            script.sliderSizerNew.Add((0, 0), (row, 3))
-            if not script.sliderSizerNew.IsColGrowable(3):
-                script.sliderSizerNew.AddGrowableCol(3)
-
-        # Fold according to user set preference
-        # GPo 2020, restore last folds
-        foldLevel = self.options['autosliderstartfold']
-        if foldLevel == 3:
-            if script.SliderFoldsBackup:
-                self.SliderRestoreFolds()
+            """ if snapshot first
+            if (addSnapshotPanel and row == 2) or (not addSnapshotPanel and row == 0):
+                script.autoSliderInfo = []
+            """
+            if row == 0:
+                script.autoSliderInfo = []
             else:
+                if addSnapshotPanel:
+                    separator = self.addAvsSliderSeparatorNew(script, label='Snapshot', menu=None, row=row, sizer=script.sliderSizerNew)
+                    row += 1
+                    self.addAvsSnapshotPanel(script, separator, row)
+                    row += 1
+
+                # Add a spacer
+                height = 0
+                if script.sliderTexts != []:
+                    height = intPPI(20)
+                script.sliderSizerNew.Add((5, height), (row, 7))
+
+            if wx.VERSION > (2, 9):
+                script.sliderSizerNew.Add((0, 0), (row, 3))
+                if not script.sliderSizerNew.IsColGrowable(3):
+                    script.sliderSizerNew.AddGrowableCol(3)
+
+            # Fold according to user set preference
+            # GPo 2020, restore last folds
+            foldLevel = self.options['autosliderstartfold']
+            if foldLevel == 3:
+                if script.SliderFoldsBackup:
+                    self.SliderRestoreFolds()
+                else:
+                    for item in script.sliderToggleLabels:
+                        self.ToggleSliderFold(item, fold=True, refresh=False)
+                    self.foldAllSliders = False
+                self.SliderSaveCurrentFolds()
+            elif foldLevel == 0:
+                # Fold all filters
                 for item in script.sliderToggleLabels:
                     self.ToggleSliderFold(item, fold=True, refresh=False)
                 self.foldAllSliders = False
-            self.SliderSaveCurrentFolds()
-        elif foldLevel == 0:
-            # Fold all filters
-            for item in script.sliderToggleLabels:
-                self.ToggleSliderFold(item, fold=True, refresh=False)
-            self.foldAllSliders = False
-        elif foldLevel == 1:
-            # Fold none, don't need to do anything
-            self.foldAllSliders = True
-        elif foldLevel == 2:
-            # Fold only filters without numerical sliders
-            boolAnyUnfolded = False
-            for item in script.sliderToggleLabels:
-                if not item.hasNumericalSlider:
-                    self.ToggleSliderFold(item, fold=True, refresh=False)
-                else:
-                    boolAnyUnfolded = True
-            if boolAnyUnfolded:
+            elif foldLevel == 1:
+                # Fold none, don't need to do anything
                 self.foldAllSliders = True
-        else:
-            pass
-        self.TryThaw(script.sliderWindow)
+            elif foldLevel == 2:
+                # Fold only filters without numerical sliders
+                boolAnyUnfolded = False
+                for item in script.sliderToggleLabels:
+                    if not item.hasNumericalSlider:
+                        self.ToggleSliderFold(item, fold=True, refresh=False)
+                    else:
+                        boolAnyUnfolded = True
+                if boolAnyUnfolded:
+                    self.foldAllSliders = True
+            else:
+                pass
+        finally:
+            self.TryThaw(script.sliderWindow)
 
     def addAvsSliderNew(self, script, labelTxt, value, minValue, maxValue, defaultValue, nDecimal, mod=None, row=None, sizer=None, separator=None, filterName=None, argIndex=None):
         if minValue is None or maxValue is None or value is None or nDecimal is None:
@@ -23436,7 +23427,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.scriptNotebook.GetPage(i).lastSplitSliderPos = pos
 
     def OnSliderWindowsSaveWidth(self, event):
-        self.options['sliderwindowwidth'] = self.videoSplitter.GetSashPosition()
+        self.options['sliderwindowwidth'] = self.videoSplitter.GetSashPosition() - self.videoSplitter.GetClientSize()[0]
 
     def OnSliderToggleUpdateMode(self, event):
         self.options['autosliderupdatedirectly'] = not self.options['autosliderupdatedirectly']

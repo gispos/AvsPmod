@@ -39,7 +39,7 @@ please rename this dll and replace the '-' with a '_'
 
 
 --------------------------
-Version 2.7.1.4 [2022-05-22] GPo
+Version 2.7.1.5 [2022-05-24] GPo
 --------------------------
 * New Fullscreen mode: Press Ctrl when double clicking the video window or use menu Video > 'Fullscreen'. (double click or Esc resets). 
 - if you press Ctrl on double clicking, the preview changes beetwen program Fullscreen and preview Fullsize mode.
@@ -52,6 +52,11 @@ Version 2.7.1.4 [2022-05-22] GPo
 * 'Toggle preview placement' revised, splitter for preview and editor should work better now.
 * Option move or resize the program automatically has been removed without replacement. Not compatible with the Resample Filter.
 * Some other changes.
+
+--------------------------
+Version 2.7.1.4 [2022-05-09] GPo
+--------------------------
+removed, slider update bug
 
 --------------------------
 Version 2.7.1.3 [2022-05-09] GPo
