@@ -39,6 +39,25 @@ please rename this dll and replace the '-' with a '_'
 
 
 --------------------------
+Version 2.7.1.6 [2022-05-28] GPo
+--------------------------
+* DPI scaling revised:
+- the calculation basis is now the pixel size (previously point size). The font sizes now match the set system zoom. 
+- if you have adjusted the DPI scaling differently, you may have to do this again. The font size can now be larger.
+- now all extra values can be adjusted from -20% to 100% and DPI scaling manually from -20 to 200%.
+- the DPI scaling for the tabs can now be more fine adjust. 10% makes a differenze.
+- with a 27 inch QHD monitor and 100% system zoom try +10% for the tabs if your eyes are a bit older..;) 
+* For Fullsize/Fullscreen mode the visibility of the tabs can be set (Program Options > Video > 'Fullscreen/Fullsize mode').
+* Added to Crop-Editor autocrop mod 2 and mod 4 (negative calculation, (crop less)).
+* Added new menus (tab context, file menu) 'Reload all scripts'
+* Display option 'Resize video window' revised.
+* When a script has been changed and the program is closed, a dialog appears asking whether the changes should be saved. 
+- in this dialog it is now possible to accept the decision for all scripts if Ctrl is pressed (this can be read in the dialog).
+* Fixed: When closing the program all changed scripts are initialized. Sorry.
+* Some other improvements...Hopefully. xD
+
+
+--------------------------
 Version 2.7.1.5 [2022-05-24] GPo
 --------------------------
 * New Fullscreen mode: Press Ctrl when double clicking the video window or use menu Video > 'Fullscreen'. (double click or Esc resets). 
@@ -54,7 +73,7 @@ Version 2.7.1.5 [2022-05-24] GPo
 * Some other changes.
 
 --------------------------
-Version 2.7.1.4 [2022-05-09] GPo
+Version 2.7.1.4 [2022-05-22] GPo
 --------------------------
 removed, slider update bug
 

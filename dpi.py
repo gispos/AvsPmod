@@ -5,6 +5,7 @@
 # Author:      GPo
 #
 # Created:     17.12.2020
+# Changed:     27.05.2022, calc font in pixels (more acurate)
 # Copyright:   (c) GPo 2020
 # Licence:     <your licence>
 #-------------------------------------------------------------------------------
@@ -27,14 +28,30 @@ def roundPPI(n):
 def floatPPI(n):
     return ppi_factor * float(n)
 
-def tuplePPI(n1,n2):
-    return ((int(ppi_factor * n1), int(ppi_factor * n2)))
+def tuplePPI(n1, n2):
+    return (int(ppi_factor * n1), int(ppi_factor * n2))
 
 def SetFontPPI(obj, size_adj=0):
     if ppi_factor > 1:
-        font = obj.GetFont()
-        font.SetPointSize(intPPI(font.GetPointSize())+size_adj)
+        try:
+            font = obj.GetFont()
+            if font.IsUsingSizeInPixels():
+                font.SetPixelSize(tuplePPI(font.GetPixelSize()[0]+size_adj, font.GetPixelSize()[1]+size_adj))
+            else:
+                font.SetPointSize(intPPI(font.GetPointSize())+size_adj)
+        except:
+            return
         obj.SetFont(font)
+
+def SetFontSize(font, factor, size_adj=0, usePixel=True):
+    try:
+        if usePixel and font.IsUsingSizeInPixels():
+            font.SetPixelSize((int(font.GetPixelSize()[0]*factor)+size_adj, int(font.GetPixelSize()[1]*factor)+size_adj))
+        else:
+            font.SetPointSize(int(font.GetPointSize()*factor)+size_adj)
+    except:
+        return
+
 
 class DPI():
     def __init__(self):

@@ -491,7 +491,7 @@ class AvsClipBase:
                 print(u"Deleting allocated video memory for '{0}'".format(self.name))
 
     def CreateErrorClip(self, err='', display_clip_error=False):
-        if self.preview_filter: # GPo new
+        if self.preview_filter:
             self.preview_filter = None
             if not self.callBack('preview', -1):
                 self.env.set_var("avsp_filter_clip", None)
@@ -1257,7 +1257,6 @@ class AvsClipBase:
                 if left_done and right_done: break
             else: continue
             break
-
         return left, top, right, bottom
 
     # calculate the resize values needed for the display clip for the given client area (dw, dh)

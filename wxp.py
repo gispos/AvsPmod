@@ -1145,7 +1145,7 @@ else:
 
 class OptionsDialog(wx.Dialog):
     def __init__(self, parent, dlgInfo, options, title=None, startPageIndex=0,
-                starText=True, invert_scroll=False):
+                starText=True, invert_scroll=False, dlgsize=None):
         '''Init the OptionsDialog window
 
         Create a wx.Notebook from the tabs specified in 'dlgInfo' and the
@@ -1570,10 +1570,13 @@ class OptionsDialog(wx.Dialog):
             dlgSizer.Add(tabPanel, 0, wx.EXPAND|wx.ALL, 0)
         dlgSizer.Add(btns, 0, wx.EXPAND|wx.ALL, dpi.intPPI(10))
         dlgSizer.Fit(self)
-        self.Center()
         self.SetSizer(dlgSizer)
         dlgSizer.SetSizeHints(self)
         dlgSizer.Layout()
+        if dlgsize:
+            dlgsize = (dlgsize[0], self.GetSize()[1]) # set only the width
+            self.SetSize(dlgsize)
+        self.Center()
         # Misc
         okay.SetDefault()
         if starText and self.starText is not None:
@@ -1974,7 +1977,7 @@ class ShortcutsDialog(wx.Dialog):
 
 class EditStringDictDialog(wx.Dialog):
     def __init__(self, parent, infoDict, title='Edit', keyTitle='Key',
-                 valueTitle='Value', editable=False, insertable=False, size=dpi.tuplePPI(540, 360),
+                 valueTitle='Value', editable=False, insertable=False, size=dpi.tuplePPI(640, 440),
                  about='', keyChecker=None, valueChecker=None, nag=False):
         wx.Dialog.__init__(self, parent, wx.ID_ANY, title, size=size, style=wx.DEFAULT_DIALOG_STYLE|wx.RESIZE_BORDER)
         dpi.SetFontPPI(self)
