@@ -37,6 +37,11 @@ AvsPmod can only provide a user-friendly editor if he has no problems with the n
 If, for example, there is a '-' in the file name of the dll, AvsPmod will report it at startup, 
 please rename this dll and replace the '-' with a '_'
 
+--------------------------
+Version 2.7.1.7 [2022-05-29] GPo
+--------------------------
+** If you use DPI zoom in windows read the changelog of version 2.7.1.6 **
+* Fixed flickering when zooming with the mouse wheel.
 
 --------------------------
 Version 2.7.1.6 [2022-05-28] GPo
@@ -55,7 +60,6 @@ Version 2.7.1.6 [2022-05-28] GPo
 - in this dialog it is now possible to accept the decision for all scripts if Ctrl is pressed (this can be read in the dialog).
 * Fixed: When closing the program all changed scripts are initialized. Sorry.
 * Some other improvements...Hopefully. xD
-
 
 --------------------------
 Version 2.7.1.5 [2022-05-24] GPo

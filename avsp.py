@@ -20888,8 +20888,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         self.videoWindow.SetVirtualSize((w + self.xo + zfa, 0))
 
                 dc = wx.ClientDC(self.videoWindow)
+                self.OnEraseBackground() # leave it before paint (better for zooming with the mouse wheel)
                 self.PaintAVIFrame(dc, script, self.currentframenum)
-                self.OnEraseBackground() # leave it!
 
                 if self.customHandler > 0:
                     self.PostMessage(self.customHandler, self.AVSP_VID_SIZE, videoWidth, videoHeight)
@@ -20969,8 +20969,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         finally: # so also on abort (return)
             if wx.IsBusy():
                 wx.EndBusyCursor()
-            self.TryThaw(self.videoWindow)
             self.TryThaw(self.mainSplitter)
+            self.TryThaw(self.videoWindow)
 
         return True
 
