@@ -170,7 +170,9 @@ data_files = [
             'previewFilterExample.avs',
             'readme_threads.txt',
             'readme_resampleFilter.txt',
-            'applyfilters_readme.txt',
+            'readme_applyFilters.txt',
+            'readme_SplitClip.txt',
+            'readme_NumberWheel.txt',
             'readme_d2v_based_template.txt'
             ]
         ),

@@ -1254,7 +1254,7 @@ struct AVS_Library {
   //AVSC_DECLARE_FUNC(avs_prop_set_int_array);
   //AVSC_DECLARE_FUNC(avs_prop_set_float_array);
 
-  //AVSC_DECLARE_FUNC(avs_clear_map);
+  AVSC_DECLARE_FUNC(avs_clear_map);
   
   // NewVideoFrame with frame properties
   //AVSC_DECLARE_FUNC(avs_new_video_frame_p);
@@ -1397,6 +1397,7 @@ AVSC_INLINE AVS_Library * avs_load_library() {
   AVSC_LOAD_FUNC(avs_prop_get_float);
   AVSC_LOAD_FUNC(avs_prop_get_data);
   AVSC_LOAD_FUNC(avs_prop_get_data_size);
+  AVSC_LOAD_FUNC(avs_clear_map);
 #endif
 	
 #undef __AVSC_STRINGIFY
