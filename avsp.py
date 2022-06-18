@@ -2119,9 +2119,14 @@ class AvsStyledTextCtrl(stc.StyledTextCtrl):
             line += 1
 
     def OnKeyUp(self, event):
+        keycode = event.GetKeyCode()
+        # exit IsDClicked and selection (true/false/number process), see OnKeyDown
+        if self.IsDClicked and self.GetSelections() > 0:
+            if keycode in (wx.WXK_LEFT, wx.WXK_RIGHT):
+                return
         pos = self.GetCurrentPos()
         keys = (wx.WXK_ESCAPE, wx.WXK_RETURN, wx.WXK_NUMPAD_ENTER, wx.WXK_TAB)
-        if event.GetKeyCode() not in keys\
+        if keycode not in keys\
         and not self.AutoCompActive()\
         and not (self.CallTipActive() and self.app.options['calltipsoverautocomplete'])\
         and self.GetStyleAt(pos-1) not in self.nonBraceStyles:
@@ -2139,6 +2144,10 @@ class AvsStyledTextCtrl(stc.StyledTextCtrl):
 
     def OnKeyDown(self,event):
         key = event.GetKeyCode()
+        if self.IsDClicked and self.GetSelections() > 0:
+            if key in (wx.WXK_LEFT, wx.WXK_RIGHT):
+                self.app.OnMouseWheelScriptWindow(rotation = key != wx.WXK_LEFT, dec_first=False)
+                return
         if (self.AutoCompActive() and self.autocomplete_case == 'function' and
             key in (wx.WXK_RETURN, wx.WXK_NUMPAD_ENTER, wx.WXK_TAB) and
             not (event.ControlDown() or event.AltDown() or event.ShiftDown())):
@@ -3158,6 +3167,7 @@ class SplitClipCtrl(wx.Dialog):
         self.SetSizer(sizer)
         sizer.Layout()
         self.IsActive = False
+        self.Hide()
 
     def Activate(self):
         self.videoSlider.Enable(False)
@@ -6587,9 +6597,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if self.options.get('maximized2') and self.separatevideowindow:
             self.videoDialog.Maximize(True)
 
-        self.Freeze()
+        #self.Freeze()
+        #self.Show()
+        #self.Thaw()
         self.Show()
-        self.Thaw()
+        #self.Refresh()
+        self.Update()
 
         # needed for row count calculation after loading the tabs if multiline
         #if self.options['multilinetab']:
@@ -6793,11 +6806,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         if pw > -1 and pl > -1:
             self.PostMessage(w_param, l_param, pw, pl)
-    """ GPo, test not working
-    def wm_xbuttondown(self, w_param, l_param):
-        wx.Bell()
-        return 0
-    """
 ### end GPo
 
     def BindObjMouseAux(self, obj, excludeChildren = -2):
@@ -7322,10 +7330,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'propwindowparentsize': intPPI(200),    # GPo, property text height in the slider window
             'sliderwindowwidth': -intPPI(400),      # GPo, default slider window width, must be negative!
             'optionsdlgsize': (300, 300),           # GPo, not important, only width is set after layout
+            'numberwheelfaster': False,             # change OnMiddleUpScriptWindow the number wheel performance
             'eol': 'auto',
             'loadstartupbookmarks': True,
             'nrecentfiles': 5,
-            #'allowresize': False,                  # GPo, removed 2022, (auto resize the program or videoDialog) bad for resize Filter
             'mintextlines': 6,
             'usetabimages': True,
             'multilinetab': False,
@@ -8214,13 +8222,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 ((_('Mouse wheel function'), wxp.OPT_ELEM_LIST, 'mousewheelfunc', _('Determines which mouse wheel function is used, see below tabs.Tab change also possible under Misc -> Mouse browse buttons'), dict(choices=[(_('Frame step'), 'frame_step'), (_('Tab change'), 'tab_change'), (_('Tab change or scroll'), 'tab_change_or_scroll'),]) ), ),
                 ((_('Enable scroll wheel through similar tabs'), wxp.OPT_ELEM_CHECK, 'enabletabscrolling', _('Mouse scroll wheel cycles through tabs with similar videos'), dict() ), ),
                 ((_('Enable scroll wheel through tabs on the same group'), wxp.OPT_ELEM_CHECK, 'enabletabscrolling_groups', _('Mouse scroll wheel cycles through tabs assigned to the same tab group'), dict() ), ),
-                #((_('Allow AvsPmod to resize the window'), wxp.OPT_ELEM_CHECK, 'allowresize', _('Allow the separate video window to resize and/or move the video preview'), dict() ), ),
                 ((_('Separate video preview window')+' *', wxp.OPT_ELEM_CHECK, 'separatevideowindow', _('Use a separate window for the video preview'), dict() ), ),
                 ((_('Keep it on top of the main window')+' *', wxp.OPT_ELEM_CHECK, 'previewontopofmain', _('Keep the video preview window always on top of the main one and link its visibility'), dict(ident=20) ), ),
                 ((_('Startup with last zoom settings'), wxp.OPT_ELEM_CHECK, 'startupwithlastzoom', _('Use last zoom settings at startup'), dict() ), ),
                 ((_('Min text lines on video preview'), wxp.OPT_ELEM_SPIN, 'mintextlines', _('Minimum number of lines to show when displaying the video preview'), dict(min_val=0) ), ),
                 # 0= show tabs always, 1= hide tabs only if row count > 1, 2= hide if fullscreen else 0, 3= hide if fullscreen else 1,  4= hide always
-                ((_('Fullsize/Fullscreen mode'), wxp.OPT_ELEM_LIST, 'fullscreenmode', _('Show or hide the tabs on Fullscreen or Fullsize mode\nDouble click on preview is Fullsize\nPress Ctrl on double click is Fullscreen\nIf multiline tab style, row count can be greater then 1'), \
+                ((_('Tab behave in Fullsize/Fullscreen mode'), wxp.OPT_ELEM_LIST, 'fullscreenmode', _('Show or hide the tabs on Fullscreen or Fullsize mode\nDouble click on preview is Fullsize\nPress Ctrl on double click is Fullscreen\nIf multiline tab style, row count can be greater then 1'), \
                     dict(choices=[(_('(1) Show tabs always'), 0), (_('(2) Hide if row count greater 1'), 1), (_('(3) Hide if fullscreen else (1)'), 2), (_('(4) Hide if fullscreen else (2)'), 3), (_('(5) Hide tabs always'), 4),]) ), ),
                 ((_('Customize video status bar...'), wxp.OPT_ELEM_BUTTON, 'videostatusbarinfo', _('Customize the video information shown in the program status bar'), dict(handler=self.OnConfigureVideoStatusBarMessage) ), ),
                 ((_('Error message font...'), wxp.OPT_ELEM_BUTTON, 'errormessagefont', _('Set the font used for displaying the error if evaluating the script fails'), dict(handler=self.OnConfigureErrorFont) ), ),
@@ -8981,7 +8988,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     (_('Tag selection for toggling...'), 'Ctrl+T', self.OnMenuEditToggleTagSelection, _('Add tags surrounding the selected text for toggling with the video preview')),
                     (_('Clear all tags'), 'Ctrl+Shift+T', self.OnMenuEditClearToggleTags, _('Clear all toggle tags from the text')),
                     (''),
-                    (_('SplitClip'), '', self.OnMenuInsertSplitClip, _('Add SplitClip surrounding the selected lines')),
+                    (_('Split Clip'), '', self.OnMenuInsertSplitClip, _('Add Split Clip function')),
                     (_('Preview filter'), 'Ctrl+P', self.OnMenuInsertPreviewFilter, _('Add Preview filter surrounding the selected lines')),
                     ),
                 ),
@@ -9739,16 +9746,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.SetBackgroundColour(wx.SystemSettings.GetColour(wx.SYS_COLOUR_WINDOW))
             self.SetForegroundColour(wx.SystemSettings.GetColour(wx.SYS_COLOUR_WINDOWTEXT))
         def SetThemeColors(self):
-            """
-            def GetColour(ident, typ):
-                attr = self.app.options['textstyles'][ident].split(',')
-                for i in xrange(len(attr)):
-                    if attr[i].startswith(typ):
-                        hex = attr[i].split('#')[1]
-                        r,g,b = tuple(int(hex[i:i+2], 16) for i in (0, 2 ,4))
-                        return wx.Colour(r,g,b)
-                raise
-            """
+
             def GetColour(ident, typ):
                 color = self.app.GetThemeColor(ident, typ)
                 if color:
@@ -9829,84 +9827,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 scriptChanged = self.ScriptChanged(self.currentScript)
                 self.SliderShowVideoFrame(True, scriptChanged, self.currentScript, scriptChanged)
 
-        def OnMouseWheelScriptWindow(event):
-
-            def FindPreviewFilterByLineIdx(idx):
-                for key in self.previewFilterDict.keys():
-                    pos = self.previewFilterDict[key][2]  # line start and line end position
-                    if pos[1] > idx and pos[0] < idx:
-                        return key
-
-            ctrl = event.GetEventObject() # same as self.currentScript
-            rotation = event.GetWheelRotation()
-            control = wx.GetKeyState(wx.WXK_CONTROL)
-            shift = wx.GetKeyState(wx.WXK_SHIFT)
-            # check is custom process
-            amount = 1 if control and not shift else 5 if shift and not control else 10 if control and shift else 1 if ctrl.IsDClicked else 0
-            if amount > 0:
-                word = ctrl.GetSelectedText()
-                if not word.strip():
-                    return
-                s = ''
-                selstart = ctrl.GetSelectionStart()
-                # true/false
-                if word.lower() == 'true':
-                    s = 'False' if word[0].isupper() else 'false'
-                elif word.lower() == 'false':
-                    s = 'True' if word[0].isupper() else 'true'
-
-                if not s:
-                    # find first digit (max 20 ch search deept)
-                    for i in xrange(len(word)):
-                        if word[i].isdigit():
-                            for x in xrange(i, len(word)):
-                                if word[x].isdigit():
-                                    s += word[x]
-                                else:
-                                    break
-                            break
-                        elif i > 19:
-                            return
-
-                    if s.isdigit():
-                        word = s
-                        selstart = selstart + i
-                        ctrl.SetSelection(selstart, selstart+len(s))
-                        try:
-                            s = str(int(word) + amount if rotation > 0 else int(word) -amount)
-                            if int(s) < 0:
-                                s = '0'
-                        except:
-                            return
-                    else:
-                        s = ''
-                if s:
-                    if ctrl.previewFilterIdx > 0:
-                        prevFilteridx = FindPreviewFilterByLineIdx(ctrl.LineFromPosition(selstart))
-                        if prevFilteridx == ctrl.previewFilterIdx:
-                            func = (self.OnMenuPreviewFilter, tuple(), {'index': prevFilteridx})
-                            if not func in self.IdleCall:
-                                ctrl.ReplaceSelection(s)
-                                ctrl.SetSelection(selstart, selstart+len(s))
-                                ctrl.Update()
-                                self.IdleCall.append(func)
-                            return
-                    # if not preview filter
-                    ctrl.refreshAVI = True
-                    ctrl.ReplaceSelection(s)
-                    ctrl.SetSelection(selstart, selstart+len(s))
-                return
-            # if not number process, check for custom scroll
-            lc = self.options['scriptwindowbindmousewheel']
-            if lc > 0:
-                if rotation > 0:
-                    ctrl.LineScroll(columns=0, lines=-lc)
-                elif rotation < 0:
-                    ctrl.LineScroll(columns=0, lines=lc)
-                return
-            # else force default scroll
-            event.Skip()
-
         def OnRightUpScriptWindow(event):
             event.Skip()
             ctrl = event.GetEventObject() # same as self.currentScript
@@ -9956,8 +9876,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 event.SetEventObject(ctrl)
                 ctrl.GetEventHandler().ProcessEvent(event)
                 """
-
-
         def AddProperties(isTop=True):
             propLabel = wx.StaticText(scriptWindow.sliderWindow, wx.ID_ANY, label=_('Frame properties'))
             propLabel.SetCursor(wx.StockCursor(wx.CURSOR_HAND))
@@ -10022,7 +9940,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         scriptWindow.Bind(wx.EVT_MOUSE_CAPTURE_LOST, self.OnMouseCaptureLost) # GPo 2020
         scriptWindow.sliderWindow.Bind(wx.EVT_MOUSE_CAPTURE_LOST, self.OnMouseCaptureLost) # GPo 2020
         #if self.options['scriptwindowbindmousewheel'] > 0:
-        scriptWindow.Bind(wx.EVT_MOUSEWHEEL, OnMouseWheelScriptWindow)
+        scriptWindow.Bind(wx.EVT_MOUSEWHEEL, self.OnMouseWheelScriptWindow)
         scriptWindow.Bind(wx.EVT_RIGHT_UP, OnRightUpScriptWindow)
         self.BindObjMouseAux(scriptWindow) # GPo 2020
 
@@ -12751,6 +12669,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     wx.Bell()
     """
     def OnMenuTest(self, event):
+        script = self.currentScript
+        script.AnnotationSetText(5, 'Hallo')
+        script.AnnotationSetVisible(True)
         return
         script = self.currentScript.GetText()
         arg1 = arg2 = filterarg = ''
@@ -14823,6 +14744,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         font.SetWeight(wx.FONTWEIGHT_BOLD)
         title.SetFont(font)
         description = wx.StaticText(dlg, wx.ID_ANY, _(global_vars.description))
+        dpi.SetFontSize(factor=self.ppi_factor, font=description.GetFont(), size_adj=2)
         link = wx.StaticText(dlg, wx.ID_ANY, _('AvsP Website'))
         font = link.GetFont()
         font.SetUnderlined(True)
@@ -16054,6 +15976,175 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     def OnNotebookContextMenu(self, event):
         event.Skip()
 
+    # Multible procceses (bool/number/scroll) can it used with a key event by setting the rotation direction
+    def OnMouseWheelScriptWindow(self, event=None, rotation=None, dec_first=False):
+
+        def FindPreviewFilterByLineIdx(idx):
+            for key in self.previewFilterDict.keys():
+                pos = self.previewFilterDict[key][2]  # line start and line end position
+                if pos[1] > idx and pos[0] < idx:
+                    return key
+        if event:
+            ctrl = event.GetEventObject() # same as self.currentScript
+            rotation = event.GetWheelRotation()
+        else:
+            ctrl = self.currentScript
+            if rotation is None:
+                return
+
+        control = wx.GetKeyState(wx.WXK_CONTROL)
+        shift = wx.GetKeyState(wx.WXK_SHIFT)
+
+        # check is custom process
+        if ctrl.GetSelectionEnd() > ctrl.GetSelectionStart():
+            amount = 1 if control and not shift else 5 if shift and not control else 10 if control and shift else 1 if ctrl.IsDClicked else 0
+        else:
+            amount = 0
+        if amount > 0:
+            s = ''
+            word = ctrl.GetSelectedText()
+            if not word.strip() or len(word) > 40:
+                return
+            selstart = ctrl.GetSelectionStart()
+            selend = ctrl.GetSelectionEnd()
+            set_start = set_end = None
+
+            # true/false
+            if word.lower() == 'true':
+                s = 'False' if word[0].isupper() else 'false'
+            elif word.lower() == 'false':
+                s = 'True' if word[0].isupper() else 'true'
+            # numbers
+            if not s:
+                # search for the first digit and move selstart
+                if not word[0].isdigit():
+                    i = 0
+                    while not word[i].isdigit() and i < len(word)-1:
+                        selstart += 1
+                        i += 1
+                        if (i > 20) or (selstart > selend - 1):
+                            return
+
+                # expand or cut selend
+                i = len(word) - 1
+                if not word[i].isdigit():
+                    while (i > 0) and not word[i].isdigit():
+                        selend -= 1
+                        i -= 1
+                else:
+                    if unichr(ctrl.GetCharAt(selend)).isdigit():
+                        while selend < ctrl.GetLength()-2 and unichr(ctrl.GetCharAt(selend)).isdigit():
+                            selend += 1
+                # expand selstart
+                i = selend-1
+                isDec = False
+                while i > 0:
+                    ch = unichr(ctrl.GetCharAt(i))
+                    if not ch.isdigit() and not ch in ('.', ' '):
+                        break
+                    i -= 1
+                    if ch == '.':
+                        if isDec: # exit on double decimal point (user fault)
+                            wx.Bell()
+                            return
+                        isDec = selstart > i
+                        dec_len = selend - i - 2
+                selstart = i
+                # get now the range and remove all spaces
+                word = ctrl.GetTextRange(selstart, selend).replace(' ', '')
+                try:
+                    # restore the start position of the first digit or negative notation
+                    i = selstart + 1
+                    while unichr(ctrl.GetCharAt(i)) == ' ':
+                        i += 1
+                        selstart += 1
+                    # if negative notation not found inc selstart
+                    if word[0] != '-':
+                        selstart += 1
+                        word = word[1:]
+                except:
+                    return
+                # process only the decimal part if the selection the decimal part
+                if isDec:
+                    try:
+                        f = float(word)
+                        if dec_len < 1:
+                            return
+                    except:
+                        return
+
+                    if self.options['numberwheelfaster']:
+                        amount = 2 if control else 5 if shift else 1
+                        n = '.' + str(amount)
+                    else:
+                        n = '.'
+                        if dec_first:
+                            n = n + '0' + str(amount) if amount < 10 else n + '1'
+                        else:
+                            if amount < 10:
+                                while len(n) < dec_len:
+                                    n += '0'
+                                n = n + str(amount)
+                            else:
+                                while len(n) < dec_len -1:
+                                    n += '0'
+                                n = n + '1'
+
+                    if dec_len < 9:
+                        dformat = '%.' + str(dec_len) + 'f'
+                        s = dformat % (float(word) + float(n) if rotation > 0 else float(word) - float(n))
+                    else:
+                        s = str(float(word) + float(n) if rotation > 0 else float(word) - float(n))
+                    pos = s.find('.')
+                    if pos < 0:
+                        return
+                    set_start = selstart + pos + 1
+                    set_end = set_start + len(s[pos+1:])
+                    ctrl.SetSelection(selstart, selend)
+                else:
+                    L = word.split('.')
+                    word = L[0]
+                    if not word.lstrip('-').isdigit():
+                        return
+                    #if self.options['numberwheelfaster']:
+                        #amount = 20 if control else 50 if shift  else 5
+                    s = str(int(word) + amount if rotation > 0 else int(word) -amount)
+                    if len(L) > 1:
+                        s += '.' + L[1]
+                    set_start = selstart
+                    set_end = selstart + len(s)
+                    ctrl.SetSelection(selstart, selend)
+
+            if s and set_start:
+                if ctrl.previewFilterIdx > 0:
+                    prevFilteridx = FindPreviewFilterByLineIdx(ctrl.LineFromPosition(selstart))
+                    if prevFilteridx == ctrl.previewFilterIdx:
+                        func = (self.OnMenuPreviewFilter, tuple(), {'index': prevFilteridx})
+                        if not func in self.IdleCall:
+                            ctrl.ReplaceSelection(s)
+                            ctrl.SetSelection(set_start, set_end)
+                            ctrl.Update()
+                            self.IdleCall.append(func)
+                        return
+                # if not preview filter
+                ctrl.refreshAVI = True
+                ctrl.ReplaceSelection(s)
+                ctrl.SetSelection(set_start, set_end)
+            return
+        # if not number process, check for custom scroll
+        lc = self.options['scriptwindowbindmousewheel']
+        if lc > 0:
+            if control:
+                lc = lc*2
+            if rotation > 0:
+                ctrl.LineScroll(columns=0, lines=-lc)
+            elif rotation < 0:
+                ctrl.LineScroll(columns=0, lines=lc)
+            return
+        # else force default scroll
+        if event:
+            event.Skip()
+
     def OnLeftDClickWindow(self, event):
         script = self.currentScript
         x, y = event.GetPosition()
@@ -16104,22 +16195,22 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     def OnMiddleDownScriptWindow(self, event):
         script = self.currentScript
+        if script.IsDClicked:
+            return
         if (self.options['middlemousefunc'] != 'show video frame') or (self.currentScript.GetTextLength() < 6):
             xypos = event.GetPosition()
             script.GotoPos(script.PositionFromPoint(xypos))
-        self.middleDownScript = True
+        self.middleDownScript = True # leave it! else OnMiddleUp failed (script window > video window)
 
     def OnMiddleUpScriptWindow(self, event):
+        if self.currentScript.IsDClicked:
+            self.options['numberwheelfaster'] = not self.options['numberwheelfaster']
+            self.StatusbarTimer_Start(ms=500, txt='Number wheel faster: %s' % str(self.options['numberwheelfaster']))
+            return
         if self.middleDownScript:
             self.middleDownScript = False
             if (self.options['middlemousefunc'] == 'show video frame') and (self.currentScript.GetTextLength() > 5):
                 forceRefresh = self.ScriptChanged() or not self.previewOK()
-                """
-                if forceRefresh or not self.previewWindowVisible:
-                    self.ShowVideoFrame_CheckPreview(forceRefresh=forceRefresh)
-                else:
-                    self.HidePreviewWindow()
-                """
                 self.ShowVideoFrame_CheckPreview(forceRefresh=forceRefresh)
             else:
                 self.InsertSource()
@@ -16127,7 +16218,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     def OnKeyDownVideoWindow(self, event):
         self.KeyUpVideoWndow = False
         key = event.GetKeyCode()
-
         if key in (wx.WXK_RETURN, wx.WXK_NUMPAD_ENTER):
             if event.ShiftDown():
                 if not self.AviThread_Running(self.currentScript, False):

@@ -16,7 +16,7 @@
 
 # Übersetzt von Henrik . AvsP 2.0.1  Danke für die Hilfe, besonders LigH ,doxville,Brother John, Selur und Rippraff !
 
-version = "2.7.1.6"
+version = "2.7.1.9"
 
 messages = {
     "Note: When clicking on the calltip press Ctrl for file search or Shift for web search only." : u"", # New in v2.7.1.6
@@ -32,6 +32,7 @@ messages = {
     "Cancel" : u"Abbrechen",
     "Page:" : u"", # New in v2.3.1
     "Page: %d" : u"", # New in v2.3.1
+    "SplitClip" : u"", # New in v2.7.1.9
     "Frame properties" : u"", # New in v2.6.9.8
     "Word warp" : u"", # New in v2.6.9.8
     "Horz scroll" : u"", # New in v2.6.9.8
@@ -286,13 +287,13 @@ messages = {
     "Mouse scroll wheel cycles through tabs with similar videos" : u"", # New in v2.0.1
     "Enable scroll wheel through tabs on the same group" : u"", # New in v2.5.0
     "Mouse scroll wheel cycles through tabs assigned to the same tab group" : u"", # New in v2.5.0
-    "Separate video preview window" : u"Separiere Video-Vorschaufunktionsfenster",
-    "Use a separate window for the video preview" : u"Ein separates Fenster für die Video-Vorschaufunktion benutzen", 
+    "Separate video preview window" : u"Separates Video-Vorschaufenster",
+    "Use a separate window for the video preview" : u"Ein separates Fenster für die Video-Vorschaufunktion verwenden", 
     "Keep it on top of the main window" : u"", # New in v2.3.1
     "Keep the video preview window always on top of the main one and link its visibility" : u"", # New in v2.3.1
     "Startup with last zoom settings" : u"", # New in v2.6.6.0
     "Use last zoom settings at startup" : u"", # New in v2.6.6.0
-    "Min text lines on video preview" : u"Min Textzeilen der Video-Vorschaufunktion",
+    "Min text lines on video preview" : u"Min Textzeilen bei aktiever Video-Vorschau",
     "Minimum number of lines to show when displaying the video preview" : u"Minimalanzahl von Zeilen der Video-Vorschaufunktion",
     "Fullsize/Fullscreen mode" : u"", # New in v2.7.1.6
     "Show or hide the tabs on Fullscreen or Fullsize mode\nDouble click on preview is Fullsize\nPress Ctrl on double click is Fullscreen\nIf multiline tab style, row count can be greater then 1" : u"", # New in v2.7.1.6
@@ -316,7 +317,7 @@ messages = {
     "type int (list)" : u"", # New in v2.5.1 r452
     "Create color pickers for hex color arguments" : u"Farb-Pipette für Hex Argumente erstellen",
     "type int (hex color)" : u"Eingabe int (hex Farbe)",
-    "Create radio boxes for bool arguments" : u"Radio boxen (Dialogfeld) für boolsche Argumente erstellen",
+    "Create radio boxes for bool arguments" : u"Radio boxen (Dialogfeld) für boolische Argumente erstellen",
     "type bool" : u"Eingabe bool",
     "Create listboxes for string list arguments" : u"Listboxen für Stringlisten Argumente erstellen",
     "type string (list)" : u"Eingabe string (Liste)",
@@ -332,10 +333,10 @@ messages = {
     "Hide the toggle tag menus in the context menu of the sliders" : u"", # New in v2.6.7.2
     "Custom colors can be set under 'Options->Font and colors->Advanced 2'\nNot visible slider windows needed refresh." : u"", # New in v2.6.6.6
     "Enable slider window custom color theme" : u"Benutzerdefiniertes Farbschema des Schiebereglerfenster einschalten",
-    "Determines which filters will initially have hidden arguments in the slider window" : u"Stellt zuerst fest, welche Filter versteckt Argumente im Schiebereglerfenster haben",
+    "Determines which filters will initially have hidden arguments in the slider window" : u"Bestimmt ob die Filter beim initialisieren im Schiebereglerfenster aufgeklappt werden",
     "Fold all" : u"Alle eingeklappen",
     "Fold non-numbers" : u"Nichtnumerische eingeklappen",
-    "Fold none" : u"Alle ausgeklappen",
+    "Fold none" : u"Alle aufklappen",
     "Fold or restore last status" : u"Einklappen oder letzten Status herstellen",
     "Fold startup setting" : u"Filterparameter Ein-/Ausklappen",
     "Filter exclusion list:" : u"Filterausschlußliste",
@@ -455,8 +456,8 @@ messages = {
     "Show available system memory (0 disabled)" : u"", # New in v2.6.7.1
     "Delay before thread progress dialog appears" : u"", # New in v2.6.9.4
     "If accessing Avisynth in threads enabled, this setting determines the delay in seconds before the dialog appears. Can be double (clip, frame)" : u"", # New in v2.6.9.4
-    "If the mouse wheel does not work in the editor\nor you want another scroll rate. 1 to 5 lines to scroll\nFor enable/disable you must restart the program" : u"", # New in v2.6.9.4
-    "Mouse wheel scroll rate on editor (0 disabled)*" : u"", # New in v2.6.9.4
+    "If the mouse wheel does not work in the editor\nor you want another scroll rate. 1 to 6 lines to scroll" : u"", # New in v2.7.1.9
+    "Mouse wheel scroll rate in editor (0 disabled)" : u"", # New in v2.7.1.9
     "Place you want show the frame properties" : u"", # New in v2.7.1.6
     "Separate window" : u"", # New in v2.7.1.6
     "Show frame properties*" : u"", # New in v2.7.1.6
@@ -582,7 +583,7 @@ messages = {
     "Save script as..." : u"Speichere Skript als...",
     "Reload script" : u"Skript neu laden",
     "Reopen the current script file if it has changed" : u"", # New in v2.4.1
-    "Reload all scripts" : u"Alle Skripts neu laden", # New in v2.7.1.6
+    "Reload all scripts" : u"Alle Skripts neu laden",
     "Reopen all script files if it has changed" : u"", # New in v2.7.1.6
     "If the current script is saved to a file, open its directory" : u"", # New in v2.5.1
     "Open script's directory" : u"Verzeichnis des Skripts öffnen",
@@ -657,6 +658,7 @@ messages = {
     "Tag selection for toggling..." : u"Eingabe schaltbarer Tag...",
     "Clear all tags" : u"Lösche alle Tags",
     "Clear all toggle tags from the text" : u"Lösche alle Tags von diesem Text",
+    "Add SplitClip surrounding the selected lines" : u"", # New in v2.7.1.9
     "Add Preview filter surrounding the selected lines" : u"", # New in v2.6.7.1
     "Preview filter" : u"", # New in v2.6.6.0
     "Indent the selected lines" : u"Ausgewählte Zeilen einrücken",
@@ -888,6 +890,8 @@ messages = {
     "Write Preview filter to script" : u"", # New in v2.6.6.0
     "Shows the selected and optional the next or previous tab in one view (video width and height must be the same)" : u"", # New in v2.6.6.0
     "Split View on/off" : u"", # New in v2.6.6.0
+    "Enable/disable the 'Split Clip' (Help -> readme Split Clip)" : u"", # New in v2.7.1.9
+    "Split Clip on/off" : u"", # New in v2.7.1.9
     "Enable/disable Fullscreen mode. Ctrl + double click (Esc chancel)" : u"", # New in v2.7.1.6
     "Fullscreen" : u"", # New in v2.7.1.6
     "Expands the left shift area of the video window" : u"", # New in v2.6.3.5
@@ -986,6 +990,10 @@ messages = {
     "Open the apply filters readme" : u"", # New in v2.6.9.4
     "Open the resample filters readme" : u"", # New in v2.7.1.6
     "Resample filter readme" : u"", # New in v2.7.1.6
+    "Open the SplitClip readme" : u"", # New in v2.7.1.9
+    "Split Clip readme" : u"", # New in v2.7.1.9
+    "Number wheel readme" : u"", # New in v2.7.1.9
+    "Open the number wheel readme" : u"", # New in v2.7.1.9
     "DPI info" : u"", # New in v2.6.9.4
     "DPI information" : u"", # New in v2.6.6.0
     "Displays the available memory in the status bar" : u"", # New in v2.6.7.1
@@ -1016,7 +1024,7 @@ messages = {
     "Save" : u"Speichern",
     "Save as..." : u"Speichere als...",
     "Reload" : u"Neu laden",
-    "Reload all" : u"Neu laden alle", # New in v2.7.1.6
+    "Reload all" : u"Neu laden alle",
     "Open directory" : u"Öffne Verzeichnis",
     "Release video memory" : u"Video Speicher freigeben",
     "Release all other video memory" : u"Video Speicher aller anderen Tabs freigeben",
@@ -1025,6 +1033,7 @@ messages = {
     "Copy to new tab" : u"Zu einem neuen Tab kopieren",
     "Split View insert tab" : u"", # New in v2.6.6.0
     "Auto preview" : u"", # New in v2.6.6.0
+    "Sort by name" : u"", # New in v2.7.1.9
     "Reposition to" : u"", # New in v2.2.1
     "Disable refresh" : u"", # New in v2.6.7.4
     "Custom frame range" : u"", # New in v2.6.8.7
@@ -1049,8 +1058,8 @@ messages = {
     "Keep selected regions" : u"Behalte ausgesuchte Bereiche",
     "Keep unselected regions" : u"Behalte freie Bereiche", 
     "Mark video frames inside/outside selection" : u"Video-Frames innerhalb/außerhalb der Auswahl markieren",
-    "Use Dissolve() with overlap frames:" : u"Verwende Dissolve() mit überlappenden Frames:", # New in v2.2.1
-    "Single clips (c0..cn) with prefix:" : u"Einzelne Clips (c0..cn) mit prefix:", # New in v2.5.1.18
+    "Use Dissolve() with overlap frames:" : u"Verwende Dissolve() mit überlappenden Frames:",
+    "Single clips (c0..cn) with prefix:" : u"Einzelne Clips (c0..cn) mit prefix:",
     "Insert Trim() commands: " : u"", # New in v2.5.1.18
     "Insert clips commands: " : u"", # New in v2.5.1.18
     "Insert Dissolve(trim,) commands: " : u"", # New in v2.5.1.18
@@ -1206,7 +1215,6 @@ messages = {
     "Above keys are built-in editing shortcuts. If item is checked,\nit will not be overrided by a menu shortcut in script window." : u"", # New in v2.3.0
     "* This shortcut is active only when video window has focus.\n~ This shortcut is active only when script window has focus." : u"", # New in v2.3.0
     "Could not find the Avisynth plugins folder!" : u"", # New in v2.2.1
-    "Could not find %(readme)s!" : u"Kann nicht finden %(readme)s!",
     "Could not find %(changelog)s!" : u"", # New in v2.4.1
     "Could not find %(example)s!" : u"", # New in v2.6.6.0
     "{prog_name} v{version} ({arch})" : u"", # New in v2.5.1 r452
@@ -1285,7 +1293,7 @@ messages = {
     "Slider update immediately" : u"Sofortige Schieberegler Aktualisierung",
     "A macro is still running. Close anyway?" : u"", # New in v2.3.0
     "A clip thread is still running. Close anyway?" : u"", # New in v2.6.7.0
-    "Save changes before closing? Press Ctrl to apply to all" : u"", # New in v2.7.1.6
+    "Save changes before closing?  Press Ctrl to apply to all" : u"", # New in v2.7.1.9
     "Cannot create a new tab while crop editor is open!" : u"Kein neuer Tab kann erstellt werden, solange der Crop-Editor geöfnnet ist!",
     "Cannot create a new tab while trim editor is open!" : u"Kein neuer Tab kann erstellt werden, solange der Trim-Editor geöfnnet ist!",
     "Source files" : u"", # New in v2.3.0

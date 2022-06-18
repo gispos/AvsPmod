@@ -38,6 +38,21 @@ If, for example, there is a '-' in the file name of the dll, AvsPmod will report
 please rename this dll and replace the '-' with a '_'
 
 --------------------------
+Version 2.7.1.9 [2022-06-17] GPo, Onestone Edition
+--------------------------
+* Editor: Change numbers with the mouse wheel revised (see Version 2.7.1.8). 
+- negative values and floating point numbers are now possible.
+- if only the decimal part of a float number is selected: the last digit's are changed: (number is 2.25) default = 2.26, Shift = 2.30, Both = 2.35
+- If you enable the function by a double-click on a number: 
+--- you can change the decimal part rate (normal/fast) by a middle mouse click (the status bar gives feedback).
+--- the fast decimal part rate is: default = .1, Ctrl = .2, Shift = .5  also (2.35, 2.45, 2.75)
+--- you can also change the numbers using the 'left' and 'right' keyboard keys
+* Program options > Misc 2 > 'Mouse wheel scroll rate in editor (0 disabled)' if you have it enabled you can double the rate by pressing Ctrl
+* Function Split Clip revised: 
+- if no further filter was used after /**avsp_split**/ at least 'last' had to be written into the script otherwise no split clip was created.
+- this is now done automatically if no other filter is found.
+
+--------------------------
 Version 2.7.1.8 [2022-06-12] GPo, Milestone Edition
 --------------------------
 * New function Video > 'Split Clip on/off' (please read Help -> 'SplitClip readme')
@@ -48,7 +63,7 @@ Version 2.7.1.8 [2022-06-12] GPo, Milestone Edition
 - select an area containing numbers, press Ctrl or Shift or both and use the mouse wheel. Ctrl = 1, Shift = 5, Both = 10
 - the first number group found is changed (maximum search depth for the first digit are 20 characters).
 - Recommended*: select the numbers or true/false with a double-click, no pressing of Ctrl or Shift is required. Numbers are then changed by 1
-- if the selection is made by double-click: 1.) The 'Preview filter' is updated immediately. 2.) The function must be deactivated by a single click.
+- if the selection is made by double-click: The function must be deactivated by a single click.
 - true/false can now be changed either with (left down and right click) or (with the mouse wheel).
 -
 * New entry in tabs context menu 'Sort by name' sorts the tabs in alphabetical order.

@@ -350,9 +350,9 @@ class AvsClipBase:
             try:
                 #self.clip = self.env.invoke('Eval', [script, filename])
 
-                ### test
+                ### split clip
                 arg1 = arg2 = filterarg = ''
-                found = end = False
+                found = arg2found = end = False
 
                 # it's fast ~2-4 ms for 500 lines if split found else < 1 ms
                 if script.find('/**avsp_split') > -1: # faster if not present
@@ -375,28 +375,16 @@ class AvsClipBase:
                                 else:
                                     filterarg += line + '\n'
                             else:
-                                arg2 += line + '\n'
+                                if not arg2found:
+                                    _line = line.strip()
+                                    if _line and not _line.startswith('#'):
+                                        arg2found = True
+                                arg2 += line + '\n' # always put it in arg2 or avisynth error line doesnt match the script
                     filterarg = filterarg.strip()
-
-                """
-                f_args = script.split('/**avsp_split', 1) # faster but cannt regionize #/**avsp_split
-                if len(f_args) == 2:
-                    f_args[1] = f_args[1].strip()
-                    if f_args[1].startswith('**/'):       # then /**avsp_split**/ without anny filter
-                        arg1 = f_args[0].strip()
-                        arg2 = f_args[1][3:].strip()
-                    else:                                # then with filter beetwen start end end flag
-                        s_args = f_args[1].split('avsp_split**/', 1)
-                        if len(s_args) == 2:
-                            arg1 = f_args[0].strip()
-                            arg2 = s_args[1]
-                            filterarg = s_args[0].strip()
-                            s = ''
-                            for line in filterarg.split('\n'):
-                                if not line.lstrip().startswith('#'):
-                                    s += line + '\n'
-                            filterarg = s.strip()
-                """
+                    if not end:
+                        arg1 = arg2 =  ''
+                    elif found and arg1 and not arg2found:
+                        arg2 += '\nlast'
 
                 if arg1 and arg2:
                     self.split_clip = self.env.invoke('Eval', [arg1, filename])
@@ -404,16 +392,23 @@ class AvsClipBase:
                         self.split_clip = None
                     if filterarg and self.split_clip:
                         self.clip = self.env.invoke('Eval', [self.split_clip, arg2])
-                        self.split_clip = self.env.invoke('Eval', [self.split_clip, filterarg])
+                        if not isinstance(self.clip, avisynth.AVS_Clip):
+                            self.clip = self.env.invoke('Eval', [self.split_clip, arg2+'\nlast'])
+                        if isinstance(self.clip, avisynth.AVS_Clip):
+                            self.split_clip = self.env.invoke('Eval', [self.split_clip, filterarg])
+                            if not isinstance(self.split_clip, avisynth.AVS_Clip):
+                                self.clip = None
                     elif self.split_clip:
                         self.clip = self.env.invoke('Eval', [self.split_clip, arg2])
+                        if not isinstance(self.clip, avisynth.AVS_Clip):
+                            self.clip = self.env.invoke('Eval', [self.split_clip, arg2+'\nlast'])
 
                     if not isinstance(self.clip, avisynth.AVS_Clip):
                         self.split_clip = None
                         self.clip = self.env.invoke('Eval', [script, filename])
                 else:
                     self.clip = self.env.invoke('Eval', [script, filename])
-                ### test end
+                ### split clip end
 
                 if not isinstance(self.clip, avisynth.AVS_Clip):
                     raise avisynth.AvisynthError("Not a clip")
@@ -616,10 +611,23 @@ class AvsClipBase:
 
     def CreateDisplayClip(self, matrix=['auto', 'tv'], interlaced=None, swapuv=False, bit_depth=None,
                             readmatrix=False, killFilterClip=True, killSplitClip=False):
+
         if self.preview_filter and killFilterClip:
             self.preview_filter = None
             if not self.callBack('preview', -1):
                 self.env.set_var("avsp_filter_clip", None)
+        """ TODO
+        if self.preview_filter:
+            if killFilterClip:
+                self.preview_filter = None
+                self.callBack('preview', -1):
+            else:
+                re, err = self.CreateFilterClip(self.preview_filter)
+                if re and not err:
+                    return True
+                else:
+                    self.callBack('preview', -1):
+        """
         if self.IsSplitClip:
             self.IsSplitClip = None
             if killSplitClip:
