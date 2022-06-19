@@ -38,6 +38,14 @@ If, for example, there is a '-' in the file name of the dll, AvsPmod will report
 please rename this dll and replace the '-' with a '_'
 
 --------------------------
+Version 2.7.2.0 [2022-06-19] GPo, Onestone Edition Pro
+--------------------------
+* Fixed: 'Number wheel' loses the fokus of the number in a 'Preview filter' area.
+* Fixed some other small glitches. 
+* 'Number wheel' etc. Please read the changelog as of version 2.7.1.8 
+* All good things are 3, so the last special edition this year? :)
+
+--------------------------
 Version 2.7.1.9 [2022-06-17] GPo, Onestone Edition
 --------------------------
 * Editor: Change numbers with the mouse wheel revised (see Version 2.7.1.8). 

@@ -3181,7 +3181,7 @@ class SplitClipCtrl(wx.Dialog):
                 for slider in self.parent.GetVideoSliderList():
                     slider.AVI_SplitClip = True
                     slider.Refresh()
-                self.parent.ShowVideoFrame()
+                self.parent.ShowVideoFrame(forceCursor=True)
         #super(SplitClipCtrl, self).Show()
 
     def Close(self, event=None):
@@ -3194,8 +3194,7 @@ class SplitClipCtrl(wx.Dialog):
         if script.AVI and script.AVI.split_clip: # do not use: script.AVI.IsSplitClip !
             if not script.AVI.SetSplitClip(False):
                 pass
-                #wx.MessageBox(_('Remove the SplitClip and create display clip failed'), _('Error'))
-            self.parent.ShowVideoFrame()
+        self.parent.ShowVideoFrame(forceCursor=True)
 
     def Toggle(self, event=None):
         if self.IsActive:
@@ -6597,9 +6596,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if self.options.get('maximized2') and self.separatevideowindow:
             self.videoDialog.Maximize(True)
 
-        #self.Freeze()
-        #self.Show()
-        #self.Thaw()
         self.Show()
         #self.Refresh()
         self.Update()
@@ -12131,7 +12127,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.currentScript.previewFilterIdx = setIdx
 
     #@AsyncCallWrapper
-    def OnMenuPreviewFilter(self, event=None, index=None, updateUserSliders=True, scroll=None):
+    def OnMenuPreviewFilter(self, event=None, index=None, updateUserSliders=True, scroll=None, focus=True):
         def updateState(state):
             # update the menu items
             if state < 1: # filter disabled
@@ -12178,7 +12174,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             previewOK = self.previewOK(script)
             if not previewOK:
                 self.refreshAVI = True
-                self.ShowVideoFrame(forceLayout=True)
+                self.ShowVideoFrame(forceLayout=True, focus=focus)
                 previewOK = self.previewOK(script)
 
         # find and count the script preview filters, else KillFilter
@@ -12201,12 +12197,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     else:
                         script.display_clip_refresh_needed = False # GPo new resizeFilter
                         #script.refreshAVI = False
-                    self.ShowVideoFrame(userScrolling=not updateUserSliders, scroll=scroll)
+                    self.ShowVideoFrame(userScrolling=not updateUserSliders, scroll=scroll, focus=focus)
                 else:
                     updateState(0)
                     if script.AVI is not None and script.AVI.preview_filter:
                         script.AVI.KillFilterClip()
-                        self.ShowVideoFrame(userScrolling=not updateUserSliders, scroll=scroll)
+                        self.ShowVideoFrame(userScrolling=not updateUserSliders, scroll=scroll, focus=focus)
             else:
                 updateState(0) # bevor showing the frame, it's better to update the State
                 self.KillFilterClip()
@@ -12215,7 +12211,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if script.AVI is not None and script.AVI.preview_filter:
                 script.AVI.KillFilterClip()
             if lKey > -1 and self.previewOK(script):
-                self.ShowVideoFrame(userScrolling=not updateUserSliders, scroll=scroll)
+                self.ShowVideoFrame(userScrolling=not updateUserSliders, scroll=scroll, focus=focus)
 
         if updateUserSliders:
             self.UpdateUserSliders()
@@ -16100,27 +16096,26 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         return
                     set_start = selstart + pos + 1
                     set_end = set_start + len(s[pos+1:])
-                    ctrl.SetSelection(selstart, selend)
                 else:
                     L = word.split('.')
                     word = L[0]
                     if not word.lstrip('-').isdigit():
                         return
                     #if self.options['numberwheelfaster']:
-                        #amount = 20 if control else 50 if shift  else 5
+                        #amount = 10 if control else 20 if shift  else 5
                     s = str(int(word) + amount if rotation > 0 else int(word) -amount)
                     if len(L) > 1:
                         s += '.' + L[1]
                     set_start = selstart
                     set_end = selstart + len(s)
-                    ctrl.SetSelection(selstart, selend)
 
             if s and set_start:
                 if ctrl.previewFilterIdx > 0:
                     prevFilteridx = FindPreviewFilterByLineIdx(ctrl.LineFromPosition(selstart))
                     if prevFilteridx == ctrl.previewFilterIdx:
-                        func = (self.OnMenuPreviewFilter, tuple(), {'index': prevFilteridx})
+                        func = (self.OnMenuPreviewFilter, tuple(), {'index': prevFilteridx, 'focus': False})
                         if not func in self.IdleCall:
+                            ctrl.SetSelection(selstart, selend)
                             ctrl.ReplaceSelection(s)
                             ctrl.SetSelection(set_start, set_end)
                             ctrl.Update()
@@ -16128,6 +16123,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         return
                 # if not preview filter
                 ctrl.refreshAVI = True
+                ctrl.SetSelection(selstart, selend)
                 ctrl.ReplaceSelection(s)
                 ctrl.SetSelection(set_start, set_end)
             return

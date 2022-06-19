@@ -414,6 +414,7 @@ class AvsClipBase:
                     raise avisynth.AvisynthError("Not a clip")
             except avisynth.AvisynthError as err:
                 self.Framecount = oldFramecount
+                self.split_clip = None
                 if not self.CreateErrorClip(err):
                     return
             finally:
@@ -613,9 +614,9 @@ class AvsClipBase:
                             readmatrix=False, killFilterClip=True, killSplitClip=False):
 
         if self.preview_filter and killFilterClip:
-            self.preview_filter = None
-            if not self.callBack('preview', -1):
-                self.env.set_var("avsp_filter_clip", None)
+            self.KillFilterClip(createDisplayClip=False)
+            self.callBack('preview', -1)
+
         """ TODO
         if self.preview_filter:
             if killFilterClip:
@@ -764,7 +765,7 @@ class AvsClipBase:
             return None, ''
         if self.IsSplitClip:
             self.IsSplitClip = None
-            self.callBack('fastclip', -1)
+            self.callBack('splitclip', -1)
 
         #self.env.set_var("avsp_filter_clip", None)
         self.env.set_var("avsp_filter_clip", self.clip)
@@ -831,14 +832,15 @@ class AvsClipBase:
         self.pBits = self.display_frame.get_read_ptr()
         return True, ''
 
-    def KillFilterClip(self):
+    def KillFilterClip(self, createDisplayClip=True):
         self.preview_filter = None
         if not self.initialized:
             return
         try:
             if isinstance(self.env.get_var("avsp_filter_clip"), avisynth.AVS_Clip):
                 self.env.set_var("avsp_filter_clip", None)
-                self.CreateDisplayClip(self.matrix, self.interlaced, self.swapuv, self.bit_depth)
+                if createDisplayClip:
+                    self.CreateDisplayClip(self.matrix, self.interlaced, self.swapuv, self.bit_depth)
         except:
             pass
 
@@ -966,9 +968,8 @@ class AvsClipBase:
 
                 # disable all preview filters
                 if self.preview_filter:
-                    self.preview_filter = None
-                    if not self.callBack('preview', -1): # reset avsp menus (disable preview filter)
-                        self.env.set_var("avsp_filter_clip", None)
+                    self.KillFilterClip(createDisplayClip=False)
+                    self.callBack('preview', -1) # reset avsp menus (disable preview filter)
 
                 self.current_frame = -1 # get the frame new
                 self.display_frame = frame
@@ -1000,7 +1001,7 @@ class AvsClipBase:
                 if self.clip.get_error():
                     Error()
                     return False
-            else:  # fast clip
+            else:  # split_clip
                 self.src_frame = self.split_clip.get_frame(frame)
                 if self.split_clip.get_error():
                     Error()
