@@ -1311,7 +1311,6 @@ else:
     if avs.library == ffi.NULL:
         raise OSError(*ffi.getwinerror())
 
-
 class AVS_VideoInfo(object):
 
     def __init__(self, vi=None):
@@ -1961,8 +1960,8 @@ class AVS_ScriptEnvironment(object):
             if c > 0:
                 for i in range(c):
                     key_name = ffi.string(avs.avs_prop_get_key(self.cdata, avsmap, i))
-                    if key_name == '_PictureType':
-                         return ffi.string(avs.avs_prop_get_data(self.cdata, avsmap, key_name, 0, r))
+                    if key_name == '_PictType':
+                        return ffi.string(avs.avs_prop_get_data(self.cdata, avsmap, key_name, 0, r))
         return ''
 
     def props_get_matrix(self, frame):

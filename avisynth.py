@@ -457,7 +457,7 @@ class AVS_ScriptEnvironment(object):
             if c > 0:
                 for i in range(c):
                     key_name = avs_prop_get_key(self, avsmap, i)
-                    if key_name == '_PictureType':
+                    if key_name == '_PictType':
                         return str(avs_prop_get_data(self, avsmap, key_name, 0, r))
         return ''
 
@@ -749,7 +749,7 @@ class AVS_Clip:
             raise TypeError("Wrong argument: AVS_Clip expected")
         return obj.cdata
 
-    def copy(self):
+    def copy_clip(self):
         return avs_copy_clip(self)
 
     def __del__(self):

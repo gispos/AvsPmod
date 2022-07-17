@@ -38,6 +38,43 @@ If, for example, there is a '-' in the file name of the dll, AvsPmod will report
 please rename this dll and replace the '-' with a '_'
 
 --------------------------
+Version 2.7.2.1 [2022-07-15] GPo, (a lot of news and improvements)
+--------------------------
+* Added slider window checkbox 'Preview filter', enables/disables the last used 'Preview filter' or P-Filter 1 if no last used index found.
+* 'Preview filter' is now restored if a filter outside the 'Preview filter' area changed.
+* 'Preview filter' is also restored when enabling/disabling the 'Split Clip'.
+* 'Preview filter' for the 'Split Clip' is also possible.
+-
+* 'Split Clip' is fully integrated (pixel values, video information, etc.). Help > 'Split Clip readme'
+* Added menu Video > Additional > 'Restore split clip if enabled' (default off).
+- restores the 'Split Clip' if was active before refreshing the script.
+* If you want, you can set the color of the 'Split Clip' for the timeline in the context menu of the frame numbers text field.
+-
+* Added function jump to I frame, the frame properties must of course allow this.
+- search depth max. 350 frames, Esc breaks, Statusbar gives information, use 'Split Clip' or disable all filters for faster finding.
+- use menu Video > Navigate > 'Next I frame' or 'Previous I frame' or 
+- if frame property window visible and mouse is over the properties (Win10) or focused, with mouse browse buttons you can jump:
+-- with Ctrl to next or previous I frame
+-- with Shift to next or previous selection marker
+-- with Alt to next or previous titled bookmark
+-- without key to any next or previous marker (selection, bookmark)
+-
+* 'Number wheel' can be enabled or disabled under Edit > Enable 'Number wheel'.
+* 'Number wheel', change the fast decimal part rate with middle mouse click works now only if a number selected, if no number is selected 
+- the 'Number wheel' function will be disabled. This improves the unintentional switching when the middle click should actually activate the preview.
+- I'm not entirely happy with it, either the switch normal/fast will be removed or I'll think of something better.
+-
+* Added program options > Mis 2 > 'Show memory information in thread progress dialog' (default True).
+- displays the available system memory in the thread progress dialog (5 seconds after the dialog appears).
+* Added program options > Mis 2 > 'Show shortcuts in context menus*' Shows or hides the shortcuts in the video and script context menus.
+-
+* When 'Accessing Avisynth in Threads' is used, the program no longer gets the "No response" status when a clip is reinitialized. 
+- the video image is fully preserved while waiting for the clip (Not when waiting for a frame or no image visible).
+- it's a bit beta, you can disable it under Options > 'Draw the frame during clip refresh (Beta)', please report problems!
+* Avisynth error messages on creating a clip corrected. It was always shown (Make sure avisynth is installed...).  
+* Some other changes.
+
+--------------------------
 Version 2.7.2.0 [2022-06-19] GPo, Onestone Edition Pro
 --------------------------
 * Fixed: 'Number wheel' loses the fokus of the number in a 'Preview filter' area.

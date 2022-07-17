@@ -1,3 +1,5 @@
+GPo 2021, AvsPmod resample filter
+
 Resample (resize) filter:
 The resample filter is intended to reduce the video dimensions or, in exceptional cases, to enlarge it in order to be able 
 to assess the quality better (antialiasing is deactivated when the resize filter is activated). 
@@ -6,6 +8,8 @@ It can also be used for better visible quality playback if the preview dimension
 It behaves in the same way as if a resizer is used in the script, with the difference that the resize factor is changed dynamically.
 mod 2 is used, with the exception of the yv411 color format, then mod 4 is used. 
  
+!! You must first enable the resample menu under Program options > Misc 2 > 'Show resample zoom menu'
+
 The Avisynth resizer can be entered under Options > 'Resample filter...' (only the name, no parameters, default 'Spline36Resize').
 The resize factor can be selected in the zoom menu (fit,fill,50%,75%, 200% !) for all scripts (tabs) or 
 only for the current tab if control is pressed when selecting the menu.
@@ -29,10 +33,9 @@ There are two options for deactivating the resize filter:
 If not 'Save view pos on tab change' or 'Save pos & zoom on tab change' enabled then all tabs disables the resize filter.
 
 Certain functions are not possible with the resample filter: 
-Crop dialog, pixel values read from avisynth, and a few things are not yet running smoothly: Split View and Preview Filter together.
+Crop dialog, read pixel values from avisynth, and a few things are not yet running smoothly: Split View and Preview Filter together.
 
 If a resize is active this is indicated in the status bar with an 'r' in front of zoom and dimensions. 
 
 And if you don't like it or don't need it, you can deactivate or change the resample menu under program options > Misc2. 
 
-GPo, 2021 

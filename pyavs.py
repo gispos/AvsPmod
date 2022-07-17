@@ -130,6 +130,24 @@ def avs_plus_get_colorspace_name(pixel_type):
     return ''
 """
 
+# for audio bit count
+avs_audio_sample_type_dict = {
+    avisynth.avs.AVS_SAMPLE_INT8: 8,
+    avisynth.avs.AVS_SAMPLE_INT16: 16,
+    avisynth.avs.AVS_SAMPLE_INT24: 24,
+    avisynth.avs.AVS_SAMPLE_INT32: 32,
+    avisynth.avs.AVS_SAMPLE_FLOAT: 32,
+}
+
+# for testing
+def AvsReloadLibrary():
+    library = avisynth.avs.avs_load_library_w()
+    if library == avisynth.ffi.NULL:
+        return
+    avisynth.avs.avs_free_library(avisynth.avs.library)
+    avisynth.avs.library = library
+    return True
+
 # for e.g. analysis pass
 class AvsSimpleClipBase:
     def __init__(self,  script, filename='', workdir=''):
@@ -148,14 +166,14 @@ class AvsSimpleClipBase:
 
         scriptdirname, scriptbasename = os.path.split(filename)
         curdir = os.getcwdu()
-        workdir = os.path.isdir(workdir) and workdir or scriptdirname
-        if os.path.isdir(workdir):
-            self.env.set_working_dir(workdir)
-        self.env.set_global_var("$ScriptFile$", scriptbasename)
-        self.env.set_global_var("$ScriptName$", filename)
-        self.env.set_global_var("$ScriptDir$", scriptdirname + os.path.sep)
-
         try:
+            workdir = os.path.isdir(workdir) and workdir or scriptdirname
+            if os.path.isdir(workdir):
+                self.env.set_working_dir(workdir)
+            self.env.set_global_var("$ScriptFile$", scriptbasename)
+            self.env.set_global_var("$ScriptName$", filename)
+            self.env.set_global_var("$ScriptDir$", scriptdirname + os.path.sep)
+
             self.clip = self.env.invoke('Eval', [script, filename])
             if not isinstance(self.clip, avisynth.AVS_Clip):
                 err = self.env.get_error()
@@ -210,7 +228,7 @@ class AvsClipBase:
                  fitWidth=None, oldFramecount=240, display_clip=True, reorder_rgb=False,
                  matrix=['auto', 'tv'], interlaced=False, swapuv=False, bit_depth=None,
                  callBack=None, readmatrix=None, displayFilter=None, readFrameProps=False,
-                 resizeFilter=None, app=None):
+                 resizeFilter=None, previewFilter=None, useSplitClip=False, app=None):
 
         def CheckVersion(env):
             try:
@@ -238,7 +256,7 @@ class AvsClipBase:
         self.current_frame = -1
         self.pBits = None
         self.display_clip = None
-        self.preview_filter = None
+        self.preview_filter = previewFilter
         self.ptrY = self.ptrU = self.ptrV = self.ptrA = None
         # Avisynth script properties
         self.Width = -1
@@ -292,8 +310,9 @@ class AvsClipBase:
         self.resizeFilter = resizeFilter
         self.properties = ''
         self.convert_to_rgb_error = None
+        self.clip = None
         self.split_clip = None
-        self.IsSplitClip = None
+        self.IsSplitClip = False
 
         # Create the Avisynth script clip
         if env is not None:
@@ -324,7 +343,7 @@ class AvsClipBase:
 
         self.env = env
         if isinstance(script, avisynth.AVS_Clip):
-            self.clip = script
+            self.main_clip = script
         else:
             # vpy hack, remove when VapourSynth is supported
             if os.name == 'nt' and filename.endswith('.vpy'):
@@ -348,8 +367,6 @@ class AvsClipBase:
             self.env.set_global_var("$ScriptName$", filename)
             self.env.set_global_var("$ScriptDir$", scriptdirname + os.path.sep)
             try:
-                #self.clip = self.env.invoke('Eval', [script, filename])
-
                 ### split clip
                 arg1 = arg2 = filterarg = ''
                 found = arg2found = end = False
@@ -358,8 +375,11 @@ class AvsClipBase:
                 if script.find('/**avsp_split') > -1: # faster if not present
                     for line in script.split('\n'):
                         if not found:
+                            arg2 += '\n'        # for error line nr
+                            filterarg += '\n'   # for error line nr
                             if line.lstrip().startswith('/**avsp_split'):
                                 found = True
+                                arg1 += '\n'
                                 line = line.lstrip()
                                 if line[len('/**avsp_split'):].strip().startswith('**/'):
                                     end = True
@@ -367,8 +387,10 @@ class AvsClipBase:
                             arg1 += line + '\n'
                         else:
                             if not end:
+                                arg2 += '\n'
                                 if line.lstrip().startswith('**/'):
                                     end = True
+                                    arg1 += '\n'
                                     continue
                                 if line.lstrip().startswith('#'):
                                     filterarg += '\n'
@@ -380,37 +402,46 @@ class AvsClipBase:
                                     if _line and not _line.startswith('#'):
                                         arg2found = True
                                 arg2 += line + '\n' # always put it in arg2 or avisynth error line doesnt match the script
-                    filterarg = filterarg.strip()
+                    if not filterarg.strip():
+                        filterarg = ''
                     if not end:
                         arg1 = arg2 =  ''
                     elif found and arg1 and not arg2found:
                         arg2 += '\nlast'
 
                 if arg1 and arg2:
+                    self.main_clip = None
                     self.split_clip = self.env.invoke('Eval', [arg1, filename])
                     if not isinstance(self.split_clip, avisynth.AVS_Clip):
                         self.split_clip = None
-                    if filterarg and self.split_clip:
-                        self.clip = self.env.invoke('Eval', [self.split_clip, arg2])
-                        if not isinstance(self.clip, avisynth.AVS_Clip):
-                            self.clip = self.env.invoke('Eval', [self.split_clip, arg2+'\nlast'])
-                        if isinstance(self.clip, avisynth.AVS_Clip):
-                            self.split_clip = self.env.invoke('Eval', [self.split_clip, filterarg])
-                            if not isinstance(self.split_clip, avisynth.AVS_Clip):
-                                self.clip = None
-                    elif self.split_clip:
-                        self.clip = self.env.invoke('Eval', [self.split_clip, arg2])
-                        if not isinstance(self.clip, avisynth.AVS_Clip):
-                            self.clip = self.env.invoke('Eval', [self.split_clip, arg2+'\nlast'])
 
-                    if not isinstance(self.clip, avisynth.AVS_Clip):
+                    if self.split_clip:
+                        try: # try for the correct error line nr
+                            self.main_clip = self.env.invoke('Eval', [self.split_clip, arg2])
+                            if not isinstance(self.main_clip, avisynth.AVS_Clip):
+                                self.main_clip = self.env.invoke('Eval', [self.split_clip, arg2+'\nlast'])
+                        except:
+                            self.main_clip = None
+                        else:
+                            if filterarg and isinstance(self.main_clip, avisynth.AVS_Clip):
+                                self.split_clip = self.env.invoke('Eval', [self.split_clip, filterarg, filename])
+                                if not isinstance(self.split_clip, avisynth.AVS_Clip):
+                                    self.main_clip = None
+
+                        if self.split_clip and self.main_clip:
+                            self.split_clip_vi = self.split_clip.get_video_info()
+                            if not self.split_clip_vi.has_video():
+                                self.main_clip = None
+
+                    if not isinstance(self.main_clip, avisynth.AVS_Clip):
                         self.split_clip = None
-                        self.clip = self.env.invoke('Eval', [script, filename])
-                else:
-                    self.clip = self.env.invoke('Eval', [script, filename])
-                ### split clip end
+                        self.main_clip = self.env.invoke('Eval', [script, filename])
 
-                if not isinstance(self.clip, avisynth.AVS_Clip):
+                else:
+                    self.main_clip = self.env.invoke('Eval', [script, filename])
+
+                ### split clip end
+                if not isinstance(self.main_clip, avisynth.AVS_Clip):
                     raise avisynth.AvisynthError("Not a clip")
             except avisynth.AvisynthError as err:
                 self.Framecount = oldFramecount
@@ -419,138 +450,172 @@ class AvsClipBase:
                     return
             finally:
                 os.chdir(curdir)
+
+            #It's an avisynth thing, should not be needed here
             try:
                 if not isinstance(self.env.get_var("last"), avisynth.AVS_Clip):
-                    self.env.set_var("last", self.clip)
+                    self.env.set_var("last", self.main_clip)
             except avisynth.AvisynthError as err:
                 if str(err) != 'NotFound':
+                    self.error_message = err
                     raise
-                self.env.set_var("last", self.clip)
-            self.env.set_var("avsp_raw_clip", self.clip)
+                self.env.set_var("last", self.main_clip)
+
+            # Is this desirable ? or should be removed
             if self.env.function_exists('AutoloadPlugins'): # AviSynth+
                 try:
                     self.env.invoke('AutoloadPlugins')
                 except avisynth.AvisynthError as err:
                     self.Framecount = oldFramecount
+                    self.split_clip = None
                     if not self.CreateErrorClip(err):
                         return
 
         # Set the video properties
-        self.vi = self.clip.get_video_info()
-        self.HasVideo = self.vi.has_video()
+        self.main_clip_vi = self.main_clip.get_video_info()
+        self.vi = self.main_clip_vi
+        self.HasVideo = self.main_clip_vi.has_video()
         if not self.HasVideo:
-            self.clip = None
             errText = 'MessageClip("No video")'
-            try:
-                self.clip = self.env.invoke('Eval', errText)
-                if not isinstance(self.clip, avisynth.AVS_Clip):
-                    raise avisynth.AvisynthError("Not a clip")
-            except avisynth.AvisynthError as err:
+            self.split_clip = None
+            self.Framecount = oldFramecount
+            if not self.CreateErrorClip(errText):
                 return
             try:
                 if not isinstance(self.env.get_var('last'), avisynth.AVS_Clip):
-                    self.env.set_var('last', self.clip)
+                    self.env.set_var('last', self.main_clip)
             except avisynth.AvisynthError as err:
                 if str(err) != 'NotFound':
+                    self.error_message = err
                     raise
-                self.env.set_var('last', self.clip)
-            self.vi=self.clip.get_video_info()
-            self.HasVideo = self.vi.has_video()
-        self.Framecount = self.vi.num_frames
-        self.Width = self.vi.width
-        self.Height = self.vi.height
+                self.env.set_var('last', self.main_clip)
+            self.main_clip_vi = self.main_clip.get_video_info()
+            self.vi = self.main_clip_vi
+            self.HasVideo = self.main_clip_vi.has_video()
 
-        if (self.vi.is_yuv() or self.vi.is_yuva()) and not self.vi.is_y():
-            self.WidthSubsampling = self.vi.get_plane_width_subsampling(avisynth.avs.AVS_PLANAR_U)
-            self.HeightSubsampling = self.vi.get_plane_height_subsampling(avisynth.avs.AVS_PLANAR_U)
+        # Get colorspace
+        if self.split_clip:
+            vi = self.split_clip_vi
+            cName = ''
+            if self.env.function_exists('PixelType'):
+                cName = self.env.invoke("PixelType", self.split_clip)
+            if cName:
+                self.split_clip_colorspace = (cName*True)
+            else:
+                self.split_clip_colorspace = ('RGB24'*vi.is_rgb24() + 'RGB32'*vi.is_rgb32() + 'YUY2'*vi.is_yuy2() + 'YV12'*vi.is_yv12() +
+                                   'YV24'*vi.is_yv24() + 'YV16'*vi.is_yv16() + 'YV411'*vi.is_yv411() + 'Y8'*vi.is_y8()
+                                   )
+        else:
+            self.split_clip_vi = self.main_clip_vi
+
+        vi = self.main_clip_vi
+        cName = ''
+        if self.env.function_exists('PixelType'):
+            cName = self.env.invoke("PixelType", self.main_clip)
+        if cName:
+            self.clip_colorspace = (cName*True)
+        else:
+            self.clip_colorspace = ('RGB24'*vi.is_rgb24() + 'RGB32'*vi.is_rgb32() + 'YUY2'*vi.is_yuy2() + 'YV12'*vi.is_yv12() +
+                               'YV24'*vi.is_yv24() + 'YV16'*vi.is_yv16() + 'YV411'*vi.is_yv411() + 'Y8'*vi.is_y8()
+                               )
+
+        # set the clip
+        if useSplitClip and self.split_clip:
+            self.clip = self.split_clip
+            self.IsSplitClip = True
+            self.SetClipInfo(self.split_clip_vi)
+        else:
+            self.clip = self.main_clip
+            self.SetClipInfo(self.main_clip_vi)
+
+        self.interlaced = interlaced
         self.DisplayWidth, self.DisplayHeight = self.Width, self.Height
-        self.FramerateNumerator = self.vi.fps_numerator
-        self.FramerateDenominator = self.vi.fps_denominator
-        try:
-            self.Framerate = self.vi.fps_numerator / float(self.vi.fps_denominator)
-        except ZeroDivisionError:
-            pass
-        self.sample_type_dict = {
-            avisynth.avs.AVS_SAMPLE_INT8: 8,
-            avisynth.avs.AVS_SAMPLE_INT16: 16,
-            avisynth.avs.AVS_SAMPLE_INT24: 24,
-            avisynth.avs.AVS_SAMPLE_INT32: 32,
-            avisynth.avs.AVS_SAMPLE_FLOAT: 32,
-        }
-        self.Audiorate = self.vi.audio_samples_per_second
-        self.Audiolength = self.vi.num_audio_samples
-        self.Audiochannels = self.vi.nchannels
-        self.Audiobits = self.sample_type_dict.get(self.vi.sample_type, 0)
-        self.IsAudioFloat = self.vi.sample_type == avisynth.avs.AVS_SAMPLE_FLOAT
-        self.IsAudioInt = not self.IsAudioFloat
-        self.IsRGB = self.vi.is_rgb()
-        self.IsRGB24 = self.vi.is_rgb24()
-        self.IsRGB32 = self.vi.is_rgb32()
-        self.IsRGB48 = self.vi.is_rgb48()
-        self.IsRGB64 = self.vi.is_rgb64()
-        self.IsPlanar = self.vi.is_planar()
-        self.IsPlanarRGBA = self.vi.is_planar_rgba()
-        self.IsYUV = self.vi.is_yuv()
-        self.IsYUVA = self.vi.is_yuva()
-        self.IsYUY2 = self.vi.is_yuy2()
-        self.IsYV24 = self.vi.is_yv24()
-        self.IsYV16 = self.vi.is_yv16()
-        self.IsYV12 = self.vi.is_yv12()
-        self.IsYV411 = self.vi.is_yv411()
-        self.IsY = self.vi.is_y()
-        self.IsY8 = self.vi.is_y8()
-        self.bits_per_component = self.vi.bits_per_component() # 8,10,12,14,16,32
-        self.component_size = self.vi.component_size() # 1, 2, 4 (in bytes)
-        self.num_components = self.vi.num_components() # 1-4
-        self.IsRGBA = self.IsRGB32 or self.IsRGB64 or self.IsPlanarRGBA
 
+        if display_clip and not self.CreateDisplayClip(matrix, interlaced, swapuv, bit_depth, readmatrix, killFilterClip=False, killSplitClip=False):
+            return
 
+        # It's only for avsp MacroPipe for an external clip
+        if self.IsRGB and reorder_rgb and not self.IsSplitClip:
+            self.main_clip = self.BGR2RGB(self.main_clip)
+            self.clip = self.main_clip
+            self.vi = self.main_clip_vi
+
+        self.initialized = True
+        if __debug__:
+            print(u"AviSynth clip created successfully: '{0}'".format(self.name))
+
+    # Set/Reset the clip info for self.clip or self.split_clip
+    def SetClipInfo(self, vi):
+        self.vi = vi
         # Possible even for classic avs:
         '''
         self.Is444 = self.vi.is_444() # use this one instead of IsYV24
         self.Is422 = self.vi.is_422() # use this one instead of IsYV16
         self.Is420 = self.vi.is_420() # use this one instead of IsYV12
         '''
-        # GPo, avs plus get colorspace
-        cName = ''
-        if self.env.function_exists('PixelType') and self.clip:
-            cName = self.env.invoke("PixelType", self.clip)
-            #cName = avs_plus_get_colorspace_name(self.vi.pixel_type)
-        if cName:
-            self.Colorspace = (cName*True)
+        self.Width = vi.width
+        self.Height = vi.height
+        # do not set self.DisplayWidth or self.DisplayHeight here!
+        # it is set on the ClipBase on change PreviewFilter or SetSplitClip or CreateDisplayClip
+        # a new bitmap info header must be created if dimensions changed
+
+        self.Framecount = vi.num_frames
+        if (vi.is_yuv() or vi.is_yuva()) and not vi.is_y():
+            self.WidthSubsampling = vi.get_plane_width_subsampling(avisynth.avs.AVS_PLANAR_U)
+            self.HeightSubsampling = vi.get_plane_height_subsampling(avisynth.avs.AVS_PLANAR_U)
+        self.FramerateNumerator = vi.fps_numerator
+        self.FramerateDenominator = vi.fps_denominator
+        try:
+            self.Framerate = vi.fps_numerator / float(vi.fps_denominator)
+        except ZeroDivisionError:
+            pass
+        self.IsRGB = vi.is_rgb()
+        self.IsRGB24 = vi.is_rgb24()
+        self.IsRGB32 = vi.is_rgb32()
+        self.IsRGB48 = vi.is_rgb48()
+        self.IsRGB64 = vi.is_rgb64()
+        self.IsPlanar = vi.is_planar()
+        self.IsPlanarRGBA = vi.is_planar_rgba()
+        self.IsYUV = vi.is_yuv()
+        self.IsYUVA = vi.is_yuva()
+        self.IsYUY2 = vi.is_yuy2()
+        self.IsYV24 = vi.is_yv24()
+        self.IsYV16 = vi.is_yv16()
+        self.IsYV12 = vi.is_yv12()
+        self.IsYV411 = vi.is_yv411()
+        self.IsY = vi.is_y()
+        self.IsY8 = vi.is_y8()
+        self.bits_per_component = vi.bits_per_component() # 8,10,12,14,16,32
+        self.component_size = vi.component_size() # 1, 2, 4 (in bytes)
+        self.num_components = vi.num_components() # 1-4
+        self.IsRGBA = self.IsRGB32 or self.IsRGB64 or self.IsPlanarRGBA
+        # split_clip or main_clip
+        if self.IsSplitClip:
+            self.Colorspace = self.split_clip_colorspace
+            self.GetParity = self.split_clip.get_parity(0)
         else:
-            self.Colorspace = ('RGB24'*self.IsRGB24 + 'RGB32'*self.IsRGB32 + 'YUY2'*self.IsYUY2 + 'YV12'*self.IsYV12 +
-                               'YV24'*self.IsYV24 + 'YV16'*self.IsYV16 + 'YV411'*self.IsYV411 + 'Y8'*self.IsY8
-                               )
-
-        self.IsFieldBased = self.vi.is_field_based()
+            self.Colorspace = self.clip_colorspace
+            self.GetParity = self.main_clip.get_parity(0)
+        self.IsFieldBased = vi.is_field_based()
         self.IsFrameBased = not self.IsFieldBased
-        self.GetParity = self.clip.get_parity(0)
-        self.HasAudio = self.vi.has_audio()
-        self.interlaced = interlaced
-
-        if display_clip and not self.CreateDisplayClip(matrix, interlaced, swapuv, bit_depth, readmatrix, killFilterClip=True, killSplitClip=False):
-            return
-        # GPo, no clue for wath it is and is it compatible with Planar or 16bit
-        # must check it later
-        if self.IsRGB and reorder_rgb:
-            self.clip = self.BGR2RGB(self.clip)
-
-        self.initialized = True
-
-        if __debug__:
-            print(u"AviSynth clip created successfully: '{0}'".format(self.name))
+        # audio
+        self.Audiorate = vi.audio_samples_per_second
+        self.Audiolength = vi.num_audio_samples
+        self.Audiochannels = vi.nchannels
+        self.Audiobits = avs_audio_sample_type_dict.get(vi.sample_type, 0)
+        self.IsAudioFloat = vi.sample_type == avisynth.avs.AVS_SAMPLE_FLOAT
+        self.IsAudioInt = not self.IsAudioFloat
+        self.HasAudio = vi.has_audio()
 
     def __del__(self):
         self.preview_filter = None
         if self.initialized or self.env and isinstance(self.env, avisynth.AVS_ScriptEnvironment):
             self.display_frame = None
             self.src_frame = None
-            self.env.set_var("avsp_raw_clip", None)
-            self.env.set_var("avsp_filter_clip", None)
             self.display_clip = None
-            self.clip = None
+            self.main_clip = None
             self.split_clip = None
+            self.clip = None
             self.env = None # GPo new, we creating always a new env (its slower but avoid problems)
             self.initialized = False
             self.properties = ''
@@ -558,14 +623,6 @@ class AvsClipBase:
                 print(u"Deleting allocated video memory for '{0}'".format(self.name))
 
     def CreateErrorClip(self, err='', display_clip_error=False):
-        if self.preview_filter:
-            self.preview_filter = None
-            if not self.callBack('preview', -1):
-                self.env.set_var("avsp_filter_clip", None)
-        fontFace, fontSize, fontColor = global_vars.options['errormessagefont'][:3]   # GPo fontColor
-        if fontColor == '':
-            fontColor = '$FF0000'
-
         if display_clip_error:
             if not err:
                 err = _('Error trying to display the clip')
@@ -577,10 +634,24 @@ class AvsClipBase:
                     err += '\n' + _('Is display filter set correctly?')
             else:
                 err = str(err)
-                #self.error_message = err
         else:
             err = str(err)
-            self.error_message = err
+        self.error_message = err
+
+        if self.preview_filter:
+            self.preview_filter = None
+            self.callBack('preview', -1)
+
+        if self.IsSplitClip:
+            self.IsSplitClip = False
+            self.clip = self.main_clip
+            self.vi = self.main_clip_vi
+            self.callBack('splitclip', -1)
+
+        fontFace, fontSize, fontColor = global_vars.options['errormessagefont'][:3]   # GPo fontColor
+        if fontColor == '':
+            fontColor = '$FF0000'
+
         lineList = []
         yLine = 0
         nChars = 0
@@ -602,84 +673,42 @@ class AvsClipBase:
                 self.display_clip = clip
                 vi = self.display_clip.get_video_info()
                 self.DisplayWidth = vi.width
-                self.DisplayHeight = vi.height# + 8
+                self.DisplayHeight = vi.height
             else:
-                self.clip = clip
+                self.main_clip = clip
+                self.clip = self.main_clip
+                self.vi = self.main_clip.get_video_info()
+                """
+                self.vi = self.main_clip.get_video_info()
+                self.SetClipInfo(self.vi)
+                self.HasVideo = self.vi.has_video()
+                """
+
         except avisynth.AvisynthError as err:
             return False
         self.callBack('errorclip', 0)
         return True
 
     def CreateDisplayClip(self, matrix=['auto', 'tv'], interlaced=None, swapuv=False, bit_depth=None,
-                            readmatrix=False, killFilterClip=True, killSplitClip=False):
+                            readmatrix=False, killFilterClip=False, killSplitClip=False):
 
-        if self.preview_filter and killFilterClip:
-            self.KillFilterClip(createDisplayClip=False)
-            self.callBack('preview', -1)
-
-        """ TODO
-        if self.preview_filter:
-            if killFilterClip:
-                self.preview_filter = None
-                self.callBack('preview', -1):
-            else:
-                re, err = self.CreateFilterClip(self.preview_filter)
-                if re and not err:
-                    return True
-                else:
-                    self.callBack('preview', -1):
-        """
         if self.IsSplitClip:
-            self.IsSplitClip = None
-            if killSplitClip:
+            if killSplitClip or not self.split_clip:
+                self.IsSplitClip = False
+                self.clip = self.main_clip
+                self.SetClipInfo(self.main_clip_vi)
                 self.callBack('splitclip', -1)
-            elif self.split_clip:
-                re = self.SetSplitClip(True, createDisplayClip=False)
-                if re:
-                    return True
-                else:
-                    self.callBack('splitclip', -1)
+            else:
+                self.clip = self.split_clip
+        else:
+            self.clip = self.main_clip
 
         self.current_frame = -1
-        self.display_clip = None
         self.display_clip = self.clip
         self.RGB48 = False
         self.bit_depth = bit_depth
-
-        if bit_depth and not self.preview_filter:
-            try:
-                if bit_depth == 'rgb48': # TODO
-                    if self.IsYV12:
-                        self.RGB48 = True
-                        self.DisplayWidth /= 2
-                        self.DisplayHeight /= 2
-                        return True
-                elif self.IsYV12 or self.IsYV24 or self.IsY8:
-                    if bit_depth == 's16':
-                        args = [self.display_clip, 0, 0, 0, self.Height / 2]
-                        self.display_clip = self.env.invoke('Crop', args)
-                    elif bit_depth == 's10':
-                        if self.env.function_exists('mt_lutxy'):
-                            args = (
-                            'avsp_raw_clip\n'
-                            'msb = Crop(0, 0, Width(), Height() / 2)\n'
-                            'lsb = Crop(0, Height() / 2, Width(), Height() / 2)\n'
-                            'mt_lutxy(msb, lsb, "x 8 << y + 2 >>", chroma="process")')
-                            self.display_clip = self.env.invoke('Eval', args)
-                    elif bit_depth == 'i16':
-                        args = ('avsp_raw_clip.AssumeBFF().TurnLeft().SeparateFields().'
-                                'TurnRight().AssumeFrameBased().SelectOdd()')
-                        self.display_clip = self.env.invoke('Eval', args)
-                    elif bit_depth == 'i10':
-                        if self.env.function_exists('mt_lutxy'):
-                            args = (
-                            'avsp_raw_clip.AssumeBFF().TurnLeft().SeparateFields().TurnRight().AssumeFrameBased()\n'
-                            'mt_lutxy(SelectOdd(), SelectEven(), "x 8 << y + 2 >>", chroma="process")')
-                            self.display_clip = self.env.invoke('Eval', args)
-                    if not isinstance(self.display_clip, avisynth.AVS_Clip):
-                        raise avisynth.AvisynthError("Not a clip")
-            except avisynth.AvisynthError as err:
-                return self.CreateErrorClip(display_clip_error=True)
+        if interlaced is not None:
+            self.interlaced = interlaced
 
         if isinstance(matrix, basestring):
             self.matrix = matrix
@@ -691,7 +720,6 @@ class AvsClipBase:
                 else: matrix = matrix[:]
             else:
                 matrix = matrix[:]
-                #self.matrix_found = None # GPo new, None only on create new clip
 
             if matrix[0] == 'auto':
                 if self.DisplayWidth > 1024 or self.DisplayHeight > 576:
@@ -701,8 +729,59 @@ class AvsClipBase:
             matrix[1] = 'Rec' if matrix[1] == 'tv' else 'PC.'
             self.matrix = matrix[1] + matrix[0]
 
-        if interlaced is not None:
-            self.interlaced = interlaced
+        if self.preview_filter:
+            if killFilterClip:
+                self.preview_filter = None
+                self.callBack('preview', -1)
+            else:
+                re, err = self.CreateFilterClip(self.preview_filter)
+                if re:
+                    return True
+                self.preview_filter = None
+                self.callBack('preview', -1)
+                if err:
+                    self.callBack('error', err, 'Preview filter error')
+
+        if bit_depth:
+            try:
+                """
+                if bit_depth == 'rgb48': # TODO
+                    if self.IsYV12:
+                        self.RGB48 = True
+                        self.DisplayWidth /= 2
+                        self.DisplayHeight /= 2
+                        return True
+                """
+                if self.IsYV12 or self.IsYV24 or self.IsY8:
+                    if bit_depth == 's16':
+                        args = [self.clip, 0, 0, 0, self.Height / 2]
+                        self.display_clip = self.env.invoke('Crop', args)
+                    elif bit_depth == 's10':
+                        if self.env.function_exists('mt_lutxy'):
+                            args = (
+                            'msb = Crop(0, 0, Width(), Height() / 2)\n'
+                            'lsb = Crop(0, Height() / 2, Width(), Height() / 2)\n'
+                            'mt_lutxy(msb, lsb, "x 8 << y + 2 >>", chroma="process")')
+                            self.display_clip = self.env.invoke("Eval", [self.clip, args])
+                    elif bit_depth == 'i16':
+                        args = ('AssumeBFF().TurnLeft().SeparateFields().'
+                                'TurnRight().AssumeFrameBased().SelectOdd()')
+                        self.display_clip = self.env.invoke("Eval", [self.clip, args])
+                    elif bit_depth == 'i10':
+                        if self.env.function_exists('mt_lutxy'):
+                            args = (
+                            'AssumeBFF().TurnLeft().SeparateFields().TurnRight().AssumeFrameBased()\n'
+                            'mt_lutxy(SelectOdd(), SelectEven(), "x 8 << y + 2 >>", chroma="process")')
+                            self.display_clip = self.env.invoke("Eval", [self.clip, args])
+                    if not isinstance(self.display_clip, avisynth.AVS_Clip):
+                        raise avisynth.AvisynthError("Not a clip")
+                else:
+                    self.bit_depth = None
+                    self.callBack('bit_depth', -1)
+
+            except avisynth.AvisynthError as err:
+                return self.CreateErrorClip(display_clip_error=True)
+
         if swapuv and self.IsYUV and not self.IsY:
             try:
                 self.display_clip = self.env.invoke('SwapUV', self.display_clip)
@@ -711,14 +790,11 @@ class AvsClipBase:
 
         # display and resize filter
         args = ''
-        #if self.preview_filter and not killFilterClip: # GPo new test
-            #args = self.preview_filter + '\n'
-
         if self.displayFilter:
             args += self.displayFilter + '\n'
 
         if self.resizeFilter:
-            rf = self.CalcResizeFilter()
+            rf = self.CalcResizeFilter(self.vi)
             if rf:
                 args += '%s(%i,%i)' % (rf[0], rf[1], rf[2])
         if args:
@@ -763,55 +839,39 @@ class AvsClipBase:
         self.preview_filter = None
         if not f_args or not self.clip or self.IsErrorClip():
             return None, ''
-        if self.IsSplitClip:
-            self.IsSplitClip = None
-            self.callBack('splitclip', -1)
 
-        #self.env.set_var("avsp_filter_clip", None)
-        self.env.set_var("avsp_filter_clip", self.clip)
-
-        args = ('avsp_filter_clip\n' + f_args)
+        args = f_args
         if self.displayFilter:
             args += '\n' + self.displayFilter
 
         if self.resizeFilter:
-            rf = self.CalcResizeFilter()
+            rf = self.CalcResizeFilter(self.vi)
             if rf:
                 args += '\n%s(%i,%i)' % (rf[0], rf[1], rf[2])
         try:
-            clip = self.env.invoke("Eval", args)
+            clip = self.env.invoke("Eval", [self.clip, args])
         except:
+            clip = None
+        if not isinstance(clip, avisynth.AVS_Clip):
             if self.error_message is None:
                 err = self.env.get_error()
                 if not err:
                     err = "Preview filter error: Not a clip"
-            self.env.set_var("avsp_filter_clip", None)
-            return None, err
-
-        if not isinstance(clip, avisynth.AVS_Clip):
-            if self.error_message is None:
-                err = "Unknown Preview filter error: Not a clip"
-            self.env.set_var("avsp_filter_clip", None)
             return None, err
 
         args = [clip, self.matrix, self.interlaced]
         try:
             clip = self.env.invoke("ConvertToRGB32", args)
         except:
-            err = "Preview filter error: ConvertToRGB failed"
             clip = None
-            self.env.set_var("avsp_filter_clip", None)
-            return None, err
         if not isinstance(clip, avisynth.AVS_Clip):
             err = "Preview filter error: ConvertToRGB failed"
-            self.env.set_var("avsp_filter_clip", None)
             return None, err
 
         vi = clip.get_video_info()
         if vi.num_frames != self.Framecount:
-            clip = None
             err = "Preview filter error: \nPreview-Clip length different"
-            self.env.set_var("avsp_filter_clip", None)
+            clip = None
             return None, err
 
         framenr = self.current_frame
@@ -822,7 +882,6 @@ class AvsClipBase:
         if err:
             clip = None
             frame = None
-            self.env.set_var("avsp_filter_clip", None)
             return None, err
 
         self.preview_filter = f_args
@@ -830,19 +889,18 @@ class AvsClipBase:
         self.display_frame = frame
         self.display_pitch = self.display_frame.get_pitch()
         self.pBits = self.display_frame.get_read_ptr()
+        if self.bit_depth:
+            self.bit_depth = None
+            self.callBack('bit_depth', -1)
         return True, ''
 
+    # this calls now only avsp
     def KillFilterClip(self, createDisplayClip=True):
         self.preview_filter = None
         if not self.initialized:
             return
-        try:
-            if isinstance(self.env.get_var("avsp_filter_clip"), avisynth.AVS_Clip):
-                self.env.set_var("avsp_filter_clip", None)
-                if createDisplayClip:
-                    self.CreateDisplayClip(self.matrix, self.interlaced, self.swapuv, self.bit_depth)
-        except:
-            pass
+        if createDisplayClip:
+            self.CreateDisplayClip(self.matrix, self.interlaced, self.swapuv, self.bit_depth)
 
     # for avisynth from H8 but lower then 3.71 (bug C Interface)
     def GetMatrix_2(self):
@@ -902,6 +960,14 @@ class AvsClipBase:
             self.sourceMatrix = func.GetMatrixName(m)
         return matrix
 
+    def GetPictureType(self, nr=None):
+        if self.initialized and self.can_read_avisynth_props:
+            if nr:
+                if not self._GetFrame(nr): # it's not threaded !
+                    return ''
+            return self.env.props_get_picture_type(self.src_frame)
+        return ''
+
     # Only switch readFrameProps on/off here, do not set AVI.readFrameProps = True
     def SetReadFrameProps(self, enabled, callBack=True, readNow=True):
         if not self.initialized or not self.can_read_avisynth_props:
@@ -933,53 +999,22 @@ class AvsClipBase:
     def SetSplitClip(self, enabled, createDisplayClip=True):
         if (self.IsSplitClip and enabled) or (not self.IsSplitClip and not enabled):
             return True
-        self.IsSplitClip = None
         if self.split_clip:
             if enabled:
-                framenr = self.current_frame
-                if framenr < 0:
-                    framenr = 0
-                #vi = self.split_clip.get_video_info()
-                #framenr = min(self.Framecount-1, vi.num_frames-1)
-                frame = self.split_clip.get_frame(framenr)
-                err = self.split_clip.get_error()
-                if err:
-                    #self.split_clip = None # must test!!! if self.clip then corrupt? if not, we can remove IsSplitClip
-                    frame = None
+                if self.IsErrorClip():
                     return
-
-                # create the split display clip
-                args = [self.split_clip, self.matrix, self.interlaced]
-                try:
-                    self.display_clip = self.env.invoke("ConvertToRGB32", args)
-                    if not isinstance(self.display_clip, avisynth.AVS_Clip):
-                        raise
-                except:
-                    #self.split_clip = None # must test!!! if self.clip then corrupt? if not, we can remove IsSplitClip
-                    if createDisplayClip:
-                        self.CreateDisplayClip(self.matrix, self.interlaced, self.swapuv, self.bit_depth, killSplitClip=True)
-                    return
-
-                if self.resizeFilter:
-                    rf = self.CalcResizeFilter()
-                    if rf:
-                        args = '%s(%i,%i)' % (rf[0], rf[1], rf[2])
-                        self.display_clip = self.env.invoke('Eval', [self.display_clip, args])
-
-                # disable all preview filters
-                if self.preview_filter:
-                    self.KillFilterClip(createDisplayClip=False)
-                    self.callBack('preview', -1) # reset avsp menus (disable preview filter)
-
-                self.current_frame = -1 # get the frame new
-                self.display_frame = frame
-                self.display_pitch = self.display_frame.get_pitch()
-                self.pBits = self.display_frame.get_read_ptr()
                 self.IsSplitClip = True
-                return True
+                self.clip = self.split_clip
+                self.SetClipInfo(self.split_clip_vi)
+                return self.CreateDisplayClip(self.matrix, self.interlaced, self.swapuv, self.bit_depth, killFilterClip=False, killSplitClip=False)
             else:
-                if not self.IsErrorClip() and createDisplayClip:
-                    return self.CreateDisplayClip(self.matrix, self.interlaced, self.swapuv, self.bit_depth, killSplitClip=True)
+                self.IsSplitClip = False
+                self.clip = self.main_clip
+                self.SetClipInfo(self.main_clip_vi)
+                if not self.IsErrorClip():
+                    return self.CreateDisplayClip(self.matrix, self.interlaced, self.swapuv, self.bit_depth, readmatrix=True, killFilterClip=False, killSplitClip=True)
+                else:
+                    self.callBack('splitclip', -1)
 
     def _GetFrame(self, frame):
         def Error():
@@ -995,18 +1030,12 @@ class AvsClipBase:
                 frame = self.Framecount - 1
                 if self.current_frame == frame:
                     return True
-            # Original clip
-            if not self.IsSplitClip or not self.split_clip:
-                self.src_frame = self.clip.get_frame(frame)
-                if self.clip.get_error():
-                    Error()
-                    return False
-            else:  # split_clip
-                self.src_frame = self.split_clip.get_frame(frame)
-                if self.split_clip.get_error():
-                    Error()
-                    return False
 
+            # Original clip
+            self.src_frame = self.clip.get_frame(frame)
+            if self.clip.get_error():
+                Error()
+                return False
             self.pitch = self.src_frame.get_pitch()
             self.pitchUV = self.src_frame.get_pitch(avisynth.avs.AVS_PLANAR_U)
             self.ptrY = self.src_frame.get_read_ptr()
@@ -1036,7 +1065,7 @@ class AvsClipBase:
     # coded: pfmod 2021
     def GetPixelYUV(self, x, y):
         # if a resize filter used in the preview filter. CRASH if not check here
-        if self.DisplayWidth != self.Width or self.DisplayHeight != self.Height:
+        if (self.DisplayWidth != self.Width) or (self.DisplayHeight != self.Height):
             return (-1,-1,-1)
         if self.IsPlanar:
             indexY = x * self.component_size + y * self.pitch
@@ -1085,7 +1114,7 @@ class AvsClipBase:
 
     def GetPixelYUVA(self, x, y):
         # if a resize filter used in the preview filter. CRASH if not check here
-        if self.DisplayWidth != self.Width or self.DisplayHeight != self.Height:
+        if (self.DisplayWidth != self.Width) or (self.DisplayHeight != self.Height):
             return (-1,-1,-1,-1)
         indexY = indexA = x * self.component_size + y * self.pitch
         x = x >> self.WidthSubsampling
@@ -1117,7 +1146,7 @@ class AvsClipBase:
     def GetPixelRGB(self, x, y, BGR=True):
         if self.IsRGB:
             # if a resize filter used in the preview filter. CRASH if not check here
-            if self.DisplayWidth != self.Width or self.DisplayHeight != self.Height:
+            if (self.DisplayWidth != self.Width) or (self.DisplayHeight != self.Height):
                 return (-1,-1,-1)
             if self.IsPlanar: # plane order is GBR
                 index = x * self.component_size + y * self.pitch
@@ -1177,7 +1206,7 @@ class AvsClipBase:
 
     def GetPixelRGBA(self, x, y, BGR=True):
         # if a resize filter used in the preview filter. CRASH if not check here
-        if self.DisplayWidth != self.Width or self.DisplayHeight != self.Height:
+        if (self.DisplayWidth != self.Width) or (self.DisplayHeight != self.Height):
             return (-1,-1,-1,-1)
         if not self.IsPlanarRGBA:
             if self.IsRGB32:
@@ -1414,15 +1443,15 @@ class AvsClipBase:
         return left, top, right, bottom
 
     # calculate the resize values needed for the display clip for the given client area (dw, dh)
-    def CalcResizeFilter(self):
-        mod = 2 if not self.vi.is_yv411() else 4
+    def CalcResizeFilter(self, vi):
+        mod = 2 if not vi.is_yv411() else 4
         try:
             f, dw, dh, zoom, fitHeight, hidescrollbars = self.resizeFilter
         except:
             return
         if dw < 12 or dh < 12:
             return
-        vW, vH = self.Width, self.Height
+        vW, vH = vi.width, vi.height
         ratio = float(vW)/vH
         if zoom == 1:
             factorWidth = float(dw) / vW
@@ -1441,7 +1470,7 @@ class AvsClipBase:
             W = round(vW* zoom) //mod*mod
             H = round(vH* zoom) //mod*mod
         # return if new size < 12 or zoomfactor > 2.5
-        if W < 12 or H < 12 or (float(W + H) / (self.Width + self.Height) > 2.5):
+        if W < 12 or H < 12 or (float(W + H) / (vW + vH) > 2.5):
             return
         return (f, W, H)
 

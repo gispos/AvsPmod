@@ -430,7 +430,7 @@ class ArgsPosterThread:
 
 class Frame(wx.Frame):
 
-    def createMenuBar(self, menuBarInfo, shortcutList, oldShortcuts, menuBackups=[]):
+    def createMenuBar(self, menuBarInfo, shortcutList, oldShortcuts, menuBackups=[], backupShowShortcuts=False):
         '''
         General utility function to create a menu bar of menus
         Input is a list of label/menuInfo tuples
@@ -449,11 +449,11 @@ class Frame(wx.Frame):
             # GPo, wx.2.9.4 menuBackups must first append or menuBar Video>Navigate>Bookmarks events not working
             # but then menu bar flickers on add the bookmarks to the menu. What bullshit, TODO...
             if index in buckups:
-                menuBackups.append(self.createMenu(menuInfo, menuLabel, shortcutList, oldShortcuts, True))
+                menuBackups.append(self.createMenu(menuInfo, menuLabel, shortcutList, oldShortcuts, True, backupShowShortcuts))
             index += 1
         return menuBar
 
-    def createMenu(self, menuInfo, name='', shortcutList = None, oldShortcuts=None, backup=False):
+    def createMenu(self, menuInfo, name='', shortcutList = None, oldShortcuts=None, backup=False, backupShowShortcuts=False):
         menu = wx.Menu()
         if shortcutList is None:
             shortcutList = []
@@ -482,7 +482,7 @@ class Frame(wx.Frame):
                 bindwindow = self
             # Special case: submenu
             if handler is None: #not isinstance(handler, FunctionType):
-                submenu = self.createMenu(shortcut, '%s -> %s'% (name, label), shortcutList, oldShortcuts, backup)
+                submenu = self.createMenu(shortcut, '%s -> %s'% (name, label), shortcutList, oldShortcuts, backup, backupShowShortcuts)
                 menu.AppendMenu(wx.ID_ANY, label, submenu, status)
                 continue
             elif handler == -1:
@@ -509,10 +509,19 @@ class Frame(wx.Frame):
                 shortcut = oldShortcutInfos[index][1]
             except ValueError:
                 pass
-            if shortcut != '' and shortcut not in [item[1] for item in shortcutList]:
-                shortcutString = u'\t%s\u00a0' % GetTranslatedShortcut(shortcut)
-            else:
+            # GPo, show the shortcuts in the context menus (videoWindow, script)
+            if backup:
                 shortcutString = ''
+                if backupShowShortcuts and shortcut != '':
+                    for item in shortcutList:
+                        if item[0] == itemName and item[1] == shortcut:
+                            shortcutString = u'\t%s\u00a0' % GetTranslatedShortcut(shortcut)
+                            break
+            else:
+                if shortcut != '' and shortcut not in [item[1] for item in shortcutList]:
+                    shortcutString = u'\t%s\u00a0' % GetTranslatedShortcut(shortcut)
+                else:
+                    shortcutString = ''
             # Append the menu item
             if os.name != 'nt' and wx.version() >= '2.9': # XXX
                 shortcutString = shortcutString[:-1]
