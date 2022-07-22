@@ -38,6 +38,17 @@ If, for example, there is a '-' in the file name of the dll, AvsPmod will report
 please rename this dll and replace the '-' with a '_'
 
 --------------------------
+Version 2.7.2.2 [2022-07-22] GPo
+--------------------------
+* Thread progress dialog can now be hidden. Program Options > Misc 2 > 'Hide thread progress dialog (Press Ctrl to show)'
+- hides only the progress dialog if the video window visible on creating or refreshing a clip.
+- if you press Ctrl for 0.5 to 2 seconds (depends on the thread state), the dialog is shown.
+* Fixed "Preview Filter" showed error message if no filter was present in preview filter area (e.g. all filters disabled with toggle tags)
+* Option > 'Draw the frame during clip refresh (Beta)' removed, function has been revised and is now always active. Please report problems!
+- see 2.7.2.1 > When 'Accessing Avisynth in Threads' is used...
+* Some other changes
+
+--------------------------
 Version 2.7.2.1 [2022-07-15] GPo, (a lot of news and improvements)
 --------------------------
 * Added slider window checkbox 'Preview filter', enables/disables the last used 'Preview filter' or P-Filter 1 if no last used index found.
@@ -64,9 +75,9 @@ Version 2.7.2.1 [2022-07-15] GPo, (a lot of news and improvements)
 - the 'Number wheel' function will be disabled. This improves the unintentional switching when the middle click should actually activate the preview.
 - I'm not entirely happy with it, either the switch normal/fast will be removed or I'll think of something better.
 -
-* Added program options > Mis 2 > 'Show memory information in thread progress dialog' (default True).
+* Added program options > Misc 2 > 'Show memory information in thread progress dialog' (default True).
 - displays the available system memory in the thread progress dialog (5 seconds after the dialog appears).
-* Added program options > Mis 2 > 'Show shortcuts in context menus*' Shows or hides the shortcuts in the video and script context menus.
+* Added program options > Misc 2 > 'Show shortcuts in context menus*' Shows or hides the shortcuts in the video and script context menus.
 -
 * When 'Accessing Avisynth in Threads' is used, the program no longer gets the "No response" status when a clip is reinitialized. 
 - the video image is fully preserved while waiting for the clip (Not when waiting for a frame or no image visible).

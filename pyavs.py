@@ -619,6 +619,7 @@ class AvsClipBase:
             self.env = None # GPo new, we creating always a new env (its slower but avoid problems)
             self.initialized = False
             self.properties = ''
+            #self.env.set_var("avsp_filter_clip", None)
             if __debug__:
                 print(u"Deleting allocated video memory for '{0}'".format(self.name))
 
@@ -732,6 +733,7 @@ class AvsClipBase:
         if self.preview_filter:
             if killFilterClip:
                 self.preview_filter = None
+                self.env.set_var("avsp_filter_clip", None)
                 self.callBack('preview', -1)
             else:
                 re, err = self.CreateFilterClip(self.preview_filter)
@@ -833,7 +835,7 @@ class AvsClipBase:
         elif self.convert_to_rgb_error:
             self.callBack('displayerror', self.convert_to_rgb_error)
         return True
-
+    """
     def CreateFilterClip(self, f_args=''):
         err = ''
         self.preview_filter = None
@@ -899,6 +901,86 @@ class AvsClipBase:
         self.preview_filter = None
         if not self.initialized:
             return
+        if createDisplayClip:
+            self.CreateDisplayClip(self.matrix, self.interlaced, self.swapuv, self.bit_depth)
+    """
+    # back to original (avsp_filter_clip), get's also a clip if args empty or no preview filter set
+    def CreateFilterClip(self, f_args=''):
+        self.preview_filter = None
+        if not f_args or not self.clip or self.IsErrorClip():
+            return None, ''
+
+        self.env.set_var("avsp_filter_clip", self.clip)
+
+        args = ('avsp_filter_clip\n' + f_args)
+        if self.displayFilter:
+            args += '\n' + self.displayFilter
+
+        if self.resizeFilter:
+            rf = self.CalcResizeFilter()
+            if rf:
+                args += '\n%s(%i,%i)' % (rf[0], rf[1], rf[2])
+        try:
+            clip = self.env.invoke("Eval", args)
+        except:
+            err = self.error_message
+            if err is None:
+                err = self.env.get_error()
+                if not err:
+                    err = "Preview filter error: Not a clip"
+            self.env.set_var("avsp_filter_clip", None)
+            return None, err
+
+        if not isinstance(clip, avisynth.AVS_Clip):
+            err = self.error_message
+            if err is None:
+                err = "Unknown Preview filter error: Not a clip"
+            self.env.set_var("avsp_filter_clip", None)
+            return None, err
+
+        args = [clip, self.matrix, self.interlaced]
+        try:
+            clip = self.env.invoke("ConvertToRGB32", args)
+        except:
+            clip = None
+        if not isinstance(clip, avisynth.AVS_Clip):
+            err = "Preview filter error: ConvertToRGB failed"
+            self.env.set_var("avsp_filter_clip", None)
+            return None, err
+
+        vi = clip.get_video_info()
+        if vi.num_frames != self.Framecount:
+            err = "Preview filter error: \nPreview-Clip length different"
+            clip = None
+            self.env.set_var("avsp_filter_clip", None)
+            return None, err
+
+        framenr = self.current_frame
+        if framenr < 0:
+            framenr = 0
+        frame = clip.get_frame(framenr)
+        err = clip.get_error()
+        if err:
+            clip = None
+            frame = None
+            return None, err
+
+        self.preview_filter = f_args
+        self.display_clip = clip
+        self.display_frame = frame
+        self.display_pitch = self.display_frame.get_pitch()
+        self.pBits = self.display_frame.get_read_ptr()
+        if self.bit_depth:
+            self.bit_depth = None
+            self.callBack('bit_depth', -1)
+        return True, ''
+
+    # this calls now only avsp
+    def KillFilterClip(self, createDisplayClip=True):
+        self.preview_filter = None
+        if not self.initialized:
+            return
+        self.env.set_var("avsp_filter_clip", None)
         if createDisplayClip:
             self.CreateDisplayClip(self.matrix, self.interlaced, self.swapuv, self.bit_depth)
 
