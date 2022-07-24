@@ -917,7 +917,7 @@ class AvsClipBase:
             args += '\n' + self.displayFilter
 
         if self.resizeFilter:
-            rf = self.CalcResizeFilter()
+            rf = self.CalcResizeFilter(self.vi)
             if rf:
                 args += '\n%s(%i,%i)' % (rf[0], rf[1], rf[2])
         try:

@@ -1,12 +1,13 @@
 /*
         GPo, 2021.01.03
-        Examples of preview filter in AvsPmod.  
-
-        Avisynth filters that do not require a high CPU load are suitable as preview filters. 
-        The faster the avisynth filters are, the faster the preview can be created
-        It doesn't make sense to use MCTemporalDenoise in a preview filter. Suitable filters are sharpness, colors or similar filters
-        Preview filters are always processed as last filter, but 'prefetch' in the preview area only affects the preview filter. 
-        Outside of this, 'prefetch' only affects the source filter.
+        Examples of preview filter in AvsPmod.
+  
+        A 'Preview filter' allows an almost real-time view of parameter changes of a filter. 
+	 With sliders a very fast visuel adjustment of the used filters is possible. Or use 'Number wheel'
+        
+        Avisynth filters that do not require a high CPU load are suitable as preview filters.  The faster the avisynth filters are, the faster the preview can be created.
+        It doesn't make sense to use MCTemporalDenoise in a preview filter. Suitable filters are sharpness, colors or similar filters.
+        Preview filters are always processed as last filter, but 'prefetch' in the preview area only affects the preview filter.  Outside of this, 'prefetch' only affects the source filter.
         The frame count of the preview filter must match the frame count of the source, or an error message is shown.
 
         Up to 5 filter sets can be created, each preview filter set must be declared as follows.
@@ -54,7 +55,7 @@ Sharpen(0.40)
         You can save or restore more then 5 filter sets, but only directly select the first 5 sets.
         
         You can also write the preview filter set in the first line and then the source filter, it makes no difference.
-        In the event of a refresh or if the script has changed outside of the preview filter area, the preview filter is switched off
+        In the event of a refresh or if the script has changed outside of the preview filter area, the preview filter is restored now  since version 2.7.2.1 
         When you are done with the settings, simply remove the filter flag start and end or set a comment flag # at the beginning of the line.
 
         And a final remark. For avisynth the area is only a block comment,

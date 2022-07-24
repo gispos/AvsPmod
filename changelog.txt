@@ -38,6 +38,11 @@ If, for example, there is a '-' in the file name of the dll, AvsPmod will report
 please rename this dll and replace the '-' with a '_'
 
 --------------------------
+Version 2.7.2.3 [2022-07-24] GPo
+--------------------------
+* Bugfix: If the 'Resample filter' was used and a 'Preview filter' was set there was an error message.
+
+--------------------------
 Version 2.7.2.2 [2022-07-22] GPo
 --------------------------
 * Thread progress dialog can now be hidden. Program Options > Misc 2 > 'Hide thread progress dialog (Press Ctrl to show)'

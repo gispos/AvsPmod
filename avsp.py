@@ -14084,7 +14084,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.propWindow.Close()
 
         self.refreshAVI = True
-        #if self.UpdateScriptAVI(forceRefresh=True) is None:
         if self.UpdateScriptAVI() is None:
             wx.MessageBox(_('Error loading the script'), _('Error'), style=wx.OK|wx.ICON_ERROR)
             return False
@@ -16606,7 +16605,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.zoomfactor = round(self.zoomfactor * factor, 2)
             else:
                 self.zoomfactor = round(self.zoomfactor / factor, 2)
-            if self.zoomfactor > 0.94 and self.zoomfactor < 1.06:
+            if self.zoomfactor > 0.88 and self.zoomfactor < 1.12:
                 self.zoomfactor = 1
             self.videoWindow.Freeze()
             if not leftdown: # the antialiasing not disabled
@@ -20521,7 +20520,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         # Navigate to the initial frame and hide trim selection editor
         self.refreshAVI = True
-        self.ShowVideoFrame(new_frame)
+        self.ShowVideoFrame(new_frame, disableRefreshPainter=False)
         if self.trimDialog.IsShown():
             self.OnTrimDialogCancel(None)
 
@@ -22306,7 +22305,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                         progress.Pulse(msg)
                                 elif i > 9 and i % 5 == 0:
                                     if show_mem:
-                                        progress.Pulse(msg + msg_mem % (GetFreeMemory()))
+                                        progress.Pulse(msg + (msg_mem % GetFreeMemory()))
                                     elif not msgShown:
                                         msgShown = True
                                         progress.Pulse(msg)
@@ -22316,7 +22315,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                     pass # The request seems to be enough
                             th.join(0.5)
 
-                        if progress and c and self.WinVersion > 6:
+                        if c and progress and self.WinVersion > 6:
                             progress.Pulse(_('Clip process finished'))
                     finally:
                         pass # progess is now Destroyed later
