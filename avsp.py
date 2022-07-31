@@ -6255,9 +6255,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         # Set DPI Awareness and ppi_factor
         self.ppi_factor = 1.0
+        """
         if not self.options['ppidisabled']:
             DPI = dpi.DPI()
             self.ppi_factor = DPI.GetPPIFactor()
+        """
+        DPI = dpi.DPI()
+        self.ppi_factor = DPI.GetPPIFactor()
         self.setPPIFactor()
 
         # all dialogs fit inside display and greate scrollbars if needed
@@ -6461,6 +6465,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.timelineRange = 0       # GPo, last saved timeline range mod 2
         self.timelineAutoScroll = self.options['timelineautoscroll'] # scroll the timeline range if needed
         self.timelineAutoReset = self.options['timelineautoreset']
+        self.dummyObject = None      # GPo used as multi var
         # Create all the program's controls and dialogs
         self.blockStatusbar = False  # GPo 2020
         self.NewFileName = _('New File')
@@ -6568,6 +6573,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGING, self.OnNotebookPageChanging)
         #leave it, if thread progress is shown LayoutVideoWindows doesn't work if self Iconized and no event skip called
         def OnIconize(event):
+            self.blockEventSize = True
             if self.IsIconized():
                 self.StopPlayback()
                 if self.propWindow.IsShown():
@@ -6575,27 +6581,36 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             else:
                 if self.readFrameProps and self.propWindowParent == 0:
                     self.propWindow.Show()
-                if self.options['zoom_antialias'] and self.zoomfactor != 1:
-                    self.zoom_antialias = False
-                    wx.CallAfter(self.ResetZoomAntialias)
+                self.mainSplitter.UpdateSize()
+                self.videoSplitter.UpdateSize()
+                try:
+                    #wx.GetApp().SafeYieldFor(self.videoWindow, wx.wxEVT_PAINT)
+                    wx.GetApp().SafeYieldFor(self, wx.wxEVT_PAINT)
+                except:
+                    pass
             event.Skip()
         self.Bind(wx.EVT_ICONIZE, OnIconize)
 
         """
         def OnMaximaze(event):
-            if self.currentScript.GetSize()[1] > 4:
-                wx.CallAfter(self.SetMinimumScriptPaneSize)
+            #if self.currentScript.GetSize()[1] > 4:
+                #wx.CallAfter(self.SetMinimumScriptPaneSize)
+            print('On Maximaze')
+            event.Skip()
         self.Bind(wx.EVT_MAXIMIZE, OnMaximaze)
+
         """
         """
         def OnShow(event):
-            try:
-                print('On Show')
-            except:
-                pass
+            if self.readFrameProps and self.propWindowParent == 0:
+                self.propWindow.Show()
+            if self.mainSplitter.IsSplit():
+                self.mainSplitter.UpdateSize()
+                self.videoSplitter.UpdateSize()
             event.Skip()
         self.Bind(wx.EVT_SHOW, OnShow)
         """
+
         """
         def OnModalDialogClosed(event):
             print('Modal Close')
@@ -6608,7 +6623,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 if event.GetEventType() != wx.EVT_CLOSE.typeId:
                     if self.titleEntry:
                         self.scriptNotebook.SetFocus()
-                if not self.blockEventSize:
+                # It's bad for switchin fullsize mode on playback
+                if not self.blockEventSize and not self.ClipRefreshPainter:
                     if self.previewWindowVisible:
                         script = self.currentScript
                         size = script.GetSize()[self.mainSplitter.GetSplitMode() == wx.SPLIT_HORIZONTAL]
@@ -6631,13 +6647,14 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         func = (self.SetMinimumScriptPaneSize, tuple(), {'mlines': self.mintextlines})
                         if not func in self.IdleCall:
                             self.IdleCall.append(func)
+
                 self.blockEventSize = False
                 event.Skip()
             self.Bind(wx.EVT_SIZE, OnSize) # Size is also called on Maximaze and Restore
         else:
             def OnSize(event): # after size
                 if self.previewWindowVisible and event.GetEventType() != wx.EVT_CLOSE.typeId:
-                    if not self.blockEventSize:
+                    if not self.blockEventSize and not self.ClipRefreshPainter:
                         if not self.videoDialog.IsMaximized() and not self.videoDialog.IsFullScreen():
                             self.options['dimensions2'] = (self.videoDialog.GetRect())
                         script = self.currentScript
@@ -7492,7 +7509,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'avithreadassignlater': True,            # GPo 2021, if true then thread assign AVI to script after canceling, else freeing the clip
             'usenewframethread': True,               # GPo now default
             'progressdelaytime': 10,                 # GPo delay before showing thread progress dialog (10s)
-            'threadprogresshiden': False,            # GPo hide the thread progess dialog, press Ctrl to show
+            'threadprogressopt': 0,                  # GPo, thread progress behave, 0=old, 1=show dialog, 2=hide dialog
             'bookmarktotrim': False,                 # GPo 2020
             'bookmarkshilightcolor': wx.Colour(233,122,122),   # GPo
             'selectionshilightcolor': wx.Colour(110,110,204),  # GPo 2020
@@ -7520,7 +7537,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'numberwheelfaster': False,              # GPo, change OnMiddleUpScriptWindow the number wheel performance
             'threaddlgshowmem': True,                # GPo, thread dlg show free and script memory
             'usesplitclip': False,                   # GPo, on UpdateScriptAvi restore script.AVI.split_clip if AVI.IsSplitClip enabled on refresh
-            #'cliprefreshpaintframe': True,           # GPo, Beta option, paint the last frame when initialazing a clip and load Avisynth in threads enabled
+            'cliprefreshpainter': True,              # GPo, paint the last frame during clip refresh if load Avisynth in threads enabled (disavantage
             'eol': 'auto',
             'loadstartupbookmarks': True,
             'nrecentfiles': 5,
@@ -7543,12 +7560,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'periodicbackup': 0,
             'autoupdatevideo': False,
             # PPI scaling (DPI) # GPo 2020
-            'ppiscalingoverall': 0,
+            #'ppiscalingoverall': 0,
             'ppiscalingstatusbar': 0,
-            'ppiscalingmanually': False,
+            #'ppiscalingmanually': False,
             'ppiscalingscripttabs': 0,
             'ppiscalingvideocontrols': 0,
-            'ppidisabled': False,
+            'ppiscalingsliderwindow': 0,
+            #'ppidisabled': False,
         })
         # Import certain options from older version if necessary
         if oldOptions is not None:
@@ -8351,6 +8369,15 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 count = len(arg)
         return ''.join(argList)
     """
+    def getOptionsDpiDlgInfo(self):
+        return (
+            (_('DPI'),
+                ((_('Main tabs*'), wxp.OPT_ELEM_SPIN, 'ppiscalingscripttabs', _('Additional adjust the script window tabs (10 % steps)'), dict(min_val=-2, val=0, max_val=10) ),
+                 (_('Video controls*'), wxp.OPT_ELEM_SPIN, 'ppiscalingvideocontrols', _('Additional adjust the video controls (10 % steps)'), dict(min_val=-2, val=0, max_val=10) ),),
+                ((_('Statusbar* '), wxp.OPT_ELEM_SPIN, 'ppiscalingstatusbar', _('Additional adjust the statusbar (10 % steps)'), dict(min_val=-2, val=0, max_val=10) ),
+                 (_('Slider window* '), wxp.OPT_ELEM_SPIN, 'ppiscalingsliderwindow', _('Additional adjust the slider window font (10 % steps)'), dict(min_val=-2, val=0, max_val=10) ),),
+            ),
+        )
 
     def getOptionsDlgInfo(self):
         plugtxt = 'Plugins directory 64 bit:' if self.x86_64 else 'Plugins directory 32 bit:'
@@ -8375,6 +8402,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 ((_('Documentation search url:'), wxp.OPT_ELEM_STRING, 'docsearchurl', _("The web address to search if docs aren't found (the filter's name replaces %filtername%)"), dict() ), ),
             ),
             (_('Text'),
+                #((_('Min text lines on video preview'), wxp.OPT_ELEM_SPIN, 'mintextlines', _('Minimum number of lines to show when displaying the video preview'), dict(min_val=0) ), ),
                 ((_('Style inside triple-quoted strings'), wxp.OPT_ELEM_CHECK, 'syntaxhighlight_styleinsidetriplequotes', _("Highlight the text as if it wasn't enclosed by triple quotes"), dict() ), ),
                 ((_('Prefer functions over variables'), wxp.OPT_ELEM_CHECK, 'syntaxhighlight_preferfunctions', _('When a word could be either a function or a variable, highlight it as function'), dict() ), ),
                 ((_('Wrap text'), wxp.OPT_ELEM_CHECK, 'wrap', _("Don't allow lines wider than the window"), dict() ), ),
@@ -8386,6 +8414,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 ((_('Frequent calltips'), wxp.OPT_ELEM_CHECK, 'frequentcalltips', _("Always show calltips any time the cursor is within the filter's arguments"), dict(ident=20) ), ),
                 ((_('Show autocomplete on capital letters'), wxp.OPT_ELEM_CHECK, 'autocomplete', _('Turn on/off automatic autocomplete list when typing words starting with capital letters'), dict() ), ),
                 (('       '+_('Amount of letters typed'), wxp.OPT_ELEM_SPIN, 'autocompletelength', _('Show autocomplete list when typing a certain amount of letters'), dict(min_val=0) ), ),
+                ((_('Min text lines on video preview'), wxp.OPT_ELEM_SPIN, 'mintextlines', _('Minimum number of lines to show when displaying the video preview'), dict(min_val=0) ), ),
+                ((_('Mouse wheel scroll rate in editor (0 disabled)'), wxp.OPT_ELEM_SPIN, 'scriptwindowbindmousewheel', _('If the mouse wheel does not work in the editor\nor you want another scroll rate. 1 to 6 lines to scroll, Ctrl doubles the rate'), dict(min_val=0, max_val=6)  ), ),
             ),
             (_('Autocomplete'),
                 ((_('AviSynth user function database'), wxp.OPT_ELEM_SEP, '', _('Select what functions beside internal and user-defined will be included in the database'), dict(adjust_width=True) ), ),
@@ -8406,7 +8436,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 ((_('Enable line-by-line update'), wxp.OPT_ELEM_CHECK, 'autoupdatevideo', _('Enable the line-by-line video update mode (update every time the cursor changes line position)'), dict() ), ),
                 ((_('Focus the video preview upon refresh'), wxp.OPT_ELEM_CHECK, 'focusonrefresh', _('Switch focus to the video preview window when using the refresh command'), dict() ), ),
                 ((_('Refresh preview automatically'), wxp.OPT_ELEM_CHECK, 'refreshpreview', _('Refresh preview when switch focus on video window'), dict() ), ),
-                ((_('Move video slider to timeline start'), wxp.OPT_ELEM_CHECK, 'timelinemoveslidertostart', _('On moving timeline range with keys Ctrl + Alt + PageDown\nTimeline moving with Ctrl + Alt + (Left, Right, PageUp, PageDown)\n or left mouse button on the status bar, with Shift no limit'), dict() ), ),
+                ((_('Move video slider to timeline start'), wxp.OPT_ELEM_CHECK, 'timelinemoveslidertostart', _('On Timeline moving with Ctrl + Alt + (Left, Right, PageUp, PageDown)\n or left mouse button on the status bar (with Shift no limit)'), dict() ), ),
                 ((_('Shared timeline'), wxp.OPT_ELEM_CHECK, 'enableframepertab', _('Seeking to a certain frame will seek to that frame on all tabs'), dict() ), ),
                 ((_('Only on tabs of the same characteristics'), wxp.OPT_ELEM_CHECK, 'enableframepertab_same', _('Only share timeline for clips with the same resolution and frame count'), dict(ident=20) ), ),
                 ((_('Mouse wheel function'), wxp.OPT_ELEM_LIST, 'mousewheelfunc', _('Determines which mouse wheel function is used, see below tabs.Tab change also possible under Misc -> Mouse browse buttons'), dict(choices=[(_('Frame step'), 'frame_step'), (_('Tab change'), 'tab_change'), (_('Tab change or scroll'), 'tab_change_or_scroll'),]) ), ),
@@ -8415,7 +8445,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 ((_('Separate video preview window')+' *', wxp.OPT_ELEM_CHECK, 'separatevideowindow', _('Use a separate window for the video preview'), dict() ), ),
                 ((_('Keep it on top of the main window')+' *', wxp.OPT_ELEM_CHECK, 'previewontopofmain', _('Keep the video preview window always on top of the main one and link its visibility'), dict(ident=20) ), ),
                 ((_('Startup with last zoom settings'), wxp.OPT_ELEM_CHECK, 'startupwithlastzoom', _('Use last zoom settings at startup'), dict() ), ),
-                ((_('Min text lines on video preview'), wxp.OPT_ELEM_SPIN, 'mintextlines', _('Minimum number of lines to show when displaying the video preview'), dict(min_val=0) ), ),
+                ((_('Display default YUV -> RGB conversion'), wxp.OPT_ELEM_LIST, 'defaultmatrix', _('Conversions default for a new script\nAuto = Resolution based'), dict(choices=[(_('Auto tv'), 'auto,tv'), (_('Rec.709'), '709,tv'), (_('Rec.601'), '601,tv'), (_('Auto pc'), 'auto,pc'), (_('PC.709'), '709,pc'), (_('PC.601'), '601,pc')]) ), ),
                 # 0= show tabs always, 1= hide tabs only if row count > 1, 2= hide if fullscreen else 0, 3= hide if fullscreen else 1,  4= hide always
                 ((_('Tab behave in Fullsize/Fullscreen mode'), wxp.OPT_ELEM_LIST, 'fullscreenmode', _('Show or hide the tabs on Fullscreen or Fullsize mode\nDouble click on preview is Fullsize\nPress Ctrl on double click is Fullscreen\nIf multiline tab style, row count can be greater then 1'), \
                     dict(choices=[(_('(1) Show tabs always'), 0), (_('(2) Hide if row count greater 1'), 1), (_('(3) Hide if fullscreen else (1)'), 2), (_('(4) Hide if fullscreen else (2)'), 3), (_('(5) Hide tabs always'), 4),]) ), ),
@@ -8437,7 +8467,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 ((_('Hide slider window toggle tag menus*'), wxp.OPT_ELEM_CHECK, 'sliderhidetagmenu', _('Hide the toggle tag menus in the context menu of the sliders'), dict() ), ),
                 ((_('Enable slider window custom color theme'), wxp.OPT_ELEM_CHECK, 'sliderwindowcustomtheme', _("Custom colors can be set under 'Options->Font and colors->Advanced 2'\nNot visible slider windows needed refresh."), dict() ), ),
                 ((_('Fold startup setting'), wxp.OPT_ELEM_RADIO, 'autosliderstartfold', _('Determines which filters will initially have hidden arguments in the slider window'), dict(dimensions=2, choices=[(_('Fold all'), 0),(_('Fold none'), 1), (_('Fold non-numbers'), 2), (_('Fold or restore last status'), 3) ]) ), ),
-                ((_('Filter exclusion list:'), wxp.OPT_ELEM_STRING, 'autosliderexclusions', _('Specify filters never to build automatic sliders for. Use a space as separator.\nYou can toggle it in the slider context menu.'), dict() ), ),
+                ((_('Filter exclusion list'), wxp.OPT_ELEM_STRING, 'autosliderexclusions', _('Specify filters never to build automatic sliders for. Use a space as separator.\nYou can toggle it in the slider context menu.'), dict() ), ),
             ),
             (_('Save/Load'),
                 ((_('Save session for next launch'), wxp.OPT_ELEM_CHECK, 'startupsession', _('Automatically save the session on shutdown and load on next startup'), dict() ), ),
@@ -8472,6 +8502,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 ((_('Only allow a single instance of AvsPmod')+' *', wxp.OPT_ELEM_CHECK, 'singleinstance', _('Only allow a single instance of AvsPmod'), dict() ), ),
                 ((_('Show warning for bad plugin naming at startup'), wxp.OPT_ELEM_CHECK, 'dllnamewarning', _('Show warning at startup if there are dlls with bad naming in default plugin folder'), dict() ), ),
                 ((_('Show warning for plugin functions parse errors'), wxp.OPT_ELEM_CHECK, 'dllfuncparseerror', _('Show warning at startup if there are plugin functions parse errors in default plugin folder'), dict() ), ),
+                ((_('Show shortcuts in context menus*'), wxp.OPT_ELEM_CHECK, 'contextshowshortcuts', _('Show or hide the context menus shortcuts (video, script)'), dict() ), ),
+                ((_('Show video control buttons tooltips'), wxp.OPT_ELEM_CHECK, 'showbuttontooltip', _('Show or hide the video control buttons tooltips'), dict() ), ),
                 ((_('Mouse browse buttons'), wxp.OPT_ELEM_LIST, 'mouseauxdown', _("Mouse browse buttons (forward/backward) on video and script window\nIf 'Tab change' and tab count less than 2, 'Bookmark jump' is used\nIf 'Tab change' press CTRL or left mouse and 'Bookmark jump' is used\nIf 'Bookmark jump', vice versa"),dict(choices=[(_('Tab change'),'tab change'),(_('Custom jump'),'custom jump'),(_('Bookmark jump'),'bookmark jump'),(_('Frame step'),'frame step')]) ), # GPo 2020
                  (_('Middle mouse on script'), wxp.OPT_ELEM_LIST, 'middlemousefunc', _('Middle mouse button behavior on the script, if script empty open source is used'), dict(choices=[(_('Show video frame'), 'show video frame'), (_('Open source'), 'open source')]) ), ), # GPo 2020
                 ((_('Max number of recent filenames'), wxp.OPT_ELEM_SPIN, 'nrecentfiles', _('This number determines how many filenames to store in the recent files menu'), dict(min_val=0) ), ),
@@ -8479,27 +8511,17 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 ((_('Custom jump size units'), wxp.OPT_ELEM_RADIO, 'customjumpunits', _('Units of custom jump size'), dict(choices=[(_('frames'), 'frames'),(_('seconds'), 'sec'),(_('minutes'), 'min'),(_('hours'), 'hr')]) ), ),
             ),
             (_('Misc 2'),
-                ((_('AvsPmod DPI scaling *'), wxp.OPT_ELEM_SEP, '', '', dict(adjust_width=True) ), ),
-                ((_('DPI scaling overall only manually*'), wxp.OPT_ELEM_CHECK, 'ppiscalingmanually', _('Do not use automatic system zoom scaling'), dict() ),
-                 (_('Disable DPI awareness*'), wxp.OPT_ELEM_CHECK, 'ppidisabled', _('Only disable it if you using 100% system zoom. Program is zoomed by the system and set DPI values.'), dict() ), ),
-                ((_('DPI scaling overall:*'), wxp.OPT_ELEM_SPIN, 'ppiscalingoverall', _('Manually adjust dpi scaling overall (10 % steps)'), dict(min_val=-2, max_val=20) ),
-                 (_('DPI scaling video controls:*'), wxp.OPT_ELEM_SPIN, 'ppiscalingvideocontrols', _('Additional adjust the video controls (10 % steps)'), dict(min_val=-2, val=0, max_val=10) ),),
-                ((_('DPI scaling main tabs:*'), wxp.OPT_ELEM_SPIN, 'ppiscalingscripttabs', _('Additional adjust the script window tabs (10 % steps)'), dict(min_val=-2, val=0, max_val=10) ),
-                 (_('DPI scaling statusbar:*'), wxp.OPT_ELEM_SPIN, 'ppiscalingstatusbar', _('Additional adjust the statusbar (10 % steps)'), dict(min_val=-2, val=0, max_val=10) ), ),
-                ((_('Advanced settings'), wxp.OPT_ELEM_SEP, '', '', dict(adjust_width=True) ), ),
-                ((_('Display default YUV -> RGB conversion'), wxp.OPT_ELEM_LIST, 'defaultmatrix', _('Auto: Resolution based'), dict(choices=[(_('Auto tv'), 'auto,tv'), (_('Rec.709'), '709,tv'), (_('Rec.601'), '601,tv'), (_('Auto pc'), 'auto,pc'), (_('PC.709'), '709,pc'), (_('PC.601'), '601,pc')]) ), ),
-                ((_('Timeline move on status bar sensitivity:'), wxp.OPT_ELEM_SPIN, 'timelinestatusbarmovesense', _('Sets the sensitivity of the mouse movement on the status bar, for timeline range move (with or without Shift), lower value more movement'), dict(min_val=5, max_val=300, increment=5) ), ),
-                ((_('Timeline range numbers count:'), wxp.OPT_ELEM_LIST, 'timelinenumdivisor', _('How many additional numbers should be displayed in the timeline when a range has been set'), dict(choices=[(_('1 number'), 2),(_('4 numbers'), 5), (_('9 numbers'), 10),]) ), ),
-                ((_('Show memory information in thread progress dialog'), wxp.OPT_ELEM_CHECK, 'threaddlgshowmem', _('Displays the available system memory in the thread progress dialog'), dict() ), ),
+                ((_('DPI settings*'), wxp.OPT_ELEM_BUTTON, '','', dict(handler=self.ShowDpiOptions) ), ),
+                (('', wxp.OPT_ELEM_SEP, '', '', dict(adjust_width=False) ), ),
+                ((_('Timeline move sensitivity on the statusbar'), wxp.OPT_ELEM_SPIN, 'timelinestatusbarmovesense', _('Sets the sensitivity of the mouse movement in the status bar, for timeline range move (with or without Shift), lower value more movement'), dict(min_val=5, max_val=300, increment=5) ), ),
+                ((_('Timeline range numbers count'), wxp.OPT_ELEM_LIST, 'timelinenumdivisor', _('How many additional numbers should be displayed in the timeline when a range has been set'), dict(choices=[(_('1 number'), 2),(_('4 numbers'), 5), (_('9 numbers'), 10),]) ), ),
                 ((_('Show available system memory (0 disabled)'), wxp.OPT_ELEM_SPIN, 'showfreememory', _('After creating a new clip, show available memory in the status bar if memory is less than x MB'), dict(min_val=0, max_val=9000, increment=100) ), ),
+                ((_('Show memory information in thread progress dialog'), wxp.OPT_ELEM_CHECK, 'threaddlgshowmem', _('Shows the available system memory in the thread progress dialog'), dict() ), ),
                 ((_('Delay before thread progress dialog appears'), wxp.OPT_ELEM_SPIN, 'progressdelaytime', _('If accessing Avisynth in threads enabled, this setting determines the delay in seconds before the dialog appears. Can be double (clip, frame)'), dict(min_val=10, max_val=360) ), ),
-                ((_('Hide thread progress dialog (Press Ctrl to show)'), wxp.OPT_ELEM_CHECK, 'threadprogresshiden', _('Hides the thread progress dialog and only shows it by pressing Ctrl for 0.5 to 2 seconds depending on the thread state'), dict() ), ),
-                ((_('Mouse wheel scroll rate in editor (0 disabled)'), wxp.OPT_ELEM_SPIN, 'scriptwindowbindmousewheel', _('If the mouse wheel does not work in the editor\nor you want another scroll rate. 1 to 6 lines to scroll, Ctrl doubles the rate'), dict(min_val=0, max_val=6)  ), ),
-                #((_('Move video slider to timeline start'), wxp.OPT_ELEM_CHECK, 'timelinemoveslidertostart', _('On moving timeline range with keys Ctrl + Alt + PageDown\nTimeline moving with Ctrl + Alt + (Left, Right, PageUp, PageDown)\n or left mouse button on the status bar, with Shift no limit'), dict() ), ),
+                ((_('Thread progress dialog behave'), wxp.OPT_ELEM_LIST, 'threadprogressopt', _('Select the progress dialog behave for loading Avisynth in threads. First entry is the old behave, you can minimize the program with the windows button'), \
+                    dict(choices=[(_('Show progress, (program no response)'),0), (_('Show progress (Shift hide program)'), 1), (_('Hide progress (Ctrl do show, Shift hide program)'), 2),]) ), ),
                 ((_('Show frame properties*'), wxp.OPT_ELEM_LIST, 'propwindowparent', _('Place you want show the frame properties'), dict(choices=[(_('Separate window'),0), (_('Slider window top'),1), (_('Slider window bottom'),2)]) ), ),
                 ((_('Show resample zoom menu*'), wxp.OPT_ELEM_LIST, 'showresamplemenu', _("Show/hide resample menu in zoom menu.\n!! Read Help > 'Resample filter readme'"), dict(choices=[(_('Hide (disabled)'),0), (_('As Submenu'),1), (_('Normal'),2)]) ), ),
-                ((_('Show shortcuts in context menus*'), wxp.OPT_ELEM_CHECK, 'contextshowshortcuts', _('Show or hide the context menus shortcuts (video, script)'), dict() ), ),
-                ((_('Show video control buttons tooltips'), wxp.OPT_ELEM_CHECK, 'showbuttontooltip', _('Show or hide the video control buttons tooltips'), dict() ), ),
             ),
         )
 
@@ -8525,12 +8547,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         return sorted(translation_list)
 
     def setPPIFactor(self):
-        if self.options['ppiscalingmanually']:
-            new_factor = 1.0
-            if self.options['ppiscalingoverall'] != 0:
-                new_factor += self.options['ppiscalingoverall']/10.0
-            self.ppi_factor = new_factor
-
         global ppi_factor
         ppi_factor = self.ppi_factor
         dpi.ppi_factor = self.ppi_factor
@@ -8569,7 +8585,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             factor = self.ppi_factor + i
             #statusBar.SetMinHeight(int(statusBar.GetSize()[1]*factor)-12)
             font = statusBar.GetFont()
-            #~font.SetPointSize(int(font.GetPointSize()*factor))
             dpi.SetFontSize(font, factor)
             statusBar.SetMinHeight(font.GetPixelSize()[1] + intPPI(4))
             statusBar.SetFont(font)
@@ -8789,13 +8804,14 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         # Manually implement splitter gravity (improper size updating with sub-splitters...)
         self.videoSplitter.SetSashGravity(1.0)
+
         def OnProgramSplitterSize(event):
             # programSplitter gravity
             if wx.VERSION < (2, 9):
                 self.programSplitter.SetSashPosition(-self.toolbarHeight)
-
             # mainSplitter gravity
-            if self.mainSplitter.IsSplit():
+            # Ooooh, searching for 8 houers to find an error, this on (if self.mainSplitter.IsSplit() is not enough)
+            if self.mainSplitter.IsSplit() and not self.blockEventSize and not self.ClipRefreshPainter and self.currentScript.AVI:
                 pos = self.GetMainSplitterNegativePosition()
                 self.mainSplitter.SetSashPosition(pos)
                 self.currentScript.lastSplitVideoPos = pos
@@ -8819,7 +8835,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 factor = self.ppi_factor + i
                 self.videoStatusBar.SetMinHeight(int(self.videoStatusBar.GetSize()[1]*factor)-6)
                 font = self.videoStatusBar.GetFont()
-                #~font.SetPointSize(int(font.GetPointSize()*factor))
                 dpi.SetFontSize(font, factor)
                 self.videoStatusBar.SetFont(font)
             self.videoStatusBar.SetFieldsCount(2)
@@ -8857,7 +8872,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.UpdateMenuItem(_('Display'), True, 'video', [_('YUV -> RGB'), s2])
 
     def SaveLastSplitVideoPos(self, backup=False):
-        if not self.previewOK():
+        if not self.previewOK() or not self.mainSplitter.IsSplit():
             return None
         spos = self.mainSplitter.GetSashPosition() - \
                self.mainSplitter.GetClientSize()[self.mainSplitter.GetSplitMode() == wx.SPLIT_HORIZONTAL]
@@ -9494,9 +9509,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 (_('Accessing AviSynth in threads'), '', self.OnMenuOptionsAviThread, _('Use threads when accessing avisynth (load/release clip and get frame)'), wx.ITEM_CHECK, self.options['avithread']),
                 (_('Use advanced frame thread'), '', self.OnMenuOptionsUseNewFrameThread, _('For info read the readme_threads.txt'), wx.ITEM_CHECK, self.options['usenewframethread']),
                 (_('On cancel assign the clip later'), '', self.OnMenuOptionsAviThreadAssignLater, _('AvsPmod should normally be closed after a thread has been canceled by the user. This option tries to assign the clip to the script after the thread has internaly finished.'), wx.ITEM_CHECK, self.options['avithreadassignlater']),
+                #(_('Draw frame during clip refresh'), '', self.OnMenuOptionsRefreshPaintFrame, _('The program no longer gets the "No response" status when a clip is reinitialized (only with threads)'), wx.ITEM_CHECK, self.options['cliprefreshpainter']),
                 (_('Detach Thread ( test only! ) ...'), '', self.OnMenuDetachThread, _('Warning! test only')),
-                #(''),
-                #(_('Draw the frame during clip refresh (Beta)'), '', self.OnMenuOptionsRefreshPaintFrame, _('The program no longer gets the "No response" status when a clip is reinitialized (only with threads)'), wx.ITEM_CHECK, self.options['cliprefreshpaintframe']),
                 (''),
                 (_('Associate .avs files with AvsPmod'), '', self.OnMenuOptionsAssociate, _('Configure this computer to open .avs files with AvsP when double-clicked. Run again to disassociate')),
                 (''),
@@ -9895,7 +9909,16 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         def __init__(self, parent, app, id=wx.ID_ANY, pos=(0,0), size=(10,10), style=wx.STATIC_BORDER|wx.CLIP_CHILDREN):
         #def __init__(self, parent, app, id=wx.ID_ANY, pos=(0,0), size=(10,10), style=wx.STATIC_BORDER|wx.NO_FULL_REPAINT_ON_RESIZE|wx.TAB_TRAVERSAL|wx.CLIP_CHILDREN):
             wx.ScrolledWindow.__init__(self, parent, id, pos=pos, size=size, style=style)
-            SetFontPPI(self)
+            #~SetFontPPI(self)
+            f = app.options['ppiscalingsliderwindow']
+            if f != 0:
+                f = f/10.0
+            factor = max(app.ppi_factor + f, 1)
+            if factor > 1:
+                font = self.GetFont()
+                dpi.SetFontSize(font, factor)
+                self.SetFont(font)
+
             self.SetDoubleBuffered(True)
             self.SetScrollRate(intPPI(40), intPPI(40))
             # if not wx.FULL_REPAINT_ON_RESIZE set, we must repaint it on resize if double buffered
@@ -9969,6 +9992,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     def createScriptWindow(self):
         int5 = intPPI(5)
+        round5 = roundPPI(5)
         # Create the instance of the window                         # GPo 2020, size,pos wx 2.9
         scriptWindow = AvsStyledTextCtrl(self.scriptNotebook, self, pos=(-50,-50), size=(10,10), style=wx.STATIC_BORDER)
         # Bind variables to the window instance
@@ -10026,7 +10050,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             ctrl = event.GetEventObject()
             script = self.currentScript
             idx = 0 if not ctrl.IsChecked() else script.lastpreviewFilterIdx if script.lastpreviewFilterIdx > 0 else 1
-            self.OnMenuPreviewFilter(index=idx, updateUserSliders=False)
+            #~self.OnMenuPreviewFilter(index=idx, updateUserSliders=False)
+            self.OnMenuPreviewFilter(index=idx, updateUserSliders=True) # updateUserSliders, same as select menu
 
         def OnRightUpScriptWindow(event):
             event.Skip()
@@ -10099,15 +10124,15 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         ### GPo new, disable slider refresh and preview filter checkbox
         toolBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
         # preview filter box
-        scriptWindow.chkPreviewFilter = wx.CheckBox(scriptWindow.sliderWindow, wx.ID_ANY, label=_('Preview filter'))#, style=wx.ALIGN_RIGHT)
+        scriptWindow.chkPreviewFilter = wx.CheckBox(scriptWindow.sliderWindow, wx.ID_ANY, label=_('Preview filter '))
         scriptWindow.chkPreviewFilter.SetValue(False)
         scriptWindow.chkPreviewFilter.Bind(wx.EVT_CHECKBOX, OnCheckboxPreviewFilter)
-        toolBoxSizer.Add(scriptWindow.chkPreviewFilter, 1, wx.TOP|wx.RIGHT|wx.ALIGN_RIGHT, border=int5)
+        toolBoxSizer.Add(scriptWindow.chkPreviewFilter, 1, wx.TOP|wx.RIGHT|wx.ALIGN_RIGHT, round5)
         # refresh box
-        scriptWindow.chkDisableRefresh = wx.CheckBox(scriptWindow.sliderWindow, wx.ID_ANY, label=_('Disable refresh'))#,style=wx.ALIGN_RIGHT)
+        scriptWindow.chkDisableRefresh = wx.CheckBox(scriptWindow.sliderWindow, wx.ID_ANY, label=_('Disable refresh '))
         scriptWindow.chkDisableRefresh.SetValue(self.options['sliderdisablerefresh'])
         scriptWindow.chkDisableRefresh.Bind(wx.EVT_CHECKBOX, OnChekboxDisableRefresh)
-        toolBoxSizer.Add(scriptWindow.chkDisableRefresh, 0, wx.TOP|wx.RIGHT|wx.ALIGN_RIGHT, int5)
+        toolBoxSizer.Add(scriptWindow.chkDisableRefresh, 0, wx.TOP|wx.RIGHT|wx.ALIGN_RIGHT, round5)
         ###
         scriptWindow.videoSidebarSizer = wx.BoxSizer(wx.VERTICAL)
         scriptWindow.videoSidebarSizer.Add(scriptWindow.toggleTagSizer, 0, wx.TOP|wx.LEFT, int5)
@@ -10147,7 +10172,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         scriptWindow.Bind(wx.EVT_KEY_UP, self.OnScriptKeyUp)
         scriptWindow.Bind(wx.EVT_MOUSE_CAPTURE_LOST, self.OnMouseCaptureLost) # GPo 2020
         scriptWindow.sliderWindow.Bind(wx.EVT_MOUSE_CAPTURE_LOST, self.OnMouseCaptureLost) # GPo 2020
-        #if self.options['scriptwindowbindmousewheel'] > 0:
         scriptWindow.Bind(wx.EVT_MOUSEWHEEL, self.OnMouseWheelScriptWindow)
         scriptWindow.Bind(wx.EVT_RIGHT_UP, OnRightUpScriptWindow)
         self.BindObjMouseAux(scriptWindow) # GPo 2020
@@ -12055,7 +12079,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             frameTextCtrl = self.frameTextCtrl
         else:
             frameTextCtrl = self.frameTextCtrl2
-        #~ frameTextCtrl.SetSelection(-1, -1)
         frameTextCtrl.SetFocus()
 
     def OnMenuVideoPrevFrame(self, event):
@@ -12072,6 +12095,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 elif sel == 3:
                     offset = -self.options['customjump']
                     unit = self.options['customjumpunits']
+                elif sel == 4:
+                    self.JumpToNext_I_Frame(True)
+                    return
 
         if not self.separatevideowindow:
             self.ShowVideoOffset(offset, units=unit)
@@ -12096,6 +12122,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 elif sel == 3:
                     offset = + self.options['customjump']
                     unit = self.options['customjumpunits']
+                elif sel == 4:
+                    self.JumpToNext_I_Frame(False)
+                    return
 
         if not self.separatevideowindow:
             self.ShowVideoOffset(offset, units=unit)
@@ -13817,7 +13846,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         elif contextType == 'edit':
             menus = [self.currentScript.contextMenu, self.GetMenuBar().GetMenu(1)]
         else:
-            return
+            idx = self.GetMenuBar().FindMenu(contextType)
+            if idx == wx.NOT_FOUND:
+                return
+            menus = [self.GetMenuBar().GetMenu(idx)]
+
         for _menu in menus:
             id = _menu.FindItem(menu)
             if id != wx.NOT_FOUND:
@@ -14703,10 +14736,35 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     def OnMenuOptionsAviThreadAssignLater(self, event):
         self.options['avithreadassignlater'] = event.IsChecked()
+
     """
+
     def OnMenuOptionsRefreshPaintFrame(self, event):
-        self.options['cliprefreshpaintframe'] = event.IsChecked()
+        if not event.IsChecked() and self.options['hidethreadprogress']:
+            re = wx.MessageBox(_('Hiding the thread progress dialog will be disabled.\nContinue?'), '', wx.YES_NO|wx.ICON_QUESTION)
+            if re == wx.YES:
+                self.options['hidethreadprogress'] = False
+                self.options['cliprefreshpainter'] = False
+            else:
+                self.UpdateMenuItem(_('Draw frame during clip refresh'), True, _('&Options'))
+                self.options['cliprefreshpainter'] = True
+        else:
+            self.options['cliprefreshpainter'] = True
+
+    def OnSelectHideThreadProgress(self, event):
+        if event.IsChecked():
+            re = wx.YES
+            if not self.options['cliprefreshpainter']:
+                re = wx.MessageBox(_('Options -> "Draw frame during clip refresh" must be enabled to use this option.\n' +
+                                     'Should it be activated?'), '', wx.YES_NO|wx.ICON_QUESTION)
+                if re == wx.YES:
+                    self.options['cliprefreshpainter'] = True
+                    self.UpdateMenuItem(_('Draw frame during clip refresh'), True, _('&Options'))
+                    return
+            if not self.options['cliprefreshpainter']:
+                event.GetEventObject().SetValue(False)
     """
+
     def OnMenuOptionsAssociate(self, event):
         if os.name == 'nt':
             s1 = _('Associating .avs files will write to the windows registry.')
@@ -15024,11 +15082,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         sTab = 0 if self.options['ppiscalingscripttabs'] == 0 else float(self.options['ppiscalingscripttabs']/10.0)
         sControls = 0 if self.options['ppiscalingvideocontrols'] == 0 else float(self.options['ppiscalingvideocontrols']/10.0)
         sStatus = 0 if self.options['ppiscalingstatusbar'] == 0 else float(self.options['ppiscalingstatusbar']/10.0)
+        sSlider = 0 if self.options['ppiscalingsliderwindow'] == 0 else float(self.options['ppiscalingsliderwindow']/10.0)
         wx.MessageBox('Monitor DPI: ' + str(wx.GetDisplayPPI()) +
                       '\nScreen DPI: ' + str(wx.ScreenDC().GetPPI()) +
                       '\n\nDPI scaling overall: ' + str(self.ppi_factor*100) + ' %' +
                       '\nDPI scaling main tab: ' + str((max(self.ppi_factor+sTab, 1))*100) + ' %' +
                       '\nDPI scaling video controls: ' + str((max(self.ppi_factor+sControls,1))*100) + ' %' +
+                      '\nDPI scaling slider window: ' + str((self.ppi_factor+sSlider)*100) + ' %' +
                       '\nDPI scaling statusbar: ' + str((self.ppi_factor+sStatus)*100) + ' %' +
                       '\n\nDPI Aware: ' + str(dpi.dpiAware) +
                       '\nDPI Awareness: ' + str(dpi.dpiAwareness))
@@ -15176,7 +15236,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             item = popup.FindItemById(event.GetId())
             label = item.GetLabel()
             idx = 0
-            if label == _('Custom unit'): idx = 3
+            if label == _('"I" frame'): idx = 4
+            elif label == _('Custom unit'): idx = 3
             elif label == _('1 Minute'): idx = 2
             elif label == _('1 Second'): idx = 1
             self.options['buttonjumpchoice'] = idx
@@ -15187,6 +15248,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.Bind(wx.EVT_MENU, OnSetSelection, id=id)
         idx = self.options['buttonjumpchoice']
         popup = wx.Menu()
+        AddItem(_('"I" frame'), idx==4)
         AddItem(_('Custom unit'), idx==3)
         AddItem(_('1 Minute'), idx==2)
         AddItem(_('1 Second'), idx==1)
@@ -15966,7 +16028,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         if self.previewWindowVisible:
             if oldSelectionIndex >= 0:
-                #if self.options['cliprefreshpaintframe']:
+                #if self.options['cliprefreshpainter']:
                     #self.ClipRefreshPainter = self.GetVideoWindowBitmap(oldScript)
                 if oldScript.lastSplitVideoPos is not None:
                     self.oldLastSplitVideoPos = oldScript.lastSplitVideoPos
@@ -16667,6 +16729,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     self.videoWindow.Scroll(-1, y0 - scrolls)
 
     def ShowVideoFrame_checkResizeFilter(self, script, scroll=None, forceLayout=True):
+        self.CheckPlayback()
         resize = script.resizeFilter[0] and script.resizeFilter[2] == 1
         if resize:
             if self.splitView:
@@ -16696,9 +16759,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if self.separatevideowindow:
             if not self.previewWindowVisible:
                 return
-            #previewVisible = self.previewWindowVisible
-            #self.previewWindowVisible = False # disable event OnSize
-            #self.zoom_antialias = False
+            playing_video = self.playing_video
+            if playing_video:
+                self.StopPlayback()
             try:
                 if self.videoDialog.IsFullScreen():
                     if ctrlKey:
@@ -16717,16 +16780,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.videoDialog.Update()
                 wx.GetApp().ProcessIdle() # two, for ShowVideoFrame and ResetAntialias
                 wx.GetApp().ProcessIdle()
-
-                """ alternativ
-                self.previewWindowVisible = previewVisible
-                if script.AVI:
-                    if self.previewWindowVisible:
-                        self.ShowVideoFrame_checkResizeFilter(script, scroll=None, forceLayout=False)
-                        self.ResetZoomAntialias()
-                    else:
-                        self.DisableResizeFilter(onlyFitFill=True) # we must reset all resizeFilter if not preview visible when changing the fullsize mode
-                """
+                if playing_video:
+                    self.PlayPauseVideo()
                 if event:
                     event.Skip()
                 return
@@ -16739,6 +16794,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             IsFrozen = True
         else:
             IsFrozen = False
+
+        playing_video = self.playing_video
+        if playing_video:
+            self.StopPlayback()
+        self.blockEventSize = True  # disable event OnSize
         try:
             if self.mainSplitter.GetSplitMode() == wx.SPLIT_HORIZONTAL:
                 if ctrlKey or (toggleFullscreen and not self.IsFullScreen()):   # set full size, set tabs 1 pixel visible
@@ -16804,6 +16864,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 if self.previewWindowVisible:
                     self.ShowVideoFrame_checkResizeFilter(script, scroll=None, forceLayout=True)
                     self.ResetZoomAntialias()
+                    if playing_video and not self.playing_video:
+                        wx.GetApp().ProcessIdle()
+                        self.PlayPauseVideo()
                 else:
                     self.DisableResizeFilter(onlyFitFill=True) # we must reset all resizeFilter if not preview visible when changing the fullsize mode
             if event:
@@ -18609,6 +18672,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         the hard drive.
 
         '''
+        def getMarkedText(txt):
+            txt = self.stripComment_2(txt)
+            savemsg = (3000, _('The saved script has changed because AvsP marked section added'), 1)
+            header = '### AvsP marked script ###'
+            base = '\n'.join(['# %s' % line for line in scriptText.split('\n')])
+            return '%(txt)s\n%(header)s\n%(base)s\n%(header)s' % locals()
+
         self.StopPlayback() # GPo 2020
         script, index = self.getScriptAtIndex(index)
         if script is None:
@@ -18633,6 +18703,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             dlg.Destroy()
         # Save script if filename exists (either given or user clicked OK)
         if filename:
+            savemsg = None
             # Process the filename
             dirname, basename = os.path.split(filename)
             root, ext = os.path.splitext(basename)
@@ -18653,24 +18724,23 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 if self.previewWindowVisible:
                     self.HidePreviewWindow()
                 if self.options['savemarkedavs']:
-                    txt = self.stripComment_2(txt)
-                    savemsg = (3000, _('The saved script has changed because AvsP marked section added'), 1)
-                    header = '### AvsP marked script ###'
-                    base = '\n'.join(['# %s' % line for line in scriptText.split('\n')])
-                    txt = '%(txt)s\n%(header)s\n%(base)s\n%(header)s' % locals()
+                    txt = getMarkedText(txt)
                 else:
-                    txt = self.stripComment_2(txt)
-                    savemsg = (3000, _('The saved script has changed because sliders or toggle tags and filters are removed'), 1)
-            else:
-                savemsg = None# (3000, _('Saved: %s') % filename, 0)
+                    dlg = wx.MessageDialog(self,_('User sliders found, but option for save/read "marked" script is not enabled.\n\n' +
+                                                  'Press "Yes" to save the marked script\n' +
+                                                  'Press "No" to save the script as it is\n' +
+                                                  'Press "Cancel" to abort'), _('User sliders'), wx.YES_NO|wx.ABORT)
+                    ID = dlg.ShowModal()
+                    dlg.Destroy()
+                    if ID == wx.ID_YES:
+                        txt = getMarkedText(txt)
+                    elif ID == wx.ID_NO:
+                        txt = self.stripComment_2(scriptText)
+                    else:
+                        return
 
             # Encode text and save it to the specified file
             txt = self.GetEncodedText(txt, bom=False) # GPo new, bom = False
-            """
-            with open(filename, 'wb') as f:
-                f.write(txt)
-            """
-            # GPo new
             try:
                 with open(filename, 'wb') as f:
                     f.write(txt)
@@ -21133,9 +21203,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.OnMenuPreviewFilter(None, script.previewFilterIdx, updateUserSliders=False)
             self.IdleCallDict['UpdateUserSliders'] = self.UpdateUserSliders()
         else:
-            #if forceRefresh and (script.previewFilterIdx > 0): # script is changed then set preview off
-                #self.SetPreviewFilterMenus()
-            self.ShowVideoFrame(forceRefresh=forceRefresh, forceCursor=forceCursor and self.options['refreshpreview'],
+            self.ShowVideoFrame(forceRefresh=forceRefresh, forceLayout=True, forceCursor=forceCursor and self.options['refreshpreview'],
                 resize=resize, scroll=scroll, frameToFrametime=self.options['frametoframetime'])
         self.ResetZoomAntialias()
 
@@ -21257,6 +21325,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if forceRefresh:
                 script.oldSliderTexts = oldToggleTagNames = script.oldAutoSliderInfo = None
             if not userScrolling and (script.sliderTexts != script.oldSliderTexts or toggleTagNames != oldToggleTagNames or script.autoSliderInfo != script.oldAutoSliderInfo):
+                needLayout = True
                 if toggleTagNames != oldToggleTagNames:
                     self.createToggleTagCheckboxes(script)
                 if script.autoSliderInfo != script.oldAutoSliderInfo:
@@ -21302,11 +21371,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 if abs(framenum - script.lastFramenum) > 1:
                     forceCursor = True
 
-        display_clip_refresh_needed = script.display_clip_refresh_needed
-        needLayout = None # try -> finally needLayout is not assigned
-
         if self.ClipRefreshPainter and disableRefreshPainter:
             self.ClipRefreshPainter = False
+
+        needLayout = None
+        display_clip_refresh_needed = script.display_clip_refresh_needed
 
         if forceCursor and not wx.IsBusy():
             wx.BeginBusyCursor()
@@ -21444,6 +21513,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             error = script.AVI.display_clip.get_error()
             if error is not None:
                 self.HidePreviewWindow()
+                self.bmpVideo = None
                 if self.readFrameProps:
                     self.AVICallBack('property', 'Error', framenum)
                 if self.SplitClipCtrl.IsActive:
@@ -21546,7 +21616,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             But now we must Layout later else the sliders doesn't update
             For Layout It is also a better place for the separate video window and generally flickering is reduced
             """
-            """ !!! UpdateSliders must be before Layout !!! """
+            """ !!! UpdateSliders must be before Layout, sets also needLayout=True if sliders changed !!! """
             doFocusScript = UpdateSliders()
             if needLayout:
                 self.LayoutVideoWindows(w, h, forceRefresh=forceRefresh or display_clip_refresh_needed)
@@ -21711,7 +21781,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if self.mainSplitter.GetSplitMode() == wx.SPLIT_HORIZONTAL:
                 if pos is None:
                     if script.AVI is None:
-                        vidheight = 0
+                        vidheight = 0 #? return -17 makes this sense ?
+                        #return -self.GetClientSize()[1] # equal to None makes more sense ?
                     else:
                         vidheight = script.AVI.DisplayHeight
                     h = int(vidheight * self.zoomfactor)
@@ -21722,6 +21793,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 if pos is None:
                     if script.AVI is None:
                         vidwidth = 0
+                        #return -self.GetClientSize()[0] # equal to None
                     else:
                         vidwidth = script.AVI.DisplayWidth
                     w = int(vidwidth * self.zoomfactor)
@@ -21827,7 +21899,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             offsetFrames = offset * int(round(script.AVI.Framerate * 60 * 60))
         else: offsetFrames = offset
         framenum = offsetFrames + self.videoSlider.GetValue()
-        self.ShowVideoFrame(framenum, wrap=False, script=script, focus=focus,forceCursor=self.ScriptChanged(script))
+        self.ShowVideoFrame(framenum, wrap=False, script=script, focus=focus,forceCursor=self.ScriptChanged(script), disableRefreshPainter=False)
         if self.playing_video == '':
             self.PlayPauseVideo()
 
@@ -21930,9 +22002,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         elif ident == 'error':
             wx.CallAfter(_showMessage, str(framenr), str(value))
         elif ident == 'errorclip':
-            # on error clip set 100% zoom and disable the resizeFilter only for currentScript
-            wx.CallAfter(self.OnMenuVideoZoom, zoomfactor=1, show=True,
+            return True
+            """ # moved to UpdateScriptAvi
+            # on error clip set 100% zoom and disable the resizeFilter only for currentScript leaf show=False!
+            wx.CallAfter(self.OnMenuVideoZoom, zoomfactor=1, show=False,
                 resizeFilterOff=True, script=self.currentScript)
+            """
         elif ident == 'displayerror':
             wx.CallAfter(_showMessage,'Convert RGB32 error', value)
         else:
@@ -22065,6 +22140,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 return
             return (f, cSize[0], cSize[1], zoom, fit, scrollbarhiden)
         return
+
+    def FilterEvent(self, event):
+        print('event')
+        return event.Skip()
 
     def UpdateScriptAVI(self, script=None, forceRefresh=False, keep_env=None,
                         prompt=True, showCursor=True, resizeFilterInfo=None):
@@ -22241,16 +22320,17 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         'Then restart the program.'), style=wx.OK|wx.ICON_ERROR)
                 return
 
-            sash = self.mainSplitter.GetSashPosition()
+
             disabler = wx.WindowDisabler()
+            sash = self.mainSplitter.GetSashPosition()
             progress = None
+            if self.ClipRefreshPainter:
+                self.videoWindow.SetDoubleBuffered(True)
 
             msg = utils.resource_str_threadwait2 if self.options['avithreadassignlater'] else utils.resource_str_threadwait
             msg_mem = '\n\nAvailable memory: %i MB'
             msg_1 = msg if self.WinVersion < 7 else _('Process clip...')
 
-            self.videoWindow.SetDoubleBuffered(True)
-            self.SetEvtHandlerEnabled(False)
             try:
                 if self.ClipRefreshPainter:
                     t = 0
@@ -22265,6 +22345,19 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         if t % 4 == 0:
                             if wx.GetApp().Pending():
                                 pass # The request seems to be enough
+                            if wx.GetKeyState(wx.WXK_SHIFT):
+                                if self.IsIconized():
+                                    self.Iconize(False)
+                                    self.mainSplitter.SetSashPosition(sash)
+                                    try:
+                                        wx.GetApp().SafeYieldFor(self.videoWindow, wx.wxEVT_PAINT)
+                                    except:
+                                        pass
+                                else:
+                                    if not progress:
+                                        progress = wx.ProgressDialog(_('Waiting for avisynth clip'), msg_1,10,self,
+                                            style=wx.PD_ELAPSED_TIME|wx.PD_CAN_ABORT|wx.PD_APP_MODAL)
+                                    self.Iconize(True)
                 else:
                     th.join(self.progressDelayTime)
 
@@ -22280,17 +22373,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     msgShown = False
                     show_mem = self.WinVersion > 6 and self.options['threaddlgshowmem']
                     try:
-                        if self.ClipRefreshPainter and self.options['threadprogresshiden']:
-                            pass # progress is None or hase shown by pressing Ctrl
+                        if self.ClipRefreshPainter and self.options['threadprogressopt'] == 2: #self.options['hidethreadprogress']:
+                            pass
                         elif not progress:
                             progress = wx.ProgressDialog(_('Waiting for avisynth clip'),msg_1,10,self,
                                         style=wx.PD_ELAPSED_TIME|wx.PD_CAN_ABORT|wx.PD_APP_MODAL)
-                            #progress = wx.GenericProgressDialog(_('Waiting for avisynth clip'),msg_1,10,self, # What a crap
-                                        #style=wx.PD_ELAPSED_TIME|wx.PD_CAN_ABORT|wx.PD_APP_MODAL)
-
-                        # workaround for draw the video window client snaphot
-                        if self.previewWindowVisible:
-                            self.mainSplitter.SetSashPosition(sash)
 
                         while th.isAlive():
                             if not progress and wx.GetKeyState(wx.WXK_CONTROL):
@@ -22313,6 +22400,19 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                             if self.ClipRefreshPainter and i % 5 == 0:
                                 if wx.GetApp().Pending():
                                     pass # The request seems to be enough
+                                if wx.GetKeyState(wx.WXK_SHIFT):
+                                    if self.IsIconized():
+                                        self.Iconize(False)
+                                        self.mainSplitter.SetSashPosition(sash)
+                                        try:
+                                            wx.GetApp().SafeYieldFor(self.videoWindow, wx.wxEVT_PAINT)
+                                        except:
+                                            pass
+                                    else:
+                                        if not progress:
+                                            progress = wx.ProgressDialog(_('Waiting for avisynth clip'),msg_1,10,self,
+                                                style=wx.PD_ELAPSED_TIME|wx.PD_CAN_ABORT|wx.PD_APP_MODAL)
+                                        self.Iconize(True)
                             th.join(0.5)
 
                         if c and progress and self.WinVersion > 6:
@@ -22329,28 +22429,33 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         rq.put(True) # flag for thread (release or assign later the clip)
                         self.Thread_List.append((th,q))
             finally:
-                del disabler
                 if progress:
                     progress.Destroy()
-                self.SetEvtHandlerEnabled(True)
                 if self.previewWindowVisible:
                     if self.ClipRefreshPainter and wx.GetApp().Pending():
-                        self.mainSplitter.SetSashPosition(sash)
-                        #self.videoWindow.SetDoubleBuffered(True)
-                        # Although all windows are turned off but python collects the events to execute them afterwards, what a nonsense
-                        # so we must clear the events query, but it produces flicker, so we need a temporal double buffer
+                        need_freeze = self.videoSplitter.IsSplit()
+                        if need_freeze:
+                            self.currentSliderWindow.Freeze()
+                        # Although all windows are turned off but python collects the events to execute them afterwards, what a nonsense.
+                        # so we must clear the events query, but it produces flicker, so we need a temporal double buffer.
+                        # wx.GetApp().SafeYieldFor seems the only function for deleting the message query, I found no other solution.
+                        # But the function disables all windows and the slider window becomes disabled, not nice.
+                        # So the slider window must bee freezed befor calling this function
                         try:
                             wx.GetApp().SafeYieldFor(self.videoWindow, wx.wxEVT_PAINT)
                         except:
                             pass
-                        #self.videoWindow.SetDoubleBuffered(False)
+                        if need_freeze:
+                            self.TryThaw(self.currentSliderWindow)
                 elif wx.GetApp().Pending():
                     try:
-                        wx.GetApp().SafeYieldFor(self, wx.wxEVT_ACTIVATE)
+                        wx.GetApp().SafeYieldFor(self.currentScript, wx.wxEVT_PAINT)
                     except:
                         pass
 
                 self.videoWindow.SetDoubleBuffered(False)
+                del disabler
+
                 if not th.isAlive():
                     script.AviThread = None
                 if not AVI or (AVI and AVI.IsErrorClip()):
@@ -22481,8 +22586,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     if showCursor and not wx.IsBusy():
                         wx.BeginBusyCursor()
 
-                    if self.UseAviThread: #and self.options['cliprefreshpaintframe']:
+                    if self.UseAviThread and self.options['threadprogressopt'] > 0: #self.options['cliprefreshpainter']:
                         self.ClipRefreshPainter = self.GetVideoWindowBitmap()
+                    else:
+                        self.ClipRefreshPainter = False
 
                     # freeing the AVI
                     if not self.AviFree(script):
@@ -22607,6 +22714,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     self.cropDialog.Hide()
                 if self.SplitClipCtrl.IsActive:
                     self.SplitClipCtrl.Close()
+                self.OnMenuVideoZoom(zoomfactor=1,show=False,resizeFilterOff=True,single=True,script=script)
             elif newRefreshed and not self.zoomwindow \
                 and not (script.resizeFilter[0] and script.resizeFilter[2] == 1) \
                 and ((oldWidth, oldHeight) != (script.AVI.Width, script.AVI.Height)):
@@ -23158,15 +23266,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             else:
                 self.ToggleSliderFold(item, fold=True, refresh=False, scroll=False)
 
-    """ # Not used
-    def SlidersClearFolds(self, clearAll=True):
-        if clearAll:
-            for i in range(self.scriptNotebook.GetPageCount()):
-                script = self.scriptNotebook.GetPage(i)
-                script.SliderFoldsBackup = {}
-        else:
-            self.currentScript.SliderFoldsBackup = {}
-    """
     def createAutoUserSliders(self, script):
         script.sliderWindow.Freeze()
         try:
@@ -23189,7 +23288,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     (_('General settings...'), '', self.OnSliderLabelSettings, ''),
                     (''),
                     (_('Set same width for all tabs'), '', self.OnSliderWindowsSameWidth, ''),
-                    (_('Save width for startup'), '', self.OnSliderWindowsSaveWidth, ''),
+                    (_('Save window width for startup'), '', self.OnSliderWindowsSaveWidth, ''),
                     (_('Slider update immediately'), '', self.OnSliderToggleUpdateMode, '', wx.ITEM_CHECK, False),
                     (''),
                     (_('Update sliders'), '', self.OnSliderUpdate, ''),
@@ -23585,8 +23684,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         int5 = intPPI(5)
         # Create window elements
         labelTxtCtrl = self.MakeArgNameStaticText(parent, argname, filterName, script, argIndex)
-        radioButtonTrue = wx.RadioButton(parent, wx.ID_ANY, '', style=wx.RB_GROUP, size=(-1,-1))
-        radioButtonFalse = wx.RadioButton(parent, wx.ID_ANY, '', size=(-1,-1))
+        radioButtonTrue = wx.RadioButton(parent, wx.ID_ANY, ' ', style=wx.RB_GROUP, size=(-1,-1))
+        radioButtonFalse = wx.RadioButton(parent, wx.ID_ANY, ' ', size=(-1,-1))
         radioButtonTrue.name = 'rbTrue'
         radioButtonFalse.name = 'rbFalse'
         if value:
@@ -23884,7 +23983,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         font.SetWeight(wx.FONTWEIGHT_BOLD)
         if dpi.ppi_factor == 1:
             font.SetPointSize(intPPI(font.GetPointSize()+1))
-        else: dpi.SetFontSize(font, dpi.ppi_factor)
+        #else: dpi.SetFontSize(font, dpi.ppi_factor)
         for item in ctrl:
             item.SetFont(font)
             item.SetCursor(wx.StockCursor(wx.CURSOR_HAND))
@@ -23923,7 +24022,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         btnSizer.Add(btnSnapshot1, 0, wx.TOP|wx.BOTTOM|wx.LEFT, int5)
         btnSizer.AddSpacer(int10)
         btnSizer.Add(btnSnapshot2, 0, wx.TOP|wx.BOTTOM|wx.LEFT, int5)
-        sizer.Add(btnSizer, (row,0), (1,7), wx.EXPAND)
+        sizer.Add(btnSizer, (row,0), (1,7), wx.LEFT|wx.EXPAND, int5)
         separator.controls += [btnSizer]
 
     def addAvsGenericArg(self, script, argname, strValue, row, separator, filterName, argIndex):
@@ -24403,15 +24502,23 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 labels.append(label)
 
     def OnSliderLabelToggleAllFolds(self, event):
+        # GPo 2022 changed, use selected as reference
         script = self.currentScript
-        numFolded = 0
-        for item in script.sliderToggleLabels:
-            if item.GetLabel().startswith('+'):
-                numFolded += 1
-        if numFolded == 0:
-            self.foldAllSliders = True
-        if numFolded == len(script.sliderToggleLabels):
-            self.foldAllSliders = False
+        ctrl = self.lastContextMenuWin
+        label = ctrl.GetLabel().lstrip()
+        if label and label[0:1] in ['+','-']:
+            self.foldAllSliders = label.startswith('-')
+        """ TODO remove the old code if the new ok
+        else:
+            numFolded = 0
+            for item in script.sliderToggleLabels:
+                if item.GetLabel().startswith('+'):
+                    numFolded += 1
+            if numFolded == 0:
+                self.foldAllSliders = True
+            if numFolded == len(script.sliderToggleLabels):
+                self.foldAllSliders = False
+        """
         script.sliderWindow.Freeze()
         for item in script.sliderToggleLabels:
             self.ToggleSliderFold(item, fold=self.foldAllSliders, refresh=False)
@@ -25109,7 +25216,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             msg = utils.resource_str_threadwait
             msg_1 = msg if self.WinVersion < 7 else ''
 
-            if self.ClipRefreshPainter and self.options['threadprogresshiden']:
+            if self.ClipRefreshPainter and self.options['threadprogressopt'] == 2: #self.options['hidethreadprogress']:
                 progress = None
             else:
                 progress = wx.ProgressDialog(_('Waiting for frame {0}'.format(nr)),msg_1,10, self,
@@ -25214,7 +25321,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             msg = utils.resource_str_threadwait
             msg_1 = msg if self.WinVersion < 7 else ''
 
-            if self.ClipRefreshPainter and self.options['threadprogresshiden']:
+            if self.ClipRefreshPainter and self.options['threadprogressopt'] == 2: #self.options['hidethreadprogress']:
                 progress = None
             else:
                 progress = wx.ProgressDialog(_('Waiting for frame {0}'.format(nr)),msg_1,10, self,
@@ -26477,19 +26584,37 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.options['dllnamewarning'] = not checkbox.IsChecked()
         dlg.Destroy()
 
+    # GPo 2022, separate dialog for DPI settings
+    def ShowDpiOptions(self, event=None):
+        info = self.getOptionsDpiDlgInfo()
+        dlg = wxp.OptionsDialog(self, info, self.options, 'DPI Settings', starText=False, canResize=False)
+        ID = dlg.ShowModal()
+        try:
+            if ID == wx.ID_OK:
+                if isinstance(self.dummyObject, wxp.OptionsDialog):
+                    # self.optionsDlg cann also chancel the changes
+                    self.dummyObject.options.update(dlg.GetDict())
+                else:
+                    # if external called save directly
+                    self.options.update(dlg.GetDict())
+                    with open(self.optionsfilename, mode='wb') as f:
+                        cPickle.dump(self.options, f, protocol=0)
+        finally:
+            dlg.Destroy()
+
     def ShowOptions(self, startPageIndex=0): # PPI set on wxp
         '''Show the program settings dialog, save them, apply them if necessary and save to file'''
-        dlgSize = self.options['optionsdlgsize']
         dlg = wxp.OptionsDialog(self, self.optionsDlgInfo, self.options,
                                 startPageIndex=startPageIndex,
-                                invert_scroll=self.options['invertscrolling'], dlgsize=dlgSize)
+                                invert_scroll=self.options['invertscrolling'], dlgsize=self.options['optionsdlgsize'])
+        self.dummyObject = dlg
         self.options['exitstatus'] = 1  # GPo 2020, set default
         sliderwindowcustomtheme = self.options['sliderwindowcustomtheme']
         sliderWindowShown = self.videoSplitter.IsSplit()
         script = self.currentScript
         #self.HideSliderWindow(script)
         ID = dlg.ShowModal()
-        self.options['optionsdlgsize'] = dlg.GetSize()
+        self.dummyObject = None
         # Set the data
         if ID == wx.ID_OK:
             old_plugins_directory = self.ExpandVars(self.options['pluginsdir'])
@@ -26498,7 +26623,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             old_use_custom_video_background = self.options['use_customvideobackground']
             old_custom_video_background = self.options['customvideobackground']
             self.options.update(dlg.GetDict())
-
+            self.options['optionsdlgsize'] = dlg.GetSize()
             # GPo, reset it if the user clears the plugins path. Invalid path is already checked
             # do not use default values, that can be wrong.
             if not self.options['pluginsdir']:

@@ -1078,7 +1078,7 @@ class AvsClipBase:
         self.resizeFilter = rfilter
         return True
 
-    def SetSplitClip(self, enabled, createDisplayClip=True):
+    def SetSplitClip(self, enabled, createDisplayClip=True, killFilterClip=False):
         if (self.IsSplitClip and enabled) or (not self.IsSplitClip and not enabled):
             return True
         if self.split_clip:
@@ -1088,13 +1088,13 @@ class AvsClipBase:
                 self.IsSplitClip = True
                 self.clip = self.split_clip
                 self.SetClipInfo(self.split_clip_vi)
-                return self.CreateDisplayClip(self.matrix, self.interlaced, self.swapuv, self.bit_depth, killFilterClip=False, killSplitClip=False)
+                return self.CreateDisplayClip(self.matrix, self.interlaced, self.swapuv, self.bit_depth, killFilterClip=killFilterClip, killSplitClip=False)
             else:
                 self.IsSplitClip = False
                 self.clip = self.main_clip
                 self.SetClipInfo(self.main_clip_vi)
                 if not self.IsErrorClip():
-                    return self.CreateDisplayClip(self.matrix, self.interlaced, self.swapuv, self.bit_depth, readmatrix=True, killFilterClip=False, killSplitClip=True)
+                    return self.CreateDisplayClip(self.matrix, self.interlaced, self.swapuv, self.bit_depth, readmatrix=True, killFilterClip=killFilterClip, killSplitClip=True)
                 else:
                     self.callBack('splitclip', -1)
 

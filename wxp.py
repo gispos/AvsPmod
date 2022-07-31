@@ -1154,7 +1154,7 @@ else:
 
 class OptionsDialog(wx.Dialog):
     def __init__(self, parent, dlgInfo, options, title=None, startPageIndex=0,
-                starText=True, invert_scroll=False, dlgsize=None):
+                starText=True, invert_scroll=False, dlgsize=None, canResize=True):
         '''Init the OptionsDialog window
 
         Create a wx.Notebook from the tabs specified in 'dlgInfo' and the
@@ -1168,8 +1168,11 @@ class OptionsDialog(wx.Dialog):
         '''
         if title is None:
             title = _('Program Settings')
-        wx.Dialog.__init__(self, parent, wx.ID_ANY, title,
-                           style=wx.DEFAULT_DIALOG_STYLE|wx.RESIZE_BORDER|wx.NO_FULL_REPAINT_ON_RESIZE)
+        if canResize:
+            wx.Dialog.__init__(self, parent, wx.ID_ANY, title, style=wx.DEFAULT_DIALOG_STYLE|wx.RESIZE_BORDER|wx.NO_FULL_REPAINT_ON_RESIZE)
+        else:
+            wx.Dialog.__init__(self, parent, wx.ID_ANY, title, style=wx.DEFAULT_DIALOG_STYLE|wx.NO_FULL_REPAINT_ON_RESIZE)
+
         dpi.SetFontPPI(self)
         self.options = options.copy()
         self.optionsOriginal = options
@@ -1178,9 +1181,10 @@ class OptionsDialog(wx.Dialog):
         self.starList = []
         notebook = len(dlgInfo) > 1
         if notebook:
-            nb = self.nb = Notebook(self, wx.ID_ANY, style=wx.NO_BORDER,
+            style = wx.NO_BORDER
+            #style |= wx.NB_MULTILINE
+            nb = self.nb = Notebook(self, wx.ID_ANY, style=style,
                                     invert_scroll=invert_scroll)
-
         for tabInfo in dlgInfo:
             if notebook:
                 tabPanel = wx.Panel(nb, wx.ID_ANY)
@@ -1240,8 +1244,10 @@ class OptionsDialog(wx.Dialog):
                         width = misc['width'] if 'width' in misc else -1
                         ctrl = wx.CheckBox(tabPanel, wx.ID_ANY, label, size=(width,-1))
                         ctrl.SetMinSize(ctrl.GetBestSize())
-                        #ctrl.SetMinSize((dpi.tuplePPI(ctrl.GetBestSize()[0], ctrl.GetBestSize()[1]))) # test dpi
                         ctrl.SetValue(bool(optionsValue))
+                        if 'handler' in misc:
+                            handler = misc['handler']
+                            self.Bind(wx.EVT_CHECKBOX, handler, ctrl)
                         if tip:
                             ctrl.SetToolTipString(tip)
                         itemSizer = wx.BoxSizer(wx.VERTICAL)
@@ -1533,7 +1539,6 @@ class OptionsDialog(wx.Dialog):
                             itemSizer.Add(ctrl, expand_flags[0], expand_flags[1]|wx.ALIGN_CENTER_VERTICAL|wx.TOP|wx.BOTTOM, dpi.intPPI(2))
                             itemSizer.AddStretchSpacer()
 
-                    #~ if label.startswith('*'):
                     if label.rstrip(' :').endswith('*'):
                         boolStar = True
                     if flag != OPT_ELEM_SEP: self.controls[key] = (ctrl, flag, nb.GetSelection() if notebook else -1)
@@ -1642,6 +1647,8 @@ class OptionsDialog(wx.Dialog):
 
     def UpdateDict(self):
         for key, value in self.controls.items():
+            if not key: # GPo, 2022 needed for show sub options dialog eg. DPI settings
+                continue
             ctrl, flag, tabIndex = value
             if flag in (OPT_ELEM_DIR, OPT_ELEM_DIR_URL):
                 entry = self.GetParent().ExpandVars(ctrl.GetValue())

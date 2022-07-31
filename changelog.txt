@@ -37,6 +37,32 @@ AvsPmod can only provide a user-friendly editor if he has no problems with the n
 If, for example, there is a '-' in the file name of the dll, AvsPmod will report it at startup, 
 please rename this dll and replace the '-' with a '_'
 
+
+--------------------------
+Version 2.7.2.4 [2022-07-31] GPo
+--------------------------
+* New option for the thread progress dialog. Program Options > Misc 2 > 'Thread progress dialog behave'.
+- option 1 is chosen as default so that there are no surprises for users who do not read the changelog. So choose your option yourself.
+- 3 options available (default 1, option 1 is also used if the preview window not visible): 
+-- Show progress (that's the old), program can be minimized with the windows system button 'Minimize', but the program can get the "no response" status.
+-- Show progress (Shift hide/show the program), windows system buttons are disabled, the program cannot get a "no response" status. 
+-- Hide progress (Ctrl to show progress, Shift hide/show the program), windows system buttons disabled, the program cannot get a "no response" status.
+-- Note* if option 2 or 3 selected:
+--- if you want to minimize AvsPmod during a longer clip loading process, press Shift for 0.5 to 2 seconds do minimize or show AvsPmod. 
+--- if you hide it with Shift, the progress dialog is shown. If you minimize the program and shows it again during the loading process, 
+--- the slider window is not redrawn and is invisible (I don't know if I can fix this).
+- 
+* Added the option "I" frame to the context menu of the forward/backward jump buttons. 
+* DPI scaling options revised, removed not useful options and added 'slider window' and created an extra dialog.
+* When saving the script, a dialog is displayed if "user sliders" are found but the option to save/read the "marked" script is not enabled.
+* Fixed: If the 'Resample Filter' was used during video playback and was changed, the playback speed then slowed down.
+* Fixed: Slider window 'radio buttons' looks now nicer if OS DPI scaling used.
+* Fixed: No new sliders were created when the clip refresh was triggered by clicking in the video window.
+* Note: The 'Preview Filter' will only update if it is turned on, otherwise the shortcut for turning it off or on or 
+- the 'Preview Filter' checkbox must be used.
+* In the Options Dialog some options moved to another tab e.g. 'Min. Text lines when video preview visible' to tab 'Text'
+* Some other changes
+
 --------------------------
 Version 2.7.2.3 [2022-07-24] GPo
 --------------------------
