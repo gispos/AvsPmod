@@ -1185,6 +1185,8 @@ class OptionsDialog(wx.Dialog):
             #style |= wx.NB_MULTILINE
             nb = self.nb = Notebook(self, wx.ID_ANY, style=style,
                                     invert_scroll=invert_scroll)
+        else:
+            self.nb = None
         for tabInfo in dlgInfo:
             if notebook:
                 tabPanel = wx.Panel(nb, wx.ID_ANY)
@@ -1590,7 +1592,10 @@ class OptionsDialog(wx.Dialog):
         if dlgsize:
             dlgsize = (dlgsize[0], self.GetSize()[1]) # set only the width
             self.SetSize(dlgsize)
-        self.Center()
+        if canResize:
+            self.Center()
+        else:
+            self.CenterOnParent()
         # Misc
         okay.SetDefault()
         if starText and self.starText is not None:
@@ -1719,6 +1724,9 @@ class OptionsDialog(wx.Dialog):
         ctrl.textControl.SetBackgroundColour(color)
         ctrl.Refresh()
         ctrl.SetFocus()
+
+    def GetPageIndex(self):
+        return self.nb.GetSelection() if self.nb else 0
 
 class ShortcutsDialog(wx.Dialog):
     def __init__(self, parent, shortcutList, title=None, exceptionIds=None, submessage=None):

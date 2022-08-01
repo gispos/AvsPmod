@@ -6497,6 +6497,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.previewFilterDict = {}  # GPo 2020
         self.zoom_antialias = self.options['zoom_antialias']  # GPo
         self.KeyUpVideoWndow = True
+        self.optionsLastPageIndex = 0 # GPo, store/restore the last OptionsDlg page
         self.lastcrop = ""
         self.oldWidth = 0
         self.oldHeight = 0
@@ -6718,11 +6719,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         if len(sys.argv) > 1:
             self.ProcessArguments(sys.argv[1:])
-
+        """
         if self.previewWindowVisible:
             self.need_to_show_preview = True
         else:
             self.need_to_show_preview = False
+        """
         # Misc
         self.UpdateProgramTitle()
         self.SetIcon(AvsP_icon.getIcon())
@@ -6785,11 +6787,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         if self.options['use_customvideobackground']:
             self.OnMenuVideoBackgroundColor(color=self.options['videobackground'])
+        """
         if self.need_to_show_preview:
             self.IdleCall.append((self.ShowVideoFrame, (self.startupframe,), {'forceRefresh':False}))
         if self.mainSplitter.IsSplit():
             self.SplitVideoWindow()
-
+        """
         # GPo 2020, scrptWindow and videoWindow binds on create, videoControls also on create but to another func
         # exclude Statusbar, it's binding with videoControls, exclude all scriptNotebook children
         self.BindObjMouseAux(self, self.GetStatusBar().GetHandle())
@@ -6801,11 +6804,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.videoDialog.Maximize(True)
 
         self.Show()
-        #self.Refresh()
         self.Update()
-
-        # needed for row count calculation after loading the tabs if multiline
-        #if self.options['multilinetab']:
+        self.Raise()
         self.SetMinimumScriptPaneSize()
 
         index = self.scriptNotebook.GetSelection()
@@ -6827,7 +6827,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     self.UpdatePreviewFilterMenu(self.optionsPreviewFilters['previewfilters'], isRestoreMenu=True)
                 except:
                     self.optionsPreviewFilters['previewfilters'] = {}
-
 
         # Warn if option files are damaged
         if self.loaderror:
@@ -14898,7 +14897,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         dlg.Destroy()
 
     def OnMenuOptionsSettings(self, event):
-        self.ShowOptions()
+        self.ShowOptions(self.optionsLastPageIndex)
 
     def OnMenuHelpAvisynth(self, event):
         helpfile = self.ExpandVars(self.options['avisynthhelpfile'])
@@ -16988,9 +16987,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if self.refreshAVI or script.refreshAVI:# GPo, on double clicked (zoom full size), self.refreshAVI is after first mouse down False
                 if self.options['refreshpreview']:
                     self.ShowVideoFrame_CheckPreview()
+                    if self.ClipRefreshPainter:
+                        return
                 else:
-                    if (self.currentScript.previewFilterIdx > 0) and not self.ComparePreviewFilterDict(): # then update the slider
+                    if (script.previewFilterIdx > 0) and not self.ComparePreviewFilterDict(): # then update the slider
                         self.IdleCallDict['UpdateUserSliders'] = self.UpdateUserSliders()
+                    self.refreshAVI = script.refreshAVI = False
 
             videoWindow = self.videoWindow
             videoWindow.CaptureMouse()
@@ -17202,8 +17204,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             (self.zoomfactor != 1) and self.options['zoom_antialias']:
                 self.zoom_antialias = True
                 self.videoWindow.Refresh()
+                self.videoWindow.Update()
                 #wx.YieldIfNeeded()
-                self.SaveCallYield()
         event.Skip()
 
     def OnLeftUpVideoWindow(self, event):
@@ -17213,6 +17215,15 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             except:
                 pass
             self.videoWindow.SetCursor(wx.StockCursor(wx.CURSOR_DEFAULT))
+        """
+        if self.refreshAVI or self.currentScript.refreshAVI and not self.cropDialog.IsShown():
+            if self.options['refreshpreview']:
+                self.ShowVideoFrame_CheckPreview()
+            else:
+                if (self.currentScript.previewFilterIdx > 0) and not self.ComparePreviewFilterDict(): # then update the slider
+                    self.IdleCallDict['UpdateUserSliders'] = self.UpdateUserSliders()
+        """
+
         if not self.cropDialog.IsShown():
             self.zoom_antialias = self.options['zoom_antialias']
             if (self.zoomfactor != 1) and self.zoom_antialias:
@@ -23683,9 +23694,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         sizer = script.sliderSizerNew
         int5 = intPPI(5)
         # Create window elements
+        dummy = ' ' if self.ppi_factor > 1 else '' # radiobutton system scaling is faulty if text ''
         labelTxtCtrl = self.MakeArgNameStaticText(parent, argname, filterName, script, argIndex)
-        radioButtonTrue = wx.RadioButton(parent, wx.ID_ANY, ' ', style=wx.RB_GROUP, size=(-1,-1))
-        radioButtonFalse = wx.RadioButton(parent, wx.ID_ANY, ' ', size=(-1,-1))
+        radioButtonTrue = wx.RadioButton(parent, wx.ID_ANY, dummy, style=wx.RB_GROUP, size=(-1,-1))
+        radioButtonFalse = wx.RadioButton(parent, wx.ID_ANY, dummy, size=(-1,-1))
         radioButtonTrue.name = 'rbTrue'
         radioButtonFalse.name = 'rbFalse'
         if value:
@@ -23731,6 +23743,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 font = labelfalse.GetFont()
                 font.SetUnderlined(True)
                 labelfalse.SetFont(font)
+
         radioSizer = wx.BoxSizer(wx.HORIZONTAL)
         radioSizer.Add(radioButtonTrue, 0, wx.TOP|wx.BOTTOM|wx.LEFT, int5)
         radioSizer.Add(labeltrue, 1, wx.TOP|wx.BOTTOM|wx.RIGHT, int5)
@@ -26587,7 +26600,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     # GPo 2022, separate dialog for DPI settings
     def ShowDpiOptions(self, event=None):
         info = self.getOptionsDpiDlgInfo()
-        dlg = wxp.OptionsDialog(self, info, self.options, 'DPI Settings', starText=False, canResize=False)
+        parent = self.dummyObject if isinstance(self.dummyObject,wxp.OptionsDialog) else self
+        dlg = wxp.OptionsDialog(parent, info, self.options, 'Font DPI Settings', starText=False, canResize=False)
         ID = dlg.ShowModal()
         try:
             if ID == wx.ID_OK:
@@ -26615,6 +26629,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         #self.HideSliderWindow(script)
         ID = dlg.ShowModal()
         self.dummyObject = None
+        self.optionsLastPageIndex = dlg.GetPageIndex()
         # Set the data
         if ID == wx.ID_OK:
             old_plugins_directory = self.ExpandVars(self.options['pluginsdir'])
