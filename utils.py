@@ -131,9 +131,88 @@ avsYUV_s = '"YUV420P*" "YUV422P*" "YUV444P*" 8/10/12/14/16'
 avsY_YUV_s = '"Y*" 8/10/12/14/16 - "YUV420P*" "YUV422P*" "YUV444P*" 8/10/12/14/16'
 
 
+# wildcards: ? and *
+def FindPattern(find, text):
+    if len(find) == 0 and len(text) == 0:
+        return True
+    if len(find) > 1 and find[0] == '*':
+        i = 0
+        while i+1 < len(find) and find[i+1] == '*':
+            i = i+1
+        find = find[i:]
+    if len(find) > 1 and find[0] == '*' and len(text) == 0:
+        return False
+    if (len(find) > 1 and find[0] == '?') or (len(find) != 0
+            and len(text) != 0 and find[0] == text[0]):
+        return FindPattern(find[1:], text[1:])
+    if len(find) != 0 and find[0] == '*':
+        return FindPattern(find[1:], text) or FindPattern(find, text[1:])
+    return False
+
+# wildcard only *
+def FindPattern_Fast(find, text):
+    sl = find.split('*')
+    found = 0
+    for i in range(len(sl)):
+        if text.find(sl[i]) < 0:
+            break
+        found += 1
+    return found == len(sl)
+
+
 ##### Test ####
 
 """
+# Python program for A modified Naive Pattern Searching
+# algorithm that is optimized for the cases when all
+# characters of pattern are different
+def search(pat, txt):
+    M = len(pat)
+    N = len(txt)
+    i = 0
+
+    while i <= N-M:
+        # For current index i, check for pattern match
+        for j in range(M):
+            if txt[i + j] != pat[j]:
+                break
+            j += 1
+
+        if j == M:    # if pat[0...M-1] = txt[i, i + 1, ...i + M-1]
+            print ("Pattern found at index " + str(i))
+            i = i + M
+        elif j == 0:
+            i = i + 1
+        else:
+            i = i + j    # slide the pattern by j
+
+# Driver program to test the above function
+txt = "ABCEABCDABCEABCD"
+pat = "ABCD"
+search(pat, txt)
+
+class MyProgressDialog(wx.Dialog):
+    def __init__(self, parent, id, title, text=''):
+        wx.Dialog.__init__(self, parent, id, title, size=(200,150), style=wx.DEFAULT_DIALOG_STYLE|wx.RESIZE_BORDER)
+
+        self.text = wx.StaticText(self, -1, text)
+        self.gauge = wx.Gauge(self, -1)
+        self.closebutton = wx.Button(self, wx.ID_CLOSE)
+        self.closebutton.Bind(wx.EVT_BUTTON, self.OnClose)
+
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.Add(self.text, 0 , wx.EXPAND)
+        sizer.Add(self.gauge, 0, wx.ALIGN_CENTER)
+        sizer.Add(self.closebutton, 0, wx.ALIGN_CENTER)
+
+        self.SetSizer(sizer)
+        self.Show()
+
+    def OnClose(self, event):
+        self.Destroy()
+        #can add stuff here to do in parent.
+
+
 def wxProcessEvents(self):
     # this version uses the new Phoenix API
     # Get app

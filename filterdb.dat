@@ -1,5 +1,5 @@
 [KEYWORDS]
-return global function last true false try catch
+return global function last true false try catch if else
 
 [OPERATORS]
 + - * / = ! % & | , . : ? \ < > ( ) [ ] { }

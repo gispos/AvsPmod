@@ -174,10 +174,11 @@ class ListCtrl(wx.ListCtrl, listmix.ListCtrlAutoWidthMixin):
         listmix.ListCtrlAutoWidthMixin.__init__(self)
         self.parent = parent
 
-    def SelectItem(self, item):
+    def SelectItem(self, item, setFocus=True):
         self.SetItemState(item, wx.LIST_STATE_SELECTED|wx.LIST_STATE_FOCUSED, wx.LIST_STATE_SELECTED|wx.LIST_STATE_FOCUSED)
         self.EnsureVisible(item)
-        self.SetFocus()
+        if setFocus:
+            self.SetFocus()
 
     def SelectLabel(self, label):
         item = self.FindItem(-1, label)
@@ -446,8 +447,6 @@ class Frame(wx.Frame):
             menuInfo = eachMenuBarInfo[1:]
             menu = self.createMenu(menuInfo, menuLabel, shortcutList, oldShortcuts)
             menuBar.Append(menu, menuLabel)
-            # GPo, wx.2.9.4 menuBackups must first append or menuBar Video>Navigate>Bookmarks events not working
-            # but then menu bar flickers on add the bookmarks to the menu. What bullshit, TODO...
             if index in buckups:
                 menuBackups.append(self.createMenu(menuInfo, menuLabel, shortcutList, oldShortcuts, True, backupShowShortcuts))
             index += 1
@@ -594,7 +593,6 @@ class Frame(wx.Frame):
     def createButton(self, parent, label='', id=wx.ID_ANY, handler=None, pos=(0,0)):
         button = wx.Button(parent, id, label, pos)
         if handler:
-            #~ self.Bind(wx.EVT_BUTTON, handler, button)
             button.Bind(wx.EVT_BUTTON, handler)
         return button
 
@@ -610,7 +608,6 @@ class Frame(wx.Frame):
         except AttributeError: # label is a string
             button = wxButtons.GenButton(parent, wx.ID_ANY, label, pos, size, style)
         # Bind the button to the given handler
-        #~ self.Bind(wx.EVT_BUTTON, handler, button)
         button.Bind(wx.EVT_BUTTON, handler)
         # Set the tool tip string if given
         if toolTipTxt:
