@@ -6535,7 +6535,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.refreshAVI = True
         self.lastshownframe = None
         self.paintedframe = None
-        #self.paintedScript = None
         self.oldlinenum = None
         self.dlgAvs2avi = None
         self.macroVars = {'last': None}
@@ -7777,7 +7776,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         self.avskeywords = [
             'return', 'global', 'function', 'last',
-            'true', 'false', 'try', 'catch',
+            'true', 'false', 'try', 'catch', 'if', 'else'
         ]
         self.avsdatatypes = [
             'clip', 'int', 'float', 'string', 'bool', 'var', 'func', 'array'  # GPo add 'func', 'array' Neo or >= v3.52 compatiple
@@ -8401,7 +8400,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 ((_('Documentation search url:'), wxp.OPT_ELEM_STRING, 'docsearchurl', _("The web address to search if docs aren't found (the filter's name replaces %filtername%)"), dict() ), ),
             ),
             (_('Text'),
-                #((_('Min text lines on video preview'), wxp.OPT_ELEM_SPIN, 'mintextlines', _('Minimum number of lines to show when displaying the video preview'), dict(min_val=0) ), ),
                 ((_('Style inside triple-quoted strings'), wxp.OPT_ELEM_CHECK, 'syntaxhighlight_styleinsidetriplequotes', _("Highlight the text as if it wasn't enclosed by triple quotes"), dict() ), ),
                 ((_('Prefer functions over variables'), wxp.OPT_ELEM_CHECK, 'syntaxhighlight_preferfunctions', _('When a word could be either a function or a variable, highlight it as function'), dict() ), ),
                 ((_('Wrap text'), wxp.OPT_ELEM_CHECK, 'wrap', _("Don't allow lines wider than the window"), dict() ), ),
@@ -8581,8 +8579,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             i = self.options['ppiscalingstatusbar']
             if i != 0:
                 i = float(i / 10.0)
-            factor = self.ppi_factor + i
-            #statusBar.SetMinHeight(int(statusBar.GetSize()[1]*factor)-12)
+            factor = self.ppi_factor
             font = statusBar.GetFont()
             dpi.SetFontSize(font, factor)
             statusBar.SetMinHeight(font.GetPixelSize()[1] + intPPI(4))
@@ -8826,7 +8823,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.mainSplitter.SplitHorizontally(self.scriptNotebook, wx.Panel(self.mainSplitter, wx.ID_ANY))
             self.mainSplitter.Unsplit()
             # Layout the separate video window (create first the statusbar !)
-            self.videoStatusBar = wx.StatusBar(self.videoDialog, wx.ID_ANY)#self.videoDialog.CreateStatusBar()
+            self.videoStatusBar = wx.StatusBar(self.videoDialog, wx.ID_ANY)
             if self.ppi_factor > 1 or self.options['ppiscalingstatusbar'] != 0:
                 i = self.options['ppiscalingstatusbar']
                 if i > 0:
@@ -11407,6 +11404,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if not self.BackupSessionEx():
                 return
             self.CloseAllTabs(discard=True, showSaveDlg=False)
+            wx.GetApp().SafeYieldFor(self.scriptNotebook, wx.wxEVT_ANY)
             self.OnMenuFileLoadSession(filename=backup + 'backup.ses', saveSession=False)
         else: wx.MessageBox(backup + 'backup.ses', 'File not found')
 
@@ -12944,7 +12942,302 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 if not userBreake:
                     wx.Bell()
     """
+    def ShowSessionInfo(self, event=None, filename=None):
+        def _checkFiles():
+            for x in range(len(sessionList)):
+                session = sessionList[x][2]
+                for i in range(len(session['scripts'])):
+                    name = session['scripts'][i]['name']
+                    if name:
+                        session['scripts'][i]['@@'] = True if os.path.isfile(name) else False
+                    else:
+                        session['scripts'][i]['@@'] = None
+        def _checkValue(session, idx, val):
+            try:
+                re = session['scripts'][idx][val]
+            except:
+                return None
+            return re
+        def _findFile():
+            s = ''
+            dlg = wx.TextEntryDialog(mainDlg, _('Wildcards * ?'), _('Find script'), '')
+            if dlg.ShowModal() == wx.ID_OK:
+                s = dlg.GetValue().lower().strip()
+            dlg.Destroy()
+            if s == '*' or not s:
+                return
+            if not s.startswith('*'):
+                s = '*' + s
+            if not s.endswith('*'):
+                s += '*'
+            #sl = s.split('*') # only search with *
+            mainDlg.SetCursor(wx.StockCursor(wx.CURSOR_WAIT))
+            foundList = []
+            for x in range(len(sessionList)):
+                session = sessionList[x][2]
+                for i in range(len(session['scripts'])):
+                    name = session['scripts'][i]['name']
+                    if name:
+                        ''' only search with *
+                        found = 0
+                        for y in range(len(sl)):
+                            if name.find(sl[y]) < 0:
+                                break
+                            found += 1
+                        if found == len(sl):
+                        '''
+                        if utils.FindPattern(s, name.lower()): # wildcards * and ?
+                            foundList.append((sessionList[x][1], name, (x,i)))
+            mainDlg.SetCursor(wx.StockCursor(wx.CURSOR_DEFAULT))
+            if not foundList:
+                wx.Bell()
+                return
+            style = wx.DEFAULT_DIALOG_STYLE|wx.STAY_ON_TOP|wx.RESIZE_BORDER
+            foundDlg = wx.Dialog(mainDlg, wx.ID_ANY, 'Found: '+str(len(foundList)), size=dpi.tuplePPI(640, 360), style=style)
+            def _OnClose(event):
+                foundDlg.Destroy()
+            foundDlg.Bind(wx.EVT_CLOSE, _OnClose)
+            class FoundListCtrl(wxp.ListCtrl):
+                def OnGetItemText(self, item, column):
+                    if column == 0:
+                        return foundList[item][0]
+                    elif column == 1:
+                        return foundList[item][1]
+            foundCtrl = FoundListCtrl(foundDlg, wx.ID_ANY, style=wx.LC_REPORT|wx.LC_SINGLE_SEL|wx.LC_VIRTUAL|wx.LC_VRULES)
+            foundCtrl.InsertColumn(0, 'Session')
+            foundCtrl.InsertColumn(1, 'Script')
+            foundCtrl.SetColumnWidth(0, dpi.intPPI(160))
+            foundCtrl.SetColumnWidth(1, wx.LIST_AUTOSIZE_USEHEADER)
+            foundCtrl.SetItemCount(len(foundList))
+            def _OnSelectItem(event):
+                i = foundCtrl.GetSelectedItem()
+                if i < 0: return
+                session, name, pos = foundList[i]
+                nameCtrl.SelectItem(pos[0])
+                listCtrl.SelectItem(pos[1])
+            def _OnDClick(event):
+                event.Skip()
+                if not mainDlg.chkDClick.GetValue():
+                    return
+                i = foundCtrl.GetSelectedItem()
+                if i > -1:
+                    session, filename, pos = foundList[i]
+                    if os.path.isfile(filename):
+                        framenr = _checkValue(session, pos[0], 'current_frame')
+                        bookmarks = _checkValue(session, pos[0], 'bookmarks')
+                        selections = _checkValue(session, pos[0], 'selections')
+                        foundDlg.Hide()
+                        mainDlg.Hide()
+                        self.OpenFile(filename, hidePreview=True, framenum=framenr, bookmarks=bookmarks, selections=selections)
+                        mainDlg.Show()
+                        foundDlg.Show()
+                    else: wx.Bell()
+            foundCtrl.Bind(wx.EVT_LIST_ITEM_SELECTED, _OnSelectItem)
+            foundCtrl.Bind(wx.EVT_LEFT_DCLICK, _OnDClick)
+            sizer = wx.BoxSizer()
+            sizer.Add(foundCtrl, 1, wx.ALL|wx.EXPAND, int5)
+            foundDlg.SetSizer(sizer)
+            sizer.FitInside(foundDlg)
+            foundDlg.CenterOnParent()
+            foundDlg.Show()
+
+        int5 = dpi.intPPI(5)
+        int10 = dpi.intPPI(10)
+        int20 = dpi.intPPI(20)
+        if filename is None or not os.path.isfile(filename):
+            filefilter = 'Session (*.ses)|*.ses'
+            initialdir = self.options['recentdirSession']
+            if not os.path.isdir(initialdir):
+                initialdir = self.programdir
+            dlg = wx.FileDialog(self,_('Get sessions information'),
+                initialdir, '', filefilter, wx.OPEN)
+            ID = dlg.ShowModal()
+            if ID == wx.ID_OK:
+                filename = dlg.GetPath()
+            dlg.Destroy()
+
+        if filename is None:
+            return
+        sessionList = []
+        base = os.path.split(filename)[0]
+        files = glob.glob(os.path.join(base, '*.ses'))
+        files.sort()
+        for file in files:
+            try:
+                with open(file, mode='rb') as f:
+                    session = cPickle.load(f)
+            except:
+                return
+            path, name = os.path.split(file)
+            sessionList.append((path, name, session))
+
+        style = wx.DEFAULT_DIALOG_STYLE|wx.STAY_ON_TOP|wx.RESIZE_BORDER
+        mainDlg = wx.Dialog(self, wx.ID_ANY, 'Sessions Info: ' + base, style=style)
+        dpi.SetFontPPI(mainDlg)
+        mainDlg.session = None
+
+        def OnClose(event):
+            mainDlg.Destroy()
+        mainDlg.Bind(wx.EVT_CLOSE, OnClose)
+        # avs file listbox
+        class FListCtrl(wxp.ListCtrl):
+            def OnGetItemText(self, item, column):
+                if column == 0:
+                    s = mainDlg.session['scripts'][item]['name']
+                    if not s:
+                        s = 'not a file'
+                    else:
+                        if '@@' in mainDlg.session['scripts'][item]:
+                            found = mainDlg.session['scripts'][item]['@@']
+                        else:
+                            found = None
+                        if found is not None and not found:
+                            s = 'missing: ' + s
+                    return s
+                elif column == 1:
+                    if 'bookmarks' in mainDlg.session['scripts'][item]:
+                        return str(len(mainDlg.session['scripts'][item]['bookmarks']))
+                    else:
+                        return 'empty'
+                return ''
+        listCtrl = FListCtrl(mainDlg, wx.ID_ANY, style=wx.LC_REPORT|wx.LC_SINGLE_SEL|wx.LC_VRULES|wx.LC_VIRTUAL)
+        listCtrl.InsertColumn(0, _('Script name'))
+        listCtrl.InsertColumn(1, _('Bookmarks'), wx.LIST_FORMAT_RIGHT)
+        listCtrl.SetItemCount(0)
+        listCtrl.setResizeColumn(1)
+        listCtrl.SetColumnWidth(1, wx.LIST_AUTOSIZE_USEHEADER)
+        listCtrl.SetColumnWidth(0, wx.LIST_AUTOSIZE)
+        '''
+        def OnMouseMotion(event):
+            pos = listCtrl.ScreenToClient(wx.GetMousePosition())
+            item_index, flag = listCtrl.HitTest(pos)
+            if flag == wx.LIST_HITTEST_ONITEM:
+                listCtrl.GetItemText(item_index))
+            event.Skip()
+        listCtrl.Bind(wx.EVT_MOTION, OnMouseMotion)
+        '''
+        def OnDClickList(event):
+            if not mainDlg.chkDClick.GetValue():
+                return
+            i = listCtrl.GetSelectedItem()
+            if i < 0 or not mainDlg.session:
+                return
+            filename = mainDlg.session['scripts'][i]['name']
+            if os.path.isfile(filename):
+                framenr = _checkValue(mainDlg.session, i, 'current_frame')
+                bookmarks = _checkValue(mainDlg.session, i,'bookmarks')
+                selections = _checkValue(mainDlg.session, i,'selections')
+                mainDlg.Hide()
+                self.OpenFile(filename, hidePreview=True, framenum=framenr, bookmarks=bookmarks, selections=selections)
+                mainDlg.Show()
+        listCtrl.Bind(wx.EVT_LEFT_DCLICK, OnDClickList)
+        # Session listbox
+        class NListCtrl(wxp.ListCtrl):
+            def OnGetItemText(self, item, column):
+                return sessionList[item][1]
+        nameCtrl = NListCtrl(mainDlg, wx.ID_ANY, style=wx.LC_REPORT|wx.LC_NO_HEADER|wx.LC_SINGLE_SEL|wx.LC_VIRTUAL)
+        nameCtrl.InsertColumn(0, '')
+        nameCtrl.SetItemCount(len(files))
+        def OnListItemSelected(event):
+            if nameCtrl.GetSelectedItem() < 0:
+                return
+            listCtrl.SetItemCount(0)
+            mainDlg.session = sessionList[nameCtrl.GetSelectedItem()][2]
+            listCtrl.SetItemCount(len(mainDlg.session['scripts']))
+            col = listCtrl.GetColumn(0)
+            col.SetText('Scripts ' + str(len(mainDlg.session['scripts'])))
+            listCtrl.SetColumn(0, col)
+            listCtrl.Refresh()
+        nameCtrl.Bind(wx.EVT_LIST_ITEM_SELECTED, OnListItemSelected)
+        def OnDClickName(event):
+            if not mainDlg.chkDClick.GetValue():
+                return
+            i = nameCtrl.GetSelectedItem()
+            if i < 0: return
+            filename = os.path.join(sessionList[i][0],sessionList[i][1])
+            if os.path.isfile(filename):
+                mainDlg.Hide()
+                if mainDlg.chkCloseTabs.GetValue():
+                    re = self.CloseAllTabs()
+                    if not re:
+                        dlg = wx.MessageDialog(self, _('Not all scripts closed, open the session?'),'',wx.YES_NO|wx.CENTRE)
+                        ID = dlg.ShowModal()
+                        dlg.Destroy()
+                        if ID != wx.ID_YES:
+                            mainDlg.Show()
+                            return
+                self.LoadSession(filename)
+            if mainDlg.chkClose.GetValue():
+                wx.CallAfter(mainDlg.Close)
+            else:
+                mainDlg.Show()
+        nameCtrl.Bind(wx.EVT_LEFT_DCLICK, OnDClickName)
+
+        def OnMiddleUpNameCtrl(event):
+            _findFile()
+        nameCtrl.Bind(wx.EVT_MIDDLE_UP, OnMiddleUpNameCtrl)
+        listCtrl.Bind(wx.EVT_MIDDLE_UP, OnMiddleUpNameCtrl)
+        mainDlg.chkClose = wx.CheckBox(mainDlg, wx.ID_ANY, _('Close when loading session'))
+        mainDlg.chkClose.SetValue(True)
+        def OnChkClose(event):
+            mainDlg.chkClose.SetValue(event.GetEventObject().GetValue())
+        mainDlg.chkClose.Bind(wx.EVT_CHECKBOX, OnChkClose)
+        mainDlg.chkDClick = wx.CheckBox(mainDlg, wx.ID_ANY, _('Double click to open file or session'))
+        mainDlg.chkDClick.SetValue(True)
+        def OnChkDClick(event):
+            mainDlg.chkDClick.SetValue(event.GetEventObject().GetValue())
+        mainDlg.chkDClick.Bind(wx.EVT_CHECKBOX, OnChkDClick)
+        btnCheck  = wx.Button(mainDlg, wx.ID_APPLY, _('Check exists'))
+        def OnButtonCheck(event):
+            _checkFiles()
+            listCtrl.Refresh()
+        btnCheck.Bind(wx.EVT_BUTTON, OnButtonCheck)
+        mainDlg.chkCloseTabs = wx.CheckBox(mainDlg, wx.ID_ANY, _('Close all tabs when open session'))
+        mainDlg.chkCloseTabs.SetValue(True)
+        def OnChkCloseTabs(event):
+            mainDlg.chkCloseTabs.SetValue(event.GetEventObject().GetValue())
+        mainDlg.chkCloseTabs.Bind(wx.EVT_CHECKBOX, OnChkCloseTabs)
+        labelHint = wx.StaticText(mainDlg, wx.ID_ANY, _('Middle mouse click to search scripts'))
+        sizerEx = wx.BoxSizer()
+        sizerEx.Add(btnCheck, 0, wx.LEFT|wx.EXPAND, int10)
+        sizerEx.Add(mainDlg.chkCloseTabs, 0, wx.LEFT|wx.EXPAND, int10)
+        sizerEx.Add(mainDlg.chkClose, 0, wx.LEFT|wx.EXPAND, int10)
+        # OK button
+        btnOkay = wx.Button(mainDlg, wx.ID_OK, 'Close')
+        def OnButtonOK(event):
+            mainDlg.Destroy()
+        btnOkay.Bind(wx.EVT_BUTTON, OnButtonOK)
+        btns = wx.StdDialogButtonSizer()
+        btns.AddButton(btnOkay)
+        btns.Realize()
+        # Size the elements
+        gridSizer = wx.FlexGridSizer(cols=2, hgap=int10, vgap=int5)
+        gridSizer.AddGrowableCol(1, 1)
+        gridSizer.AddGrowableRow(1)
+        gridSizer.Add(labelHint, 0)
+        gridSizer.Add(mainDlg.chkDClick, 0, wx.ALIGN_CENTER)
+        gridSizer.Add(nameCtrl, 2, wx.EXPAND|wx.RIGHT, int10)
+        gridSizer.Add(listCtrl, 3, wx.EXPAND)
+        gridSizer.SetItemMinSize(nameCtrl,(dpi.intPPI(220), dpi.intPPI(400)))
+        gridSizer.SetItemMinSize(listCtrl,(dpi.intPPI(640), dpi.intPPI(400)))
+        dlgSizer = wx.BoxSizer(wx.VERTICAL)
+        dlgSizer.Add(gridSizer, 1, wx.EXPAND|wx.ALL, int10)
+        dlgSizer.Add(sizerEx, 0, wx.LEFT|wx.TOP, int10)
+        dlgSizer.Add(btns, 0, wx.EXPAND|wx.ALL, int10)
+        mainDlg.SetSizer(dlgSizer)
+        if nameCtrl.GetItemCount():
+            nameCtrl.SelectItem(0)
+        btnOkay.SetDefault()
+        dlgSizer.Fit(mainDlg)
+        mainDlg.CenterOnParent()
+        mainDlg.Show()
+        return mainDlg # mainDlg destroyed it self on closing
+    """
+    """
     def OnMenuTest(self, event):
+        import session_info
+        session_info.ShowSessionInfo(self)
+        return
         script = self.currentScript
         script.AnnotationSetText(5, 'Hallo')
         script.AnnotationSetVisible(True)
@@ -15728,6 +16021,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.UpdateMenuItem(_('Display'), True, 'video', [_('YUV -> RGB'), level])
 
         def Error():
+            print ('error')
             if self.previewWindowVisible:
                 self.HidePreviewWindow()
             self.ClipRefreshPainter = False
@@ -15966,7 +16260,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         script.display_clip_refresh_needed = True
                         resize_need_refresh = True
 
-        wx.CallAfter(UpdateMenus, script)
+        UpdateMenus(script)
 
         if self.previewWindowVisible:
             if resize_need_refresh and (script.AVI.DisplayWidth, script.AVI.DisplayHeight) != (dw,dh):
@@ -15984,10 +16278,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     self.AVICallBack(ident='property', value='', framenr=self.GetFrameNumber())
             self.zoom_antialias = self.options['zoom_antialias']
 
-            """
-            if resize_need_refresh and (script.AVI.DisplayWidth, script.AVI.DisplayHeight) != (dw,dh):
-                script.display_clip_refresh_needed = True
-            """
 
     def OnNotebookPageChanging(self, event):
         def resetViewPos():
@@ -16010,7 +16300,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         else:
             self.boolVideoWindowFocused = False
 
-        # GPo, why not self.currentScript ?
         oldSelectionIndex = event.GetOldSelection()
         if oldSelectionIndex >= 0:
             oldScript = self.scriptNotebook.GetPage(oldSelectionIndex)
@@ -16024,11 +16313,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if self.tabChangeLoadBookmarks:
             self.DeleteAllFrameBookmarks(bmtype=0) # GPo new
 
-
         if self.previewWindowVisible:
             if oldSelectionIndex >= 0:
-                #if self.options['cliprefreshpainter']:
-                    #self.ClipRefreshPainter = self.GetVideoWindowBitmap(oldScript)
                 if oldScript.lastSplitVideoPos is not None:
                     self.oldLastSplitVideoPos = oldScript.lastSplitVideoPos
                 else:
@@ -16049,7 +16335,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.oldSliderWindowShown = None
                 self.oldLastSplitSliderPos = None
                 self.oldBoolSliders = None
-                #~self.oldVideoSize = (None, None)
                 self.oldDisplayVideoSize = (None, None)
                 resetViewPos() # GPo new
 
@@ -16467,7 +16752,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     def OnMiddleDownScriptWindow(self, event):
         script = self.currentScript
         if script.IsDClicked:
-            if script.GetSelectedText().isdigit():
+            sel = script.GetSelectedText()
+            if sel.isdigit() or sel.lower() in ('true', 'false'):
                 return
             script.IsDClicked = False
         if (self.options['middlemousefunc'] != 'show video frame') or (self.currentScript.GetTextLength() < 6):
@@ -18025,7 +18311,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.NewTab(copyselected=False, copytab=False, text=txt, select=True, insertnext=False)
 
     @AsyncCallWrapper
-    def NewTab(self, copyselected=True, copytab=False, text='', select=True, insertnext=False):
+    def NewTab(self, copyselected=True, copytab=False, text='', select=True, insertnext=False, framenum=None,  selections=None, bookmarks=None):
         r'''NewTab(copyselected=True)
 
         Creates a new tab (automatically named "New File (x)", where x is an appropriate
@@ -18045,7 +18331,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.StopPlayback()
 
         if self.currentScript.GetClientSize()[self.mainSplitter.GetSplitMode() == wx.SPLIT_HORIZONTAL] < 6:
-                self.SetMinimumScriptPaneSize()
+            self.SetMinimumScriptPaneSize()
 
         # Determine the name of the tab (New File (x))
         index = self.scriptNotebook.GetPageCount()
@@ -18071,6 +18357,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 curIndex = i
         # Create a new script window instance
         scriptWindow = self.createScriptWindow()
+
         # Get text and set some script variables
         if text:
             copytab = False
@@ -18099,6 +18386,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     scriptWindow.lastSplitVideoPos = self.currentScript.lastSplitVideoPos  # GPo 2020, if copy keep the splitters
                     if self.currentScript.lastSplitSliderPos is not None:
                         scriptWindow.lastSplitSliderPos = self.currentScript.lastSplitSliderPos # GPo 2020
+            else:
+                scriptWindow.lastFramenum = framenum if framenum  else 0
+                if bookmarks:
+                    scriptWindow.bookmarks.update(bookmarks)
+                if selections:
+                    scriptWindow.selections.update(selections)
 
             scriptWindow.ParseFunctions(text)
             if curIndex > -1:
@@ -18115,6 +18408,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     self.HidePreviewWindow()
                 else:
                     self.refreshAVI = True
+                    self.ClipRefreshPainter = self.GetVideoWindowBitmap()
                 self.scriptNotebook.SetSelection(curIndex)
         else:
             if select:
@@ -18293,7 +18587,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     if txt == "" and title.startswith(self.NewFileName):
                         index = indexCur
                     else:
-                        self.NewTab(select=False)
+                        self.NewTab(select=False, framenum=framenum, bookmarks=bookmarks, selections=selections)
                         index = self.scriptNotebook.GetPageCount() - 1
                     script = self.scriptNotebook.GetPage(index)
                     if dirname != '':
@@ -18580,15 +18874,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         script, index = self.getScriptAtIndex(index)
         if script is None:
             return False
+
         if self.AviThread_Running(script):
             self.HidePreviewWindow()
             return False
-        """
-        if script.FrameThread:
-            if script.FrameThread.IsRunning():
-                self.HidePreviewWindow()
-                return False
-        """
+
         if self.splitView:
             self.splitView = False
             if self.previewWindowVisible:
@@ -18614,6 +18904,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if not self.AppClosing:
             if not self.AviFree(script):
                 return False
+
         # Save last state
         self.lastClosed = self.GetTabInfo(index)
 
@@ -18639,6 +18930,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             script.FrameThread.Exit()
 
         self.scriptNotebook.DeletePage(index)
+
         self.currentScript = self.scriptNotebook.GetPage(self.scriptNotebook.GetSelection())
         self.UpdateTabImages()
         if self.options['multilinetab']:
@@ -18649,7 +18941,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.SetMinimumScriptPaneSize() # GPo new
         return True
 
-     # GPo 2020, changed
+     # GPo 2022, changed
     def CloseAllTabs(self, discard=False, showSaveDlg=True):
         self.StopPlayback()
         needDlg = True
@@ -18665,13 +18957,22 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if ID == wx.ID_YES:
                 if not self.SaveSession():
                     return
-        # GPo, error when closing all tabs at once, so close last tab separately
-        idx = self.scriptNotebook.GetSelection()
+
+        # It's tricky, the close order must be that the selection index is not changed
+        # otherwise on each tab closing PageChanging and PageChange is called.
+        # and finally we must delete the message query bevore we delete the last tab (Bug?)
+        self.HidePreviewWindow()
         count = self.scriptNotebook.GetPageCount()-1
+        self.scriptNotebook.SetSelection(count)
+        idx = self.scriptNotebook.GetSelection()
+        cl = -1
         for index in xrange(count,-1,-1):
             if index != idx:
-                self.CloseTab(index, discard=discard)
-        self.CloseTab(0, discard=discard)
+                cl += int(self.CloseTab(index, discard=discard))
+        wx.GetApp().SafeYieldFor(self.scriptNotebook, wx.wxEVT_ANY) # important, delete the message query
+        cl += int(self.CloseTab(0, discard=discard))
+        self.scriptNotebook.SendPageChangedEvent(self.scriptNotebook.GetSelection())
+        return count == cl
 
     @AsyncCallWrapper
     def SaveScript(self, filename='', index=None, default=''):
@@ -19022,8 +19323,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         count = self.scriptNotebook.GetPageCount()
         if count < 2:
             return
-        idx = self.scriptNotebook.GetSelection()
-        currentLabel = self.scriptNotebook.GetPageText(idx, full=False)
+        #~idx = self.scriptNotebook.GetSelection()
+        #~currentLabel = self.scriptNotebook.GetPageText(idx, full=False)
+        currentScript = self.currentScript
         process = False
         tabs = []
         self.currentScript.bookmarks = self.GetBookmarkDict() # save the slider bookmarks
@@ -19076,7 +19378,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if multi:
                 self.OnMenuOptionsMultilineTabStyle()
             self.scriptNotebook.Update()
-            idx = self.FindTabByName(currentLabel, select=False)
+            #~idx = self.FindTabByName(currentLabel, select=False)
+            for idx in range(self.scriptNotebook.GetPageCount()):
+                if self.scriptNotebook.GetPage(idx) is currentScript:
+                    break
             currIdx = self.scriptNotebook.GetSelection()
             if currIdx == idx or (idx < 0):
                 # at least we must send a changed event if the selected index the same
@@ -19167,6 +19472,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
             session['previewWindowVisible'] = False # GPo
             previewWindowVisible = False # GPo
+            if self.previewWindowVisible:
+                self.HidePreviewWindow()
 
             if backup:
                 newfile = os.path.splitext(filename)[0]
@@ -19244,7 +19551,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.startupframe = session['frame']
             else:
                 if not previewWindowVisible:
-                    self.HidePreviewWindow()
+                    if self.previewWindowVisible:
+                        self.HidePreviewWindow()
                 else:
                     self.ShowVideoFrame(session['frame'], resize=resize)
             # Set the last closed tab
@@ -22164,7 +22472,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if isinstance(AVI, pyavs.AvsClipBase) and isinstance(script, AvsStyledTextCtrl):
                 idx = -1
                 for i in xrange(self.scriptNotebook.GetPageCount()):
-                    if self.scriptNotebook.GetPage(i) == script:
+                    if self.scriptNotebook.GetPage(i) is script:
                         idx = i
                         break
                 if idx > -1:
@@ -22281,7 +22589,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 if self.options['avithreadassignlater'] and clp and isinstance(script, AvsStyledTextCtrl):
                     found = False
                     for i in xrange(self.scriptNotebook.GetPageCount()):
-                        if self.scriptNotebook.GetPage(i) == script:
+                        if self.scriptNotebook.GetPage(i) is script:
                             found = True
                             break
                     if found:
@@ -22335,8 +22643,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             disabler = wx.WindowDisabler()
             sash = self.mainSplitter.GetSashPosition()
             progress = None
-            if self.ClipRefreshPainter:
-                self.videoWindow.SetDoubleBuffered(True)
 
             msg = utils.resource_str_threadwait2 if self.options['avithreadassignlater'] else utils.resource_str_threadwait
             msg_mem = '\n\nAvailable memory: %i MB'
@@ -22344,6 +22650,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
             try:
                 if self.ClipRefreshPainter:
+                    self.videoWindow.SetDoubleBuffered(True)
                     t = 0
                     while th.isAlive() and t < self.progressDelayTime:
                         if not progress and wx.GetKeyState(wx.WXK_CONTROL):
@@ -22440,32 +22747,21 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         rq.put(True) # flag for thread (release or assign later the clip)
                         self.Thread_List.append((th,q))
             finally:
-                if progress:
-                    progress.Destroy()
+                del disabler # must called at first
                 if self.previewWindowVisible:
                     if self.ClipRefreshPainter and wx.GetApp().Pending():
-                        need_freeze = self.videoSplitter.IsSplit()
-                        if need_freeze:
-                            self.currentSliderWindow.Freeze()
                         # Although all windows are turned off but python collects the events to execute them afterwards, what a nonsense.
-                        # so we must clear the events query, but it produces flicker, so we need a temporal double buffer.
-                        # wx.GetApp().SafeYieldFor seems the only function for deleting the message query, I found no other solution.
-                        # But the function disables all windows and the slider window becomes disabled, not nice.
-                        # So the slider window must bee freezed befor calling this function
-                        try:
-                            wx.GetApp().SafeYieldFor(self.videoWindow, wx.wxEVT_PAINT)
-                        except:
-                            pass
-                        if need_freeze:
-                            self.TryThaw(self.currentSliderWindow)
+                        # so we must clear the events query
+                        wx.GetApp().SafeYieldFor(self, wx.wxEVT_TIMER)
                 elif wx.GetApp().Pending():
                     try:
-                        wx.GetApp().SafeYieldFor(self.currentScript, wx.wxEVT_PAINT)
+                        wx.GetApp().SafeYieldFor(self,  wx.wxEVT_TIMER)
                     except:
-                        pass
+                       pass
 
+                if progress:
+                    progress.Destroy()
                 self.videoWindow.SetDoubleBuffered(False)
-                del disabler
 
                 if not th.isAlive():
                     script.AviThread = None
@@ -22597,10 +22893,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     if showCursor and not wx.IsBusy():
                         wx.BeginBusyCursor()
 
-                    if self.UseAviThread and self.options['threadprogressopt'] > 0: #self.options['cliprefreshpainter']:
-                        self.ClipRefreshPainter = self.GetVideoWindowBitmap()
-                    else:
-                        self.ClipRefreshPainter = False
+                    self.ClipRefreshPainter = self.GetVideoWindowBitmap()
 
                     # freeing the AVI
                     if not self.AviFree(script):
@@ -24744,7 +25037,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     w = abs(splitpos) - (2 * self.xo + 5 + self.mainSplitter.GetSashSize()/2 +
                                          self.toggleSliderWindowButton.GetSize()[0])
 
-
         elif self.zoomwindowfill: # seperate video window
             if not self.options['hidescrollbars']:
                 if not self.splitView and self.currentScript.AVI:
@@ -24772,8 +25064,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     # make a snapshot of the video window and paint it on thread progress dialog (self.SaveCallYield)
     def GetVideoWindowBitmap(self):
-        if not self.previewWindowVisible: #or not isinstance(self.paintedScript, AvsStyledTextCtrl):
+        if not self.previewWindowVisible or not self.UseAviThread or self.options['threadprogressopt'] < 1:
             return False
+        #if self.paintedScript is not self.lastUpdateScript:
+            #return
         self.videoWindow.Update()
         try:
             clientDC = wx.ClientDC(self.videoWindow)
@@ -24804,9 +25098,16 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 backgroundcolor = self.options['videobackground']
             else:
                 backgroundcolor = self.videoWindow.GetBackgroundColour()
+
             dc = wx.ClientDC(self.videoWindow)
             dc.SetBrush(wx.Brush(backgroundcolor))
             dc.DrawRectangle(0,0, self.videoWindow.GetSize()[0], self.videoWindow.GetSize()[1])
+            dc.SetFont(wx.Font(intPPI(48), wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD))
+            if backgroundcolor != wx.BLACK:
+                dc.SetTextForeground(wx.BLACK)
+            else:
+                dc.SetTextForeground(wx.Colour(160,160,160))
+            dc.DrawLabel('Loading in progress...', self.videoWindow.GetClientRect(), wx.ALIGN_CENTER)
             if __debug__:
                 print>>sys.stderr, 'Error in PaintAVIFrame: script is None'
             return
@@ -24895,7 +25196,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 wx.CallAfter(self.ShowVideoFrame, forceLayout=True)
             """
         self.paintedframe = frame
-        #self.paintedScript = script # for videoWindow snapshot
         return True
 
     def PaintTrimSelectionMark(self, dc, script, frame):
@@ -25211,7 +25511,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             labelCtrl.Refresh()
 
     # Use it after first join failed
-    def TH_WaitForFrame(self, script, th, nr, disabler=None):
+    def TH_WaitForFrame(self, script, th, nr):
         '''
         Use this before you call this routine
         # th = threading.Thread(target=GetFrame, args=(script, framenum,))
@@ -25224,8 +25524,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if th.isAlive():
             i = 0
             msgShown = False
-            if not disabler:
-                disabler = wx.WindowDisabler()
+            disabler = wx.WindowDisabler()
+            if self.ClipRefreshPainter:
+                self.videoWindow.SetDoubleBuffered(True)
             msg = utils.resource_str_threadwait
             msg_1 = msg if self.WinVersion < 7 else ''
 
@@ -25234,7 +25535,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             else:
                 progress = wx.ProgressDialog(_('Waiting for frame {0}'.format(nr)),msg_1,10, self,
                             style=wx.PD_ELAPSED_TIME|wx.PD_CAN_ABORT|wx.PD_APP_MODAL)
-
             try:
                 while th.isAlive():
                     if not progress and wx.GetKeyState(wx.WXK_CONTROL):
@@ -25256,19 +25556,19 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                             pass
                     th.join(0.5)
             finally:
-                del disabler # must first called or progress cannot quickly destroy
+                del disabler
+                if self.ClipRefreshPainter:
+                    wx.GetApp().SafeYieldFor(self, wx.wxEVT_TIMER)
+                    self.videoWindow.SetDoubleBuffered(False)
                 if progress:
                     progress.Destroy()
                 if th.isAlive():
                     self.Thread_List.append((th, None))
                     return False
-        elif disabler:
-            del disabler
-
         script.AviThread = None
         return True
 
-    # If srcFrame then the frames given from display clip and the source clip,
+    # If srcFrame then the frames is given from display clip and the source clip,
     # then also the frame properties are read when reading is switched on
     def GetAviDisplayFrame(self, script, nr, showWarn=True, srcFrame=False):
         def GetFrame(script, nr, srcFrame):
@@ -25307,16 +25607,23 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         if th.isAlive():
             if self.ClipRefreshPainter: # it's only on first frame after creating a clip
+                self.videoWindow.SetDoubleBuffered(True)
                 disabler = wx.WindowDisabler()
-                _t = time.time() + self.progressDelayTime
-                i = 0
-                while th.isAlive() and time.time() <= _t:
-                    if i % 300 == 0:
-                        i = 0
-                        if wx.GetApp().Pending(): # the request is enough
-                            pass
-                    wx.MilliSleep(10) # On the first frame after creating a clip we can sleep more time
-                return self.TH_WaitForFrame(script, th, nr, disabler)
+                try:
+                    _t = time.time() + self.progressDelayTime
+                    i = 0
+                    while th.isAlive() and time.time() <= _t:
+                        if i % 300 == 0:
+                            i = 0
+                            if wx.GetApp().Pending(): # the request is enough
+                                pass
+                        wx.MilliSleep(10) # On the first frame after creating a clip we can sleep more time
+                finally:
+                    del disabler
+                    if not th.isAlive():
+                        wx.GetApp().SafeYieldFor(self, wx.wxEVT_TIMER)
+                    self.videoWindow.SetDoubleBuffered(False)
+                    return self.TH_WaitForFrame(script, th, nr)
             else:
                 th.join(self.progressDelayTime)
                 return self.TH_WaitForFrame(script, th, nr)
@@ -25325,16 +25632,17 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         return True
 
     # Thread handle with events, (advanced frame thread) a bit faster on my system
-    def WaitForFrameThread(self, script, th, nr, disabler=None):
+    def WaitForFrameThread(self, script, th, nr):
         if th.IsRunning():
             i = 0
             msgShown = False
-            if not disabler:
-                disabler = wx.WindowDisabler()
+            disabler = wx.WindowDisabler()
             msg = utils.resource_str_threadwait
             msg_1 = msg if self.WinVersion < 7 else ''
+            if self.ClipRefreshPainter:
+                self.videoWindow.SetDoubleBuffered(True)
 
-            if self.ClipRefreshPainter and self.options['threadprogressopt'] == 2: #self.options['hidethreadprogress']:
+            if self.ClipRefreshPainter and self.options['threadprogressopt'] == 2:
                 progress = None
             else:
                 progress = wx.ProgressDialog(_('Waiting for frame {0}'.format(nr)),msg_1,10, self,
@@ -25360,14 +25668,15 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                             pass
                     th.join(0.5)
             finally:
-                del disabler # must first called or progress cannot quickly destroy
+                del disabler # must called at first !!!
+                if self.ClipRefreshPainter:
+                    wx.GetApp().SafeYieldFor(self, wx.wxEVT_TIMER)
+                    self.videoWindow.SetDoubleBuffered(False)
                 if progress:
                     progress.Destroy()
                 if th.IsRunning():
                     self.Thread_List.append((th, None))
                     return False
-        elif disabler:
-            del disabler
         re = not th.IsError()
         th.Reset()
         return re
@@ -25401,29 +25710,38 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         # Is True only after a clip has been created and the preview was visible (UpdateScriptAvi)
         # and the first frame for that clip is requested.
         if self.ClipRefreshPainter:
+            self.videoWindow.SetDoubleBuffered(True)
             disabler = wx.WindowDisabler()
-            i = 0
-            while th.isAlive() and th.IsRunning() and time.time() <= _t:
-                i += 1
-                if i % 300 == 0:
-                    i = 0
-                    if wx.GetApp().Pending(): # the request is enough
-                        pass
-                wx.MilliSleep(10)
+            try:
+                i = 0
+                while th.isAlive() and th.IsRunning() and time.time() <= _t:
+                    i += 1
+                    if i % 300 == 0:
+                        i = 0
+                        if wx.GetApp().Pending(): # the request is enough
+                            pass
+                    wx.MilliSleep(10) # on first frame we can sleep longer
+            finally:
+                del disabler # do not pass the disabler to other functions
+                self.videoWindow.SetDoubleBuffered(False)
+                if th.IsRunning():
+                    return self.WaitForFrameThread(script, th, nr)
+                else:
+                    wx.GetApp().SafeYieldFor(self, wx.wxEVT_TIMER)
+                    re = not th.IsError()
+                    if not re:
+                        th.Reset()
+                    return re
         else:
-            disabler = None
             while th.isAlive() and th.IsRunning() and time.time() <= _t: # It's faster as Event.wait()
                 wx.MilliSleep(1)
-
-        if th.IsRunning():
-            return self.WaitForFrameThread(script, th, nr, disabler)
-        else:
-            if disabler:
-                del disabler
-            re = not th.IsError()
-            if not re:
-                th.Reset()
-            return re
+            if th.IsRunning():
+                return self.WaitForFrameThread(script, th, nr)
+            else:
+                re = not th.IsError()
+                if not re:
+                    th.Reset()
+                return re
 
     # Single frame thread for each script, (advanced frame thread) not mutch faster as creating a thread for each frame
     class FrameThread(threading.Thread):
@@ -25558,7 +25876,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.loop_start = self.loop_end = -1
             if self.options['playloop'] and not self.trimDialog.IsShown() and script.AVI.Framecount > 5:
                 prev = self.ValueInSliderSelection(self.currentframenum)
-                if prev == None:
+                if prev is None:
                     prev = False
                 start, stop = self.GetNextSliderSelection(self.currentframenum, True, prev) # returns None if slider offset
                 if start is not None:
