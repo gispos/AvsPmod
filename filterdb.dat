@@ -1600,6 +1600,13 @@ bool "conservativemask"=false,
 bool "interlaced"=false
 )
 
+Checkmate_Checkmate(
+clip,
+int "thr"=12 (0 to 50),
+int "max"=12 (1 to 255),
+int "tthr2"=0 (0 to 50)
+)
+
 ColorMatrix_ColorMatrix(
 clip,
 string "mode"="Rec.709->Rec.601" ("Rec.709->FCC"/ "Rec.709->Rec.601"/ "Rec.709->SMPTE 240M"/ "FCC->Rec.709"/ "FCC->Rec.601"/ "FCC->SMPTE 240M"/ "Rec.601->Rec.709"/ "Rec.601->FCC"/ "Rec.601->SMPTE 240M"/ "SMPTE 240M->Rec.709"/ "SMPTE 240M->FCC"/ "SMPTE 240M->Rec.601"),
@@ -2886,6 +2893,14 @@ bool "mask"=false,
 bool "show"=false
 )
 
+Spectrogram
+(
+clip,
+int "width"=512,
+int "height"=256,
+bool "transpose"=false
+)
+
 resamplehq-x86_ResampleHQ(
 clip,
 int "width",
@@ -3650,7 +3665,7 @@ int "index"=0,
 vinverse_Vinverse(
 clip,
 float "sstr"=2.7,
-int "amnt"=255 (0 to 255),
+int "amnt"=255 (1 to 255),
 int "uv"=3 (1 / 2 / 3),
 float "scl"=0.25,
 [int "opt"=2 (0 / 1 / 2)]
