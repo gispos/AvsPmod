@@ -37,17 +37,32 @@ AvsPmod can only provide a user-friendly editor if he has no problems with the n
 If, for example, there is a '-' in the file name of the dll, AvsPmod will report it at startup, 
 please rename this dll and replace the '-' with a '_'
 
+--------------------------
+Version 2.7.2.7 [2022-08-13] GPo
+--------------------------
+* Fixed: with timeline range set and middle mouse button clicked in the status bar, the current frame number was not updated.
+* Fixed problems when opening more than one file with the Open File dialog or Drag & Drop.
+* Update tool 'Session Info'
 
 --------------------------
-Version 2.7.2.6 [2022-08-09] GPo
+Version 2.7.2.6 [2022-08-10] GPo
 --------------------------
-* New tool in the 'Tool' menu, Session Info, check it.
-- if you are updating only the AvsPmod directory, you need to copy from the archive tools\'session_info.py' and 'ToolsMenu.py' to 
+* New tool in the 'Tool' menu, Session Info (session_info.pyo), check it.
+- if you are updating only the AvsPmod directory, you need to copy from the archive tools\'session_info.pyo' and 'ToolsMenu.py' to 
 - the AvsPmod tools folder and delete the file AvsPmod > tools > ToolsMenu.pyo
 - tool info: all changes made have no effect on the original files, only when the session is saved, the changes are written to the file to be saved.
 * Fixed: On closing all tabs or reloading the startup session an error can be displayed.
 * Fixed: flickering when the frame was displayed and the thread progress option is 2 or 3 and the frame loading took longer.
-* Some other changes
+* Changed mouse movement in the status bar if left mouse button down and timeline range is set: 
+- CTRL = unlimited scrolling; SHIFT = unlimited scrolling and sensitivity 25%, i.e. 4 times scrolling rate.
+- Summing:
+- Statusbar double-click: Timeline goes to the start or end in the limited range (depending on mouse position).
+- CTRL + Statusbar double-click: Timeline goes to the start or end in the unlimited range (depending on mouse position).
+- SHIFT + Statusbar double-click: Timeline goes to the start or end in the unlimited range*4 (depending on mouse position).
+- Statusbar middle mouse button up = timeline goes to current frame position if slider was not clicked before (the video frame was not shown).
+- When you hit Enter: If the slider frame number is outside the limited range, the video frame of the current slider frame number is displayed.
+* Added the avisynth keywords 'if' and 'else' to filterdb.data for correct syntax highlighting.
+* Fixed: Snapshot label was not drawn when zooming without antialiasing.
 
 --------------------------
 Version 2.7.2.5 [2022-08-01] GPo

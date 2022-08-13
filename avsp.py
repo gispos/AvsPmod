@@ -6377,7 +6377,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         self.win.NewTab(text=text)
                 else:
                     for filename in self.filedata.GetFilenames():
-                        self.win.OpenFile(filename=filename)
+                        self.win.OpenFile(filename=filename, hidePreview=True)
                 return False
 
         class ScriptDropTarget(wx.DropTarget):
@@ -6448,8 +6448,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         self.app.InsertSource(filenames[0])
                     else:
                         # Open each filename as a script
+                        hidePreview = len(filenames) > 1
                         for filename in self.filedata.GetFilenames():
-                            self.app.OpenFile(filename=filename)
+                            self.app.OpenFile(filename=filename, hidePreview=hidePreview)
                 return True
 
         self.SetDropTarget(MainFrameDropTarget(self))
@@ -7027,7 +7028,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 if os.path.isfile(arg):
                     if os.path.dirname(arg) == '':
                         arg = os.path.join(self.initialworkdir, arg)
-                    self.OpenFile(filename=arg) # BUG: sys.argv gives back short filenames only?!!
+                    self.OpenFile(filename=arg, hidePreview=True) # BUG: sys.argv gives back short filenames only?!!
                     if not os.path.splitext(arg)[1].lower() in ('.py', '.pys'):    # GPo 2018
                         self.currentScript.GotoPos(0)
                         self.currentScript.EnsureCaretVisible()
@@ -7882,6 +7883,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                 splitstring = s.split('>', 1)
                                 if len(splitstring) == 2:
                                     linkNamings.append((s, 3))
+
                 # GPo, other name but same args ( only on 'userfunctions' used)
                 if linkNamings:
                     for i, (s, typ) in enumerate(linkNamings):
@@ -10426,8 +10428,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if event.LeftIsDown and statusBar.HasCapture() and self.mouseDownXY is not None and self.timelineRange > 0:
                 x = event.GetPosition()[0]
                 if x != self.mouseDownXY[0]:
-                    val = max(int(100.0/self.options['timelinestatusbarmovesense']), 1) if wx.GetKeyState(wx.WXK_CONTROL) else 0
-                    fullRange = wx.GetKeyState(wx.WXK_SHIFT)
+                    val = 0 if not event.ShiftDown() else max(int(self.videoSlider.maxValue/self.options['timelinestatusbarmovesense']) *4, 1)
+                    fullRange = event.ControlDown() or event.ShiftDown()
                     if self.playing_video:
                         self.CheckPlayback()
                     if x > self.mouseDownXY[0]:
@@ -10439,29 +10441,30 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         def OnStatusbarDClick(event):
             if self.timelineRange > 0:
                 if event.GetPosition()[0] > self.GetSize()[0]/2.0:
-                    if event.ShiftDown():
-                        self.MoveTimelineRange(1, self.timelineRange, False, False, True)
+                    if event.ControlDown() or event.ShiftDown():
+                        self.MoveTimelineRange(1, self.timelineRange if not event.ShiftDown() else self.timelineRange*4, False, False, True)
                     else: self.MoveTimelineRange(1, self.GetFrameNumber()-self.videoSlider.startOffset, True, True, True)
                 else:
-                    if event.ShiftDown():
-                        self.MoveTimelineRange(0, self.timelineRange, False, False, True)
+                    if event.ControlDown() or event.ShiftDown():
+                        self.MoveTimelineRange(0, self.timelineRange if not event.ShiftDown() else self.timelineRange*4, False, False, True)
                     else: self.MoveTimelineRange(0, self.videoSlider.GetVirtualMax() - self.GetFrameNumber(), True, True, True)
             event.Skip()
         def OnStatusbarMiddleUp(event):
             if self.timelineRange > 0:
                 self.OnMenuSetTimeLineRange(None, self.timelineRange, self.currentframenum)
-            """
-            if self.timelineRange > 0:
-                if event.GetPosition()[0] > self.GetSize()[0]/2.0:
-                    if event.ShiftDown():
-                        self.MoveTimelineRange(1, self.timelineRange, False, False, True)
-                    else: self.MoveTimelineRange(1, self.GetFrameNumber()-self.videoSlider.startOffset, True, True, True)
+                frame = self.GetFrameNumber()
+                if frame in self.GetBookmarkFrameList():
+                    color = wx.RED
                 else:
-                    if event.ShiftDown():
-                        self.MoveTimelineRange(0, self.timelineRange, False, False, True)
-                    else: self.MoveTimelineRange(0, self.videoSlider.GetVirtualMax() - self.GetFrameNumber(), True, True, True)
-
-            """
+                    color = wx.BLACK
+                self.frameTextCtrl.SetForegroundColour(color)
+                self.frameTextCtrl.ChangeValue(str(frame))
+                self.frameTextCtrl.Update()
+                if self.separatevideowindow:
+                    self.frameTextCtrl2.SetForegroundColour(color)
+                    self.frameTextCtrl2.ChangeValue(str(frame))
+                    self.frameTextCtrl2.Update()
+                self.SetVideoStatusText()
             event.Skip()
 
         statusBar = self.GetStatusBar() if primary else self.videoStatusBar
@@ -13407,10 +13410,15 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         self.snapShotIdx = 1 if self.snapShotIdx in [0,2] else 0
                     else:
                         self.snapShotIdx = 2 if self.snapShotIdx in [0,1] else 0
-                    self.zoom_antialias = '' # disable draw 'Snapshot'
+                    if self.zoom_antialias:
+                        self.zoom_antialias = '' # disable draw 'Snapshot'
                     self.videoWindow.Refresh()
                     self.videoWindow.Update()
-                    self.ResetZoomAntialias(forceYield=False) # now draw 'Snapshot'
+                    if self.zoom_antialias == '':
+                        self.zoom_antialias = True
+                        self.videoWindow.Refresh()
+                        self.videoWindow.Update()
+                    #self.ResetZoomAntialias(forceYield=False) # now draw 'Snapshot'
                 else:
                     self.snapShotIdx = 0
                     if not showMsg:
@@ -16021,7 +16029,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.UpdateMenuItem(_('Display'), True, 'video', [_('YUV -> RGB'), level])
 
         def Error():
-            print ('error')
             if self.previewWindowVisible:
                 self.HidePreviewWindow()
             self.ClipRefreshPainter = False
@@ -18482,7 +18489,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         On loading a session file loadBookmarks is False and hidePreview is True
         bookmarks loading is then handled on LoadSession
-
+        Loading avisynth in thread:
+            loading more than one file at a time is not possible with visible video window
+            and leads to errors, then the preview must be hidden.
         '''
         self.StopPlayback()
         # Get filename via dialog box if not specified
@@ -18503,14 +18512,17 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             ID = dlg.ShowModal()
             if ID == wx.ID_OK:
                 filenames = dlg.GetPaths()
+                dlg.Destroy()
                 if len(filenames) == 1:
                     filename = filenames[0]
                 else:
                     for filename in filenames:
                         if filename:
-                            self.OpenFile(filename)
+                            self.OpenFile(filename, hidePreview=True)
                     return
-            dlg.Destroy()
+            else:
+                dlg.Destroy()
+
         # Open script if filename exists (user could cancel dialog box...)
         if filename:
             # Process the filename
@@ -18523,23 +18535,17 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if os.path.isdir(dirname):
                 self.options['recentdir'] = dirname
             if ext.lower() not in ('.avs', '.avsi', '.vpy'): # Treat the file as a source
-                # GPo 2018, execute macro
-                if ext.lower() in ('.py', '.pys'):
-                    wx.CallAfter(self.Update)
-                    wx.CallAfter(self.ExecuteMacro, filename)
-                else:
-                # GPo end
-                    # Make a new tab if current one is not empty
-                    indexCur = self.scriptNotebook.GetSelection()
-                    txt = self.scriptNotebook.GetPage(indexCur).GetText()
-                    title = self.scriptNotebook.GetPageText(indexCur)
-                    if txt or not title.startswith(self.NewFileName):
-                        self.NewTab(copyselected=False)
-                    self.InsertSource(filename)
-                    if not hidePreview and self.previewWindowVisible:
-                        self.ShowVideoFrame()
-                    elif self.previewWindowVisible:
-                        self.HidePreviewWindow()
+                # Make a new tab if current one is not empty
+                indexCur = self.scriptNotebook.GetSelection()
+                txt = self.scriptNotebook.GetPage(indexCur).GetText()
+                title = self.scriptNotebook.GetPageText(indexCur)
+                if txt or not title.startswith(self.NewFileName):
+                    self.NewTab(copyselected=False)
+                self.InsertSource(filename)
+                if not hidePreview and self.previewWindowVisible:
+                    self.ShowVideoFrame()
+                elif self.previewWindowVisible:
+                    self.HidePreviewWindow()
             else: # Treat the file as an avisynth script
                 if scripttext is None:
                     scripttext, f_encoding, eol = self.GetMarkedScriptFromFile(filename)
@@ -18629,7 +18635,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
                 if hidePreview and self.previewWindowVisible:
                     self.HidePreviewWindow()
-
                 # handle the script bookmarks
                 bCount = 0
                 if loadBookmarks: # only on loading session False
@@ -18663,8 +18668,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 else:
                     self.scriptNotebook.SetSelection(index) # only on load session
 
-                self.refreshAVI = True
-                if self.previewWindowVisible: # on load session not visible
+
+                if self.previewWindowVisible and self.extended_move: # on load session not visible
+                    script.refreshAVI = True
                     if self.zoomwindow:
                         self.ShowVideoFrame(forceCursor=True)  # GPo 2020, keep extended move and reset XY
                     else:
@@ -18672,8 +18678,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 else:
                     self.extended_move = False  # reset only if not visible
 
-                if loadBookmarks and (ext.lower() == '.avs'):
-                    wx.CallAfter(self.GetStatusBar().SetStatusText, _('%d Bookmarks imported') % bCount)
+                if not self.previewWindowVisible and loadBookmarks and (ext.lower() == '.avs'):
+                    self.GetStatusBar().SetStatusText(_('%d Bookmarks imported') % bCount)
 
                 return index
 
@@ -22460,10 +22466,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             return (f, cSize[0], cSize[1], zoom, fit, scrollbarhiden)
         return
 
-    def FilterEvent(self, event):
-        print('event')
-        return event.Skip()
-
     def UpdateScriptAVI(self, script=None, forceRefresh=False, keep_env=None,
                         prompt=True, showCursor=True, resizeFilterInfo=None):
 
@@ -22832,6 +22834,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if forceRefresh or ((self.refreshAVI or script.refreshAVI) and self.options['refreshpreview']):
                 if not script.previewtxt:
                     script.Colourise(0, script.GetTextLength())
+                self.ClipRefreshPainter = False
                 if forceRefresh or self.ScriptChanged(script):
                     # Backup the current session if paranoia mode is on
                     if self.options['paranoiamode']:
@@ -25068,7 +25071,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             return False
         #if self.paintedScript is not self.lastUpdateScript:
             #return
-        self.videoWindow.Update()
+        # then on open file and tab change currentScript.AVI is None and Update forces RepaintAVIFrame, also no client picture.
+        #~self.videoWindow.Update()
         try:
             clientDC = wx.ClientDC(self.videoWindow)
             w,h = clientDC.GetSize()
