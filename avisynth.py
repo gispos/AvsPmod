@@ -33,7 +33,6 @@ import ctypes
 import sys
 import os
 import os.path
-import sys
 import traceback
 import collections
 import weakref
