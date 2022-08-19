@@ -2540,7 +2540,11 @@ float "ls"=4.0 (0 to 255),
 float "cs"=3.0 (0 to 255),
 float "lt"=6.0 (0 to 255),
 float "ct"=4.5 (0 to 255),
-int "restart"=7.0 (0 to 255)
+int "restart"=7 (0 to 255),
+int "y"=3 (1 / 2 / 3),
+int "u"=3 (1 / 2 / 3),
+int "v"=3 (1 / 2 / 3),
+bool "mt"=false,
 )
 
 JpegSource_JpegSource(
