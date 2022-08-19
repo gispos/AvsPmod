@@ -1591,6 +1591,15 @@ float "thresh"=0.5 (0.0 to 1.0),
 int "cm"=2 (0 / 1 / 2 / 3)
 )
 
+aWarpSharp_aWarpSharp2(
+clip,
+int "thresh"=128 (0 to 255),
+int "blur"=2 (0 to 100),
+int "type"=0 (0 to 1),
+int "depth"=16 (-128 to 127),
+int "chroma"=4 (0 to 6),
+)
+
 bifrost_Bifrost(
 clip,
 [clip "altclip"],
