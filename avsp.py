@@ -180,7 +180,6 @@ class AvsFilterDict(collections.MutableMapping):
         for item in self.shared_dict:
             yield item
 
-
 # Custom styled text control for avisynth language
 class AvsStyledTextCtrl(stc.StyledTextCtrl):
     (
@@ -2725,9 +2724,11 @@ class AvsStyleDialog(wx.Dialog):
         if ppi_factor > 1:
             self.notebook.SetTabSize((-1, intPPI(23)))
             SetFontPPI(self.notebook)
+        """ not used! Check and Remove
         def OnNotebookPageChanged(event):
             event.GetEventObject().GetCurrentPage().SetFocus()
             event.Skip()
+        """
         for tabLabel, tabInfo in dlgInfo:
             tabPanel = wx.Panel(self.notebook, wx.ID_ANY)
             self.notebook.AddPage(tabPanel, tabLabel)
@@ -16179,7 +16180,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             # if no new clip is created the 'ClipRefreshPainter' is False
             # disableRefreshPainter must only be set if UpdateScriptAvi called bevor ShowVideoFrame is called
             self.ShowVideoFrame(script.lastFramenum, forceLayout=True, focus=False, scroll=videoXY, forceCursor=True,
-                                forceThread=self.UseAviThread, disableRefreshPainter=False)
+                                forceThread=self.UseAviThread)
             if self.separatevideowindow:
                 self.videoDialog.Refresh()
                 self.videoDialog.Update()
@@ -17280,8 +17281,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if self.refreshAVI or script.refreshAVI:# GPo, on double clicked (zoom full size), self.refreshAVI is after first mouse down False
                 if self.options['refreshpreview']:
                     self.ShowVideoFrame_CheckPreview()
-                    if self.ClipRefreshPainter:
-                        return
+                    #if self.ClipRefreshPainter:
+                        #return
                 else:
                     if (script.previewFilterIdx > 0) and not self.ComparePreviewFilterDict(): # then update the slider
                         self.IdleCallDict['UpdateUserSliders'] = self.UpdateUserSliders()
@@ -18019,6 +18020,18 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     def OnPaintVideoWindow(self, event):
         dc = wx.PaintDC(self.videoWindow) # should always be created
         if self.previewWindowVisible:
+            # if threaded then paint the video window snapshot ( GetVideoWindowBitmap )
+            if self.ClipRefreshPainter and self.bmpVideo:
+                mdc = wx.MemoryDC()
+                mdc.SelectObject(self.bmpVideo)
+                w = self.bmpVideo.GetWidth()
+                h = self.bmpVideo.GetHeight()
+                self.videoWindow.DoPrepareDC(dc)
+                dc.SetUserScale(1, 1)
+                x, y = self.videoWindow.GetViewStart()
+                dc.Blit(x, y, w, h, mdc, 0, 0)
+                return
+
             if self.splitView or self.snapShotIdx > 0:
                 dcc = wx.ClientDC(self.videoWindow)
                 self.PaintAVIFrame(dcc, self.currentScript, self.currentframenum, isPaintEvent=True)
@@ -18415,7 +18428,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     self.HidePreviewWindow()
                 else:
                     self.refreshAVI = True
-                    self.ClipRefreshPainter = self.GetVideoWindowBitmap()
+                    #self.ClipRefreshPainter = self.GetVideoWindowBitmap()
                 self.scriptNotebook.SetSelection(curIndex)
         else:
             if select:
@@ -20915,7 +20928,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         # Navigate to the initial frame and hide trim selection editor
         self.refreshAVI = True
-        self.ShowVideoFrame(new_frame, disableRefreshPainter=False)
+        self.ShowVideoFrame(new_frame)
         if self.trimDialog.IsShown():
             self.OnTrimDialogCancel(None)
 
@@ -21641,7 +21654,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                        userScrolling=False, keep_env=None, forceLayout=False, doLayout=True,
                        resize=None, scroll=None, focus=True, adjust_handle=False,
                        check_playing=False, forceCursor=False, addon0='', forceThread=False,
-                       frameToFrametime=False, disableRefreshPainter=True):
+                       frameToFrametime=False):
 
         def UpdateSliders():
             doFocusScript = False
@@ -21679,10 +21692,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         # Check thread still alive
         if self.AviThread_Running(script, prompt=False):
-            try:
-                self.DeletePendingEvents()
-            except:
-                pass
+            #try:
+                #self.DeletePendingEvents()
+           # except:
+                #pass
             return
 
         if script.AVI is None:
@@ -21696,9 +21709,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 if abs(framenum - script.lastFramenum) > 1:
                     forceCursor = True
 
-        if self.ClipRefreshPainter and disableRefreshPainter:
-            self.ClipRefreshPainter = False
-
         needLayout = None
         display_clip_refresh_needed = script.display_clip_refresh_needed
 
@@ -21710,8 +21720,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             # then boolNewAvi is here False or None. Therefore no further check for a new Avi is possible here.
             boolNewAVI = self.UpdateScriptAVI(script, forceRefresh, keep_env=keep_env, showCursor=self.options['refreshpreview'] and not forceCursor)
             if boolNewAVI is None:
-                if self.UseAviThread:
-                    self.HidePreviewWindow()
+                #if self.UseAviThread:
+                self.HidePreviewWindow()
+                self.ClipRefreshPainter = False
+                self.bmpVideo = None
                 self.UpdateScriptTabname(self.currentScript)
                 self.SetPreviewFilterMenus()
                 if self.SplitClipCtrl.IsActive:
@@ -21828,6 +21840,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             elif self.UseAviThread:
                 if not self.GetAviDisplayFrame(script, framenum): # then user hase canceled the thread
                     self.HidePreviewWindow()
+                    self.ClipRefreshPainter = False
                     if self.readFrameProps:
                         self.AVICallBack('property', 'Error', framenum)
                     return False
@@ -21839,6 +21852,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if error is not None:
                 self.HidePreviewWindow()
                 self.bmpVideo = None
+                self.ClipRefreshPainter = False
                 if self.readFrameProps:
                     self.AVICallBack('property', 'Error', framenum)
                 if self.SplitClipCtrl.IsActive:
@@ -21948,6 +21962,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.toggleButton.SetBitmapLabel(self.bmpVidDown)
                 self.toggleButton.Refresh()
                 self.mainSplitter.UpdateSize()
+
             # zoom (fit, fill) can only be calculated after the layout, so if the layout changed,
             # the paint event repaint the video window with the new zoomfactor ( self.videoWindow.Thaw() )
             if needCalcZoom:
@@ -22224,7 +22239,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             offsetFrames = offset * int(round(script.AVI.Framerate * 60 * 60))
         else: offsetFrames = offset
         framenum = offsetFrames + self.videoSlider.GetValue()
-        self.ShowVideoFrame(framenum, wrap=False, script=script, focus=focus,forceCursor=self.ScriptChanged(script), disableRefreshPainter=False)
+        self.ShowVideoFrame(framenum, wrap=False, script=script, focus=focus,forceCursor=self.ScriptChanged(script))
         if self.playing_video == '':
             self.PlayPauseVideo()
 
@@ -22469,40 +22484,54 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     def UpdateScriptAVI(self, script=None, forceRefresh=False, keep_env=None,
                         prompt=True, showCursor=True, resizeFilterInfo=None):
 
-        def updateAbandonedScript(qr, AVI, script, scripttxt, scr_filename):
-            # check the clip and script again in the main thread, ignor AVI.isErrorClip
-            if isinstance(AVI, pyavs.AvsClipBase) and isinstance(script, AvsStyledTextCtrl):
-                idx = -1
-                for i in xrange(self.scriptNotebook.GetPageCount()):
-                    if self.scriptNotebook.GetPage(i) is script:
-                        idx = i
-                        break
-                if idx > -1:
-                    try:
-                        script.SetText(scripttxt) # set the text with which the clip was loaded
+        #~def updateAbandonedScript(qr, AVI, script, scripttxt, scr_filename):
+        def updateAbandonedScript(AVI, script, scripttxt, scr_filename):
+            def _showDialog(idx):
+                if self.IsEnabled() and not self.ClipRefreshPainter:
+                    """
+                    evtloop = wx.EventLoop()
+                    ea = wx.EventLoopActivator(evtloop)
+                    while evtloop.Pending():
+                        evtloop.Dispatch()
+                    del ea
+                    """
+                    wx.GetApp().ProcessIdle() # close frame progress dialog
+                    dlg = wx.MessageDialog(self,_('Abandoned clip assigned. Select the tab?'), style=wx.YES_NO|wx.CENTRE)
+                    ID = dlg.ShowModal()
+                    dlg.Destroy()
+                    if ID == wx.ID_YES:
+                        self.HidePreviewWindow()
+                        self.scriptNotebook.SetSelection(idx)
+            try:
+                # check the clip and script again in the main thread, ignor AVI.isErrorClip
+                if isinstance(AVI, pyavs.AvsClipBase) and isinstance(script, AvsStyledTextCtrl):
+                    idx = -1
+                    for i in xrange(self.scriptNotebook.GetPageCount()):
+                        if self.scriptNotebook.GetPage(i) is script:
+                            idx = i
+                            break
+                    if idx > -1:
+                        if script.GetText() != scripttxt:
+                            script.SetText(scripttxt) # set the text with which the clip was loaded
                         script.Colourise(0, script.GetTextLength())
                         script.previewtxt = self.ScriptChanged(script, return_styledtext=True)[1]
                         script.AVI = AVI
                         script.display_clip_refresh_needed = True
-                        qr.put(True) # signal OK, thread can finish without freeing the clip
-                        wx.MilliSleep(100) # leave the thread finish after put
+                        #qr.put(True) # signal OK, thread can finish without freeing the clip
+                        #wx.MilliSleep(50) # leave the thread finish after put
                         self.StopPlayback()
                         self.UpdateScriptTagProperties(script, scripttxt)
                         self.GetAutoSliderInfo(script, scripttxt)
                         self.UpdateScriptTabname(script) # set loaded state
                         self.StatusbarTimer_Start(3000, _(u'Abandoned clip assigned: "{0}"').format(scr_filename), bellcount=1)
                         if self.scriptNotebook.GetSelection() != idx:
-                            dlg = wx.MessageDialog(self,_('Abandoned clip assigned. Select the tab?'), style=wx.YES_NO|wx.CENTRE)
-                            ID = dlg.ShowModal()
-                            dlg.Destroy()
-                            if ID == wx.ID_YES:
-                                self.HidePreviewWindow()
-                                #self.SelectTab(index=idx)
-                                self.scriptNotebook.SetSelection(idx)
-                        return
-                    except:
-                        pass
-            qr.put(False)
+                            if self.IsEnabled() and not self.ClipRefreshPainter: # with AsyncCall needed
+                                wx.CallAfter(_showDialog, idx)
+                        return True
+            except:
+                pass
+            return False
+            #qr.put(False)
 
         # only used if not AVI Updated and only a new DisplayClip is needed
         def TH_CreateDisplayClip(script, readmatrix, killFilterClip):
@@ -22566,7 +22595,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         readmatrix,displayFilter,readFrameProps,resizeFilter,previewFilter,useSplitClip, q,rq):
             scr_filename = script.filename
             AVI = None
-            #script.Enable(False)
             try:
                 AVI = pyavs.AvsClip(
                                 scripttxt, filename, workdir=workdir,env=env,fitHeight=fitHeight,fitWidth=fitWidth,
@@ -22576,17 +22604,16 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                 useSplitClip=useSplitClip, app=self)
                 wx.MilliSleep(50) # wait a little, give priority to the main thread
             except:
-                #script.Enable(True)
                 q.put(AVI)
                 return
-            #script.Enable(True)
+
             re = rq.get(block=True, timeout=4)
             if not re: # user not canceled, main loop waiting, also return the AVI
                 q.put(AVI)
                 return
 
             clp = isinstance(AVI, pyavs.AvsClipBase)
-            # check for clip and script and assign the AVI to the script, do this in the main thread (CallAfter)
+            # check for clip and script and assign the AVI to the script, do this in the main thread (CallAfter) or AsyncCall
             try:
                 if self.options['avithreadassignlater'] and clp and isinstance(script, AvsStyledTextCtrl):
                     found = False
@@ -22595,9 +22622,15 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                             found = True
                             break
                     if found:
-                        qr = queue.Queue()
+                        while self.ClipRefreshPainter or not self.IsEnabled():
+                            wx.MilliSleep(1000)
+                        #qr = queue.Queue()
+                        """
                         wx.CallAfter(updateAbandonedScript, qr, AVI, script, scripttxt, scr_filename) # go into the main thread
-                        if qr.get(block=True, timeout=5) is True: # wait for the result
+                        if qr.get(block=True, timeout=None) is True: # wait max 90 seconds for the result
+                            return
+                        """
+                        if AsyncCall(updateAbandonedScript, AVI, script, scripttxt, scr_filename).Wait():
                             return
             except:
                 pass
@@ -22608,6 +22641,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     wx.CallAfter(self.StatusbarTimer_Start, 5000, _(u'Abandoned clip released: "{0}"').format(scr_filename), bellcount=2)
             except:
                 pass
+            return
 
         def TH_GetClip(script,scripttxt,filename,workdir,env,fitHeight,fitWidth,oldFramecount,matrix,interlaced,swapuv,
                 bit_depth,callBack,readmatrix,displayFilter,readFrameProps,resizeFilter,previewFilter,useSplitClip):
@@ -22640,7 +22674,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         'Options->Access Avisynth in threads should be deaktivated.\n'+
                         'Then restart the program.'), style=wx.OK|wx.ICON_ERROR)
                 return
-
 
             disabler = wx.WindowDisabler()
             sash = self.mainSplitter.GetSashPosition()
@@ -22693,14 +22726,14 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     msgShown = False
                     show_mem = self.WinVersion > 6 and self.options['threaddlgshowmem']
                     try:
-                        if self.ClipRefreshPainter and self.options['threadprogressopt'] == 2: #self.options['hidethreadprogress']:
+                        if self.ClipRefreshPainter and self.options['threadprogressopt'] == 2:
                             pass
                         elif not progress:
                             progress = wx.ProgressDialog(_('Waiting for avisynth clip'),msg_1,10,self,
-                                        style=wx.PD_ELAPSED_TIME|wx.PD_CAN_ABORT|wx.PD_APP_MODAL)
+                                        style=wx.PD_ELAPSED_TIME|wx.PD_CAN_ABORT|wx.PD_APP_MODAL|wx.PD_AUTO_HIDE)
 
                         while th.isAlive():
-                            if not progress and wx.GetKeyState(wx.WXK_CONTROL):
+                            if not progress and i % 2 == 0 and wx.GetKeyState(wx.WXK_CONTROL):
                                 progress = wx.ProgressDialog(_('Waiting for avisynth clip'),msg_1,10,self,
                                             style=wx.PD_ELAPSED_TIME|wx.PD_CAN_ABORT|wx.PD_APP_MODAL)
                             if progress:
@@ -22749,17 +22782,16 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         rq.put(True) # flag for thread (release or assign later the clip)
                         self.Thread_List.append((th,q))
             finally:
-                del disabler # must called at first
-                if self.previewWindowVisible:
-                    if self.ClipRefreshPainter and wx.GetApp().Pending():
-                        # Although all windows are turned off but python collects the events to execute them afterwards, what a nonsense.
-                        # so we must clear the events query
-                        wx.GetApp().SafeYieldFor(self, wx.wxEVT_TIMER)
-                elif wx.GetApp().Pending():
-                    try:
-                        wx.GetApp().SafeYieldFor(self,  wx.wxEVT_TIMER)
-                    except:
-                       pass
+                del disabler # must be at first
+                """
+                if self.ClipRefreshPainter:
+                    if wx.GetApp().Pending():
+                        try:
+                            wx.GetApp().SafeYieldFor(self,  wx.wxEVT_TIMER)
+                        except:
+                           pass
+                """
+                self.progressShown = progress is not None # needed for frame thread if ClipRefreshPainter
 
                 if progress:
                     progress.Destroy()
@@ -25065,55 +25097,59 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         wx.MessageBox(u'\n\n'.join((_('Error requesting frame {number}').format(number=frame_nr),
                            err)), _('Error'), style=wx.OK|wx.ICON_ERROR)
 
-    # make a snapshot of the video window and paint it on thread progress dialog (self.SaveCallYield)
+    # make a snapshot of the video window and paint it on thread progress dialog (wx.GetApp().SaveYieldFor)
     def GetVideoWindowBitmap(self):
         if not self.previewWindowVisible or not self.UseAviThread or self.options['threadprogressopt'] < 1:
             return False
         #if self.paintedScript is not self.lastUpdateScript:
             #return
         # then on open file and tab change currentScript.AVI is None and Update forces RepaintAVIFrame, also no client picture.
-        #~self.videoWindow.Update()
+        #self.videoWindow.Update()
         try:
             clientDC = wx.ClientDC(self.videoWindow)
             w,h = clientDC.GetSize()
-            dc = wx.MemoryDC()
+            mdc = wx.MemoryDC()
             self.bmpVideo = wx.EmptyBitmap(w,h)
-            dc.SelectObject(self.bmpVideo)
-            dc.Blit(0,0,w,h,clientDC,0,0)
+            mdc.SelectObject(self.bmpVideo)
+            mdc.Blit(0,0,w,h,clientDC,0,0)
+            #img = self.bmpVideo.ConvertToImage()
+            #img.SaveFile('E:\\Temp\\bmpvideo.bmp', wx.BITMAP_TYPE_BMP) # testing the area
         except:
             return False
         return True
 
     def PaintAVIFrame(self, inputdc, script, frame, shift=True, isPaintEvent=False):
+        """ moved to OnPaintVideoWindow
+        # if threaded then paint the video window snapshot ( GetVideoWindowBitmap )
+        if self.ClipRefreshPainter and self.bmpVideo:
+            mdc = wx.MemoryDC()
+            mdc.SelectObject(self.bmpVideo)
+            w = self.bmpVideo.GetWidth()
+            h = self.bmpVideo.GetHeight()
+            self.videoWindow.DoPrepareDC(inputdc)
+            inputdc.SetUserScale(1, 1)
+            x, y = self.videoWindow.GetViewStart()
+            inputdc.Blit(x, y, w, h, mdc, 0, 0)
+            return
+        """
         if script.AVI is None:
             if isPaintEvent:
-                # if threaded then paint the video window snapshot ( GetVideoWindowBitmap )
-                if self.ClipRefreshPainter and self.bmpVideo:
-                    dc = wx.MemoryDC()
-                    dc.SelectObject(self.bmpVideo)
-                    w = self.bmpVideo.GetWidth()
-                    h = self.bmpVideo.GetHeight()
-                    self.videoWindow.DoPrepareDC(inputdc)
-                    x, y = self.videoWindow.GetViewStart()
-                    inputdc.Blit(x, y, w, h, dc, 0, 0)
-                    return
+                if self.options['use_customvideobackground']:
+                    backgroundcolor = self.options['videobackground']
+                else:
+                    backgroundcolor = self.videoWindow.GetBackgroundColour()
 
-            if self.options['use_customvideobackground']:
-                backgroundcolor = self.options['videobackground']
-            else:
-                backgroundcolor = self.videoWindow.GetBackgroundColour()
-
-            dc = wx.ClientDC(self.videoWindow)
-            dc.SetBrush(wx.Brush(backgroundcolor))
-            dc.DrawRectangle(0,0, self.videoWindow.GetSize()[0], self.videoWindow.GetSize()[1])
-            dc.SetFont(wx.Font(intPPI(48), wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD))
-            if backgroundcolor != wx.BLACK:
-                dc.SetTextForeground(wx.BLACK)
-            else:
-                dc.SetTextForeground(wx.Colour(160,160,160))
-            dc.DrawLabel('Loading in progress...', self.videoWindow.GetClientRect(), wx.ALIGN_CENTER)
-            if __debug__:
-                print>>sys.stderr, 'Error in PaintAVIFrame: script is None'
+                dc = wx.ClientDC(self.videoWindow)
+                dc.SetBrush(wx.Brush(backgroundcolor))
+                dc.DrawRectangle(0,0, self.videoWindow.GetSize()[0], self.videoWindow.GetSize()[1])
+                dc.SetFont(wx.Font(intPPI(48), wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD))
+                if backgroundcolor != wx.BLACK:
+                    dc.SetTextForeground(wx.BLACK)
+                else:
+                    dc.SetTextForeground(wx.Colour(160,160,160))
+                dc.DrawLabel('Loading in progress...', self.videoWindow.GetClientRect(), wx.ALIGN_CENTER)
+                if __debug__:
+                    print>>sys.stderr, 'Error in PaintAVIFrame: script is None'
             return
 
         if self.zoomwindow or self.zoomfactor != 1 or self.flip:
@@ -25526,22 +25562,34 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         # TH_WaitForFrame()
         '''
         if th.isAlive():
+            disabler = wx.WindowDisabler()
+            if self.progressShown:
+                wx.GetApp().ProcessIdle() # close clip progress dialog
             i = 0
             msgShown = False
-            disabler = wx.WindowDisabler()
             if self.ClipRefreshPainter:
+                #evtloop = wx.EventLoop()
+                #ea = wx.EventLoopActivator(evtloop)
                 self.videoWindow.SetDoubleBuffered(True)
+                if self.IsIconized():
+                    sash = self.mainSplitter.GetSashPosition()
+                    self.Iconize(False)
+                    self.mainSplitter.SetSashPosition(sash)
+                    try:
+                        wx.GetApp().SafeYieldFor(self.videoWindow, wx.wxEVT_PAINT)
+                    except:
+                        pass
             msg = utils.resource_str_threadwait
             msg_1 = msg if self.WinVersion < 7 else ''
 
-            if self.ClipRefreshPainter and self.options['threadprogressopt'] == 2: #self.options['hidethreadprogress']:
+            if self.ClipRefreshPainter and (self.options['threadprogressopt'] == 2 and not self.progressShown):
                 progress = None
             else:
                 progress = wx.ProgressDialog(_('Waiting for frame {0}'.format(nr)),msg_1,10, self,
                             style=wx.PD_ELAPSED_TIME|wx.PD_CAN_ABORT|wx.PD_APP_MODAL)
             try:
                 while th.isAlive():
-                    if not progress and wx.GetKeyState(wx.WXK_CONTROL):
+                    if not progress and i % 3 == 0 and wx.GetKeyState(wx.WXK_CONTROL):
                         progress = wx.ProgressDialog(_('Waiting for frame {0}'.format(nr)),msg_1,10,self,
                                     style=wx.PD_ELAPSED_TIME|wx.PD_CAN_ABORT|wx.PD_APP_MODAL)
                     if progress:
@@ -25558,12 +25606,18 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     if self.ClipRefreshPainter and i % 5 == 0:
                         if wx.GetApp().Pending():
                             pass
+                        #if evtloop.Pending():
+                            #pass
                     th.join(0.5)
             finally:
                 del disabler
                 if self.ClipRefreshPainter:
+                    #while evtloop.Pending():
+                        #evtloop.Dispatch()
+                    #del ea
                     wx.GetApp().SafeYieldFor(self, wx.wxEVT_TIMER)
                     self.videoWindow.SetDoubleBuffered(False)
+                    self.ClipRefreshPainter = False
                 if progress:
                     progress.Destroy()
                 if th.isAlive():
@@ -25613,6 +25667,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if self.ClipRefreshPainter: # it's only on first frame after creating a clip
                 self.videoWindow.SetDoubleBuffered(True)
                 disabler = wx.WindowDisabler()
+                #evtloop = wx.EventLoop()
+                #ea = wx.EventLoopActivator(evtloop)
                 try:
                     _t = time.time() + self.progressDelayTime
                     i = 0
@@ -25621,11 +25677,17 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                             i = 0
                             if wx.GetApp().Pending(): # the request is enough
                                 pass
+                            #if evtloop.Pending():
+                                #pass
                         wx.MilliSleep(10) # On the first frame after creating a clip we can sleep more time
                 finally:
                     del disabler
                     if not th.isAlive():
+                        #while evtloop.Pending():
+                            #evtloop.Dispatch()
                         wx.GetApp().SafeYieldFor(self, wx.wxEVT_TIMER)
+                        self.ClipRefreshPainter = False
+                    #del ea
                     self.videoWindow.SetDoubleBuffered(False)
                     return self.TH_WaitForFrame(script, th, nr)
             else:
@@ -25638,22 +25700,35 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     # Thread handle with events, (advanced frame thread) a bit faster on my system
     def WaitForFrameThread(self, script, th, nr):
         if th.IsRunning():
+            disabler = wx.WindowDisabler()
+            if self.progressShown:
+                wx.GetApp().ProcessIdle() # close clip progress dialog
             i = 0
             msgShown = False
-            disabler = wx.WindowDisabler()
             msg = utils.resource_str_threadwait
             msg_1 = msg if self.WinVersion < 7 else ''
-            if self.ClipRefreshPainter:
-                self.videoWindow.SetDoubleBuffered(True)
 
-            if self.ClipRefreshPainter and self.options['threadprogressopt'] == 2:
+            if self.ClipRefreshPainter:
+                #evtloop = wx.EventLoop()
+                #ea = wx.EventLoopActivator(evtloop)
+                self.videoWindow.SetDoubleBuffered(True)
+                if self.IsIconized():
+                    sash = self.mainSplitter.GetSashPosition()
+                    self.Iconize(False)
+                    self.mainSplitter.SetSashPosition(sash)
+                    try:
+                        wx.GetApp().SafeYieldFor(self.videoWindow, wx.wxEVT_PAINT)
+                    except:
+                        pass
+
+            if self.ClipRefreshPainter and (self.options['threadprogressopt'] == 2 and not self.progressShown):
                 progress = None
             else:
                 progress = wx.ProgressDialog(_('Waiting for frame {0}'.format(nr)),msg_1,10, self,
                             style=wx.PD_ELAPSED_TIME|wx.PD_CAN_ABORT|wx.PD_APP_MODAL)
             try:
                 while th.isAlive() and th.IsRunning():
-                    if not progress and wx.GetKeyState(wx.WXK_CONTROL):
+                    if not progress and i % 3 == 0 and wx.GetKeyState(wx.WXK_CONTROL):
                         progress = wx.ProgressDialog(_('Waiting for frame {0}'.format(nr)),msg_1,10,self,
                                     style=wx.PD_ELAPSED_TIME|wx.PD_CAN_ABORT|wx.PD_APP_MODAL)
                     if progress:
@@ -25670,17 +25745,26 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     if self.ClipRefreshPainter and i % 5 == 0:
                         if wx.GetApp().Pending():
                             pass
+                        #if evtloop.Pending():
+                            #pass
                     th.join(0.5)
             finally:
-                del disabler # must called at first !!!
+                del disabler
                 if self.ClipRefreshPainter:
-                    wx.GetApp().SafeYieldFor(self, wx.wxEVT_TIMER)
+                    #while evtloop.Pending():
+                        #evtloop.Dispatch()
+                    #del ea
+                    wx.GetApp().SafeYieldFor(self, wx.wxEVT_TIMER) # process (delete) all events
+                    self.ClipRefreshPainter = False
                     self.videoWindow.SetDoubleBuffered(False)
                 if progress:
                     progress.Destroy()
                 if th.IsRunning():
                     self.Thread_List.append((th, None))
                     return False
+        else:
+            self.ClipRefreshPainter = False
+            self.videoWindow.SetDoubleBuffered(False)
         re = not th.IsError()
         th.Reset()
         return re
@@ -25716,6 +25800,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if self.ClipRefreshPainter:
             self.videoWindow.SetDoubleBuffered(True)
             disabler = wx.WindowDisabler()
+            #evtloop = wx.EventLoop()
+            #ea = wx.EventLoopActivator(evtloop)
             try:
                 i = 0
                 while th.isAlive() and th.IsRunning() and time.time() <= _t:
@@ -25724,14 +25810,21 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         i = 0
                         if wx.GetApp().Pending(): # the request is enough
                             pass
+                        #if evtloop.Pending():
+                            #pass
                     wx.MilliSleep(10) # on first frame we can sleep longer
             finally:
-                del disabler # do not pass the disabler to other functions
-                self.videoWindow.SetDoubleBuffered(False)
+                del disabler
                 if th.IsRunning():
+                    #del ea
                     return self.WaitForFrameThread(script, th, nr)
                 else:
+                    #while evtloop.Pending():
+                        #evtloop.Dispatch()
+                    #del ea
                     wx.GetApp().SafeYieldFor(self, wx.wxEVT_TIMER)
+                    self.ClipRefreshPainter = False
+                    self.videoWindow.SetDoubleBuffered(False)
                     re = not th.IsError()
                     if not re:
                         th.Reset()
@@ -28790,13 +28883,26 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 #self.NewTab(copytab=True)
                 #self.scriptNotebook.DeletePage(index)
 
-
+""" Test FilterEvent
+  Event_Skip = -1,
+  Event_Ignore = 0,
+  Event_Processed = 1
+  wx.GetApp().SetCallFilterEvent(True)
+"""
 class MainApp(wxp.App):
     def OnInit(self):
         self.frame = MainFrame()
         self.SetTopWindow(self.frame)
         return True
-
+    """
+    def FilterEvent(self, event):
+        t = event.GetEventType()
+        if t == wx.EVT_KEY_DOWN.typeId:
+            print('Key down')
+        if t == wx.EVT_PAINT.typeId or t == wx.EVT_NC_PAINT.typeId or t == wx.EVT_ERASE_BACKGROUND.typeId:
+            return -1
+        return 0
+    """
 def main():
     try:
         ctypes.CDLL('libX11.so').XInitThreads()

@@ -38,6 +38,17 @@ If, for example, there is a '-' in the file name of the dll, AvsPmod will report
 please rename this dll and replace the '-' with a '_'
 
 --------------------------
+Version 2.7.2.9 [2022-08-21] GPo
+--------------------------
+* Fixed: flickering of the slider window when option 2 or 3 of the thread progress dialog is set.
+
+--------------------------
+Version 2.7.2.8 [2022-08-21] GPo
+--------------------------
+* Thread progress dialog option 2 and 3 revised (hopefully now error free).
+* Some other changes
+
+--------------------------
 Version 2.7.2.7 [2022-08-13] GPo
 --------------------------
 * Fixed: with timeline range set and middle mouse button clicked in the status bar, the current frame number was not updated.
