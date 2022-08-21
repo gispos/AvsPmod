@@ -22685,8 +22685,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
             try:
                 if self.ClipRefreshPainter:
-                    evtloop = wx.EventLoop()
-                    ea = wx.EventLoopActivator(evtloop)
                     self.videoWindow.SetDoubleBuffered(True)
                     t = 0
                     while th.isAlive() and t < self.progressDelayTime:
@@ -22698,10 +22696,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         t += 2
                         th.join(2)
                         if t % 4 == 0:
-                            #if wx.GetApp().Pending():
-                                #pass # The request seems to be enough
-                            if evtloop.Pending():
-                                pass
+                            if wx.GetApp().Pending():
+                                pass # The request seems to be enough
                             if wx.GetKeyState(wx.WXK_SHIFT):
                                 if self.IsIconized():
                                     self.Iconize(False)
@@ -22755,10 +22751,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                         progress.Pulse(msg)
                             i += 1
                             if self.ClipRefreshPainter and i % 5 == 0:
-                                #if wx.GetApp().Pending():
-                                    #pass # The request seems to be enough
-                                if evtloop.Pending():
-                                    pass
+                                if wx.GetApp().Pending():
+                                    pass # The request seems to be enough
                                 if wx.GetKeyState(wx.WXK_SHIFT):
                                     if self.IsIconized():
                                         self.Iconize(False)
@@ -22788,19 +22782,17 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         rq.put(True) # flag for thread (release or assign later the clip)
                         self.Thread_List.append((th,q))
             finally:
+                del disabler # must be at first
+                """
                 if self.ClipRefreshPainter:
-                    while evtloop.Pending():
-                        evtloop.Dispatch()
-                    del ea
-                    """
                     if wx.GetApp().Pending():
                         try:
                             wx.GetApp().SafeYieldFor(self,  wx.wxEVT_TIMER)
                         except:
                            pass
-                    """
+                """
                 self.progressShown = progress is not None # needed for frame thread if ClipRefreshPainter
-                del disabler
+
                 if progress:
                     progress.Destroy()
                 self.videoWindow.SetDoubleBuffered(False)
@@ -25576,8 +25568,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             i = 0
             msgShown = False
             if self.ClipRefreshPainter:
-                evtloop = wx.EventLoop()
-                ea = wx.EventLoopActivator(evtloop)
+                #evtloop = wx.EventLoop()
+                #ea = wx.EventLoopActivator(evtloop)
                 self.videoWindow.SetDoubleBuffered(True)
                 if self.IsIconized():
                     sash = self.mainSplitter.GetSashPosition()
@@ -25612,18 +25604,18 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                             progress.Pulse(msg)
                     i += 1
                     if self.ClipRefreshPainter and i % 5 == 0:
-                        #~if wx.GetApp().Pending():
-                            #pass
-                        if evtloop.Pending():
+                        if wx.GetApp().Pending():
                             pass
+                        #if evtloop.Pending():
+                            #pass
                     th.join(0.5)
             finally:
                 del disabler
                 if self.ClipRefreshPainter:
-                    while evtloop.Pending():
-                        evtloop.Dispatch()
-                    del ea
-                    #~wx.GetApp().SafeYieldFor(self, wx.wxEVT_TIMER)
+                    #while evtloop.Pending():
+                        #evtloop.Dispatch()
+                    #del ea
+                    wx.GetApp().SafeYieldFor(self, wx.wxEVT_TIMER)
                     self.videoWindow.SetDoubleBuffered(False)
                     self.ClipRefreshPainter = False
                 if progress:
@@ -25675,27 +25667,27 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if self.ClipRefreshPainter: # it's only on first frame after creating a clip
                 self.videoWindow.SetDoubleBuffered(True)
                 disabler = wx.WindowDisabler()
-                evtloop = wx.EventLoop()
-                ea = wx.EventLoopActivator(evtloop)
+                #evtloop = wx.EventLoop()
+                #ea = wx.EventLoopActivator(evtloop)
                 try:
                     _t = time.time() + self.progressDelayTime
                     i = 0
                     while th.isAlive() and time.time() <= _t:
                         if i % 300 == 0:
                             i = 0
-                            #~if wx.GetApp().Pending(): # the request is enough
-                                #pass
-                            if evtloop.Pending():
+                            if wx.GetApp().Pending(): # the request is enough
                                 pass
+                            #if evtloop.Pending():
+                                #pass
                         wx.MilliSleep(10) # On the first frame after creating a clip we can sleep more time
                 finally:
                     del disabler
                     if not th.isAlive():
-                        while evtloop.Pending():
-                            evtloop.Dispatch()
-                        #~wx.GetApp().SafeYieldFor(self, wx.wxEVT_TIMER)
+                        #while evtloop.Pending():
+                            #evtloop.Dispatch()
+                        wx.GetApp().SafeYieldFor(self, wx.wxEVT_TIMER)
                         self.ClipRefreshPainter = False
-                    del ea
+                    #del ea
                     self.videoWindow.SetDoubleBuffered(False)
                     return self.TH_WaitForFrame(script, th, nr)
             else:
@@ -25717,8 +25709,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             msg_1 = msg if self.WinVersion < 7 else ''
 
             if self.ClipRefreshPainter:
-                evtloop = wx.EventLoop()
-                ea = wx.EventLoopActivator(evtloop)
+                #evtloop = wx.EventLoop()
+                #ea = wx.EventLoopActivator(evtloop)
                 self.videoWindow.SetDoubleBuffered(True)
                 if self.IsIconized():
                     sash = self.mainSplitter.GetSashPosition()
@@ -25751,18 +25743,18 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                             progress.Pulse(msg)
                     i += 1
                     if self.ClipRefreshPainter and i % 5 == 0:
-                        #~if wx.GetApp().Pending():
-                            #pass
-                        if evtloop.Pending():
+                        if wx.GetApp().Pending():
                             pass
+                        #if evtloop.Pending():
+                            #pass
                     th.join(0.5)
             finally:
                 del disabler
                 if self.ClipRefreshPainter:
-                    while evtloop.Pending():
-                        evtloop.Dispatch()
-                    del ea
-                    #~wx.GetApp().SafeYieldFor(self, wx.wxEVT_TIMER) # process (delete) all events
+                    #while evtloop.Pending():
+                        #evtloop.Dispatch()
+                    #del ea
+                    wx.GetApp().SafeYieldFor(self, wx.wxEVT_TIMER) # process (delete) all events
                     self.ClipRefreshPainter = False
                     self.videoWindow.SetDoubleBuffered(False)
                 if progress:
@@ -25808,29 +25800,29 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if self.ClipRefreshPainter:
             self.videoWindow.SetDoubleBuffered(True)
             disabler = wx.WindowDisabler()
-            evtloop = wx.EventLoop()
-            ea = wx.EventLoopActivator(evtloop)
+            #evtloop = wx.EventLoop()
+            #ea = wx.EventLoopActivator(evtloop)
             try:
                 i = 0
                 while th.isAlive() and th.IsRunning() and time.time() <= _t:
                     i += 1
                     if i % 300 == 0:
                         i = 0
-                        #~if wx.GetApp().Pending(): # the request is enough
-                            #pass
-                        if evtloop.Pending():
+                        if wx.GetApp().Pending(): # the request is enough
                             pass
+                        #if evtloop.Pending():
+                            #pass
                     wx.MilliSleep(10) # on first frame we can sleep longer
             finally:
                 del disabler
                 if th.IsRunning():
-                    del ea
+                    #del ea
                     return self.WaitForFrameThread(script, th, nr)
                 else:
-                    while evtloop.Pending():
-                        evtloop.Dispatch()
-                    del ea
-                    #~wx.GetApp().SafeYieldFor(self, wx.wxEVT_TIMER)
+                    #while evtloop.Pending():
+                        #evtloop.Dispatch()
+                    #del ea
+                    wx.GetApp().SafeYieldFor(self, wx.wxEVT_TIMER)
                     self.ClipRefreshPainter = False
                     self.videoWindow.SetDoubleBuffered(False)
                     re = not th.IsError()
