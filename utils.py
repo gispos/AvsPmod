@@ -32,7 +32,7 @@ resource_str_displayfilter = ("## you can run short macro with line start: #>\n"
                               "ch = ch/4*4\n"
                               "Spline36Resize((round(ch*(w/h))/4)*4, ch)")
 
-resource_str_displayfilter_warn = _("You cannot change the display filter when the preview filter is switched on")
+#resource_str_displayfilter_warn = _("You cannot change the display filter when the preview filter is switched on")
 
 emptySnapShot = [-1, None, "", 0] # FrameNr, Bitmap, script, previewFilterIdx
 

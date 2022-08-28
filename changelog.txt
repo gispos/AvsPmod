@@ -38,6 +38,14 @@ If, for example, there is a '-' in the file name of the dll, AvsPmod will report
 please rename this dll and replace the '-' with a '_'
 
 --------------------------
+Version 2.7.3.0 [2022-08-28] GPo
+--------------------------
+* Display filter can now be changed even if the 'Preview Filter' is enabled.
+* Fixed 'Number Wheel' True/False was broken.
+* Update 'Session info tool'
+* Some other changes
+
+--------------------------
 Version 2.7.2.9 [2022-08-21] GPo
 --------------------------
 * Fixed: flickering of the slider window when option 2 or 3 of the thread progress dialog is set.

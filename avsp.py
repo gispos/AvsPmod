@@ -8669,8 +8669,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         mdc.DrawPolygon([(int(8*factor),0), (int(2*factor),int(6*factor)), (int(8*factor),int(12*factor))])
         mdc.DrawPolygon([(int(8*factor),int(18*factor)), (int(2*factor),int(24*factor)), (int(8*factor),int(30*factor))])
         mdc.DrawPolygon([(int(8*factor),int(36*factor)), (int(2*factor),int(42*factor)), (int(8*factor),int(48*factor))])
-
         mdc = None
+
         bmpShow = wx.EmptyBitmap(w, h)
         bmpShow.SetMask(wx.Mask(bmpMask))
         bmpHide = bmpShow.ConvertToImage().Mirror().ConvertToBitmap()
@@ -10034,6 +10034,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         scriptWindow.resizeFilter = (False, self.options['resizefilter'], 1, True)
         scriptWindow.lastZoom = None # GPo, 2021 script last zoom settings
         scriptWindow.refreshAVI = True  # GPo self.refreshAVI isn't optimal, it is Global!
+        #scriptWindow.displayFilter = None
         try:
             scriptWindow.contextMenu = self.menuBackups[0] if self.menuBackups else self.GetMenuBar().GetMenu(1)
         except AttributeError:
@@ -10049,8 +10050,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             ctrl = event.GetEventObject()
             script = self.currentScript
             idx = 0 if not ctrl.IsChecked() else script.lastpreviewFilterIdx if script.lastpreviewFilterIdx > 0 else 1
-            #~self.OnMenuPreviewFilter(index=idx, updateUserSliders=False)
-            self.OnMenuPreviewFilter(index=idx, updateUserSliders=True) # updateUserSliders, same as select menu
+            self.OnMenuPreviewFilter(index=idx, updateUserSliders=True)
 
         def OnRightUpScriptWindow(event):
             event.Skip()
@@ -13706,18 +13706,23 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     # display filter on/off (can also run a macro file or display filter macro text #>
     def OnMenuVideoDisplayFilter(self, event, enabled=False):
+        """ New removed
         if self.currentScript.previewFilterIdx > 0:
             wx.MessageBox(utils.resource_str_displayfilter_warn)
             self.UpdateMenuItem(_('Display'), self.displayFilter, 'video', [_('Display filter')])
             return
+        """
         if event:
             self.displayFilter = not self.displayFilter
         else:
             self.displayFilter = enabled
-        curIdx = self.currentScript.previewFilterIdx
+        #curIdx = self.currentScript.previewFilterIdx
         self.UpdateMenuItem(_('Display'), self.displayFilter, 'video', [_('Display filter')])
         for i in xrange(self.scriptNotebook.GetPageCount()):
-            self.scriptNotebook.GetPage(i).display_clip_refresh_needed = True
+            script = self.scriptNotebook.GetPage(i)
+            #if script.AVI:
+                #script.AVI.displayFilter = self.options['displayfilter'] if self.displayFilter else None
+            script.display_clip_refresh_needed = True
 
         macroTxt = ''
         macrofilename = 'intern'
@@ -13739,15 +13744,21 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.ExecuteMacro(macrofilename=macrofilename, macroTxt=macroTxt)
 
         if self.previewWindowVisible:
+            """
             if curIdx > 0:
+                self.currentScript.display_clip_refresh_needed = False # new added
                 wx.CallAfter(self.OnMenuPreviewFilter, index=curIdx)
             else:
                 self.ShowVideoFrame()
+            """
+            self.ShowVideoFrame()
 
     def OnMenuSelectDisplayFilter(self, event):
+        """
         if self.currentScript.previewFilterIdx > 0:
             wx.MessageBox(utils.resource_str_displayfilter_warn)
             return
+        """
         def _setDisplayFilter(event):
             obj = event.GetEventObject()
             key = obj.GetLabel(event.GetId())
@@ -13785,7 +13796,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         ID = dlg.ShowModal()
         dlg.Destroy()
         if ID == wx.ID_OK:
-            self.options['displayfilter'] = textCtrl.GetValue()
+            self.options['displayfilter'] = textCtrl.GetValue().strip()
             self.OnMenuVideoDisplayFilter(None, self.displayFilter)
 
     # copy from script
@@ -14922,8 +14933,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         def keyChecker(key):
             #if not re.match(r'^\w+$', key):
                 #return '%s\n%s' % (_('Insert aborted:'), _('Only alphanumeric allowed!'))
-            if len(dlg.GetDict()) > 14:
-                return '%s\n%s' % (_('Insert aborted:'), _('A maximum of 15 entries are allowed!'))
+            if len(dlg.GetDict()) > 29:
+                return '%s\n%s' % (_('Insert aborted:'), _('A maximum of 30 entries are allowed!'))
         self.StopPlayback()
         dlg = wxp.EditStringDictDialog(
             self,
@@ -16578,8 +16589,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 s = 'False' if word[0].isupper() else 'false'
             elif word.lower() == 'false':
                 s = 'True' if word[0].isupper() else 'true'
+            if s:
+                set_start, set_end = selstart, selstart + len(s)
             # numbers
-            if not s:
+            else:
                 # search for the first digit and move selstart
                 if not word[0].isdigit():
                     i = 0
@@ -17278,27 +17291,29 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if wx.VERSION > (2, 9):
                 self.OnCropDialogSpinTextChange()
         else:
-            if self.refreshAVI or script.refreshAVI:# GPo, on double clicked (zoom full size), self.refreshAVI is after first mouse down False
+
+            # GPo, on double clicked (zoom full size), self.refreshAVI is after first mouse down False
+            if (self.refreshAVI or script.refreshAVI): # self.ScriptChanged(script): previewFilter!
                 if self.options['refreshpreview']:
                     self.ShowVideoFrame_CheckPreview()
-                    #if self.ClipRefreshPainter:
-                        #return
                 else:
                     if (script.previewFilterIdx > 0) and not self.ComparePreviewFilterDict(): # then update the slider
                         self.IdleCallDict['UpdateUserSliders'] = self.UpdateUserSliders()
                     self.refreshAVI = script.refreshAVI = False
 
-            videoWindow = self.videoWindow
-            videoWindow.CaptureMouse()
-            videoWindow.SetCursor(wx.StockCursor(wx.CURSOR_HAND))
-            videoWindow.oldPoint = event.GetPosition()
-            videoWindow.oldOrigin = videoWindow.GetViewStart()
-            if self.getPixelInfo:
-                if self.getPixelInfo == 'string':
-                    self.pixelInfo = self.GetPixelInfo(event, string_=True)
-                else:
-                    self.pixelInfo = self.GetPixelInfo(event)
-                self.getPixelInfo = False
+            # must be checked again, the event is no longer current after ShowVideoFrame a MouseUp may already be triggered.
+            if wx.GetMouseState().LeftIsDown():
+                videoWindow = self.videoWindow
+                videoWindow.CaptureMouse()
+                videoWindow.SetCursor(wx.StockCursor(wx.CURSOR_HAND))
+                videoWindow.oldPoint = event.GetPosition()
+                videoWindow.oldOrigin = videoWindow.GetViewStart()
+                if self.getPixelInfo:
+                    if self.getPixelInfo == 'string':
+                        self.pixelInfo = self.GetPixelInfo(event, string_=True)
+                    else:
+                        self.pixelInfo = self.GetPixelInfo(event)
+                    self.getPixelInfo = False
         event.Skip()
 
     def AutoPreviewGetNextPageIndex(self, reverse):
@@ -22484,18 +22499,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     def UpdateScriptAVI(self, script=None, forceRefresh=False, keep_env=None,
                         prompt=True, showCursor=True, resizeFilterInfo=None):
 
-        #~def updateAbandonedScript(qr, AVI, script, scripttxt, scr_filename):
         def updateAbandonedScript(AVI, script, scripttxt, scr_filename):
             def _showDialog(idx):
                 if self.IsEnabled() and not self.ClipRefreshPainter:
-                    """
-                    evtloop = wx.EventLoop()
-                    ea = wx.EventLoopActivator(evtloop)
-                    while evtloop.Pending():
-                        evtloop.Dispatch()
-                    del ea
-                    """
-                    wx.GetApp().ProcessIdle() # close frame progress dialog
+                    wx.GetApp().ProcessIdle()
                     dlg = wx.MessageDialog(self,_('Abandoned clip assigned. Select the tab?'), style=wx.YES_NO|wx.CENTRE)
                     ID = dlg.ShowModal()
                     dlg.Destroy()
@@ -22517,21 +22524,17 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         script.previewtxt = self.ScriptChanged(script, return_styledtext=True)[1]
                         script.AVI = AVI
                         script.display_clip_refresh_needed = True
-                        #qr.put(True) # signal OK, thread can finish without freeing the clip
-                        #wx.MilliSleep(50) # leave the thread finish after put
                         self.StopPlayback()
                         self.UpdateScriptTagProperties(script, scripttxt)
                         self.GetAutoSliderInfo(script, scripttxt)
                         self.UpdateScriptTabname(script) # set loaded state
                         self.StatusbarTimer_Start(3000, _(u'Abandoned clip assigned: "{0}"').format(scr_filename), bellcount=1)
                         if self.scriptNotebook.GetSelection() != idx:
-                            if self.IsEnabled() and not self.ClipRefreshPainter: # with AsyncCall needed
-                                wx.CallAfter(_showDialog, idx)
+                            wx.CallAfter(_showDialog, idx)
                         return True
             except:
                 pass
             return False
-            #qr.put(False)
 
         # only used if not AVI Updated and only a new DisplayClip is needed
         def TH_CreateDisplayClip(script, readmatrix, killFilterClip):
@@ -22564,9 +22567,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     i = 0
                     c = True
                     msg =  _('Process display clip...')
+                    progress = wx.ProgressDialog(_('Waiting for display clip'),msg ,10,self,
+                        style=wx.PD_ELAPSED_TIME|wx.PD_CAN_ABORT|wx.PD_APP_MODAL)
                     try:
-                        progress = wx.ProgressDialog(_('Waiting for display clip'),msg ,10,self,
-                                    style=wx.PD_ELAPSED_TIME|wx.PD_CAN_ABORT|wx.PD_APP_MODAL)
                         while th.isAlive():
                             c,s = progress.Pulse()
                             if not c:
@@ -22574,10 +22577,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                             i += 1
                             th.join(0.5)
 
-                        if progress and c:
+                        if c: # if wx.GetApp().ProcessIdle() then never show
                             progress.Pulse(_('Process finished'))
                     finally:
                         progress.Destroy()
+                        wx.GetApp().ProcessIdle()
                     try:
                         ok = q.get_nowait()
                     except:
@@ -22624,12 +22628,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     if found:
                         while self.ClipRefreshPainter or not self.IsEnabled():
                             wx.MilliSleep(1000)
-                        #qr = queue.Queue()
-                        """
-                        wx.CallAfter(updateAbandonedScript, qr, AVI, script, scripttxt, scr_filename) # go into the main thread
-                        if qr.get(block=True, timeout=None) is True: # wait max 90 seconds for the result
-                            return
-                        """
                         if AsyncCall(updateAbandonedScript, AVI, script, scripttxt, scr_filename).Wait():
                             return
             except:
@@ -22648,11 +22646,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
             def GetFreeMemory():
                 try:
-                    mem = int(wx.GetFreeMemory()/1024/1024)
-                    if mem < 0:
-                        mem = 0
+                    mem = max(int(wx.GetFreeMemory()/1024/1024), 0)
                 except:
-                    return 0
+                    mem = 0
                 return mem
 
             AVI = None
@@ -22678,6 +22674,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             disabler = wx.WindowDisabler()
             sash = self.mainSplitter.GetSashPosition()
             progress = None
+            wx.GetApp().ProcessIdle() # New
 
             msg = utils.resource_str_threadwait2 if self.options['avithreadassignlater'] else utils.resource_str_threadwait
             msg_mem = '\n\nAvailable memory: %i MB'
@@ -22725,53 +22722,52 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     c = True
                     msgShown = False
                     show_mem = self.WinVersion > 6 and self.options['threaddlgshowmem']
-                    try:
-                        if self.ClipRefreshPainter and self.options['threadprogressopt'] == 2:
-                            pass
-                        elif not progress:
+
+                    if self.ClipRefreshPainter and self.options['threadprogressopt'] == 2:
+                        pass
+                    elif not progress:
+                        progress = wx.ProgressDialog(_('Waiting for avisynth clip'),msg_1,10,self,
+                                    style=wx.PD_ELAPSED_TIME|wx.PD_CAN_ABORT|wx.PD_APP_MODAL|wx.PD_AUTO_HIDE)
+
+                    while th.isAlive():
+                        if not progress and i % 2 == 0 and wx.GetKeyState(wx.WXK_CONTROL):
                             progress = wx.ProgressDialog(_('Waiting for avisynth clip'),msg_1,10,self,
-                                        style=wx.PD_ELAPSED_TIME|wx.PD_CAN_ABORT|wx.PD_APP_MODAL|wx.PD_AUTO_HIDE)
-
-                        while th.isAlive():
-                            if not progress and i % 2 == 0 and wx.GetKeyState(wx.WXK_CONTROL):
-                                progress = wx.ProgressDialog(_('Waiting for avisynth clip'),msg_1,10,self,
+                                        style=wx.PD_ELAPSED_TIME|wx.PD_CAN_ABORT|wx.PD_APP_MODAL)
+                        if progress:
+                            c,s = progress.Pulse()
+                            if not c:
+                                if i > 10: break
+                                elif not msgShown:
+                                    msgShown = True
+                                    progress.Pulse(msg)
+                            elif i > 9 and i % 5 == 0:
+                                if show_mem:
+                                    progress.Pulse(msg + (msg_mem % GetFreeMemory()))
+                                elif not msgShown:
+                                    msgShown = True
+                                    progress.Pulse(msg)
+                        i += 1
+                        if self.ClipRefreshPainter and i % 5 == 0:
+                            if wx.GetApp().Pending():
+                                pass # The request seems to be enough
+                            if wx.GetKeyState(wx.WXK_SHIFT):
+                                if self.IsIconized():
+                                    self.Iconize(False)
+                                    self.mainSplitter.SetSashPosition(sash)
+                                    try:
+                                        wx.GetApp().SafeYieldFor(self.videoWindow, wx.wxEVT_PAINT)
+                                    except:
+                                        pass
+                                else:
+                                    if not progress:
+                                        progress = wx.ProgressDialog(_('Waiting for avisynth clip'),msg_1,10,self,
                                             style=wx.PD_ELAPSED_TIME|wx.PD_CAN_ABORT|wx.PD_APP_MODAL)
-                            if progress:
-                                c,s = progress.Pulse()
-                                if not c:
-                                    if i > 10: break
-                                    elif not msgShown:
-                                        msgShown = True
-                                        progress.Pulse(msg)
-                                elif i > 9 and i % 5 == 0:
-                                    if show_mem:
-                                        progress.Pulse(msg + (msg_mem % GetFreeMemory()))
-                                    elif not msgShown:
-                                        msgShown = True
-                                        progress.Pulse(msg)
-                            i += 1
-                            if self.ClipRefreshPainter and i % 5 == 0:
-                                if wx.GetApp().Pending():
-                                    pass # The request seems to be enough
-                                if wx.GetKeyState(wx.WXK_SHIFT):
-                                    if self.IsIconized():
-                                        self.Iconize(False)
-                                        self.mainSplitter.SetSashPosition(sash)
-                                        try:
-                                            wx.GetApp().SafeYieldFor(self.videoWindow, wx.wxEVT_PAINT)
-                                        except:
-                                            pass
-                                    else:
-                                        if not progress:
-                                            progress = wx.ProgressDialog(_('Waiting for avisynth clip'),msg_1,10,self,
-                                                style=wx.PD_ELAPSED_TIME|wx.PD_CAN_ABORT|wx.PD_APP_MODAL)
-                                        self.Iconize(True)
-                            th.join(0.5)
+                                    self.Iconize(True)
+                        th.join(0.5)
+                    ### end loop
 
-                        if c and progress and self.WinVersion > 6:
-                            progress.Pulse(_('Clip process finished'))
-                    finally:
-                        pass # progess is now Destroyed later
+                    if c and progress and self.WinVersion > 6:
+                        progress.Pulse(_('Clip process finished'))
 
                     try:
                         AVI = q.get_nowait()
@@ -25119,19 +25115,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         return True
 
     def PaintAVIFrame(self, inputdc, script, frame, shift=True, isPaintEvent=False):
-        """ moved to OnPaintVideoWindow
-        # if threaded then paint the video window snapshot ( GetVideoWindowBitmap )
-        if self.ClipRefreshPainter and self.bmpVideo:
-            mdc = wx.MemoryDC()
-            mdc.SelectObject(self.bmpVideo)
-            w = self.bmpVideo.GetWidth()
-            h = self.bmpVideo.GetHeight()
-            self.videoWindow.DoPrepareDC(inputdc)
-            inputdc.SetUserScale(1, 1)
-            x, y = self.videoWindow.GetViewStart()
-            inputdc.Blit(x, y, w, h, mdc, 0, 0)
-            return
-        """
         if script.AVI is None:
             if isPaintEvent:
                 if self.options['use_customvideobackground']:
@@ -25195,6 +25178,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.PaintSnapShot(inputdc, script)
         else:
             dc = wx.MemoryDC()
+            dc.Clear()
             w = script.AVI.DisplayWidth
             h = script.AVI.DisplayHeight
             if isPaintEvent and self.bmpVideo:
@@ -25612,8 +25596,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             finally:
                 del disabler
                 if self.ClipRefreshPainter:
-                    #while evtloop.Pending():
-                        #evtloop.Dispatch()
                     #del ea
                     wx.GetApp().SafeYieldFor(self, wx.wxEVT_TIMER)
                     self.videoWindow.SetDoubleBuffered(False)
@@ -25683,8 +25665,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 finally:
                     del disabler
                     if not th.isAlive():
-                        #while evtloop.Pending():
-                            #evtloop.Dispatch()
                         wx.GetApp().SafeYieldFor(self, wx.wxEVT_TIMER)
                         self.ClipRefreshPainter = False
                     #del ea
@@ -25751,8 +25731,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             finally:
                 del disabler
                 if self.ClipRefreshPainter:
-                    #while evtloop.Pending():
-                        #evtloop.Dispatch()
                     #del ea
                     wx.GetApp().SafeYieldFor(self, wx.wxEVT_TIMER) # process (delete) all events
                     self.ClipRefreshPainter = False
@@ -25819,8 +25797,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     #del ea
                     return self.WaitForFrameThread(script, th, nr)
                 else:
-                    #while evtloop.Pending():
-                        #evtloop.Dispatch()
                     #del ea
                     wx.GetApp().SafeYieldFor(self, wx.wxEVT_TIMER)
                     self.ClipRefreshPainter = False

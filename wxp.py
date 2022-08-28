@@ -2090,7 +2090,7 @@ class EditStringDictDialog(wx.Dialog):
 
     def UpdateDictEntry(self):
         if self.infoDict.has_key(self.previousKey) and self.textChanged:
-            self.infoDict[self.previousKey] = self.textCtrl.GetValue()
+            self.infoDict[self.previousKey] = self.textCtrl.GetValue().strip()
 
     def OnValueTextChanged(self, event):
         self.textChanged = True
@@ -2141,7 +2141,7 @@ class EditStringDictDialog(wx.Dialog):
                     return
             # "Rename" the key in the dictionary
             del self.infoDict[self.editName]
-            self.infoDict[newName] = self.textCtrl.GetValue()
+            self.infoDict[newName] = self.textCtrl.GetValue().strip()
 
     def OnButtonInsert(self, event):
         dlg = wx.Dialog(self, wx.ID_ANY, _('Insert a new item'))
@@ -2168,7 +2168,7 @@ class EditStringDictDialog(wx.Dialog):
         # Show the dialog
         ID = dlg.ShowModal()
         newKey = keyTextCtrl.GetValue().lstrip('.')
-        newValue = valueTextCtrl.GetValue()
+        newValue = valueTextCtrl.GetValue().strip()
         dlg.Destroy()
         # Add the new item to the dictionary as well as the listCtrl
         if ID == wx.ID_OK:
