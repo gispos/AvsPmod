@@ -1,5 +1,5 @@
 #-------------------------------------------------------------------------------
-# Name:        PreviewEncode.py
+# Name:        PreviewEncodeThread.py forked from PreviewEncode.py
 # Purpose:     AvsPmod timeline (selections) preview encoding with ffmpeg.exe
 #              Encodes the selection(s) and insert the clips and trims into the script.
 #              The purpose is a quick preview for the selected areas, but if also useful for other purpose.
@@ -12,7 +12,7 @@
 #              Or select a line with trims and run the macro.
 #              Coded files are always overwritten without any sorting order! (if the script name the same)
 #
-#              Save this file (text) as PreviewEncode.py in the AvsPmod macro or a macro subfolder
+#              Save this file (text) as PreviewEncodeThread.py in the AvsPmod macro or a macro subfolder
 #
 # Author:      GPo
 #
@@ -29,6 +29,9 @@
 #                   search for "return" in the script
 #              update 03.09.2022
 #                   Added wx.GetApp().ProcessIdle() after updating the script so that the progress dialog can be closed.
+#                   New variante PreviewEncodeThread.py:
+#                        The whole script runs in one thread, AvsPmod is not blocked, only the processed script is blocked
+#                   if I messed up run PreviewEncode.py
 #
 # Copyright:   (c) GPo 2021
 # Licence:     <free>
@@ -41,6 +44,8 @@ import threading
 import time
 import ctypes
 import wx
+import avsp as _avsp
+
 self = avsp.GetWindow()
 locals_ignor = [k for k, v in locals().items()]
 locals_ignor += ['v', 'k', 'locals_ignor']
@@ -336,6 +341,7 @@ def encodeAvs(infile, outfile, single=True):
        # Only initialize the script again when all encodings are finished!
        subprocess.Popen(args)
 
+# thread for eache encoding
 def RunnThread(avsFile, videoFile):
     thread = threading.Thread(target=encodeAvs, args=(avsFile, videoFile, True,), name='MacroThread')
     thread.daemon = True
@@ -354,7 +360,7 @@ if not selections:
         avsp.MsgBox(_('You must first create selections'))
         return
 
-# We must release the encoded video files or ffmpeg cannot create the new files
+# we must release the encoded video files or ffmpeg cannot create the new files
 frameCount = script.AVI.Framecount
 self.HidePreviewWindow()
 self.OnMenuScriptReleaseMemory(None)
@@ -381,12 +387,64 @@ for start, stop in selections:
 if stop < frameCount-1:
     encodings.append((0, 'Trim(%d, %d)' % (stop+1, 0)))
 
-# start the encoding loop
-i = 0
-trimList = []
-threadList = []
-selTrims = ''
-selClips = ''
+# the main encoding thread
+def StartEncodings(scriptTxt, encodings, vSourceFilter, aSourceFilter, allEncodingsAtOnce, max_encoding_threads, useThreads):
+    global encoding_errors
+    global encoding_file_size
+    thread_error = False
+    trimList = []
+    selTrims = ''
+    selClips = ''
+    i = 0
+    threadList = []
+    try:
+        try:
+            for typ, line in encodings:
+                if typ == 0:
+                    trimList.append((line, '', ''))
+                    continue
+                txt = scriptTxt + line
+                txt = _avsp.AsyncCall(self.GetEncodedText, txt, bom=True).Wait()
+                clip = 'enc%d' % (i)
+                selTrims += line + '++'
+                selClips += clip + '++'
+                videoFile = os.path.join(savePath, '%s_%s%s' % (GetScriptFileName('tab_%i' % script_idx), clip, encoding_args[-1]))
+                avsFile = videoFile + '.avs'
+                try:
+                    with open(avsFile, 'wb') as f:
+                        f.write(txt)
+                        f.close()
+                except IOError as err:
+                    raise
+                time.sleep(0.1) # let the drive finished
+                trimList.append(('', clip, 'video = %s\naudio = %s\n%s = audioDub(video, audio)\n' % (vSourceFilter % videoFile, aSourceFilter % videoFile, clip)))
+                if useThreads:
+                    # check every two seconds if a thread finished and force the next loop,
+                    # so max_encoding_threads always should be running
+                    while len(threadList) >= max_encoding_threads and not encoding_errors:
+                        for x in xrange(len(threadList)):
+                            threadList[x].join(2)
+                            if not threadList[x].isAlive() or encoding_errors:
+                                del threadList[x]
+                                break
+                    if not encoding_errors:
+                        threadList.append(RunnThread(avsFile, videoFile))
+                elif not encoding_errors:
+                    encodeAvs(avsFile, videoFile, not allEncodingsAtOnce)
+                if encoding_errors:
+                    break
+                i += 1
+        except:
+            thread_error = True
+    finally:
+        # wait for the last threads
+        if threadList:
+            for thread in threadList:
+                thread.join()
+        _avsp.AsyncCall(Finish, trimList, selTrims, selClips, thread_error)
+        #wx.CallAfter(Finish, trimList, selTrims, selClips)
+
+
 encoding_errors = ''
 encoding_file_size = 0
 scriptTxt = self.getCleanText(saveScriptTxt)
@@ -397,103 +455,86 @@ if convertToScriptColorSpace:
     vSourceFilter = vSourceFilterEx
 
 start_time = time.time()
-disabler = wx.WindowDisabler()
-try:
-    for typ, line in encodings:
-        if typ == 0:
-            trimList.append((line, '', ''))
-            continue
-        txt = scriptTxt + line
-        txt = self.GetEncodedText(txt, bom=True)
-        clip = 'enc%d' % (i)
-        selTrims += line + '++'
-        selClips += clip + '++'
-        videoFile = os.path.join(savePath, '%s_%s%s' % (GetScriptFileName('tab_%i' % script_idx), clip, encoding_args[-1]))
-        avsFile = videoFile + '.avs'
-        try:
-            with open(avsFile, 'wb') as f:
-                f.write(txt)
-                f.close()
-        except IOError as err:
-            raise
-        time.sleep(0.1) # let the drive finished
-        trimList.append(('', clip, 'video = %s\naudio = %s\n%s = audioDub(video, audio)\n' % (vSourceFilter % videoFile, aSourceFilter % videoFile, clip)))
-        if useThreads:
-            # check every two seconds if a thread finished and force the next loop,
-            # so max_encoding_threads always should be running
-            while len(threadList) >= max_encoding_threads and not encoding_errors:
-                for x in xrange(len(threadList)):
-                    threadList[x].join(2)
-                    if not threadList[x].isAlive() or encoding_errors:
-                        del threadList[x]
-                        break
-            if not encoding_errors:
-                threadList.append(RunnThread(avsFile, videoFile))
-        elif not encoding_errors:
-            encodeAvs(avsFile, videoFile, not allEncodingsAtOnce)
-        if encoding_errors:
-            break
-        i += 1
-finally:
-    del disabler
 
-if encoding_errors:
-    avsp.MsgBox(_('Last encoding returns error. Process is canceled\n') + encoding_errors)
-    return
+# start the main encoding thread
+thread = threading.Thread(target=StartEncodings, args=(scriptTxt, encodings, vSourceFilter, aSourceFilter,
+                          allEncodingsAtOnce, max_encoding_threads, useThreads, ), name='MacroThread')
+thread.daemon = True
+thread.start()
+script.AviThread = thread
 
-# wait for the last threads
-if threadList:
-    for thread in threadList:
-        thread.join()
+# encoding thread finished, call this
+def Finish(trimList, selTrims, selClips, thread_error):
+    global encoding_errors
+    global encoding_file_size
 
-# there may also be errors in the last run
-if encoding_errors:
-    avsp.MsgBox(_('Last encoding returns error. Process is canceled\n') + encoding_errors)
-    return
+    self.StopPlayback()
 
-# insert the trims
-if insertTrims and trimList:
-    sourceTxt = '\n\n# preview encodings\n'
-    if insertSelectionsAsTrims:
-        if selTrims:
-            sourceTxt += '#encode: %s\n' % selTrims[:-2]
-        if selClips:
-            selClips = '#%s\n' % selClips[:-2]
-    else:
-        selClips = ''
-    if convertToScriptColorSpace:
-        sourceTxt += 'pt=BuildPixelType(sample_clip=last)\n'
-        # then copy only the audio conversion from the template if it exists
-        i = convert_txt.find('ConvertAudio')
-        trimTxt = convert_txt[i:] + '\n' if i > -1 else ''
-    else:
-        trimTxt = convert_txt + '\n' if convert_txt else ''
-
-    for trim, clip, source in trimList:
-        if source:
-           sourceTxt += source
-        if clip:
-            trimTxt += clip + '++'
-        elif trim:
-            trimTxt += trim + '++'
-
-    sourceTxt += selClips + trimTxt
     try:
-        x = script.GetLineCount() - 1
-        while x > 1 and not script.GetLine(x).strip():
-            x -= 1
-        script.InsertText(script.GetLineEndPosition(x), sourceTxt[:-2])
+        script.AviThread = None
     except:
-        avsp.MsgBox(_('Error, cannot insert the encode preview text\nTrying to create new tab')) # Should never be
-        try:
-            self.NewTab(text=saveScriptTxt + '\n' + sourceTxt[:-2])
-        except:
-            pass
+        pass
 
-if not allEncodingsAtOnce:
-    t = time.strftime("%Hh : %Mm : %Ss", time.gmtime(time.time() - start_time))
-    fSize = 'Total file size: %s' % fileSizeToString(encoding_file_size)
-    freeSpace = getFreeSpace(savePath[0:2]+'\\')
-    diskFree = '\nDisk free space: %s' % fileSizeToString(freeSpace) if freeSpace > 0 else ''
-    self.Raise()
-    avsp.MsgBox(_('Encoding finished\n\nElapsed time: %s\n%s%s') % (t, fSize, diskFree))
+    if thread_error:
+        avsp.MsgBox(_('Unknown thread error. Process is canceled\n'))
+        return
+
+    if encoding_errors:
+        avsp.MsgBox(_('Last encoding returns error. Process is canceled\n') + encoding_errors)
+        return
+
+    # insert the trims
+    if insertTrims and trimList:
+        sourceTxt = '\n\n# preview encodings\n'
+        if insertSelectionsAsTrims:
+            if selTrims:
+                sourceTxt += '#encode: %s\n' % selTrims[:-2]
+            if selClips:
+                selClips = '#%s\n' % selClips[:-2]
+        else:
+            selClips = ''
+        if convertToScriptColorSpace:
+            sourceTxt += 'pt=BuildPixelType(sample_clip=last)\n'
+            # then copy only the audio conversion from the template if it exists
+            i = convert_txt.find('ConvertAudio')
+            trimTxt = convert_txt[i:] + '\n' if i > -1 else ''
+        else:
+            trimTxt = convert_txt + '\n' if convert_txt else ''
+
+        for trim, clip, source in trimList:
+            if source:
+               sourceTxt += source
+            if clip:
+                trimTxt += clip + '++'
+            elif trim:
+                trimTxt += trim + '++'
+
+        sourceTxt += selClips + trimTxt
+        ok = False
+        try:
+            for i in xrange(self.scriptNotebook.GetPageCount()):
+                if script is self.scriptNotebook.GetPage(i):
+                    self.HidePreviewWindow()
+                    x = script.GetLineCount() - 1
+                    while x > 1 and not script.GetLine(x).strip():
+                        x -= 1
+                    script.InsertText(script.GetLineEndPosition(x), sourceTxt[:-2])
+                    self.scriptNotebook.SetSelection(i)
+                    ok = True
+                    break
+            if not ok: raise
+        except:
+            avsp.MsgBox(_('Error, cannot insert the encode preview text\nTrying to create new tab'))
+            try:
+                self.NewTab(text=saveScriptTxt + '\n' + sourceTxt[:-2])
+            except:
+                wx.Bell()
+                avsp.MsgBox(_('Error, cannot create new tab'))
+
+    if not allEncodingsAtOnce:
+        t = time.strftime("%Hh : %Mm : %Ss", time.gmtime(time.time() - start_time))
+        fSize = 'Total file size: %s' % fileSizeToString(encoding_file_size)
+        freeSpace = getFreeSpace(savePath[0:2]+'\\')
+        diskFree = '\nDisk free space: %s' % fileSizeToString(freeSpace) if freeSpace > 0 else ''
+        self.Raise()
+        avsp.MsgBox(_('Encoding finished\n\nElapsed time: %s\n%s%s') % (t, fSize, diskFree))

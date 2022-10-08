@@ -37,6 +37,15 @@ AvsPmod can only provide a user-friendly editor if he has no problems with the n
 If, for example, there is a '-' in the file name of the dll, AvsPmod will report it at startup, 
 please rename this dll and replace the '-' with a '_'
 
+
+--------------------------
+Version 2.7.3.1 [2022-10-08] GPo
+--------------------------
+* Added Help > 'Video tutorials & more' on Google Drive.
+* Added to Snapshot menu 'Restore to current'
+* Update macro 'PreviewEncode.py', an extended version is available under 'Help > 'Video tutorials & more'
+* Bugfix: If the script contained 'toggle tags' and the option 'Save toggle tags' was not enabled, this caused an error when saving the script. 
+
 --------------------------
 Version 2.7.3.0 [2022-08-28] GPo
 --------------------------

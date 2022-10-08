@@ -1,10 +1,8 @@
-# GPo 2020
-
-import wx
+# GPo 2020, AvsPmod macro Bookmarks to trims
 
 bmlist = avsp.GetBookmarkList(title=False)
 if not bmlist:
-    wx.MessageBox(_('No bookmarks defined.'), _('Error'), style=wx.OK|wx.ICON_ERROR)
+    avsp.MsgBox(_('No bookmarks defined.'), _('Error'))
     return
 
 bmlist.sort()

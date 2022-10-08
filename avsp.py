@@ -8436,7 +8436,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 ((_('Enable line-by-line update'), wxp.OPT_ELEM_CHECK, 'autoupdatevideo', _('Enable the line-by-line video update mode (update every time the cursor changes line position)'), dict() ), ),
                 ((_('Focus the video preview upon refresh'), wxp.OPT_ELEM_CHECK, 'focusonrefresh', _('Switch focus to the video preview window when using the refresh command'), dict() ), ),
                 ((_('Refresh preview automatically'), wxp.OPT_ELEM_CHECK, 'refreshpreview', _('Refresh preview when switch focus on video window'), dict() ), ),
-                ((_('Move video slider to timeline start'), wxp.OPT_ELEM_CHECK, 'timelinemoveslidertostart', _('On Timeline moving with Ctrl + Alt + (Left, Right, PageUp, PageDown)\n or left mouse button on the status bar (with Shift no limit)'), dict() ), ),
+                ((_('Move video slider to timeline start'), wxp.OPT_ELEM_CHECK, 'timelinemoveslidertostart', _('On Timeline moving with Ctrl + Alt + (limited range Left/Right or unlimited range PageUp/PageDown)'), dict() ), ),
                 ((_('Shared timeline'), wxp.OPT_ELEM_CHECK, 'enableframepertab', _('Seeking to a certain frame will seek to that frame on all tabs'), dict() ), ),
                 ((_('Only on tabs of the same characteristics'), wxp.OPT_ELEM_CHECK, 'enableframepertab_same', _('Only share timeline for clips with the same resolution and frame count'), dict(ident=20) ), ),
                 ((_('Mouse wheel function'), wxp.OPT_ELEM_LIST, 'mousewheelfunc', _('Determines which mouse wheel function is used, see below tabs.Tab change also possible under Misc -> Mouse browse buttons'), dict(choices=[(_('Frame step'), 'frame_step'), (_('Tab change'), 'tab_change'), (_('Tab change or scroll'), 'tab_change_or_scroll'),]) ), ),
@@ -8447,7 +8447,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 ((_('Startup with last zoom settings'), wxp.OPT_ELEM_CHECK, 'startupwithlastzoom', _('Use last zoom settings at startup'), dict() ), ),
                 ((_('Display default YUV -> RGB conversion'), wxp.OPT_ELEM_LIST, 'defaultmatrix', _('Conversions default for a new script\nAuto = Resolution based'), dict(choices=[(_('Auto tv'), 'auto,tv'), (_('Rec.709'), '709,tv'), (_('Rec.601'), '601,tv'), (_('Auto pc'), 'auto,pc'), (_('PC.709'), '709,pc'), (_('PC.601'), '601,pc')]) ), ),
                 # 0= show tabs always, 1= hide tabs only if row count > 1, 2= hide if fullscreen else 0, 3= hide if fullscreen else 1,  4= hide always
-                ((_('Tab behave in Fullsize/Fullscreen mode'), wxp.OPT_ELEM_LIST, 'fullscreenmode', _('Show or hide the tabs on Fullscreen or Fullsize mode\nDouble click on preview is Fullsize\nPress Ctrl on double click is Fullscreen\nIf multiline tab style, row count can be greater then 1'), \
+                ((_('Tab behave in Fullsize/Fullscreen mode'), wxp.OPT_ELEM_LIST, 'fullscreenmode', _('Show or hide the tabs on Fullscreen or Fullsize mode\nDouble click on preview is Fullsize\nPress Ctrl on double click is Fullscreen\nIf multiline tab style then row count can be greater then 1'), \
                     dict(choices=[(_('(1) Show tabs always'), 0), (_('(2) Hide if row count greater 1'), 1), (_('(3) Hide if fullscreen else (1)'), 2), (_('(4) Hide if fullscreen else (2)'), 3), (_('(5) Hide tabs always'), 4),]) ), ),
                 ((_('Customize video status bar...'), wxp.OPT_ELEM_BUTTON, 'videostatusbarinfo', _('Customize the video information shown in the program status bar'), dict(handler=self.OnConfigureVideoStatusBarMessage) ), ),
                 ((_('Error message font...'), wxp.OPT_ELEM_BUTTON, 'errormessagefont', _('Set the font used for displaying the error if evaluating the script fails'), dict(handler=self.OnConfigureErrorFont) ), ),
@@ -9429,13 +9429,15 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 (''),
                 (_('Snapshot'),
                     (
-                    (_('Take snapshot 1'), '', self.OnMenuTakeSnapShot1, _('Make bitmap and script snapshot')),
-                    (_('Take snapshot 2'), '', self.OnMenuTakeSnapShot2, _('Make bitmap and script snapshot')),
-                    (_('Show/hide snapshot 1'), '', self.OnMenuShowSnapShot1, _('Show or hide snapshot 1')),
-                    (_('Show/hide snapshot 2'), '', self.OnMenuShowSnapShot2, _('Show or hide snapshot 2')),
+                    (_('Take snapshot 1'), '', lambda e: self.TakeSnapShot(shotIdx=0), _('Make bitmap and script snapshot')),
+                    (_('Take snapshot 2'), '', lambda e: self.TakeSnapShot(shotIdx=1), _('Make bitmap and script snapshot')),
+                    (_('Show/hide snapshot 1'), '', lambda e: self.ShowSnapShot(index=0, showMsg=True), _('Show or hide snapshot 1')),
+                    (_('Show/hide snapshot 2'), '', lambda e: self.ShowSnapShot(index=1, showMsg=True), _('Show or hide snapshot 2')),
                     (''),
-                    (_('New tab from snapshot 1'), '', self.OnMenuNewTabFromSnapShot1, _('Copy snap shot 1 to new tab')),
-                    (_('New tab from snapshot 2'), '', self.OnMenuNewTabFromSnapShot2, _('Copy snap shot 2 to new tab')),
+                    (_('Restore to current snapshot 1'), '', lambda e: self.RestoreSnapShotToCurrent(shotIdx=0), _('Restore to current script')),
+                    (_('Restore to current snapshot 2'), '', lambda e: self.RestoreSnapShotToCurrent(shotIdx=1), _('Restore to current script')),
+                    (_('New tab from snapshot 1'), '', lambda e: self.NewTabFromSnapShot(shotIdx=0), _('Copy snap shot 1 to new tab')),
+                    (_('New tab from snapshot 2'), '', lambda e: self.NewTabFromSnapShot(shotIdx=1), _('Copy snap shot 2 to new tab')),
                     (''),
                     (_('Auto take snapshot 2'), '', self.OnMenuAutoTakeSnapShot, _('Automatically takes snapshot 2 on clip refresh'), wx.ITEM_CHECK, self.options['autosnapshot']),
                     (''),
@@ -9508,7 +9510,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 (_('Accessing AviSynth in threads'), '', self.OnMenuOptionsAviThread, _('Use threads when accessing avisynth (load/release clip and get frame)'), wx.ITEM_CHECK, self.options['avithread']),
                 (_('Use advanced frame thread'), '', self.OnMenuOptionsUseNewFrameThread, _('For info read the readme_threads.txt'), wx.ITEM_CHECK, self.options['usenewframethread']),
                 (_('On cancel assign the clip later'), '', self.OnMenuOptionsAviThreadAssignLater, _('AvsPmod should normally be closed after a thread has been canceled by the user. This option tries to assign the clip to the script after the thread has internaly finished.'), wx.ITEM_CHECK, self.options['avithreadassignlater']),
-                #(_('Draw frame during clip refresh'), '', self.OnMenuOptionsRefreshPaintFrame, _('The program no longer gets the "No response" status when a clip is reinitialized (only with threads)'), wx.ITEM_CHECK, self.options['cliprefreshpainter']),
                 (_('Detach Thread ( test only! ) ...'), '', self.OnMenuDetachThread, _('Warning! test only')),
                 (''),
                 (_('Associate .avs files with AvsPmod'), '', self.OnMenuOptionsAssociate, _('Configure this computer to open .avs files with AvsP when double-clicked. Run again to disassociate')),
@@ -9529,20 +9530,24 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 (_('Program settings...'), '', self.OnMenuOptionsSettings, _('Configure program settings')),
             ),
             (_('&Help'),
-                (_('Animated tutorial'), '', self.OnMenuHelpAnimatedTutorial, _('View an animated tutorial for AvsP (from the AvsP website)')),
-                (''),
-                (_('Text features'), '', self.OnMenuHelpTextFeatures, _('Learn more about AvsP text features (from the AvsP website)')),
-                (_('Video features'), '', self.OnMenuHelpVideoFeatures, _('Learn more about AvsP video features (from the AvsP website)')),
-                (_('User sliders'), '', self.OnMenuHelpUserSliderFeatures, _('Learn more about AvsP user sliders (from the AvsP website)')),
-                (_('Macros'), '', self.OnMenuHelpMacroFeatures, _('Learn more about AvsP macros (from the AvsP website)')),
-                (''),
                 (_('Avisynth help'), 'F1', self.OnMenuHelpAvisynth, _('Open the avisynth help html')),
+                (_('Tutorials (AvsP)'),
+                    (
+                    (_('Tutorials home'), '', self.OnMenuHelpAnimatedTutorial, _('Index page from the AvsP website')),
+                    (_('Text features'), '', self.OnMenuHelpTextFeatures, _('Learn more about AvsP text features (from the AvsP website)')),
+                    (_('Video features'), '', self.OnMenuHelpVideoFeatures, _('Learn more about AvsP video features (from the AvsP website)')),
+                    (_('User sliders'), '', self.OnMenuHelpUserSliderFeatures, _('Learn more about AvsP user sliders (from the AvsP website)')),
+                    (_('Macros'), '', self.OnMenuHelpMacroFeatures, _('Learn more about AvsP macros (from the AvsP website)')),
+                    ),
+                ),
+                (''),
+                (_('Video tutorials && more'), '', self.OnMenuHelpExampleVideos, _('On Google Drive')),
+                (_('Accessing in threads readme'), '', self.OnMenuHelpAccessInThreads, _('Open the accessing in threads readme')),
                 (_('Preview filter example'), '', self.OnMenuHelpPreviewFilters, _('Open the Preview filter examples')),
-                (_('Accessing in threads readme'), '', self.OnMenuHelpAccessInThreads, _('Open the Access in threads readme')),
-                (_('Apply filters readme'), '', self.OnMenuHelpApplyFilters, _('Open the apply filters readme')),
-                (_('Resample filter readme'), '', self.OnMenuHelpResampleFilter, _('Open the resample filters readme')),
-                (_('Split Clip readme'), '', self.OnMenuHelpSplitClip, _('Open the SplitClip readme')),
-                (_('Number wheel readme'), '', self.OnMenuHelpNumberWheel, _('Open the number wheel readme')),
+                (_('Apply filters readme'), '', self.OnMenuHelpApplyFilters, _('Open the Apply filters readme')),
+                (_('Resample filter readme'), '', self.OnMenuHelpResampleFilter, _('Open the Resample filters readme')),
+                (_('Split Clip readme'), '', self.OnMenuHelpSplitClip, _('Open the Split Clip readme')),
+                (_('Number wheel readme'), '', self.OnMenuHelpNumberWheel, _('Open the Number wheel readme')),
                 (''),
                 (_('DPI info'), '', self.OnMenuDPIInfo, _('DPI information')),
                 #(_('Active video thread count'), '', self.OnMenuTest, _('Prints the active running thread count. Normaly 0')),
@@ -12945,298 +12950,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.ShowVideoFrame(start)
                 if not userBreake:
                     wx.Bell()
-    """
-    def ShowSessionInfo(self, event=None, filename=None):
-        def _checkFiles():
-            for x in range(len(sessionList)):
-                session = sessionList[x][2]
-                for i in range(len(session['scripts'])):
-                    name = session['scripts'][i]['name']
-                    if name:
-                        session['scripts'][i]['@@'] = True if os.path.isfile(name) else False
-                    else:
-                        session['scripts'][i]['@@'] = None
-        def _checkValue(session, idx, val):
-            try:
-                re = session['scripts'][idx][val]
-            except:
-                return None
-            return re
-        def _findFile():
-            s = ''
-            dlg = wx.TextEntryDialog(mainDlg, _('Wildcards * ?'), _('Find script'), '')
-            if dlg.ShowModal() == wx.ID_OK:
-                s = dlg.GetValue().lower().strip()
-            dlg.Destroy()
-            if s == '*' or not s:
-                return
-            if not s.startswith('*'):
-                s = '*' + s
-            if not s.endswith('*'):
-                s += '*'
-            #sl = s.split('*') # only search with *
-            mainDlg.SetCursor(wx.StockCursor(wx.CURSOR_WAIT))
-            foundList = []
-            for x in range(len(sessionList)):
-                session = sessionList[x][2]
-                for i in range(len(session['scripts'])):
-                    name = session['scripts'][i]['name']
-                    if name:
-                        ''' only search with *
-                        found = 0
-                        for y in range(len(sl)):
-                            if name.find(sl[y]) < 0:
-                                break
-                            found += 1
-                        if found == len(sl):
-                        '''
-                        if utils.FindPattern(s, name.lower()): # wildcards * and ?
-                            foundList.append((sessionList[x][1], name, (x,i)))
-            mainDlg.SetCursor(wx.StockCursor(wx.CURSOR_DEFAULT))
-            if not foundList:
-                wx.Bell()
-                return
-            style = wx.DEFAULT_DIALOG_STYLE|wx.STAY_ON_TOP|wx.RESIZE_BORDER
-            foundDlg = wx.Dialog(mainDlg, wx.ID_ANY, 'Found: '+str(len(foundList)), size=dpi.tuplePPI(640, 360), style=style)
-            def _OnClose(event):
-                foundDlg.Destroy()
-            foundDlg.Bind(wx.EVT_CLOSE, _OnClose)
-            class FoundListCtrl(wxp.ListCtrl):
-                def OnGetItemText(self, item, column):
-                    if column == 0:
-                        return foundList[item][0]
-                    elif column == 1:
-                        return foundList[item][1]
-            foundCtrl = FoundListCtrl(foundDlg, wx.ID_ANY, style=wx.LC_REPORT|wx.LC_SINGLE_SEL|wx.LC_VIRTUAL|wx.LC_VRULES)
-            foundCtrl.InsertColumn(0, 'Session')
-            foundCtrl.InsertColumn(1, 'Script')
-            foundCtrl.SetColumnWidth(0, dpi.intPPI(160))
-            foundCtrl.SetColumnWidth(1, wx.LIST_AUTOSIZE_USEHEADER)
-            foundCtrl.SetItemCount(len(foundList))
-            def _OnSelectItem(event):
-                i = foundCtrl.GetSelectedItem()
-                if i < 0: return
-                session, name, pos = foundList[i]
-                nameCtrl.SelectItem(pos[0])
-                listCtrl.SelectItem(pos[1])
-            def _OnDClick(event):
-                event.Skip()
-                if not mainDlg.chkDClick.GetValue():
-                    return
-                i = foundCtrl.GetSelectedItem()
-                if i > -1:
-                    session, filename, pos = foundList[i]
-                    if os.path.isfile(filename):
-                        framenr = _checkValue(session, pos[0], 'current_frame')
-                        bookmarks = _checkValue(session, pos[0], 'bookmarks')
-                        selections = _checkValue(session, pos[0], 'selections')
-                        foundDlg.Hide()
-                        mainDlg.Hide()
-                        self.OpenFile(filename, hidePreview=True, framenum=framenr, bookmarks=bookmarks, selections=selections)
-                        mainDlg.Show()
-                        foundDlg.Show()
-                    else: wx.Bell()
-            foundCtrl.Bind(wx.EVT_LIST_ITEM_SELECTED, _OnSelectItem)
-            foundCtrl.Bind(wx.EVT_LEFT_DCLICK, _OnDClick)
-            sizer = wx.BoxSizer()
-            sizer.Add(foundCtrl, 1, wx.ALL|wx.EXPAND, int5)
-            foundDlg.SetSizer(sizer)
-            sizer.FitInside(foundDlg)
-            foundDlg.CenterOnParent()
-            foundDlg.Show()
 
-        int5 = dpi.intPPI(5)
-        int10 = dpi.intPPI(10)
-        int20 = dpi.intPPI(20)
-        if filename is None or not os.path.isfile(filename):
-            filefilter = 'Session (*.ses)|*.ses'
-            initialdir = self.options['recentdirSession']
-            if not os.path.isdir(initialdir):
-                initialdir = self.programdir
-            dlg = wx.FileDialog(self,_('Get sessions information'),
-                initialdir, '', filefilter, wx.OPEN)
-            ID = dlg.ShowModal()
-            if ID == wx.ID_OK:
-                filename = dlg.GetPath()
-            dlg.Destroy()
-
-        if filename is None:
-            return
-        sessionList = []
-        base = os.path.split(filename)[0]
-        files = glob.glob(os.path.join(base, '*.ses'))
-        files.sort()
-        for file in files:
-            try:
-                with open(file, mode='rb') as f:
-                    session = cPickle.load(f)
-            except:
-                return
-            path, name = os.path.split(file)
-            sessionList.append((path, name, session))
-
-        style = wx.DEFAULT_DIALOG_STYLE|wx.STAY_ON_TOP|wx.RESIZE_BORDER
-        mainDlg = wx.Dialog(self, wx.ID_ANY, 'Sessions Info: ' + base, style=style)
-        dpi.SetFontPPI(mainDlg)
-        mainDlg.session = None
-
-        def OnClose(event):
-            mainDlg.Destroy()
-        mainDlg.Bind(wx.EVT_CLOSE, OnClose)
-        # avs file listbox
-        class FListCtrl(wxp.ListCtrl):
-            def OnGetItemText(self, item, column):
-                if column == 0:
-                    s = mainDlg.session['scripts'][item]['name']
-                    if not s:
-                        s = 'not a file'
-                    else:
-                        if '@@' in mainDlg.session['scripts'][item]:
-                            found = mainDlg.session['scripts'][item]['@@']
-                        else:
-                            found = None
-                        if found is not None and not found:
-                            s = 'missing: ' + s
-                    return s
-                elif column == 1:
-                    if 'bookmarks' in mainDlg.session['scripts'][item]:
-                        return str(len(mainDlg.session['scripts'][item]['bookmarks']))
-                    else:
-                        return 'empty'
-                return ''
-        listCtrl = FListCtrl(mainDlg, wx.ID_ANY, style=wx.LC_REPORT|wx.LC_SINGLE_SEL|wx.LC_VRULES|wx.LC_VIRTUAL)
-        listCtrl.InsertColumn(0, _('Script name'))
-        listCtrl.InsertColumn(1, _('Bookmarks'), wx.LIST_FORMAT_RIGHT)
-        listCtrl.SetItemCount(0)
-        listCtrl.setResizeColumn(1)
-        listCtrl.SetColumnWidth(1, wx.LIST_AUTOSIZE_USEHEADER)
-        listCtrl.SetColumnWidth(0, wx.LIST_AUTOSIZE)
-        '''
-        def OnMouseMotion(event):
-            pos = listCtrl.ScreenToClient(wx.GetMousePosition())
-            item_index, flag = listCtrl.HitTest(pos)
-            if flag == wx.LIST_HITTEST_ONITEM:
-                listCtrl.GetItemText(item_index))
-            event.Skip()
-        listCtrl.Bind(wx.EVT_MOTION, OnMouseMotion)
-        '''
-        def OnDClickList(event):
-            if not mainDlg.chkDClick.GetValue():
-                return
-            i = listCtrl.GetSelectedItem()
-            if i < 0 or not mainDlg.session:
-                return
-            filename = mainDlg.session['scripts'][i]['name']
-            if os.path.isfile(filename):
-                framenr = _checkValue(mainDlg.session, i, 'current_frame')
-                bookmarks = _checkValue(mainDlg.session, i,'bookmarks')
-                selections = _checkValue(mainDlg.session, i,'selections')
-                mainDlg.Hide()
-                self.OpenFile(filename, hidePreview=True, framenum=framenr, bookmarks=bookmarks, selections=selections)
-                mainDlg.Show()
-        listCtrl.Bind(wx.EVT_LEFT_DCLICK, OnDClickList)
-        # Session listbox
-        class NListCtrl(wxp.ListCtrl):
-            def OnGetItemText(self, item, column):
-                return sessionList[item][1]
-        nameCtrl = NListCtrl(mainDlg, wx.ID_ANY, style=wx.LC_REPORT|wx.LC_NO_HEADER|wx.LC_SINGLE_SEL|wx.LC_VIRTUAL)
-        nameCtrl.InsertColumn(0, '')
-        nameCtrl.SetItemCount(len(files))
-        def OnListItemSelected(event):
-            if nameCtrl.GetSelectedItem() < 0:
-                return
-            listCtrl.SetItemCount(0)
-            mainDlg.session = sessionList[nameCtrl.GetSelectedItem()][2]
-            listCtrl.SetItemCount(len(mainDlg.session['scripts']))
-            col = listCtrl.GetColumn(0)
-            col.SetText('Scripts ' + str(len(mainDlg.session['scripts'])))
-            listCtrl.SetColumn(0, col)
-            listCtrl.Refresh()
-        nameCtrl.Bind(wx.EVT_LIST_ITEM_SELECTED, OnListItemSelected)
-        def OnDClickName(event):
-            if not mainDlg.chkDClick.GetValue():
-                return
-            i = nameCtrl.GetSelectedItem()
-            if i < 0: return
-            filename = os.path.join(sessionList[i][0],sessionList[i][1])
-            if os.path.isfile(filename):
-                mainDlg.Hide()
-                if mainDlg.chkCloseTabs.GetValue():
-                    re = self.CloseAllTabs()
-                    if not re:
-                        dlg = wx.MessageDialog(self, _('Not all scripts closed, open the session?'),'',wx.YES_NO|wx.CENTRE)
-                        ID = dlg.ShowModal()
-                        dlg.Destroy()
-                        if ID != wx.ID_YES:
-                            mainDlg.Show()
-                            return
-                self.LoadSession(filename)
-            if mainDlg.chkClose.GetValue():
-                wx.CallAfter(mainDlg.Close)
-            else:
-                mainDlg.Show()
-        nameCtrl.Bind(wx.EVT_LEFT_DCLICK, OnDClickName)
-
-        def OnMiddleUpNameCtrl(event):
-            _findFile()
-        nameCtrl.Bind(wx.EVT_MIDDLE_UP, OnMiddleUpNameCtrl)
-        listCtrl.Bind(wx.EVT_MIDDLE_UP, OnMiddleUpNameCtrl)
-        mainDlg.chkClose = wx.CheckBox(mainDlg, wx.ID_ANY, _('Close when loading session'))
-        mainDlg.chkClose.SetValue(True)
-        def OnChkClose(event):
-            mainDlg.chkClose.SetValue(event.GetEventObject().GetValue())
-        mainDlg.chkClose.Bind(wx.EVT_CHECKBOX, OnChkClose)
-        mainDlg.chkDClick = wx.CheckBox(mainDlg, wx.ID_ANY, _('Double click to open file or session'))
-        mainDlg.chkDClick.SetValue(True)
-        def OnChkDClick(event):
-            mainDlg.chkDClick.SetValue(event.GetEventObject().GetValue())
-        mainDlg.chkDClick.Bind(wx.EVT_CHECKBOX, OnChkDClick)
-        btnCheck  = wx.Button(mainDlg, wx.ID_APPLY, _('Check exists'))
-        def OnButtonCheck(event):
-            _checkFiles()
-            listCtrl.Refresh()
-        btnCheck.Bind(wx.EVT_BUTTON, OnButtonCheck)
-        mainDlg.chkCloseTabs = wx.CheckBox(mainDlg, wx.ID_ANY, _('Close all tabs when open session'))
-        mainDlg.chkCloseTabs.SetValue(True)
-        def OnChkCloseTabs(event):
-            mainDlg.chkCloseTabs.SetValue(event.GetEventObject().GetValue())
-        mainDlg.chkCloseTabs.Bind(wx.EVT_CHECKBOX, OnChkCloseTabs)
-        labelHint = wx.StaticText(mainDlg, wx.ID_ANY, _('Middle mouse click to search scripts'))
-        sizerEx = wx.BoxSizer()
-        sizerEx.Add(btnCheck, 0, wx.LEFT|wx.EXPAND, int10)
-        sizerEx.Add(mainDlg.chkCloseTabs, 0, wx.LEFT|wx.EXPAND, int10)
-        sizerEx.Add(mainDlg.chkClose, 0, wx.LEFT|wx.EXPAND, int10)
-        # OK button
-        btnOkay = wx.Button(mainDlg, wx.ID_OK, 'Close')
-        def OnButtonOK(event):
-            mainDlg.Destroy()
-        btnOkay.Bind(wx.EVT_BUTTON, OnButtonOK)
-        btns = wx.StdDialogButtonSizer()
-        btns.AddButton(btnOkay)
-        btns.Realize()
-        # Size the elements
-        gridSizer = wx.FlexGridSizer(cols=2, hgap=int10, vgap=int5)
-        gridSizer.AddGrowableCol(1, 1)
-        gridSizer.AddGrowableRow(1)
-        gridSizer.Add(labelHint, 0)
-        gridSizer.Add(mainDlg.chkDClick, 0, wx.ALIGN_CENTER)
-        gridSizer.Add(nameCtrl, 2, wx.EXPAND|wx.RIGHT, int10)
-        gridSizer.Add(listCtrl, 3, wx.EXPAND)
-        gridSizer.SetItemMinSize(nameCtrl,(dpi.intPPI(220), dpi.intPPI(400)))
-        gridSizer.SetItemMinSize(listCtrl,(dpi.intPPI(640), dpi.intPPI(400)))
-        dlgSizer = wx.BoxSizer(wx.VERTICAL)
-        dlgSizer.Add(gridSizer, 1, wx.EXPAND|wx.ALL, int10)
-        dlgSizer.Add(sizerEx, 0, wx.LEFT|wx.TOP, int10)
-        dlgSizer.Add(btns, 0, wx.EXPAND|wx.ALL, int10)
-        mainDlg.SetSizer(dlgSizer)
-        if nameCtrl.GetItemCount():
-            nameCtrl.SelectItem(0)
-        btnOkay.SetDefault()
-        dlgSizer.Fit(mainDlg)
-        mainDlg.CenterOnParent()
-        mainDlg.Show()
-        return mainDlg # mainDlg destroyed it self on closing
-    """
     """
     def OnMenuTest(self, event):
         import session_info
@@ -13331,15 +13045,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         print(str(time.time()-t))
 
         return
-        nb = self.scriptNotebook
-        font = nb.GetFont()
-        if nb.DefaultFontPixelSize == font.GetPixelSize():
-
-            font.SetPixelSize((font.GetPixelSize()[0], font.GetPixelSize()[1]+1))
-            #font = font.MakeLarger()
-        else:
-            #font = font.MakeSmaller()
-            font.SetPixelSize((font.GetPixelSize()[0], font.GetPixelSize()[1]-1))
     """
 
     def ShowFreeMemory(self, returnStr=False):
@@ -13357,12 +13062,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     def OnMenuShowFreeMemory(self, event):
         self.StatusbarTimer_Start(3000, self.ShowFreeMemory(returnStr=True))
-
-    def OnMenuTakeSnapShot1(self, event):
-        self.TakeSnapShot(0)
-
-    def OnMenuTakeSnapShot2(self, event):
-        self.TakeSnapShot(1)
 
     def OnMenuAutoTakeSnapShot(self, event):
         self.options['autosnapshot'] = event.IsChecked()
@@ -13389,12 +13088,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         script.snapShots[shotKey][1] = None # free bmp
         script.snapShots[shotKey] = [self.currentframenum, bmp, txt, script.previewFilterIdx]
         return True
-
-    def OnMenuShowSnapShot1(self, event=None, showMsg=True):
-        self.ShowSnapShot(0, showMsg=showMsg)
-
-    def OnMenuShowSnapShot2(self, event=None, showMsg=True):
-        self.ShowSnapShot(1, showMsg=showMsg)
 
     def ShowSnapShot(self, index, showMsg=True):
         if not index in (0, 1):
@@ -13435,12 +13128,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         else:
             wx.Bell()
 
-    def OnMenuNewTabFromSnapShot1(self, event=None):
-        self.NewTabFromSnapShot(0)
-
-    def OnMenuNewTabFromSnapShot2(self, event=None):
-        self.NewTabFromSnapShot(1)
-
     def NewTabFromSnapShot(self, shotIdx):
         if not shotIdx in (0, 1):
             return
@@ -13456,6 +13143,35 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if self.videoSlider.GetVirtualMax() >= self.currentframenum:
                 script.lastFramenum = self.currentframenum
                 self.videoSlider.SetValue(self.currentframenum)
+
+    def RestoreSnapShotToCurrent(self, shotIdx):
+        script = self.currentScript
+        shot = 'shot1' if shotIdx == 0 else 'shot2'
+        txt = script.snapShots[shot][2]
+        idx = script.snapShots[shot][3]
+        if not txt:
+            wx.MessageBox(_('Empty snapshot script'),'Error snapshot')
+            return
+        if not script.snapShots[shot][1]: # no bitmap, also from session file
+            dlg = wx.MessageDialog(self, _("Snapshot doesn't seem to be from this session.\nKeep going?"),_('Question'), wx.YES_NO|wx.ICON_INFORMATION)
+            ID = dlg.ShowModal()
+            dlg.Destroy()
+            if ID != wx.ID_YES:
+                return
+        script.Freeze()
+        script.ParseFunctions(txt)
+        script.SetText(txt)
+        self.TryThaw(script)
+        script.Colourise(0, script.GetTextLength())
+        self.snapShotIdx = 0
+        if self.options['bookmarksfromscript']:
+            self.OnMenuBookmarksFromScript(difWarn=False)
+        self.UpdateUserSliders(forceUpdate=True)
+        script.previewFilterIdx = idx
+        if self.ScriptChanged(script):
+            self.ShowVideoFrame(forceRefresh=True)
+        else: # it's faster if script outside prFilter area not changed? # TODO test it
+            self.OnMenuPreviewFilter(index=idx, updateUserSliders=False)
 
     def OnMenuClearTabSnapShot(self, event):
         self.snapShotIdx = 0
@@ -13706,12 +13422,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     # display filter on/off (can also run a macro file or display filter macro text #>
     def OnMenuVideoDisplayFilter(self, event, enabled=False):
-        """ New removed
-        if self.currentScript.previewFilterIdx > 0:
-            wx.MessageBox(utils.resource_str_displayfilter_warn)
-            self.UpdateMenuItem(_('Display'), self.displayFilter, 'video', [_('Display filter')])
-            return
-        """
         if event:
             self.displayFilter = not self.displayFilter
         else:
@@ -13744,21 +13454,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.ExecuteMacro(macrofilename=macrofilename, macroTxt=macroTxt)
 
         if self.previewWindowVisible:
-            """
-            if curIdx > 0:
-                self.currentScript.display_clip_refresh_needed = False # new added
-                wx.CallAfter(self.OnMenuPreviewFilter, index=curIdx)
-            else:
-                self.ShowVideoFrame()
-            """
+            self.zoom_antialias = False
             self.ShowVideoFrame()
+            self.ResetZoomAntialias()
 
     def OnMenuSelectDisplayFilter(self, event):
-        """
-        if self.currentScript.previewFilterIdx > 0:
-            wx.MessageBox(utils.resource_str_displayfilter_warn)
-            return
-        """
         def _setDisplayFilter(event):
             obj = event.GetEventObject()
             key = obj.GetLabel(event.GetId())
@@ -15233,7 +14933,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if os.path.isfile(filename):
             startfile(filename)
         else:
-            startfile('http://avisynth.nl/users/qwerpoi/Demo.htm')
+            #startfile('http://avisynth.nl/users/qwerpoi/Demo.htm') # not available, killed?
+            startfile('http://avisynth.nl/users/qwerpoi/index.html')
+
+    def OnMenuHelpExampleVideos(self, event):
+        startfile('https://drive.google.com/drive/folders/1-2MOIzJ6R3jQOlWh0Fq0x8fbscr_FEcn?usp=sharing')
 
     def OnMenuHelpTextFeatures(self, event):
         filename = os.path.join(self.helpdir, 'Text.html')
@@ -18739,7 +18443,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 orgtxt = txt[:idx-1].rstrip()
 
             # GPo, now compare it with the marked part
-            if self.getCleanText('\n'.join(newlines)).rstrip() != orgtxt:
+            if self.getCleanText('\n'.join(newlines), False).rstrip() != orgtxt:
                 dlg = wx.MessageDialog(self, _('AvsPmod marked script and original script different.\n\n' +
                                                'If you load the marked script:\n'
                                                'Changes made with another editor are not visible and will be lost when saving again.\n\n' +
@@ -19020,7 +18724,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         '''
         def getMarkedText(txt):
             txt = self.stripComment_2(txt)
-            savemsg = (3000, _('The saved script has changed because AvsP marked section added'), 1)
             header = '### AvsP marked script ###'
             base = '\n'.join(['# %s' % line for line in scriptText.split('\n')])
             return '%(txt)s\n%(header)s\n%(base)s\n%(header)s' % locals()
@@ -19064,24 +18767,37 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
             # Get script's text, adding the marked version of the script if required
             scriptText = script.GetText()
-            txt = self.getCleanText(scriptText, not self.options['savetoggletags'])
+            script.SetSavePoint()
+
+            if not self.options['savetoggletags']:
+                ctxt = self.cleanToggleTags(scriptText)
+                if ctxt != scriptText:
+                    scriptText = self.stripComment_2(ctxt)
+                    if self.previewWindowVisible:
+                        self.HidePreviewWindow()
+                    script.SetText(scriptText)
+                    script.refreshAVI = True
+
+            txt = self.cleanSliders(scriptText)
             if txt != scriptText:
                 script.refreshAVI = True
                 if self.previewWindowVisible:
                     self.HidePreviewWindow()
                 if self.options['savemarkedavs']:
                     txt = getMarkedText(txt)
+                    savemsg = (3000, _('The saved script has changed because AvsP marked section added'), 1)
                 else:
                     dlg = wx.MessageDialog(self,_('User sliders found, but option for save/read "marked" script is not enabled.\n\n' +
                                                   'Press "Yes" to save the marked script\n' +
-                                                  'Press "No" to save the script as it is\n' +
-                                                  'Press "Cancel" to abort'), _('User sliders'), wx.YES_NO|wx.ABORT)
+                                                  'Press "No" removes the sliders in the saved script\n' +
+                                                  'Press "Cancel" to cancel the process'), _('User sliders'), wx.YES_NO|wx.CANCEL)
                     ID = dlg.ShowModal()
                     dlg.Destroy()
                     if ID == wx.ID_YES:
                         txt = getMarkedText(txt)
+                        savemsg = (3000, _('The saved script has changed because AvsP marked section added'), 1)
                     elif ID == wx.ID_NO:
-                        txt = self.stripComment_2(scriptText)
+                        pass
                     else:
                         return
 
@@ -22874,6 +22590,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         self.AVICallBack('property','', -1)
                     if self.AviThread_Running(script):
                         return None
+                    if showCursor and not wx.IsBusy():
+                        wx.BeginBusyCursor()
                     script.AviThread = None
                     script.display_clip_refresh_needed = False
                     scripttxt = script.GetText()
@@ -22921,8 +22639,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     if os.name == 'nt' and filename.endswith('.vpy'):
                         self.SaveScript(filename)
 
-                    if showCursor and not wx.IsBusy():
-                        wx.BeginBusyCursor()
+                    #if showCursor and not wx.IsBusy():
+                        #wx.BeginBusyCursor()
 
                     self.ClipRefreshPainter = self.GetVideoWindowBitmap()
 
@@ -24242,39 +23960,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     def addAvsSnapshotPanel(self, script, separator, row):
         def OnRestoreToCurrent(event):
-            script = self.currentScript
-            shot = 'shot1' if self.lastContextMenuWin == btnSnapshot1 else 'shot2'
-            txt = script.snapShots[shot][2]
-            idx = script.snapShots[shot][3]
-            if not txt:
-                wx.MessageBox(_('Empty snapshot script'),'Error snapshot')
-                return
-            if not script.snapShots[shot][1]: # no bitmap, also from session file
-                dlg = wx.MessageDialog(self, _("Snapshot doesn't seem to be from this session.\nKeep going?"),_('Question'), wx.YES_NO|wx.ICON_INFORMATION)
-                ID = dlg.ShowModal()
-                dlg.Destroy()
-                if ID != wx.ID_YES:
-                    return
-            script.Freeze()
-            script.ParseFunctions(txt)
-            script.SetText(txt)
-            self.TryThaw(script)
-            script.Colourise(0, script.GetTextLength())
-            self.snapShotIdx = 0
-            if self.options['bookmarksfromscript']:
-                self.OnMenuBookmarksFromScript(difWarn=False)
-            self.UpdateUserSliders(forceUpdate=True)
-            script.previewFilterIdx = idx
-            if self.ScriptChanged(script):
-                self.ShowVideoFrame(forceRefresh=True)
-            else: # it's faster if script outside prFilter area not changed
-                self.OnMenuPreviewFilter(index=idx, updateUserSliders=False)
-
+            idx = 0 if self.lastContextMenuWin == btnSnapshot1 else 1
+            self.RestoreSnapShotToCurrent(shotIdx=idx)
         def OnRestoreToNewTab(event):
             self.snapShotIdx = 0
-            if self.lastContextMenuWin == btnSnapshot1:
-                self.OnMenuNewTabFromSnapShot1()
-            else: self.OnMenuNewTabFromSnapShot2()
+            Idx = 0 if self.lastContextMenuWin == btnSnapshot1 else 1
+            self.NewTabFromSnapShot(shotIdx=Idx)
         def OnClearAll(event):
             self.OnMenuClearAllSnapShots()
         def OnAutoSnapshot(event):
