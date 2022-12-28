@@ -3,7 +3,7 @@ on/off: Options menu > 'Accessing AviSynth in threads'
 
 This option takes precedence for Playback in threads. So if this option is set, the playback is also performed with threads.
 
-A user has reported that the threads lead to an immediate chrash (CPU without AVX extended command). 
+A user has reported that the threads lead to an immediate crash (CPU without AVX extended command). 
 If the threads are causing problems on your system then you have to turn it off. 
 
 On my system (Win10) initializing a clip with threads is about 15% faster and provides more security.

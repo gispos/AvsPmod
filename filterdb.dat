@@ -1,5 +1,5 @@
 [KEYWORDS]
-return global function last true false try catch if else
+return global function last true false try catch if else for current_frame error_msg
 
 [OPERATORS]
 + - * / = ! % & | , . : ? \ < > ( ) [ ] { }

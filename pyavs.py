@@ -43,6 +43,7 @@ import re
 import func
 import struct
 import utils
+#import pyaudio
 
 x86_64 = sys.maxsize > 2**32
 if x86_64:
@@ -649,7 +650,7 @@ class AvsClipBase:
             self.vi = self.main_clip_vi
             self.callBack('splitclip', -1)
 
-        fontFace, fontSize, fontColor = global_vars.options['errormessagefont'][:3]   # GPo fontColor
+        fontFace, fontSize, fontColor = global_vars.options['errormessagefont'][:3]
         if fontColor == '':
             fontColor = '$FF0000'
 
@@ -658,7 +659,7 @@ class AvsClipBase:
         nChars = 0
         for errLine in err.split('\n'):
             lineList.append('Subtitle("""%s""",y=%i,font="%s",size=%i,text_color=%s,align=8)' %
-                (errLine, yLine, fontFace.encode(sys.getfilesystemencoding()), fontSize, fontColor))   # GPo fontColor
+                (errLine, yLine, fontFace.encode(sys.getfilesystemencoding()), fontSize, fontColor))
             yLine += fontSize
             nChars = max(nChars, len(errLine))
         eLength = self.Framecount
@@ -1504,21 +1505,27 @@ class AvsClipBase:
         # left & right
         left_done = right_done = False
         for j in range(width):
+            #left_counter = 0
+            #right_counter = 0
             for i in range(height):
                 if not left_done:
                     color0, color1, color2 = GetPixelColor(j, i)
                     if (abs(color0 - top_left0) > tol or
                         abs(color1 - top_left1) > tol or
                         abs(color2 - top_left2) > tol):
+                            #if left_counter > height / 100:
                             left = j
                             left_done = True
+                            #left_counter += 1
                 if not right_done:
                     color0, color1, color2 = GetPixelColor(w - j, i)
                     if (abs(color0 - bottom_right0) > tol or
                         abs(color1 - bottom_right1) > tol or
                         abs(color2 - bottom_right2) > tol):
+                            #if right_counter > height / 100:
                             right = j
                             right_done = True
+                            #right_counter += 1
                 if left_done and right_done: break
             else: continue
             break
@@ -1728,8 +1735,8 @@ if os.name == 'nt':
                     pBits = self.pBits
                 else:
                     buf = ctypes.create_string_buffer(self.display_pitch * self.DisplayHeight)
-                    #pBits = ctypes.addressof(buf) # GPo, not for x64, buffer address can be too large
-                    #pBits = ctypes.cast(buf, ctypes.POINTER(ctypes.c_ubyte))  # GPo, too slow
+                    #~pBits = ctypes.addressof(buf) # GPo, not for x64, buffer address can be too large (python bug?)
+                    #~pBits = ctypes.cast(buf, ctypes.POINTER(ctypes.c_ubyte))  # GPo, too slow
                     pBits = ctypes.pointer(buf) # GPo new
                     ctypes.memmove(pBits, self.pBits, self.display_pitch * (self.DisplayHeight - 1) + row_size)
 
@@ -1752,7 +1759,7 @@ if os.name == 'nt':
                 DrawDibDraw(handleDib[0], hdc, offset[0], offset[1], w, h,
                             self.pInfo, self.pBits, srcXY[0], srcXY[1], w, h, 0)
                 return True
-         """
+        """
 
 # Use generical wxPython drawing support on other platforms
 else:

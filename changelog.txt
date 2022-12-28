@@ -37,6 +37,17 @@ AvsPmod can only provide a user-friendly editor if he has no problems with the n
 If, for example, there is a '-' in the file name of the dll, AvsPmod will report it at startup, 
 please rename this dll and replace the '-' with a '_'
 
+--------------------------
+Version 2.7.3.2 [2022-12-28] GPo
+--------------------------
+* Added: custom color for the preview filter in the slider window ( Options > Font and colors > Advanced 2 ) default on.
+* Fixed: Bookmarks count was sometimes not correctly stored in the session file (Session info tool gave wrong information).
+* Update 'encoder_gui.py', added a option to set the Cmd Codepage for the batch encoding file e.g. enter 1252 for Latin 1 (deutsche Umlaute).
+- If only partially updated: in the AvsPmod\tools directory, encoder_gui.py must be replaced.
+* Encoder gui: Doom9 user 'real.finder' added 10bit presets for x264 and ffmpeg.x264 
+* Updated 'Session info tool' a bit.
+* Bugfix: Separate DPI settings for the status bar did not work.
+* Some smal changes
 
 --------------------------
 Version 2.7.3.1 [2022-10-08] GPo

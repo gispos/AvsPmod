@@ -316,6 +316,7 @@ class CompressVideoDialog(wx.Dialog):
         self.GetUnknownPaths(commandline)
         self.options.setdefault('priority', 'belownormal')
         self.options.setdefault('credits_warning', 10)
+        self.options.setdefault('cmd_codepage', '')
         self.options.setdefault('append_comments', False)
         self.options.setdefault('add_output_newtab', False)
         self.options.setdefault('exe_options', {})
@@ -640,7 +641,10 @@ class CompressVideoDialog(wx.Dialog):
             wx.MessageBox('%s\n\n%s' % (s1, s2), _('Error'), style=wx.OK|wx.ICON_ERROR)
             return
         if os.name == 'nt':
-            lines = ['@echo off\n']
+            lines = []
+            if self.options['cmd_codepage'].strip():
+                lines.append('chcp ' + self.options['cmd_codepage'].strip() + '\n')
+            lines.append('@echo off\n')
             startline = 'start /%s /b /w' % self.options['priority']
             for s in commandline.split('\n'):
                 s2 = s.split(None, 1)
@@ -676,6 +680,9 @@ class CompressVideoDialog(wx.Dialog):
         else:
             batchname = os.path.join(self.GetParent().toolsfolder,
                                      'encode' + ('.bat' if os.name == 'nt' else '.sh'))
+
+            batchname = batchname.encode(sys.getfilesystemencoding()) # GPo
+
             f = open(batchname, 'w')
             for line in lines:
                 if type(line) == unicode:
@@ -719,7 +726,8 @@ class CompressVideoDialog(wx.Dialog):
 
             #~ os.startfile(batchname)
             if os.name == 'nt':
-                os.system('start "AvsP encoding" "%s"' % batchname.encode(sys.getfilesystemencoding()))
+                #os.system('start "AvsP encoding" "%s"' % batchname.encode(sys.getfilesystemencoding()))
+                os.system('start "AvsP encoding" "%s"' % batchname) # GPo
             else:
                 os.chmod(batchname, os.stat(batchname).st_mode | stat.S_IXUSR)
                 os.system('"%s"' % batchname.encode(sys.getfilesystemencoding()))
@@ -801,6 +809,13 @@ class CompressVideoOptionsDialog(wx.Dialog):
         self.ctrlDict['credits_warning'] = textCtrl
         gridSizer.Add(staticText, 0, wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL)
         gridSizer.Add(textCtrl, 0)
+        # GPo new, cmd codepage for batch file
+        staticText = wx.StaticText(tabPanel, wx.ID_ANY, _('Cmd Codepage (enter 1252 for Latin 1):'))
+        textCtrl = wx.TextCtrl(tabPanel, wx.ID_ANY, size=(intPPI(50), -1))
+        textCtrl.SetValue(self.options['cmd_codepage'])
+        self.ctrlDict['cmd_codepage'] = textCtrl
+        gridSizer.Add(staticText, 0, wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL)
+        gridSizer.Add(textCtrl, 0)
         checkBox0 = wx.CheckBox(tabPanel, wx.ID_ANY, _('Automatically compute bitrate value on startup'))
         checkBox0.SetValue(self.options['auto_bitrate'])
         checkBox1 = wx.CheckBox(tabPanel, wx.ID_ANY, _('Automatically compute pixel aspect ratio from d2v on startup'))
@@ -813,6 +828,7 @@ class CompressVideoOptionsDialog(wx.Dialog):
         self.ctrlDict['auto_par_d2v'] = checkBox1
         self.ctrlDict['append_comments'] = checkBox2
         self.ctrlDict['add_output_newtab'] = checkBox3
+
         gridSizer2 = wx.FlexGridSizer(cols=2, hgap=int5, vgap=int5)
         staticText = wx.StaticText(tabPanel, wx.ID_ANY, _('Encoder priority:'))
         textCtrl = wx.Choice(tabPanel, wx.ID_ANY, choices=('low', 'normal', 'high', 'realtime', 'abovenormal', 'belownormal'))
@@ -857,11 +873,9 @@ class CompressVideoOptionsDialog(wx.Dialog):
             gridSizer.Add(textCtrl2, 0, wx.EXPAND)
             tabSizer = wx.BoxSizer(wx.VERTICAL)
             tabSizer.Add(gridSizer, 0, wx.EXPAND|wx.ALL, int5)
-
-            button = wx.Button(tabPanel, wx.ID_ANY, os.path.splitext(name)[0] + '.presets')
+            button = wx.Button(tabPanel, wx.ID_ANY, os.path.splitext(name)[0] + '.presets') # GPo
             self.Bind(wx.EVT_BUTTON, self.OnOpenPresets, button)
             tabSizer.Add(button, 0,  wx.ALIGN_LEFT|wx.ALIGN_BOTTOM)
-
             tabPanel.SetSizer(tabSizer)
         # Standard buttons
         okay  = wx.Button(self, wx.ID_OK, _('OK'))
@@ -901,6 +915,7 @@ class CompressVideoOptionsDialog(wx.Dialog):
         self.options['auto_par_d2v'] = self.ctrlDict['auto_par_d2v'].GetValue()
         self.options['append_comments'] = self.ctrlDict['append_comments'].GetValue()
         self.options['add_output_newtab'] = self.ctrlDict['add_output_newtab'].GetValue()
+        self.options['cmd_codepage'] = self.ctrlDict['cmd_codepage'].GetValue()
         for key in self.options['exe_options'].keys():
             self.options['exe_options'][key]['path'] = self.ctrlDict[key][0].GetValue()
             self.options['exe_options'][key]['extra'] = self.ctrlDict[key][1].GetValue()
@@ -1246,9 +1261,6 @@ class BitrateCalcDialog(wx.Dialog):
 
 def avsp_run():
     # Ensure the script is ready
-    #~ if not avsp.IsScriptSaved():
-        #~ avsp.MsgBox(_('You must save changes before running this tool!'), _('Error'))
-        #~ return
     if not avsp.UpdateVideo():
         avsp.MsgBox(_('The current Avisynth script contains errors.'), _('Error'))
         return

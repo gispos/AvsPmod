@@ -19,7 +19,9 @@ Then the last globally changed value (fit or fill) is used, 'fit' is default at 
 If you double click above, the change only affects the current script.
 If you double click below it affects all scripts (tabs).
 or:
-In the upper area, press the left mouse button and zoom with the mouse wheel. The zoom changes in 10% steps from 10 to 200% 
+In the upper area, press the left mouse button and zoom with the mouse wheel. 
+or:
+Hold down the Shift key and use the mouse wheel. The zoom changes in 10% steps from 10 to 200% 
 
 If fit or fill is selected, a new calculation of the dimension can be brought about by clicking on the script / video window separator.
 Normally this is never needed, at the moment only when the size of the program window is changed. 
@@ -35,7 +37,5 @@ If not 'Save view pos on tab change' or 'Save pos & zoom on tab change' enabled 
 Certain functions are not possible with the resample filter: 
 Crop dialog, read pixel values from avisynth, and a few things are not yet running smoothly: Split View and Preview Filter together.
 
-If a resize is active this is indicated in the status bar with an 'r' in front of zoom and dimensions. 
-
-And if you don't like it or don't need it, you can deactivate or change the resample menu under program options > Misc2. 
+If a resize is active this is indicated in the status bar with an 'r' in front of zoom and dimensions.  
 

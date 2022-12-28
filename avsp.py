@@ -7200,6 +7200,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 'sliderwindowextrabtn1': 'fore:#ADB7A4',
                 'sliderwindowbackslider': 'back:#2b2b2b',
                 'sliderwindowsidebar': 'back:#504e54',
+                'sliderwindowprevfilter': 'fore:#D1B38F,back:#B6AFCF',
             },
             'Default dark': {
                 'monospaced': 'face:{mono},size:10',
@@ -7243,6 +7244,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 'sliderwindowextrabtn1': 'fore:#ADB7A4',
                 'sliderwindowbackslider': 'back:#2b2b2b',
                 'sliderwindowsidebar': 'back:#504e54',
+                'sliderwindowprevfilter': 'fore:#D1B38F,back:#B6AFCF',
             },
             # Based, with some minor changes, on Solarized <http://ethanschoonover.com/solarized>
             'Solarized light': {
@@ -7287,6 +7289,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 'sliderwindowextrabtn1': 'fore:#ADB7A4',
                 'sliderwindowbackslider': 'back:#2B2B2B',
                 'sliderwindowsidebar': 'back:#504e54',
+                'sliderwindowprevfilter': 'fore:#D1B38F,back:#B6AFCF',
             },
             'Solarized dark': {
                 'monospaced': 'face:{mono},size:10',
@@ -7330,6 +7333,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 'sliderwindowextrabtn1': 'fore:#ADB7A4',
                 'sliderwindowbackslider': 'back:#2B2B2B',
                 'sliderwindowsidebar': 'back:#504e54',
+                'sliderwindowprevfilter': 'fore:#D1B38F,back:#B6AFCF',
             },
         }
         #self.x_defaultTextStyle = dict(self.defaulttextstylesDict['Default'].copy()) # for test
@@ -7553,6 +7557,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'previewalwaysontop': False,
             'singleinstance': False,
             'usemonospacedfont': False,
+            'usesliderwindowprevfiltercolor': True,
             'usesliderwindowbackslider': False,
             'sliderwindowsidebarcolor': False,
             'disablepreview': False,
@@ -8582,7 +8587,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             i = self.options['ppiscalingstatusbar']
             if i != 0:
                 i = float(i / 10.0)
-            factor = self.ppi_factor
+            factor = self.ppi_factor + i
             font = statusBar.GetFont()
             dpi.SetFontSize(font, factor)
             statusBar.SetMinHeight(font.GetPixelSize()[1] + intPPI(4))
@@ -9913,7 +9918,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         def __init__(self, parent, app, id=wx.ID_ANY, pos=(0,0), size=(10,10), style=wx.STATIC_BORDER|wx.CLIP_CHILDREN):
         #def __init__(self, parent, app, id=wx.ID_ANY, pos=(0,0), size=(10,10), style=wx.STATIC_BORDER|wx.NO_FULL_REPAINT_ON_RESIZE|wx.TAB_TRAVERSAL|wx.CLIP_CHILDREN):
             wx.ScrolledWindow.__init__(self, parent, id, pos=pos, size=size, style=style)
-            #~SetFontPPI(self)
+            # dpi font size
             f = app.options['ppiscalingsliderwindow']
             if f != 0:
                 f = f/10.0
@@ -9938,6 +9943,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.foreDefValue = None
             self.boldDefValue = None
             self.foreExtraBtn1 = None
+            #self.forePrevFilter = self.forePrevFilter2 = None
             self.backSlider = None
             self.customTheme = False
             def OnMouseAux1Down(event):
@@ -9982,6 +9988,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.foreTextCtrl = GetColour('sliderwindowtextctrl', 'fore')
                 self.backTextCtrl = GetColour('sliderwindowtextctrl', 'back')
                 self.foreDefValue = GetColour('sliderwindowdefvalue', 'fore')
+                self.forePrevFilter = GetColour('sliderwindowprevfilter', 'fore')
+                self.forePrevFilter2 = GetColour('sliderwindowprevfilter', 'back')
                 self.boldDefValue = True
                 self.foreExtraBtn1 = GetColour('sliderwindowextrabtn1', 'fore')
                 if self.app.options['usesliderwindowbackslider']:
@@ -10149,7 +10157,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.propWindow.textCtrl.SetMinSize((50, i))
             scriptWindow.propertySizer.SetMinSize((50,i))
             scriptWindow.propertySizer.SetDimension((0,0), (50,i))
-            #scriptWindow.propertySizer.Hide(0)
             if self.propWindowParent == 1: # On Top
                 AddProperties()
 
@@ -10157,6 +10164,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         scriptWindow.videoSidebarSizer.Add(scriptWindow.sliderSizer, 0, wx.EXPAND|wx.LEFT, int5)
         if self.propWindowParent == 2: # On Bottom
             AddProperties(False)
+
+        if self.propWindowParent < 1: # add propertySizer anyway (give it a parent)
+            scriptWindow.videoSidebarSizer.Add(scriptWindow.propertySizer, 0, wx.EXPAND|wx.LEFT, int5)
 
         scriptWindow.sliderWindow.SetSizer(scriptWindow.videoSidebarSizer)
         scriptWindow.sliderWindow.Bind(wx.EVT_LEFT_DOWN, lambda event: self.videoWindow.SetFocus())
@@ -10933,8 +10943,35 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         script.InsertText(0, sBookmarks + b)
         script.Colourise(0, len(sBookmarks + b)+2)
 
+    def BookmarkDictFromScript(self, script):
+        Book_Ident = '#Bookmarks:'
+        lines = script.GetText().split('\n')
+        bookmarkDict = {}
+        sBookmarks = ''
+        for line in lines:
+            if line.strip().startswith(Book_Ident):
+                sBookmarks = line.strip().strip(Book_Ident)
+                break
+        if not sBookmarks:
+            return bookmarkDict
+        try:
+            for index in sBookmarks.split(','):
+                s = index.strip()
+                if s != '':
+                    nb = {}
+                    title = ''
+                    nb = s.split(' ')
+                    if (len(nb) > 0) and (nb[0].isdigit()):
+                        if len(nb) > 1:
+                            title = s[len(nb[0])+1:].strip()
+                        bookmarkDict[int(nb[0])] = title
+        except AttributeError:
+            wx.Bell()
+            bookmarkDict = {}
+        return bookmarkDict
+
     # GPo, 2018
-    def OnMenuBookmarksFromScript(self, event=None, getOnlyCount=False, script=None, difWarn=None):
+    def OnMenuBookmarksFromScript(self, event=None, getOnlyCount=False, script=None, difWarn=None, getOnlyDict=False):
 
         def compareBookmarks(script, bookmarkDict, difWarn):
             if difWarn is None:
@@ -10970,9 +11007,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     return False
             return True
 
-        Book_Ident = '#Bookmarks:'
+
         if script is None:
             script = self.currentScript
+
+        """
+        Book_Ident = '#Bookmarks:'
         lines = script.GetText().split('\n')
         sBookmarks = ''
         for line in lines:
@@ -10996,6 +11036,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         except AttributeError:
             wx.Bell()
             return 0
+        """
+        # GPo, new
+        bookmarkDict = self.BookmarkDictFromScript(script)
+        if not bookmarkDict:
+            return 0
+
         if bookmarkDict and not getOnlyCount:
             self.SetTabBookmarks(bookmarkDict)
             if event is not None: # no difWarn on menu itself (event)
@@ -11562,15 +11608,23 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     def OnMenuEditToggleTagSelection(self, event=None, label=None):
         script = self.currentScript
         scriptChanged = self.ScriptChanged(script)
+        startpos, endpos = script.GetSelection()
+        while (unichr(script.GetCharAt(startpos)) == ' ') and (startpos < endpos):
+            startpos += 1
         # Get the name of the tag
         if label is None:
-            dlg = wx.TextEntryDialog(self, _('Enter tag name:'), _('Tag definition'), '#>' if self.options['savetoggletags'] else '')
+            # GPo, new
+            word = script.GetTextRange(script.WordStartPosition(startpos, 1), script.WordEndPosition(startpos, 1)).strip()
+            s = '#>' if self.options['savetoggletags'] else ''
+            if len(word) > 1:
+                s += word
+            ##
+            dlg = wx.TextEntryDialog(self, _('Enter tag name:'), _('Tag definition'), s)
             if dlg.ShowModal() == wx.ID_OK:
-                label = dlg.GetValue()
+                label = dlg.GetValue().strip()
             dlg.Destroy()
         # Insert the tags into the text
-        if label is not None:
-            startpos, endpos = script.GetSelection()
+        if label:
             startline = script.LineFromPosition(startpos)
             endline = script.LineFromPosition(endpos)
             firstpos = script.PositionFromLine(startline)
@@ -14467,10 +14521,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     (_('Slider window:'), 'sliderwindow'),
                     (_('Slider window text field:'), 'sliderwindowtextctrl'),
                     (_('Slider window default value:'), 'sliderwindowdefvalue'),
-                    ((_('Separate slider background:'), 'usesliderwindowbackslider', _('Use another color for the sliders background')), 'sliderwindowbackslider'),
+                    ((_('Slider window sliders background:'), 'usesliderwindowbackslider', _('Use another color for the sliders background')), 'sliderwindowbackslider'),
+                    ((_('Slider window preview filters:'), 'usesliderwindowprevfiltercolor', _('Use another color for the preview filters\nAlternating (fore, back)')), 'sliderwindowprevfilter'),
                     ((_('Slider window sidebar color:'), 'sliderwindowsidebarcolor', _('Colorize the slider window sidebar')), 'sliderwindowsidebar'),
                     (_('Slider window extras (Snapshot):'), 'sliderwindowextrabtn1'),
-
                 ),
             )
         )
@@ -14505,9 +14559,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         # GPo only for clean up the options
         """
         for key in self.options['textstyles'].keys():
-            if self.options['textstyles'][key] == 'sliderwindow':
+            if self.options['textstyles'][key] == 'usesliderwindowprevfiltercolor':
+                wx.MessageBox('OK')
                 del self.options['textstyles'][key]
         """
+        #self.options['textstyles'] = {}
+
         if exOptions:
             wx.MessageBox(_('Settings have been read from backup file\n'),
                              _('Information'), style=wx.OK|wx.ICON_INFORMATION)
@@ -19260,6 +19317,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     if item['bookmarks'] is not None:
                         script.bookmarks = None
                         script.bookmarks = dict(item['bookmarks'])
+                    if not script.bookmarks and self.options['bookmarksfromscript']: # GPo, new
+                        script.bookmarks = self.BookmarkDictFromScript(script=script)
                     if item['selections'] is not None: # only on session or reopen closed tab
                         script.selections.clear()
                         script.selections.update(item['selections'])
@@ -19476,6 +19535,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             bookmarks = self.GetBookmarkDict()
         else:
             bookmarks = script.bookmarks
+        #if not bookmarks: # on save or load session ? at the moment on load session
+            #bookmarks = self.BookmarkDictFromScript(script=script) # for session info tool whe need the bm count
+
         splits = (script.lastSplitVideoPos, script.lastSplitSliderPos, script.sliderWindowShown)
         snapshots = self.GetScriptSnapshotDict(script)
         selections = script.selections
@@ -24333,6 +24395,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         txt = re.sub(r'\[/?%s(\s*=.*?)*?\]' % filterName, '', script.GetText())
         txt = self.stripComment_2(txt)
+        #txt = re.sub(r"(#>|\[/?%s(\s*=.*?)*?\])" % filterName, '', script.GetText()) # an empty line
         pos = script.GetCurrentPos()
         script.Freeze()
         script.SetText(txt)
@@ -24396,10 +24459,17 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if menu is not None:
                 staticText.contextMenu = menu
                 staticText.Bind(wx.EVT_CONTEXT_MENU, self.OnSlidersContextMenu)
-
             font = staticText.GetFont()
             font.SetWeight(wx.FONTWEIGHT_BOLD)
             staticText.SetFont(font)
+            # Set preview filter color
+            if self.currentSliderWindow.customTheme and self.options['usesliderwindowprevfiltercolor'] and label.find(' - P') > 0:
+                try:
+                    if int(label[-1]) % 2 == 0:
+                        staticText.SetForegroundColour(self.currentSliderWindow.forePrevFilter2)
+                    else: staticText.SetForegroundColour(self.currentSliderWindow.forePrevFilter)
+                except:
+                    pass
             tempsizer.Add(staticText, 0, wx.ALIGN_BOTTOM|wx.TOP, border)
             tempsizer.Add(wx.StaticLine(parent), 0, wx.EXPAND|wx.ALIGN_BOTTOM)
         sizer.Add(tempsizer, (row,0), (1,7), wx.EXPAND)
@@ -24536,17 +24606,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         label = ctrl.GetLabel().lstrip()
         if label and label[0:1] in ['+','-']:
             self.foldAllSliders = label.startswith('-')
-        """ TODO remove the old code if the new ok
-        else:
-            numFolded = 0
-            for item in script.sliderToggleLabels:
-                if item.GetLabel().startswith('+'):
-                    numFolded += 1
-            if numFolded == 0:
-                self.foldAllSliders = True
-            if numFolded == len(script.sliderToggleLabels):
-                self.foldAllSliders = False
-        """
         script.sliderWindow.Freeze()
         for item in script.sliderToggleLabels:
             self.ToggleSliderFold(item, fold=self.foldAllSliders, refresh=False)
