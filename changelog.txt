@@ -37,6 +37,56 @@ AvsPmod can only provide a user-friendly editor if he has no problems with the n
 If, for example, there is a '-' in the file name of the dll, AvsPmod will report it at startup, 
 please rename this dll and replace the '-' with a '_'
 
+
+--------------------------
+Version 2.7.3.4 [2023-02-10] GPo
+--------------------------
+* Added: Options > 'Use Ultra Fast Clip' you must read the Fast Clip readme (Help > Fast Clip readme). 
+- here is an example video: https://vimeo.com/user183482922
+* Added Video > Tools > 'Locate frame' finds a frame in another clip. Read the Locate frame readme. https://vimeo.com/797835669
+* Added alternative Split View functionality (Video > Split View alternate)
+- grab the splitter or press CTRL when clicking in the video window to place the splitter at the mouse position. 
+- Note: this menu is only the options switch, to switch Split View on or off the menu 'Split View' must be used.
+- only if Split View is switched off and you hit this menu, then Split View is switched on.
+* Added Group > 'Split View freeze frame', freezes the frame of the not selected partner tab.
+- offset the SplitView: Freeze frame > navigate to frame > select a group (group is set for both tabs and freeze frame is turned off).
+* Statusbar shows information of the active Split View tab: current tab L or R, Frame offset and frozen status. 
+- e.g. (SV-L -17, frozen R) current Split View tab is the left tab, -17 frames offset to right tab and right tab is frozen.
+* Split View now asks if the tab should be copied if the next right tab (video) has different dimensions.
+* If you disable Split View on the right partner tab and enable it again, Split View uses the left tab
+- if the left tab was the last used partner (previously, the right tab was always taken as a partner).
+* Video Window Display Border spacing and Snapshot font size changed from fixed values to DPI resulting values.
+* Slider window 'Custom color theme' now default (when the options.dat is missing).
+* 'Resize video window' now default (when the options.dat is missing).
+* Snapshot: automatically take snapshot 2 on clip refresh now default true (when the options.dat is missing).
+* Tab context menu > 'Open directory' the explorer does now select the file.
+* Get frame properties a bit faster.
+* Fixed Split View: if resize filter turned off with normal zoom (menu or shortcut). Error 'Both videos same size.. blah)  
+* Rize filter small ratio bug fixed (2 pixels)
+* Some other smal changes
+-
+Reminder 'Resize filter' and normal zoom:
+The resize filter is switched on under Program Options > Misc 2 > 'Show resample zoom menu'.
+-
+Zoom and resize filter change with the mouse wheel:
+zoom = Ctrl down or press left mouse button
+resize filter = Shift down (mouse button does not have to be pressed)
+-
+Zoom and resize filter change 1x or 2x zoom:
+zoom = press left mouse button and click right mouse button
+resize filter = same but Shift must be pressed
+-
+Resize filter Fill or Fit:
+double click on the top or bottom right of the video window (50x50 pixel x DPI).
+at the top only the current tab and bottom all tabs.
+-
+I recommend not to use the antialiasing in the normal zoom and to use the resample filter instead.
+
+--------------------------
+Version 2.7.3.3 [2023-01-19] GPo
+--------------------------
+* Not published
+
 --------------------------
 Version 2.7.3.2 [2022-12-28] GPo
 --------------------------

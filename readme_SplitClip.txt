@@ -1,6 +1,6 @@
 GPo 2022, AvsPmod 'Split Clip'
 
-The 'Split Clip' splits the main clip into 2 clips, this allows you to switch between a fast preview (without filters) and a normal preview.
+The 'Split Clip' splits the main clip, this allows you to switch between a fast preview (without filters) and a normal preview.
 That's exactly what it's designed for, even though other things are possible, e.g. a quick comparison at different frame positions 
 with another filter without having to create a new tab.
 
@@ -13,6 +13,7 @@ So, after a script refresh, the Matrix is always read from the active clip.
 
 !! Do not set a 'Preview filter' area in a 'Split Clip' area and vice versa, this will cause an error.
 !! It is recommended not to comment out lines with /* in a 'Split Clip' or 'Preview filter' area, use only #
+!! The flag must not be in an 'if else' statement! And if __end__ or return is found before the flag, no Split Clip can be created.
 
 The split position must be written into the script. Everything after this flag will not be played with the 'Split Clip'.
 To create the 'Split Clip' the script must be reinitialized after setting the split position. /**avsp_split**/
@@ -31,7 +32,7 @@ Under Video > Additional > 'Restore split clip if enabled' you can select should
 The timeline color indicates that 'Split Clip' is switched on or off. You can change the color in the context menu of the frame text field.
 
 You can insert a 'Split Clip' under Edit > Insert > 'Split Clip'.
-For me I have entered /**avsp_split**/ after the sourfilter for all my source templates.
+For me I have entered /**avsp_split**/ after the sourcfilter for all my source templates.
 
 Note: 
 If 'Split Clip' is switched on or off for the first time after a frame change, the required time is the time the filters needs for the new frame.

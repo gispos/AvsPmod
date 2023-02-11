@@ -75,6 +75,15 @@ else: # TODO
         else:
             print('Using AvxSynth from LD_LIBRARY_PATH')
 
+propCharDict = {
+    '_Matrix': func.GetMatrixName,
+    '_Primaries': func.GetColorPrimariesName,
+    '_ChromaLocation': func.GetChromaLocationName,
+    '_FieldBased': func.GetFieldBasedName,
+    '_Transfer': func.GetTransferName,
+    '_ColorRange': func.GetColorRangeName,
+    '_GOPClosed': func.GetGOPClosedName,
+}
 
 encoding = sys.getfilesystemencoding()
 
@@ -1306,7 +1315,7 @@ else:
     avs = ffi.verify(verify_str, libraries=[], library_dirs=[],
         modulename=os.path.splitext(__file__)[0] + '_ext', # comment out on debugging
         )
-    # code update by vdcrim 2019 ( Yes, thats better;) )
+    # code update by vdcrim 2019
     avs.library = avs.avs_load_library_w()
     if avs.library == ffi.NULL:
         raise OSError(*ffi.getwinerror())
@@ -1943,13 +1952,18 @@ class AVS_ScriptEnvironment(object):
         return avs.avs_set_working_dir(self.cdata, new_dir)
 
     def propToChar(self, key, value):
-        if key == '_Matrix': return ' [' + func.GetMatrixName(value) + ']'
-        elif key == '_Primaries': return ' [' + func.GetColorPrimariesName(value) + ']'
-        elif key == '_ChromaLocation': return ' [' + func.GetChromaLocationName(value) + ']'
-        elif key == '_FieldBased': return ' [' + func.GetFieldBasedName(value) + ']'
-        elif key == '_Transfer': return ' [' + func.GetTransferName(value) + ']'
-        elif key == '_ColorRange': return ' [' + func.GetColorRangeName(value) + ']'
-        elif key == '_GOPClosed': return ' [' + func.GetGOPClosedName(value) + ']'
+        """ v1
+        s = func.GetPropNameValue(key, value)
+        return '[' + s + ']' if s else ''
+        """
+        """ v2
+        f = propCharDict.get(key, None)
+        if f is not None:
+            return '[' + f(value) + ']'
+        return ''
+        """
+        if key in propCharDict:
+            return '[' + propCharDict[key](value) + ']'
         return ''
 
     def props_get_picture_type(self, frame):
@@ -1995,10 +2009,10 @@ class AVS_ScriptEnvironment(object):
                         if typ == 'i':
                             re = avs.avs_prop_get_int(self.cdata, avsmap, key_name, j, r)
                             s += str(re) + self.propToChar(key_name, re) + ', '
-                        elif typ == 'f':
-                            s += str(avs.avs_prop_get_float(self.cdata, avsmap, key_name, j, r)) + ', '
                         elif typ == 's':
                             s += ffi.string(avs.avs_prop_get_data(self.cdata, avsmap, key_name, j, r)) + ', '
+                        elif typ == 'f':
+                            s += str(avs.avs_prop_get_float(self.cdata, avsmap, key_name, j, r)) + ', '
                         elif typ == 'c':
                             s += 'clip, '
                         elif typ == 'v':

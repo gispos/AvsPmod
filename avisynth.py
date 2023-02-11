@@ -33,11 +33,10 @@ import ctypes
 import sys
 import os
 import os.path
-import sys
 import traceback
 import collections
 import weakref
-import wx
+#import wx
 import func
 
 # Initialization routines.  Assume AvxSynth/Linux if os.name is not NT.
@@ -74,6 +73,15 @@ encoding = sys.getfilesystemencoding()
 
 weak_dict = weakref.WeakKeyDictionary()
 
+propCharDict = {
+    '_Matrix': func.GetMatrixName,
+    '_Primaries': func.GetColorPrimariesName,
+    '_ChromaLocation': func.GetChromaLocationName,
+    '_FieldBased': func.GetFieldBasedName,
+    '_Transfer': func.GetTransferName,
+    '_ColorRange': func.GetColorRangeName,
+    '_GOPClosed': func.GetGOPClosedName,
+}
 
 # Interface: 3 + 5's new colorspaces and some of its other additions
 # Interface: 6 and Avisynth+ additions PF 2018dec
@@ -440,13 +448,18 @@ class AVS_ScriptEnvironment(object):
                             new_height, rel_offsetU, rel_offsetV, new_pitchUV)
 
     def propToChar(self, key, value):
-        if key == '_Matrix': return ' [' + func.GetMatrixName(value) + ']'
-        elif key == '_Primaries': return ' [' + func.GetColorPrimariesName(value) + ']'
-        elif key == '_ChromaLocation': return ' [' + func.GetChromaLocationName(value) + ']'
-        elif key == '_FieldBased': return ' [' + func.GetFieldBasedName(value) + ']'
-        elif key == '_Transfer': return ' [' + func.GetTransferName(value) + ']'
-        elif key == '_ColorRange': return ' [' + func.GetColorRangeName(value) + ']'
-        elif key == '_GOPClosed': return ' [' + func.GetGOPClosedName(value) + ']'
+        """ v1
+        s = func.GetPropNameValue(key, value)
+        return '[' + s + ']' if s else ''
+        """
+        """ v2
+        f = propCharDict.get(key, None)
+        if f is not None:
+            return '[' + f(value) + ']'
+        return ''
+        """
+        if key in propCharDict:
+            return '[' + propCharDict[key](value) + ']'
         return ''
 
     def props_get_picture_type(self, frame):
@@ -492,10 +505,10 @@ class AVS_ScriptEnvironment(object):
                         if typ == 'i':
                             re = avs_prop_get_int(self, avsmap, key_name,  j, r)
                             s += str(re) + self.propToChar(key_name, re) + ', '
-                        elif typ == 'f':
-                            s += str(avs_prop_get_float(self, avsmap, key_name,  j, r)) + ', '
                         elif typ == 's':
                             s += str(avs_prop_get_data(self, avsmap, key_name, j, r)) + ', '
+                        elif typ == 'f':
+                            s += str(avs_prop_get_float(self, avsmap, key_name,  j, r)) + ', '
                         elif typ == 'c':
                             s += 'clip, '
                         elif typ == 'v':
@@ -530,7 +543,7 @@ class AVS_VideoInfo_C(ctypes.Structure):
 class AVS_VideoInfo(object):
 
     def __init__(self, vi=None):
-        self.cdata = vi or pointer(VideoInfo())
+        self.cdata = vi or ctypes.pointer(VideoInfo())
         for field, type in self.cdata.contents._fields_:
             setattr(self, field, getattr(self.cdata.contents, field))
 
