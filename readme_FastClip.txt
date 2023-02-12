@@ -35,9 +35,23 @@ Release the script
 Disable 'Use Ultra Fast Clip'
 Comment out /**avsp_split**/ ( #/**avsp_split**/ )
 
-And another Hint: 
-If you set global variables after the flag, e.g Global var1 = True, then this variable is removed only when the complete script is reinitialized (see above). 
-If the variable is only commented out, it remains valid.  
+And another big Hint: 
+If you set variables after the flag, e.g var1 = True, then this variable is removed only when the complete script is reinitialized (see above). 
+If the variable is only commented out, it remains valid. 
+
+##################################################
+var1 = 1
+var2 = var1 + 1
+result is 2
+
+var1 = 2
+var2 = var1 + 1
+result is 3
+
+#var1 = 2     commented out, but still in memory
+var2 = var1 + 1
+result is 3
+###################################################
 
 So remember: 
 Everything before the flag is always reinitialized when it is changed. Everything after the flag can be used to create a Fast Clip.

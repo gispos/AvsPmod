@@ -156,57 +156,68 @@ def AvsReloadLibrary():
 
 # for e.g. analysis pass
 class AvsSimpleClipBase:
-    def __init__(self,  script, filename='', workdir=''):
+    def __init__(self,  script, filename='', workdir='', env=None):
         self.initialized = False
         self.env = None
+        self.parent_env = env
         self.clip = None
         self.error_message = None
-        try:
-            env = avisynth.AVS_ScriptEnvironment(6)
-        except OSError: # only on OSError
-            return
-        except:
-            self.error_message = 'At least Avisynth version 6 is required'
-            return
+        if env is not None:
+            if not isinstance(env, avisynth.AVS_ScriptEnvironment):
+                raise TypeError("env must be a PIScriptEnvironment or None")
+        else:
+            try:
+                env = avisynth.AVS_ScriptEnvironment(6)
+            except OSError: # only on OSError
+                return
+            except:
+                self.error_message = 'At least Avisynth version 6 is required'
+                return
         self.env = env
 
-        scriptdirname, scriptbasename = os.path.split(filename)
-        curdir = os.getcwdu()
-        try:
-            workdir = os.path.isdir(workdir) and workdir or scriptdirname
-            if os.path.isdir(workdir):
-                self.env.set_working_dir(workdir)
-            self.env.set_global_var("$ScriptFile$", scriptbasename)
-            self.env.set_global_var("$ScriptName$", filename)
-            self.env.set_global_var("$ScriptDir$", scriptdirname + os.path.sep)
+        if isinstance(script, avisynth.AVS_Clip):
+            self.clip = script
+        else:
+            scriptdirname, scriptbasename = os.path.split(filename)
+            curdir = os.getcwdu()
+            try:
+                workdir = os.path.isdir(workdir) and workdir or scriptdirname
+                if os.path.isdir(workdir):
+                    self.env.set_working_dir(workdir)
+                self.env.set_global_var("$ScriptFile$", scriptbasename)
+                self.env.set_global_var("$ScriptName$", filename)
+                self.env.set_global_var("$ScriptDir$", scriptdirname + os.path.sep)
 
-            self.clip = self.env.invoke('Eval', [script, filename])
-            if not isinstance(self.clip, avisynth.AVS_Clip):
+                self.clip = self.env.invoke('Eval', [script, filename])
+                if not isinstance(self.clip, avisynth.AVS_Clip):
+                    err = self.env.get_error()
+                    self.error_message = err or 'Not a clip'
+                    if not self.parent_env:
+                        self.env = None
+                    return
+            except:
                 err = self.env.get_error()
-                self.error_message = err or 'Not a clip'
-                self.env = None
+                self.error_message = err or 'Unknown error'
+                self.clip = None
+                if not self.parent_env:
+                    self.env = None
                 return
-        except:
-            err = self.env.get_error()
-            self.error_message = err or 'Unknown error'
-            self.clip = None
-            self.env = None
-            return
-        finally:
-            os.chdir(curdir)
+            finally:
+                os.chdir(curdir)
 
         self.vi = self.clip.get_video_info()
         if not self.vi.has_video():
             self.error_message = 'Clip has no video'
             self.clip = None
-            self.env = None
+            if not self.parent_env:
+                self.env = None
             return
 
         self.Framecount = self.vi.num_frames
-        #self.current_frame = -1
-        #self.scr_frame = None
+        self.current_frame = -1
+        self.scr_frame = None
         self.initialized = True
-    """ not needed
+    #""" not needed
     def _GetFrame(self, frame):
         if self.initialized:
             if self.current_frame == frame:
@@ -221,11 +232,12 @@ class AvsSimpleClipBase:
             self.current_frame = frame
             return True
         return False
-    """
+    #"""
     def __del__(self):
-        #self.src_frame = None
+        self.src_frame = None
         self.clip = None
-        self.env = None
+        if not self.parent_env:
+            self.env = None
         self.initialized = False
 
 class AvsClipBase:
@@ -797,7 +809,7 @@ class AvsClipBase:
     def KillFilterClip(self, createDisplayClip=True):
         cfunc.KillFilterClip(self, createDisplayClip=createDisplayClip)
 
-    def LocateFrame(self, start=-500, stop=500, framenr=None):
+    def LocateFrame(self, start=-500, stop=500, framenr=None, find_src=''):
         return cfunc.LocateFrame(self, start, stop, framenr)
 
     # for avisynth from H8 but lower then 3.71 (bug C Interface)

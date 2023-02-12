@@ -56,7 +56,7 @@ if find_mode = 1:
 In both cases it will stop when a match is 100%.
 
 find_tresh = 3.0
-the same as in LocateFrames tresh1 but is not set and handled differently. 
+the same as in LocateFrames thresh but is not set and handled differently. 
 Found frame is only displayed if the difference is less than thresh.
 If only one frame with a higher value is found, this will be displayed in the frame properties.
 

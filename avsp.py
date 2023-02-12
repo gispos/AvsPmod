@@ -13206,11 +13206,19 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                             self.propWindow.Toggle()
     """
     def OnMenuLocateFrame(self, event):
+        """
+        def FromClipboard():
+            if not wx.TheClipboard.IsOpened():
+                wx.TheClipboard.Open()
+                text = wx.TextDataObject('')
+                if wx.TheClipboard.GetData(text):
+                    return = text.GetText()
+        """
         if self.previewOK():
             script = self.currentScript
-            if script.FindText(0, script.GetTextLength(), 'find_clip') < 0:
-                wx.MessageBox("Variable 'find_clip' not found\nPlease reade the Locate frame readme", 'LocateFrame Error')
-                return
+            #if script.FindText(0, script.GetTextLength(), 'find_clip') < 0:
+                #wx.MessageBox("Variable 'find_clip' not found\nPlease reade the Locate frame readme", 'LocateFrame Error')
+                #return
 
             if not self.propWindow.Active:
                 self.propWindow.Toggle()
@@ -13223,11 +13231,27 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             blocker = wx.EventBlocker(self)
             err = None
             nr = -1
+            find_src = None
+            findframe = None
+            #findclip = None # test
             if self.splitView and self.splitView_nextScript is not None and self.previewOK(self.splitView_nextScript):
                 findframe = self.splitView_nextScript.AVI.current_frame
-            else: findframe = None
+                #findclip = self.splitView_nextScript.AVI.clip # test
+                find_src = self.splitView_nextScript.GetSelectedText()
+                #if not find_src:
+                    #find_src = FromClipboard()
+                if not find_src:
+                    find_src = script.GetSelectedText()
+                if find_src.find('(') < 5 or find_src.find(')') < 10:
+                    find_src = ''
+            else:
+                find_src = script.GetSelectedText()
+                #if not find_src:
+                    #find_src = FromClipboard()
+                if find_src.find('(') < 5 or find_src.find(')') < 10:
+                    find_src = ''
             try:
-                nr,diff,err = script.AVI.LocateFrame(start=-500, stop=500, framenr=findframe) # not threaded
+                nr,diff,err = script.AVI.LocateFrame(start=-500, stop=500, framenr=findframe, find_src=find_src) # not threaded
                 if nr > -1:
                     if self.splitView and self.splitView_nextScript is not None:
                         freeze = self.splitView_freeze
@@ -23082,8 +23106,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                             return None
                     else:
                         if useFastClip:
-                            if not script.AVI.JoinMainClip(script,useSplitClip=useSplitClip,previewFilter=previewFilter,matrix=matrix,
-                                                            readmatrix=readmatrix,interlaced=interlaced,swapuv=swapuv,bit_depth=bit_depth):
+                            if not script.AVI.CreateFastClip(script,useSplitClip=useSplitClip,previewFilter=previewFilter,matrix=script.matrix,
+                                                            readmatrix=readmatrix,interlaced=self.interlaced,swapuv=swapuv,bit_depth=self.bit_depth):
                                 if not self.AviFree(script):
                                     if showCursor and wx.IsBusy():
                                         wx.EndBusyCursor()
