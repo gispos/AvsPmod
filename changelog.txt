@@ -39,7 +39,7 @@ please rename this dll and replace the '-' with a '_'
 
 
 --------------------------
-Version 2.7.3.4 - 2.7.3.5 [2023-02-12] GPo
+Version 2.7.3.4 - 2.7.3.5 - 2.7.3.6 [2023-02-13] GPo
 --------------------------
 * Added: Options > 'Use Ultra Fast Clip' you must read the Fast Clip readme (Help > Fast Clip readme). 
 - here is an example video: https://vimeo.com/user183482922
@@ -65,6 +65,7 @@ Version 2.7.3.4 - 2.7.3.5 [2023-02-12] GPo
 * Rize filter small ratio bug fixed (2 pixels)
 * Some other smal changes
 * Version 2.7.3.5: Bugfix: There was an error when 'Fast Clip' is enabled but Avisynth loading in threads is disabled.
+* Version 2.7.3.6: Bugfix: Same reason as in 2.7.3.5 but a different trigger. Sorry.
 -
 Reminder 'Resize filter' and normal zoom:
 The resize filter is switched on under Program Options > Misc 2 > 'Show resample zoom menu'.

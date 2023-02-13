@@ -14,7 +14,7 @@ The partner tab is the right tab next to the current tab.
 Both clips must be initialized in the current script and a variable must be set on the clip to be searched for the frame.
 The variable has a fixed name: find_clip
 
-Example main script:
+Example main script: (See at the very bottom, there is an alternative way to proceed)
 Import("...LocateFrames.avs")
 LWLibavVideoSource("E:\Test.mpg")
  
@@ -62,3 +62,6 @@ If only one frame with a higher value is found, this will be displayed in the fr
 
 ! Do not use any other filters, that slows down the finding process.
 
+Update Version 2.7.3.6 alternative way to proceed:
+In the partner script or in the current script mark the SourceFilter incl. parameter, e.g. LWLibavVideoSource("E:\Test_2.mpg") then the default values are used. 
+So nothing else has to be entered in the script. Do not copy it is enough to mark it.

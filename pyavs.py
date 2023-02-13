@@ -810,7 +810,7 @@ class AvsClipBase:
         cfunc.KillFilterClip(self, createDisplayClip=createDisplayClip)
 
     def LocateFrame(self, start=-500, stop=500, framenr=None, find_src=''):
-        return cfunc.LocateFrame(self, start, stop, framenr)
+        return cfunc.LocateFrame(self, start, stop, framenr, find_src)
 
     # for avisynth from H8 but lower then 3.71 (bug C Interface)
     def GetMatrix_2(self):
