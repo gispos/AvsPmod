@@ -2906,14 +2906,6 @@ bool "mask"=false,
 bool "show"=false
 )
 
-Spectrogram
-(
-clip,
-int "width"=512,
-int "height"=256,
-bool "transpose"=false
-)
-
 resamplehq-x86_ResampleHQ(
 clip,
 int "width",
