@@ -39,6 +39,23 @@ please rename this dll and replace the '-' with a '_'
 
 
 --------------------------
+Version 2.7.3.7 [2023-03-05] GPo
+--------------------------
+* Added Fullscreen mode, old Fullscreen mode now called Fullsize (you must set new shortcut)
+- press Shift on double clicking the video or use menu Video > Additional > 'Fullscreen'
+- remainder: Press Ctrl on double clicking the video for Fullsize mode
+* Added Program Options > Misc2 > 'Fullscreen zoom' default normal fill, read the readme_FullscreenZoom.txt in the Archive.
+- for Resample: the Resample zoom must be enabled, Program Options > Misc2 > 'Show Resample zoom menu'
+* Video controls can be shown in Fullscreen mode.
+- move the mouse at the very bottom of the screen edge (10 pixels x DPI scalling). 
+- they are hidden again when you left-click in the video window.
+* Added Program options > Misc2 > 'Display filter enabled on startup'
+* Numbers Wheel faster option is now disabled at start (otherwise the last decimal digit could not be changed).
+- toggle between fast and normal: if active then a middle mouse click. The status bar shows the status.
+* When the video is drawn with Resize Filter a small green triangle is visible in the upper left corner.
+* Fixed: At the top left of the video window sometimes appeared a small square (10x10 pixel).
+
+--------------------------
 Version 2.7.3.4 - 2.7.3.5 - 2.7.3.6 [2023-02-13] GPo
 --------------------------
 * Added: Options > 'Use Ultra Fast Clip' you must read the Fast Clip readme (Help > Fast Clip readme). 

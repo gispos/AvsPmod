@@ -44,6 +44,7 @@ import func
 import struct
 import utils
 import cfunc
+import gc
 
 #import pyaudio
 
@@ -585,6 +586,7 @@ class AvsClipBase:
             #~if __debug__:
             if bool(__debug__):
                 print(u"Deleting allocated video memory for '{0}'".format(self.name))
+        gc.collect()
 
     def CreateErrorClip(self, err='', display_clip_error=False):
         if display_clip_error:
@@ -872,9 +874,8 @@ class AvsClipBase:
 
     def GetPictureType(self, nr=None):
         if self.initialized and self.can_read_avisynth_props:
-            if nr:
-                if not self._GetFrame(nr): # it's not threaded !
-                    return ''
+            if nr and not self._GetFrame(nr): # it's not threaded !
+                return ''
             return self.env.props_get_picture_type(self.src_frame)
         return ''
 

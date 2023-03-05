@@ -113,3 +113,19 @@ def GetGOPClosedName(idx):
     if idx in namedict.keys():
         return namedict[idx]
     return '?'
+
+"""
+def GetPropNameValue(key, value):
+    propCharDict = {
+        '_Matrix': func.GetMatrixName,
+        '_Primaries': func.GetColorPrimariesName,
+        '_ChromaLocation': func.GetChromaLocationName,
+        '_FieldBased': func.GetFieldBasedName,
+        '_Transfer': func.GetTransferName,
+        '_ColorRange': func.GetColorRangeName,
+        '_GOPClosed': func.GetGOPClosedName,
+    }
+    if key in propCharDict:
+        return '[' + propCharDict[key](value) + ']'
+    return ''
+"""

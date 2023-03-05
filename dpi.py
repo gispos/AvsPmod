@@ -31,8 +31,8 @@ def floatPPI(n):
 def tuplePPI(n1, n2):
     return (int(ppi_factor * n1), int(ppi_factor * n2))
 
-def SetFontPPI(obj, size_adj=0):
-    if ppi_factor > 1:
+def SetFontPPI(obj, size_adj=0, force_adj=False):
+    if ppi_factor > 1 or force_adj:
         try:
             font = obj.GetFont()
             if font.IsUsingSizeInPixels():
