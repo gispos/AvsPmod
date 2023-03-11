@@ -17501,6 +17501,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.fullScreenWnd_IsShown = False
                 self.fullScreenWnd.Hide()
                 self.fullScreenWnd.ShowFullScreen(show=False)
+                self.fullScreenWnd.Hide()
                 self.videoControls.Reparent(self)
                 self.fullScreenWnd_IsShown = False
                 forceCursor = script.resizeFilter[0] and script.resizeFilter[2] == 1
@@ -17584,6 +17585,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if self.fullScreenWnd_IsShown:
                 self.fullScreenWnd.Hide()
                 self.fullScreenWnd.ShowFullScreen(False)
+                self.fullScreenWnd.Hide()
                 self.fullScreenWnd_IsShown = False
             return
 
@@ -22225,6 +22227,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.fullScreenWnd_IsShown = False
             self.fullScreenWnd.Hide()
             self.fullScreenWnd.ShowFullScreen(show=False)
+            self.fullScreenWnd.Hide()
             self.videoControls.Reparent(self)
 
             if not setMinPaneSize or self.IsFullScreen():

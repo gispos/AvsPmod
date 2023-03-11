@@ -36,7 +36,12 @@ the name has to be split and this can lead to errors.
 AvsPmod can only provide a user-friendly editor if he has no problems with the name of the dll and its function. 
 If, for example, there is a '-' in the file name of the dll, AvsPmod will report it at startup, 
 please rename this dll and replace the '-' with a '_'
+--------------------------
 
+
+Version 2.7.3.9 [2023-03-11] GPo
+--------------------------
+* Fix: The fullscreen window sometimes appeared in normal size when fullscreen was not active.
 
 --------------------------
 Version 2.7.3.8 [2023-03-11] GPo
