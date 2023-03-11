@@ -39,6 +39,17 @@ please rename this dll and replace the '-' with a '_'
 
 
 --------------------------
+Version 2.7.3.8 [2023-03-11] GPo
+--------------------------
+* Fix: Fullscreen mode did not work with larger video dimensions.
+- some code additions and changes for the Fullscreen mode.
+* Big Note: 
+- If Avisynth is trimmed too much with SetMemoryMax, all AvsPmod filters will take longer. 
+- The Resample filter normally takes less than 1 second, but if the Avisynth memory is reduced too much, it can take 10 seconds.
+* When exiting the Fullscreen mode, the slider window is restored if it was visible before. 
+* If AvsPmod is terminated, it now looks nicer.
+
+--------------------------
 Version 2.7.3.7 [2023-03-05] GPo
 --------------------------
 * Added Fullscreen mode, old Fullscreen mode now called Fullsize (you must set new shortcut)

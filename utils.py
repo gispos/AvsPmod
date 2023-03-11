@@ -106,6 +106,10 @@ def GetScrollbarMetric_X():
 def GetScrollbarMetric_Y():
     return wx.SystemSettings.GetMetric(wx.SYS_VSCROLL_Y)
 
+# found no other way do get client size with the scrollbars (if scrollbar visible), or must check if scrollbar visible
+def GetSizeWithoutBorder(wnd):
+    return wx.Size(wnd.GetSize()[0]-wx.SystemSettings.GetMetric(wx.SYS_BORDER_X)*2, wnd.GetSize()[1]-wx.SystemSettings.GetMetric(wx.SYS_BORDER_Y)*2)
+
 avsRGB = '"RGB24"/ "RGB32"/ "RGB48"/ "RGB64"'
 
 avsRGBP = '"RGBP8"/ "RGBP10"/ "RGBP12"/ "RGBP14"/ "RGBP16"'

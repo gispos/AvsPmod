@@ -37,5 +37,9 @@ If not 'Save view pos on tab change' or 'Save pos & zoom on tab change' enabled 
 Certain functions are not possible with the resample filter: 
 Crop dialog, read pixel values from avisynth, and a few things are not yet running smoothly: Split View and Preview Filter together.
 
-If a resize is active this is indicated in the status bar with an 'r' in front of zoom and dimensions.  
+If a resize is active this is indicated in the status bar with an 'r' in front of zoom and dimensions. 
+
+* Big Note: 
+- If Avisynth is trimmed too much with SetMemoryMax, all AvsPmod filters will take longer. 
+- The Resample filter normally takes less than 1 second, but if the Avisynth memory is reduced too much, it can take 10 seconds. 
 

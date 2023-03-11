@@ -36,7 +36,7 @@ def SetFontPPI(obj, size_adj=0, force_adj=False):
         try:
             font = obj.GetFont()
             if font.IsUsingSizeInPixels():
-                font.SetPixelSize(tuplePPI(font.GetPixelSize()[0]+size_adj, font.GetPixelSize()[1]+size_adj))
+                font.SetPixelSize(tuplePPI(font.GetPixelSize()[0], font.GetPixelSize()[1]+size_adj))
             else:
                 font.SetPointSize(intPPI(font.GetPointSize())+size_adj)
         except:
@@ -46,7 +46,7 @@ def SetFontPPI(obj, size_adj=0, force_adj=False):
 def SetFontSize(font, factor, size_adj=0, usePixel=True):
     try:
         if usePixel and font.IsUsingSizeInPixels():
-            font.SetPixelSize((int(font.GetPixelSize()[0]*factor)+size_adj, int(font.GetPixelSize()[1]*factor)+size_adj))
+            font.SetPixelSize((int(font.GetPixelSize()[0]*factor), int(font.GetPixelSize()[1]*factor)+size_adj))
         else:
             font.SetPointSize(int(font.GetPointSize()*factor)+size_adj)
     except:

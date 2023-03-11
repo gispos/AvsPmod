@@ -16,3 +16,7 @@ Resample zoom:
 If Fullscreen is started and ended with the same tab, the zoom that existed before the fullscreen mode is restored.
 If a tab is changed in Fullscreen mode, this tab will retain the resample filter even after Fullscreen mode is ended. 
 
+Big Note: 
+- If Avisynth is trimmed too much with SetMemoryMax, all AvsPmod filters will take longer. 
+- The Resample filter normally takes less than 1 second, but if the Avisynth memory is reduced too much, it can take 10 seconds.
+
