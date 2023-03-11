@@ -36,15 +36,9 @@ the name has to be split and this can lead to errors.
 AvsPmod can only provide a user-friendly editor if he has no problems with the name of the dll and its function. 
 If, for example, there is a '-' in the file name of the dll, AvsPmod will report it at startup, 
 please rename this dll and replace the '-' with a '_'
---------------------------
-
-
-Version 2.7.3.9 [2023-03-11] GPo
---------------------------
-* Fix: The fullscreen window sometimes appeared in normal size when fullscreen was not active.
 
 --------------------------
-Version 2.7.3.8 [2023-03-11] GPo
+Version 2.7.3.8 - 2.7.3.9 [2023-03-11] GPo
 --------------------------
 * Fix: Fullscreen mode did not work with larger video dimensions.
 - some code additions and changes for the Fullscreen mode.
@@ -53,6 +47,7 @@ Version 2.7.3.8 [2023-03-11] GPo
 - The Resample filter normally takes less than 1 second, but if the Avisynth memory is reduced too much, it can take 10 seconds.
 * When exiting the Fullscreen mode, the slider window is restored if it was visible before. 
 * If AvsPmod is terminated, it now looks nicer.
+* 2.7.3.9 Fix: The fullscreen window sometimes appeared in normal size when fullscreen was not active.
 
 --------------------------
 Version 2.7.3.7 [2023-03-05] GPo
