@@ -38,6 +38,16 @@ If, for example, there is a '-' in the file name of the dll, AvsPmod will report
 please rename this dll and replace the '-' with a '_'
 
 --------------------------
+Version 2.7.4.0 [2023-03-19] GPo
+--------------------------
+* Fullscreen mode reworked. 
+* Fullsize\Fullscreen mode now only possible when accessing avisynth in threads enabled. (Options > Access avisynth in threads)
+* Added: When fullsize or fullscreen an information dialog appears when a frame is loaded and the loading takes longer than 4 seconds. 
+- under Program Options > Misc2 > 'Fullscreen\Fullsize progress dialog' you can set the position for this.
+* Fix: Resample zoom flickering when zooming with the mouse wheel.
+* Some other changes
+
+--------------------------
 Version 2.7.3.8 - 2.7.3.9 [2023-03-11] GPo
 --------------------------
 * Fix: Fullscreen mode did not work with larger video dimensions.
