@@ -5337,10 +5337,12 @@ class SliderPlus(wx.Panel):
         self.hilightBookmarks = False
         self.bookmarksHilightColor = wx.Brush(wx.RED)
         self.selectionsHilightColor = wx.Brush(wx.BLUE)
+        self.oldBackgroundColour = self.GetBackgroundColour()
         self.paintWait = False
         self.AVI_SplitClip = False
         ###
-        self._DefineBrushes()
+        self.useThemeColor = self.app.options['videocontrolscolor']
+        self._DefineBrushes(self.useThemeColor)
         # Event binding
         self.Bind(wx.EVT_PAINT, self._OnPaint)
         self.Bind(wx.EVT_SIZE, self._OnSize)
@@ -5360,20 +5362,45 @@ class SliderPlus(wx.Panel):
     def intPPI(self, n):
         return int(self.dpiScale * n)
 
-    def _DefineBrushes(self):
-        self.colorBackground = self.GetBackgroundColour() # GPo
-        #self.colorBackground = (43,43,43)
-        colorHighlight = wx.SystemSettings.GetColour(wx.SYS_COLOUR_3DLIGHT)
-        colorHighlight2 = wx.SystemSettings.GetColour(wx.SYS_COLOUR_3DHILIGHT)
-        colorShadow = wx.SystemSettings.GetColour(wx.SYS_COLOUR_3DSHADOW)
-        colorDarkShadow = wx.SystemSettings.GetColour(wx.SYS_COLOUR_3DDKSHADOW)
-        colorWindow = colorHighlight2#wx.SystemSettings.GetColour(wx.SYS_COLOUR_WINDOW)
-        colorHandle = wx.SystemSettings.GetColour(wx.SYS_COLOUR_BTNFACE)
-        #r,g,b = colorHandle.Red(), colorHandle.Green(), colorHandle.Blue()
-        colorHandle2 = wx.SystemSettings.GetColour(wx.SYS_COLOUR_BTNHIGHLIGHT)
+    def _DefineBrushes(self, useThemeColor=False, refreshButtons=False):
+        colorBookmarks = (0,0,0)
         colorGrayText = wx.SystemSettings.GetColour(wx.SYS_COLOUR_GRAYTEXT)
-        # GPo 2020
-        self.penWindowBackground = wx.Pen(self.colorBackground)
+        if useThemeColor or self.useThemeColor:
+            self.colorBackground = self.app.GetThemeColor('videocontrols','back')
+            r,g,b = self.colorBackground
+            colorHighlight = (min(r+25, 255),min(g+25,255),min(b+25,255))  #(100, 95, 100)
+            colorHighlight2 = (min(r+30, 255),min(g+30,255),min(b+30,255)) #(140,135,140)
+            colorShadow =   (max(r-5, 0),max(g-5,0),max(b-5,0))   #(130,125,130)
+            colorDarkShadow = (max(r-8, 0),max(g-8,0),max(b-8,0)) #(95,90,95)
+            colorWindow = (max(r-40, 40),max(g-40,40),max(b-40,40))  #(60,55,60)
+            colorHandle = (min(r+30, 255),min(g+30,255),min(b+30,255)) #(140, 140, 140) #(140, 135, 140)
+            colorHandle2 = (min(r+50, 255),min(g+50,255),min(b+50,255)) #(185,185,185)
+            colorOffset = (max(r-20, 0),max(g-20,0),max(b-15,0))  #(85, 80, 85)
+            brushHandleHighlight = colorHandle2
+            self.app.frameTextCtrl.SetBackgroundColour(wx.Colour(185,190,190))
+        else:
+            self.colorBackground = self.oldBackgroundColour #  wx.SystemSettings.GetColour(wx.SYS_COLOUR_WINDOW)
+            colorHighlight = wx.SystemSettings.GetColour(wx.SYS_COLOUR_3DLIGHT)
+            colorHighlight2 = wx.SystemSettings.GetColour(wx.SYS_COLOUR_3DHILIGHT)
+            colorShadow = wx.SystemSettings.GetColour(wx.SYS_COLOUR_3DSHADOW)
+            colorDarkShadow = wx.SystemSettings.GetColour(wx.SYS_COLOUR_3DDKSHADOW)
+            colorWindow = colorHighlight2
+            colorHandle = wx.SystemSettings.GetColour(wx.SYS_COLOUR_BTNFACE)
+            colorHandle2 = wx.SystemSettings.GetColour(wx.SYS_COLOUR_BTNHIGHLIGHT)
+            colorOffset = self.colorBackground
+            brushHandleHighlight = colorHandle2
+            self.app.frameTextCtrl.SetBackgroundColour(wx.WHITE)
+        self.parent.SetBackgroundColour(self.colorBackground)
+        self.parent.Refresh()
+        if refreshButtons: # only for primary (self.app.videoControls)
+            for ctrl in self.app.videoControlWidgets:
+                if isinstance(ctrl, wxButtons.GenBitmapButton):
+                    ctrl.SetBackgroundColour(self.colorBackground)
+            if self.app.separatevideowindow:
+                for ctrl in self.app.videoControlWidgets2:
+                    if isinstance(ctrl, wxButtons.GenBitmapButton):
+                        ctrl.SetBackgroundColour(self.colorBackground)
+
         if self.hilightBookmarks or self.selmode == 1:
             if self.value in self.selectionsDict:
                 self.brushWindowBackground = self.selectionsHilightColor
@@ -5384,19 +5411,7 @@ class SliderPlus(wx.Panel):
         else:
             self.brushWindowBackground = wx.Brush(self.colorBackground)
 
-        # test
-        """
-        colorHighlight = (100,100,100)
-        colorHighlight2 = (140,140,140)
-        colorShadow = (130,130,130)
-        colorDarkShadow = (100,100,100)
-        colorWindow = (63,63,63)
-        colorHandle = (180,180,40)
-        colorHandle2 = (200,200,80)
-        ###
-        """
-        colorBookmarks = (0,0,0)
-
+        self.penWindowBackground = wx.Pen(self.colorBackground)
         self.penBackground = wx.Pen(colorWindow)
         self.brushBackground = wx.Brush(colorWindow)
         self.penShadow = wx.Pen(colorShadow)
@@ -5405,15 +5420,15 @@ class SliderPlus(wx.Panel):
         self.penHighlight2 = wx.Pen(colorHighlight2)
         self.penHandle = wx.Pen(colorHandle)
         self.brushHandle = wx.Brush(colorHandle)
-        self.brushHandleHighlight = wx.Brush((160,160,160))
+        self.brushHandleHighlight = wx.Brush(brushHandleHighlight)  #wx.Brush((160,160,160))
         self.penHandle2 = wx.Pen(colorHandle2)
         self.brushHandle2 = wx.Brush(colorHandle2)
         self.penGrayText = wx.Pen(colorGrayText)
         self.brushGrayText = wx.Brush(colorGrayText)
         self.penBookmarks = wx.Pen(colorBookmarks)
         self.brushBookmarks = wx.Brush(colorBookmarks)
-        self.brushOffset = wx.Brush(colorHighlight)
-        self.penOffset = wx.Pen(colorHighlight)
+        self.brushOffset = wx.Brush(colorOffset)
+        self.penOffset = wx.Pen(colorOffset)
         self.brushSplitClip =  wx.Brush(self.app.options['timelinesplitclipcolor'])  # default wx.Brush((100,160,120))
 
     def _StopPlaying(self):  # GPo 2020
@@ -5860,7 +5875,7 @@ class SliderPlus(wx.Panel):
             if not enabled and not self.app.trimDialog.IsShown():
                 self.selmode = 0
             self.hilightBookmarks = enabled
-        self._DefineBrushes()
+        self._DefineBrushes(self.app.fullScreenWnd_IsShown)
 
     def SetValue(self, value):
         value -= self.startOffset
@@ -6160,11 +6175,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.SlidersContextMenu = None
         self.StatusBarContextMenu = None
         self.Lock = threading.RLock()
-        #self.displayFilter = False
         self.getPixelInfo = False
         self.blockEventSize = False
         self.ClipRefreshPainter = None       # GPo, clip thread progress event blocker
         self.fullScreenWnd_IsShown = False
+        #wx.SystemOptions.SetOptionInt('msw.display.directdraw', 1)
         #self.debug = False
         #
         #self.tb_icon = wx.lib.adv.TaskBarIcon()
@@ -7207,6 +7222,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 'sliderwindowextrabtn1': 'fore:#ADB7A4',
                 'sliderwindowbackslider': 'back:#2b2b2b',
                 'sliderwindowsidebar': 'back:#504e54',
+                'videocontrols': 'back:#646064',
+                #'statusbar': 'back:#C8C8C8',
                 'sliderwindowprevfilter': 'fore:#D1B38F,back:#B6AFCF',
             },
             'Default dark': {
@@ -7251,6 +7268,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 'sliderwindowextrabtn1': 'fore:#ADB7A4',
                 'sliderwindowbackslider': 'back:#2b2b2b',
                 'sliderwindowsidebar': 'back:#504e54',
+                'videocontrols': 'back:#646064',
+                #'statusbar': 'back:#969696',
                 'sliderwindowprevfilter': 'fore:#D1B38F,back:#B6AFCF',
             },
             # Based, with some minor changes, on Solarized <http://ethanschoonover.com/solarized>
@@ -7296,6 +7315,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 'sliderwindowextrabtn1': 'fore:#ADB7A4',
                 'sliderwindowbackslider': 'back:#2B2B2B',
                 'sliderwindowsidebar': 'back:#504e54',
+                'videocontrols': 'back:#646064',
+                #'statusbar': 'back:#C8C8C8',
                 'sliderwindowprevfilter': 'fore:#D1B38F,back:#B6AFCF',
             },
             'Solarized dark': {
@@ -7340,6 +7361,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 'sliderwindowextrabtn1': 'fore:#ADB7A4',
                 'sliderwindowbackslider': 'back:#2B2B2B',
                 'sliderwindowsidebar': 'back:#504e54',
+                'videocontrols': 'back:#646064',
+                #'statusbar': 'back:#969696',
                 'sliderwindowprevfilter': 'fore:#D1B38F,back:#B6AFCF',
             },
         }
@@ -7554,6 +7577,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'splitviewex': False,                    # GPo, use Split View alternate (self.splitViewEx)
             'fullscreenzoom': 1,                     # GPo, set zoom on fullscreen 0=None, 1=Normal, 2=Resample
             'fullscreendlgxy': 4,                    # GPo, position for static progress dlg on Fullsize/Fullscreen
+            #'usethemecolor': 0,                      # GPo, set color for slider, statusbar, etc...
             'eol': 'auto',
             'loadstartupbookmarks': True,
             'nrecentfiles': 5,
@@ -7572,6 +7596,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'usesliderwindowprevfiltercolor': True,
             'usesliderwindowbackslider': False,
             'sliderwindowsidebarcolor': False,
+            'videocontrolscolor': False,
+            #'statusbarcolor': False,
             'disablepreview': False,
             'paranoiamode': False,
             'periodicbackup': 0,
@@ -7611,6 +7637,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.options['textstyles']['highlight'] += ',fore:#000000'
         if len(self.options['textstyles']['foldmargin'].split(':')) == 2:
             self.options['textstyles']['foldmargin'] += ',fore:#555555'
+
         self.options['cropminx'] = self.options['cropminy'] = 1
         self.options['loadstartupbookmarks'] = True
         if oldOptions and 'autocompleteexclusions' in oldOptions:
@@ -8541,6 +8568,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 ((_('Show resample zoom menu*'), wxp.OPT_ELEM_LIST, 'showresamplemenu', _("Show/hide resample menu in zoom menu.\n!! Read Help > 'Resample filter readme'"), dict(choices=[(_('Hide (disabled)'),0), (_('As Submenu'),1), (_('Normal'),2)]) ), ),
                 ((_('Fullscreen zoom'), wxp.OPT_ELEM_LIST, 'fullscreenzoom', _('Zoom on Fullscreen. Note: Resample only if Resample enabled'), dict(choices=[(_('None'),0), (_('Normal'),1), (_('Resample'),2)]) ), ),
                 ((_('Fullscreen/Fullsize  progress dialog'), wxp.OPT_ELEM_LIST, 'fullscreendlgxy', _('Position for the static progress information on loading a frame'), dict(choices=[(_(r'top\left'),0), (_(r'top\right'),1), (_(r'top\center'),2), (_(r'bottom\left'),3), (_(r'bottom\right'),4)]) ), ),
+                #((_('Dark video controls theme*'), wxp.OPT_ELEM_LIST, 'usethemecolor', _('Only the video controls and statusbar can be colorized'), dict(choices=[(_('None'),0), (_('Video controls'),1), (_('+ Video window border'),2), (_('+ Statusbar'),3)]) ), ),
                 ((_('Display filter enabled on startup'), wxp.OPT_ELEM_CHECK, 'displayfilter_enabled', _('Enable the Display filter on startup'), dict() ), ),
             ),
         )
@@ -8608,6 +8636,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             statusBar.SetMinHeight(font.GetPixelSize()[1] + intPPI(4))
             statusBar.SetFont(font)
         statusBar.SetStatusWidths([-1, 0])
+        """ Statusbar color, but I don't like it, it doesn't fit the notebook tab's
+        if self.options['statusbarcolor']:
+            color = self.GetThemeColor('statusbar', 'back')
+            if color:
+                statusBar.SetBackgroundColour(color)
+        """
 
         class PartialFormatter(string.Formatter):
 
@@ -8635,10 +8669,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         # listed as a function in 2.93 but not present even in 2.95 (if you set initial size, the window cannot be hidden! Big wx Bug!!)
         self.fullScreenWnd = wx.Frame(self, wx.ID_ANY,style=wx.NO_BORDER|wx.FRAME_FLOAT_ON_PARENT|wx.WANTS_CHARS) # not top level!! or problems with some dialogs
         self.fullScreenWnd.Hide()
+        #self.fullScreenWnd.Maximize(True)
+
         # Fullscreen window sizer
         fSizer = wx.BoxSizer(wx.VERTICAL)
-        #fSizer.Add(self.videoWindow, 1, wx.EXPAND)
-        #fSizer.Add(self.videoControls, 0, wx.EXPAND)
         self.fullScreenSizer = fSizer
         self.fullScreenWnd.SetSizer(fSizer)
 
@@ -8683,11 +8717,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         # GPo, only the panel for the toggleSliderWindowButton
         self.videoPane = wx.Panel(parent, wx.ID_ANY)
-        if self.options['sliderwindowsidebarcolor']:
-            color = self.GetThemeColor('sliderwindowsidebar', 'back')
-            if color:
-                self.videoPane.SetBackgroundColour(color)
         self.videoSplitter = wx.SplitterWindow(self.videoPane, wx.ID_ANY, style=wx.SP_3DSASH|wx.SP_NOBORDER|wx.SP_LIVE_UPDATE)
+
         f = self.options['ppiscalingvideocontrols']
         if f != 0:
             f = f/10.0
@@ -8708,6 +8739,16 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.toggleSliderWindowButton = wxButtons.GenBitmapButton(self.videoPane, wx.ID_ANY, bmpHide, size=(w,h), style=wx.NO_BORDER)
         self.toggleSliderWindowButton.bmpShow = bmpShow
         self.toggleSliderWindowButton.bmpHide = bmpHide
+
+        color = None
+        if self.options['videocontrolscolor']:
+            color = self.GetThemeColor('videocontrols', 'back')
+        elif self.options['sliderwindowsidebarcolor']:
+            color = self.GetThemeColor('sliderwindowsidebar', 'back')
+        if color:
+            self.videoPane.SetBackgroundColour(color)
+            self.toggleSliderWindowButton.SetBackgroundColour(color)
+
         def OnTSWButtonSize(event):
             dc = wx.WindowDC(self.toggleSliderWindowButton)
             dc.Clear()
@@ -8732,7 +8773,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.videoPaneSizer.Add(self.videoSplitter, 1, wx.EXPAND|wx.ALL, 0)
         self.videoPaneSizer.Add(self.toggleSliderWindowButton, 0, wx.EXPAND|wx.ALL, 0)
         self.videoPane.SetSizer(self.videoPaneSizer)
-        self.videoPaneSizer.Layout() # GPo new
+        self.videoPaneSizer.Layout()
 
         ##### Main splitter is splitter for script\videoWindow #####
         self.mainSplitter.SetSplitMode(wx.SPLIT_HORIZONTAL)
@@ -8908,7 +8949,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.bindShortcutsToAllWindows()
 
         # Create the program's video controls
-        self.videoControls = self.createVideoControls(self.programSplitter)
+        self.videoControls = self.createVideoControls(self.programSplitter, useThemeColor=self.options['videocontrolscolor'])
 
         if wx.VERSION < (2, 9):
             spos = self.videoControls.GetClientSize().height + intPPI(6)
@@ -10181,7 +10222,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         int5 = intPPI(5)
         round5 = roundPPI(5)
         # Create the instance of the window                         # GPo 2020, size,pos wx 2.9
-        scriptWindow = AvsStyledTextCtrl(self.scriptNotebook, self, pos=(-50,-50), size=(10,10), style=wx.STATIC_BORDER)
+        #if self.options['usethemecolor'] > 0:
+        scriptWindow = AvsStyledTextCtrl(self.scriptNotebook, self, pos=(-50,-50), size=(10,10), style=wx.NO_BORDER)
+        #else:
+            #scriptWindow = AvsStyledTextCtrl(self.scriptNotebook, self, pos=(-50,-50), size=(10,10), style=wx.STATIC_BORDER)
         # Bind variables to the window instance
         scriptWindow.filename = ""
         scriptWindow.workdir = ""
@@ -10496,7 +10540,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.videoWindow.SetFocus()
         self.PopupMenu(self.StatusBarContextMenu)
 
-    def createVideoControls(self, parent, primary=True):
+    def createVideoControls(self, parent, primary=True, useThemeColor=False):
         f = self.options['ppiscalingvideocontrols']
         if f != 0:
             f = f/10.0
@@ -10544,12 +10588,18 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         frameTextCtrl.Replace(0, -1, str(0))
         sizer.Add(frameTextCtrl, 0, wx.ALIGN_CENTRE_VERTICAL|wx.LEFT, int(4*factor))
         videoControlWidgets.append(frameTextCtrl)
+        """
         if primary:
             self.frameTextCtrl = frameTextCtrl
+            self.videoControlWidgets = videoControlWidgets
         else:
             self.frameTextCtrl2 = frameTextCtrl
+            self.videoControlWidgets2 = videoControlWidgets
+        """
         # Create the video slider
         if primary:
+            self.frameTextCtrl = frameTextCtrl
+            self.videoControlWidgets = videoControlWidgets
             self.videoSlider = SliderPlus(panel, self, wx.ID_ANY, 0, 0, 240-1, dpiScale=factor,
                                             titleDict=self.titleDict)
             self.videoSlider.Bind(wx.EVT_SCROLL_THUMBTRACK, self.OnSliderChanged)
@@ -10563,6 +10613,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.videoSlider.bookmarksHilightColor = wx.Brush(self.options['bookmarkshilightcolor'])  # GPo
             self.videoSlider.selectionsHilightColor = wx.Brush(self.options['selectionshilightcolor'])  # GPo
         else:
+            self.frameTextCtrl2 = frameTextCtrl
+            self.videoControlWidgets2 = videoControlWidgets
             self.videoSlider2 = SliderPlus(panel, self, wx.ID_ANY, 0, 0, 240-1, dpiScale=factor,
                                             titleDict=self.titleDict)
             self.videoSlider2.Bind(wx.EVT_SCROLL_THUMBTRACK, self.OnSliderChanged)
@@ -10575,21 +10627,29 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             videoControlWidgets.append(self.videoSlider2)
             self.videoSlider2.bookmarksHilightColor = wx.Brush(self.options['bookmarkshilightcolor'])  # GPo
             self.videoSlider2.selectionsHilightColor = wx.Brush(self.options['selectionshilightcolor'])  # GPo
+        """
         if primary:
             self.videoControlWidgets = videoControlWidgets
         else:
             self.videoControlWidgets2 = videoControlWidgets
+        """
 
         if self.options['disablepreview'] and primary:
             for ctrl in self.videoControlWidgets:
                 ctrl.Disable()
                 ctrl.Refresh()
 
-        # GPo,  Win10 hack
+        # GPo,  Win10 hack and videoControls Dark Theme
         if self.WinVersion >= 8:
             for ctrl in videoControlWidgets:
                 if ctrl != frameTextCtrl:
                     ctrl.Bind(wx.EVT_MOUSEWHEEL, self.OnVideoControlsMouseWheel)
+                    if self.videoSlider.useThemeColor and isinstance(ctrl, wxButtons.GenBitmapButton):
+                        ctrl.SetBackgroundColour(panel.GetBackgroundColour())
+        elif self.videoSlider.useThemeColor:
+            for ctrl in videoControlWidgets:
+                if isinstance(ctrl, wxButtons.GenBitmapButton):
+                    ctrl.SetBackgroundColour(panel.GetBackgroundColour())
 
         def OnMouseAux1Down(event, isAux2=False):
             if wx.GetKeyState(wx.WXK_SHIFT):
@@ -13229,7 +13289,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         """
         wx.BeginBusyCursor()
         disabler = wx.WindowDisabler()
-        blocker = wx.EventBlocker(self)
+        blocker = wx.EventBlocker(self, wx.wxEVT_ANY)
         #blocker.Block(wx.wxEVT_KEY_DOWN)
         #blocker.Block(wx.wxEVT_KEY_UP)
         try:
@@ -13404,7 +13464,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
             wx.BeginBusyCursor()
             disabler = wx.WindowDisabler()
-            blocker = wx.EventBlocker(self)
+            blocker = wx.EventBlocker(self, wx.wxEVT_ANY)
             err = None
             nr = -1
             find_src = None
@@ -13462,6 +13522,14 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     def OnMenuTest(self, event):
         pass
+        """
+        disabler = wx.WindowDisabler()
+        th, event = self.ShowStaticProgress(nr=0)
+        time.sleep(15)
+        event.set()
+        del disabler
+        """
+
         """
         print('clientRect:' + str(self.videoWindow.GetClientRect()))
         print('size:' + str(self.videoWindow.GetSize()))
@@ -15017,6 +15085,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     ((_('Slider window sliders background:'), 'usesliderwindowbackslider', _('Use another color for the sliders background')), 'sliderwindowbackslider'),
                     ((_('Slider window preview filters:'), 'usesliderwindowprevfiltercolor', _('Use another color for the preview filters\nAlternating (fore, back)')), 'sliderwindowprevfilter'),
                     ((_('Slider window sidebar color:'), 'sliderwindowsidebarcolor', _('Colorize the slider window sidebar')), 'sliderwindowsidebar'),
+                    ((_('Video controls color:'), 'videocontrolscolor', _('Colorize the video controls and slider side bar\nDark default (100,96,100)')), 'videocontrols'),
+                    #((_('Status bar color:'), 'statusbarcolor', _('Colorize the status bar')), 'statusbar'),
                     (_('Slider window extras (Snapshot):'), 'sliderwindowextrabtn1'),
                 ),
             )
@@ -15065,6 +15135,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         else:
             dlg = AvsStyleDialog(self, dlgInfo, self.options['textstyles'], self.defaulttextstylesDict, self.colour_data, extra)
         ID = dlg.ShowModal()
+        vControls = self.options['videocontrolscolor']
+        vColor = self.options['textstyles']['videocontrols']
         if ID == wx.ID_OK:
             self.options['textstyles'] = dlg.GetDict()
             self.options.update(dlg.GetDict2())
@@ -15076,13 +15148,31 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 script.SetUserOptions()
                 if self.options['sliderwindowcustomtheme']:
                     script.sliderWindow.SetThemeColors()
-            if self.options['sliderwindowsidebarcolor']:
+
+            if (vControls != self.options['videocontrolscolor']) or (vColor != self.options['textstyles']['videocontrols']):
+                for slider in self.GetVideoSliderList():
+                    slider.useThemeColor = self.options['videocontrolscolor']
+                    slider._DefineBrushes()
+                    slider.Refresh()
+                color = self.videoControls.GetBackgroundColour()
+
+                for ctrl in self.videoControlWidgets:
+                    if isinstance(ctrl, wxButtons.GenBitmapButton):
+                        ctrl.SetBackgroundColour(color)
+                if self.separatevideowindow:
+                    for ctrl in self.videoControlWidgets2:
+                        if isinstance(ctrl, wxButtons.GenBitmapButton):
+                            ctrl.SetBackgroundColour(color)
+
+            if not self.videoSlider.useThemeColor and self.options['sliderwindowsidebarcolor']:
                 color = self.GetThemeColor('sliderwindowsidebar', 'back')
-                if color:
-                    self.videoPane.SetBackgroundColour(color)
             else:
-                self.videoPane.SetBackgroundColour(wx.SystemSettings.GetColour(wx.SYS_COLOUR_WINDOW))
+                color = self.videoControls.GetBackgroundColour()
+            self.videoPane.SetBackgroundColour(color)
+            self.toggleSliderWindowButton.SetBackgroundColour(color)
+
             self.videoPane.Refresh()
+            self.toggleSliderWindowButton.Refresh()
             self.SetMinimumScriptPaneSize()
             self.scrapWindow.Style()
             self.propWindow.Style()
@@ -15889,7 +15979,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         def OnContextMenuHilight(event):  # GPo
             for slider in self.GetVideoSliderList():
-                slider.SetBookmarkHilighting(not self.videoSlider.hilightBookmarks)
+                slider.SetBookmarkHilighting(not slider.hilightBookmarks)
             if self.videoSlider.hilightBookmarks and self.bellAtBookmark:
                 self.bellAtBookmark = False
             # if slider offset, the slider value must new read or highligth color is not set
@@ -16397,18 +16487,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if self.options['tabautopreview']:
             if self.previewWindowVisible and script.AVI is None:
                 self.HidePreviewWindow()
-        """
-        if not self.options['resizevideowindow']:
-            if self.oldLastSplitVideoPos is not None: # eg. IsErrorClip()
-                script.lastSplitVideoPos = self.oldLastSplitVideoPos
-        else: # check if full size, if so then set the splitter
-            ps = self.mainSplitter.GetMinimumPaneSize()
-            if ps < intPPI(30):
-                self.mainSplitter.SetSashPosition(ps, redraw=False)
-                self.SaveLastSplitVideoPos()
-            else:
-                script.lastSplitVideoPos = None
-        """
 
         if self.fullScreenWnd_IsShown:
             if self.options['showresamplemenu'] > 0 and self.options['fullscreenzoom'] == 2:
@@ -16424,11 +16502,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     self.OnMenuVideoZoom(zoomfactor='fill', show=False, resizeFilterOff=True, single=True)
                     script.lastFsZoom = None
         else:
-            if not self.options['resizevideowindow']:
+            if self.options['resizevideowindow']:
+                script.lastSplitVideoPos = None
+            else:
                 if self.oldLastSplitVideoPos is not None: # eg. IsErrorClip()
                     script.lastSplitVideoPos = self.oldLastSplitVideoPos
-            else:
-                script.lastSplitVideoPos = None
 
             """ not good for the ClipRepainter
             else: # check if full size, if so then set the splitter
@@ -17512,7 +17590,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 if script.AVI:
                     self.PaintAVIFrame(dc, script, self.currentframenum, shift=False)
                 #else: dc.Clear()
-
                 self.videoWindow.SetWindowStyleFlag(wx.STATIC_BORDER|wx.WANTS_CHARS|wx.FULL_REPAINT_ON_RESIZE)
                 self.videoWindow.Reparent(self.videoSplitter)
                 wnd = self.videoSplitter.GetWindow1()
@@ -17540,6 +17617,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.videoControls.Reparent(self)
                 self.fullScreenWnd_IsShown = False
                 forceCursor = script.resizeFilter[0] and script.resizeFilter[2] == 1
+                if not self.videoSlider.useThemeColor:
+                    self.videoSlider._DefineBrushes(False, True)
 
                 if self.savedFsStartZoom is not None:
                     scroll, self.zoomfactor, self.zoomwindow, self.zoomwindowfill, self.zoomwindowfit, rf, script, sash_pos = self.savedFsStartZoom
@@ -17631,7 +17710,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 return
             if not self.UseAviThread:
                 wx.Bell()
-                wx.MessageBox(_("Fullscreen/Fullsize only with 'Loading Avisynth in threads' enabled"))
+                wx.MessageBox(_("Fullscreen/Fullsize only with 'Accessing AviSynth in threads' enabled"), 'AvsPmod')
                 return
             if not self.previewWindowVisible:
                 return
@@ -17689,8 +17768,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if toggleFullsize or ctrlKey  or shiftKey or toggleFullscreen:
                 if toggleFullsize or ctrlKey:
                     _closeFullscreen()
-                    #self.ShowFullScreen(show=not self.IsFullScreen(), style=wx.FULLSCREEN_NOCAPTION|wx.FULLSCREEN_NOMENUBAR|wx.FULLSCREEN_NOBORDER)
-                    self.ShowFullScreen(show=not self.IsFullScreen(), style=wx.FULLSCREEN_NOMENUBAR|wx.FULLSCREEN_NOBORDER)
+                    self.ShowFullScreen(show=not self.IsFullScreen(), style=wx.FULLSCREEN_NOCAPTION|wx.FULLSCREEN_NOMENUBAR|wx.FULLSCREEN_NOBORDER)
                 else:
                     # wxPython splitterWindow cannot be hiden, so we need a Fullscreen frame
                     # listed as a function in 2.93 but not present even in 2.95
@@ -17736,7 +17814,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
                         self.fullScreenSizer.Show(self.videoControls, False)
                         self.fullScreenSizer.Layout()
-                        self.videoControls.SetBackgroundColour(ctrlColor)
 
                         self.xo = self.yo = 0
                         self.fullScreenWnd_IsShown = True
@@ -17748,12 +17825,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         if self.splitView and script.lastFsZoom: # doesn't scroll on showVideoFrame
                             self.videoWindow.Scroll(*script.lastFsZoom[0])
 
-                        #if not display_clip_refresh:
-                            #self.videoWindow.Refresh()
-                            #self.videoWindow.Update()
-
                         script.sliderWindowShown = wasSplit
                         self.mainSplitter.SetSashPosition(1)
+                        if not self.videoSlider.useThemeColor:
+                            self.videoSlider._DefineBrushes(True, True)
+                        else:
+                            self.videoControls.SetBackgroundColour(ctrlColor)
                     else:
                         scroll, needResplit = _closeFullscreen()
                         sash_pos, setminpanesize = _setValues(script)
@@ -17764,6 +17841,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
             elif self.IsFullScreen():
                 self.ShowFullScreen(False)
+                #self.mainSplitter.SetWindowStyle(wx.SP_3DSASH|wx.SP_NOBORDER|wx.SP_LIVE_UPDATE)
 
             if setminpanesize: # must be set after Fullsize mode change (if multiline style)
                 self.SetMinimumScriptPaneSize()
@@ -22277,10 +22355,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             wnd = self.videoSplitter.GetWindow1()
             self.videoSplitter.ReplaceWindow(wnd, self.videoWindow)
             self.videoSplitter.Initialize(self.videoWindow)
-            wnd.Hide()
             wnd.Destroy()
 
             self.videoControls.SetPosition((0,wx.ScreenDC().GetSize()[1]))
+            if not self.videoSlider.useThemeColor:
+                self.videoSlider._DefineBrushes(False, True)
             self.fullScreenSizer.Show(self.videoControls)
             self.fullScreenSizer.Layout()
             self.fullScreenSizer.Clear()
@@ -23432,8 +23511,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
                 if th.isAlive() and not ok:
                     disabler = wx.WindowDisabler()
-                    blocker = wx.EventBlocker(self)
-                    title = _('Process display clip...')
+                    #blocker = wx.EventBlocker(self, wx.wxEVT_ANY)
+                    title = _('Process display clip... ')
                     dlg = self.ShowFullscreenProgress(nr=0,title=title, msg=_(' If you close this dialog you should restart the program '))
                     i = 0
                     try:
@@ -23442,9 +23521,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                 if wx.GetApp().Pending():
                                     wx.GetApp().DeletePendingEvents()
                                 if i % 4 == 0:
-                                    dlg.SetTitle(title + ' \\')
+                                    dlg.SetTitle(title + '\\')
                                 else:
-                                    dlg.SetTitle(title + ' /')
+                                    dlg.SetTitle(title + '/')
                                 dlg.SetFocus()
                                 wx.GetApp().SafeYieldFor(dlg, wx.wxEVT_ANY)
                                 if not dlg.IsShown():
@@ -23457,7 +23536,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     finally:
                         dlg.Destroy()
                         del disabler
-                        del blocker
+                        #del blocker
                         try:
                             ok = q.get_nowait()
                         except:
@@ -23471,7 +23550,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 return ok
 
             disabler = wx.WindowDisabler()
-            blocker = wx.EventBlocker(self)
+            #blocker = wx.EventBlocker(self, wx.wxEVT_ANY)
             th.join(self.progressDelayTime)
             try:
                 try:
@@ -23507,7 +23586,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         self.Thread_List.append((th,q))
             finally:
                 del disabler
-                del blocker
+                #del blocker
                 if not th.isAlive():
                     script.AviThread = None
                 return ok
@@ -26556,8 +26635,46 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 labelCtrl.SetForegroundColour(wx.NullColour)
             labelCtrl.Refresh()
 
+    """
+    def ShowStaticProgress(self,  nr, title='', msg='', posIdx=None):
+        def Update(self, dlg, event):
+
+            i = 0
+            try:
+                while not event.is_set():
+                    if i % 2 == 0:
+                        '''
+                        if wx.GetApp().Pending():
+                            wx.CallAfter(wx.GetApp().DeletePendingEvents)
+                            wx.Bell()
+                        '''
+                        wx.CallAfter(wx.GetApp().DeletePendingEvents)
+                        wx.CallAfter(dlg.SetFocus)
+                        wx.CallAfter(wx.GetApp().SafeYieldFor, self, wx.wxEVT_ANY)
+                        wx.CallAfter(wx.GetApp().SafeYieldFor, dlg, wx.wxEVT_ANY)
+                        wx.Bell()
+                        if not dlg.IsShown():
+                            break
+                        #if wx.GetKeyState(wx.WXK_ESCAPE):
+                            #break
+                    time.sleep(0.5)
+                    i += 1
+
+            finally:
+                wx.CallAfter(dlg.Destroy)
+
+
+        event = threading.Event()
+        dlg = self.ShowFullscreenProgress(nr, title, msg, posIdx)
+        #dlg = ShowFullscreenProgress(nr, title, msg, posIdx)
+        th = threading.Thread(target=Update, args=(self, dlg, event,))
+        th.daemon = True
+        th.start()
+        return th, event
+    """
+
     # You must Destroy the dialog after using it
-    def ShowFullscreenProgress(self, nr, title='', msg='', pos=None):
+    def ShowFullscreenProgress(self, nr, title='', msg='', posIdx=None):
         def GetPosition(dlg, idx):
             xy = (
                 (0,0),                                                   # top\left
@@ -26570,7 +26687,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if not title: title = 'Wait for frame: %i' % (nr)
         if not msg: msg = _(' Closing this dialog will cancel the loading of the frame ')
         #dlg = wx.Dialog(self.fullScreenWnd, wx.ID_ANY, title, size=(360,200), style=wx.CAPTION|wx.CLOSE_BOX|wx.DIALOG_NO_PARENT|wx.STAY_ON_TOP)
-        dlg = wx.Dialog(self.fullScreenWnd, wx.ID_ANY, title, size=(360,200), style=wx.CAPTION|wx.CLOSE_BOX|wx.STAY_ON_TOP)
+        dlg = wx.Dialog(None, wx.ID_ANY, title, size=(360,200), style=wx.CAPTION|wx.CLOSE_BOX|wx.STAY_ON_TOP)
         dlg.SetBackgroundColour(wx.Colour(50,50,50))
         dlg.SetForegroundColour(wx.WHITE)
         dpi.SetFontPPI(dlg,size_adj=2, force_adj=True)
@@ -26578,13 +26695,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         sizer = wx.BoxSizer()
         sizer.Add(txt, 1, wx.EXPAND)
         dlg.SetSizerAndFit(sizer)
-        #x, y = 0, 0                                                  # top\left
-        #x, y = wx.ScreenDC().GetSize()[0]-dlg.GetSize()[0], 0        # top\right
-        #x, y = wx.ScreenDC().GetSize()[0]//2-dlg.GetSize()[0]//2, 0  # top\center
-        #x, y = 0, wx.ScreenDC().GetSize()[1]-dlg.GetSize()[1]        # bottom\left
-        #x, y = wx.ScreenDC().GetSize()[0]-dlg.GetSize()[0], wx.ScreenDC().GetSize()[1]-dlg.GetSize()[1] # bottom\right
-        if pos is None: pos = self.options['fullscreendlgxy']
-        dlg.SetPosition(GetPosition(dlg, pos))
+        if posIdx is None: posIdx = self.options['fullscreendlgxy']
+        dlg.SetPosition(GetPosition(dlg, posIdx))
         dlg.Show()
         dlg.SetFocus()
         dlg.Update()

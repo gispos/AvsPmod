@@ -37,6 +37,15 @@ AvsPmod can only provide a user-friendly editor if he has no problems with the n
 If, for example, there is a '-' in the file name of the dll, AvsPmod will report it at startup, 
 please rename this dll and replace the '-' with a '_'
 
+
+--------------------------
+Version 2.7.4.1 [2023-03-25] GPo
+--------------------------
+* Added: Options > Font and Colors > 'Video controls', color of video controls can be changed here (Dark theme).
+- in fullscreen mode the dark theme is always used. 
+- please change only limited (a bit lighter or darker or change color slightly), some other values calculated from it.
+* Fullsize mode: Upper bar (splitter) is now a bit smaller.
+
 --------------------------
 Version 2.7.4.0 [2023-03-19] GPo
 --------------------------
