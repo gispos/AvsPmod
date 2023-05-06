@@ -1838,6 +1838,17 @@ class AVS_Clip(object):
         # start and count are in samples
         return avs.avs_get_audio(self.cdata, buf, start, count)
 
+    def get_frame_audio(self, n):
+        src = self.get_frame(n)
+        vi = self.get_video_info()
+        if vi.has_audio():
+            start = vi.audio_samples_from_frames(n)
+            count = vi.audio_samples_from_frames(1)
+            buffer_size = count * vi.sample_type() * vi.audio_channels()
+            buffer = ctypes.create_string_buffer(buffer_size)
+            return avs_get_audio(self, ffi.from_buffer(buffer), max(0, start),
+                                 count) # start and count are in samples
+
     def set_cache_hints(self, cachehints, frame_range):
         return avs.avs_set_cache_hints(self.cdata, cachehints, frame_range)
 

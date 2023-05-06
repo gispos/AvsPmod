@@ -54,7 +54,7 @@ use_classic_wx = True # fix True at the moment: use pre v4.0.0 wxPython
 
 if use_classic_wx:
   import wxversion
-  wxversion.select('2.9.3') # GPo: 2.9.3.0 is very fine, 2.9.3.1 also ok
+  wxversion.select('2.9.4') # GPo: 2.9.3.0 is very fine, 2.9.3.1 also ok
   # wxversion.select('3.0.2') #PF 20181221 #GPo not working, mouse wheel problems and other bugs
   import wx
 else:
@@ -159,6 +159,8 @@ if use_classic_wx:
   if not x86_64:
     lib_extra.append(os.path.join(os.path.dirname(wx.__file__), 'gdiplus.dll'))
 
+lib = []
+
 data_files = [
         ('', 
             [
@@ -168,42 +170,48 @@ data_files = [
             'copying.txt',
             'previewFilterExample.txt',
             'previewFilterExample.avs',
-            'readme_threads.txt',
-            'readme_resampleFilter.txt',
-            'readme_applyFilters.txt',
+            'readme_Threads.txt',
+            'readme_ResampleFilter.txt',
+            'readme_ApplyFilters.txt',
             'readme_SplitClip.txt',
             'readme_NumberWheel.txt',
-            'readme_d2v_based_template.txt'
+            'readme_d2v_based_template.txt',
+            'readme_FastClip.txt',
+            'readme_LocateFrame.txt',
+            'readme_FullscreenZoom.txt',
+            'readme_Audio.txt'
             ]
         ),
         ('lib', lib_extra),
         ('src',
-                [
-                'run.py',
-                'avsp.py',
-                'wxp.py',
-                'dpi.py',
-                'utils.py',
-                'func.py',
-                'avisynth.py',
-                'avisynth_cffi.py',
-                'pyavs.py',
-                'pyavs_avifile.py',
-                'build.py',
-                'setup.py',
-                'i18n.py',
-                'AvsP.ico',
-                'icons.py',
-                'global_vars.py',
-                'build_instructions_windows.txt',
-                'avisynth_c.h', # or perhaps include it only for x64?
-                ]
+            [
+            'run.py',
+            'avsp.py',
+            'wxp.py',
+            'dpi.py',
+            'utils.py',
+            'func.py',
+            'cfunc.pyd',
+            'avisynth.py',
+            'avisynth_cffi.py',
+            'pyavs.py',
+            'pyavs_avifile.py',
+            'build.py',
+            'setup.py',
+            'i18n.py',
+            'AvsP.ico',
+            'icons.py',
+            'global_vars.py',
+            'build_instructions_windows.txt',
+            'avisynth_c.h' # or perhaps include it only for x64?
+            ]
          ),
-         ('src\\avs', [ # or perhaps include them only for x64?
-                      'avs\\types.h',
-                      'avs\\config.h',
-                      'avs\\capi.h'
-                      ]
+         ('src\\avs', 
+            [ # or perhaps include them only for x64?
+            'avs\\types.h',
+            'avs\\config.h',
+            'avs\\capi.h'
+            ]
          )
  ]
 
@@ -256,7 +264,7 @@ dirs = (
     ('help', None, None),
     ('translations', None, None),
     ('macros', ('.py', '.txt'), None),
-    ('tools', ('.py', '.presets'), ('avs2avi.exe', 'avs2avi_src.zip'))
+    ('tools', ('.py', '.presets'), ('session_info.pyo', 'avs2avi.exe', 'avs2avi_src.zip'))
        )
 for dir, ext_filter, include in dirs:
     if not os.path.isdir(dir):

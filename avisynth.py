@@ -653,11 +653,11 @@ class AVS_VideoInfo(object):
     def bmp_size(self):
         return avs_bmp_size(self.cdata); #V6
 
-    def samples_per_second(self):
-        return self.cdata.contents.audio_samples_per_second
-
     def is_sample_type(self, testtype):
         return (self.cdata.contents.sample_type & testtype) != 0
+
+    def samples_per_second(self):
+        return self.cdata.contents.audio_samples_per_second
 
     def bytes_per_channel_sample(self):
         if self.cdata.contents.sample_type == avs.AVS_SAMPLE_INT8 :
@@ -673,7 +673,7 @@ class AVS_VideoInfo(object):
         return 0
 
     def bytes_per_audio_sample(self):
-        return self.bytes_per_channel() * self.cdata.contents.nchannels
+        return self.bytes_per_channel_sample() * self.cdata.contents.nchannels
 
     def audio_samples_from_frames(self, frames):
         if self.has_audio() and self.cdata.contents.fps_denominator:
@@ -786,7 +786,11 @@ class AVS_Clip:
         """ return field parity if field_based, else parity of first field in frame"""
         return avs_get_parity(self, n)
 
-    def get_audio(self, n):
+    def get_audio(self, buf, start, count):
+    # start and count are in samples
+        return avs_get_audio(self, buf, start, count)
+
+    def get_frame_audio(self, n):
         src = self.get_frame(n)
         vi = self.get_video_info()
         if vi.has_audio():

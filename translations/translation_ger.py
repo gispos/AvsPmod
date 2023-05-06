@@ -16,7 +16,7 @@
 
 # Übersetzt von Henrik . AvsP 2.0.1  Danke für die Hilfe, besonders LigH ,doxville,Brother John, Selur und Rippraff !
 
-version = "2.7.3.7"
+version = "2.7.4.2"
 
 messages = {
     "Note: When clicking on the calltip press Ctrl for file search or Shift for web search only." : u"", # New in v2.7.1.6
@@ -428,10 +428,10 @@ messages = {
     "Show shortcuts in context menus*" : u"", # New in v2.7.3.1
     "Show or hide the video control buttons tooltips" : u"", # New in v2.7.1.6
     "Show video control buttons tooltips" : u"", # New in v2.7.1.6
-    "Bookmark jump" : u"", # New in v2.6.3.5
-    "Custom jump" : u"", # New in v2.6.3.5
     "Mouse browse buttons" : u"", # New in v2.6.3.5
     "Mouse browse buttons (forward/backward) on video and script window\nIf 'Tab change' and tab count less than 2, 'Bookmark jump' is used\nIf 'Tab change' press CTRL or left mouse and 'Bookmark jump' is used\nIf 'Bookmark jump', vice versa" : u"", # New in v2.6.3.5
+    "Bookmark jump" : u"", # New in v2.6.3.5
+    "Custom jump" : u"", # New in v2.6.3.5
     "Middle mouse button behavior on the script, if script empty open source is used" : u"", # New in v2.6.3.5
     "Middle mouse on script" : u"", # New in v2.6.3.5
     "Open source" : u"", # New in v2.6.3.5
@@ -448,7 +448,7 @@ messages = {
     "frames" : u"Einzelbilder",
     "Misc 2" : u"Sonstiges 2",
     "DPI settings*" : u"", # New in v2.7.3.1
-    "Sets the sensitivity of the mouse movement in the status bar, for timeline range move (with or without Shift), lower value more movement" : u"", # New in v2.7.3.1
+    "Sets the sensitivity of the mouse movement in the status bar, for timeline range move (with or without Ctrl\\Shift), lower value more movement" : u"", # New in v2.7.4.1
     "Timeline move sensitivity on the statusbar" : u"", # New in v2.7.3.1
     "1 number" : u"", # New in v2.6.8.7
     "4 numbers" : u"", # New in v2.6.8.7
@@ -479,6 +479,13 @@ messages = {
     "Fullscreen zoom" : u"", # New in v2.7.3.7
     "Resample" : u"", # New in v2.7.3.7
     "Zoom on Fullscreen. Note: Resample only if Resample enabled" : u"", # New in v2.7.3.7
+    "Fullscreen/Fullsize  progress dialog" : u"", # New in v2.7.4.1
+    "Position for the static progress information on loading a frame" : u"", # New in v2.7.4.1
+    "bottom\\left" : u"", # New in v2.7.4.1
+    "bottom\\right" : u"", # New in v2.7.4.1
+    "top\\center" : u"", # New in v2.7.4.1
+    "top\\left" : u"", # New in v2.7.4.1
+    "top\\right" : u"", # New in v2.7.4.1
     "Display filter enabled on startup" : u"", # New in v2.7.3.7
     "Enable the Display filter on startup" : u"", # New in v2.7.3.7
     "Add tab to group" : u"", # New in v2.5.0
@@ -963,7 +970,7 @@ messages = {
     "If the video preview is detached, keep it always on top of other windows" : u"", # New in v2.3.1
     "Video preview always on top" : u"Video Vorschau immer im Vordergrund",
     "Disable video preview" : u"Abschalten der Video Vorschaufunktion",
-    "If checked, the video preview will not be shown under any circumstances" : u"Wenn angehakt, wird unter keinen Umständen die Video-Vorschaufunktion gezeigt werden",
+    "If checked, the video preview will not be shown under any circumstances" : u"Schaltet die Video Vorschaufunktion ein oder aus",
     "Toggle multiline tab style" : u"", # New in v2.7.1.6
     "Multiline tab style" : u"", # New in v2.7.1.6
     "Hide the video window scrollbars" : u"", # New in v2.6.7.2
@@ -1057,10 +1064,10 @@ messages = {
     "Open the macros folder" : u"", # New in v2.2.1
     "&Macros" : u"", # New in v2.2.1
     "Close" : u"Schließen",
-    "Close..." : u"Schließen...", # New in v2.7.3.7
+    "Close..." : u"Schließen...",
     "Close all others" : u"Schließe alle anderen",
-    "Close all left" : u"Links alle schließen", # New in v2.7.3.7
-    "Close all right" : u"Rechts alle schließen", # New in v2.7.3.7
+    "Close all left" : u"Links alle schließen",
+    "Close all right" : u"Rechts alle schließen",
     "Rename" : u"Umbenennen",
     "Group" : u"", # New in v2.5.0
     "Save" : u"Speichern",
@@ -1231,6 +1238,8 @@ messages = {
     "Use another color for the preview filters\nAlternating (fore, back)" : u"", # New in v2.7.3.2
     "Colorize the slider window sidebar" : u"", # New in v2.7.1.6
     "Slider window sidebar color:" : u"", # New in v2.7.1.6
+    "Colorize the video controls and slider side bar\nDark default (100,96,100)" : u"", # New in v2.7.4.1
+    "Video controls color:" : u"", # New in v2.7.4.1
     "Slider window extras (Snapshot):" : u"", # New in v2.6.7.7
     "Information" : u"",
     "Settings have been read from backup file\n" : u"Die Einstellungen wurden aus dem Backup gelesen",
@@ -1303,6 +1312,7 @@ messages = {
     "Cannot switch tabs while crop editor is open!" : u"Kann keine Tabs schalten,weil der Cropeditor noch geöffnet ist",
     "Cannot switch tabs while trim editor is open!" : u"Tabs können nicht geschaltet werden,solange der Trim editor geöffnet ist.",
     "'Tab change load bookmarks' has been switched off, otherwise undefined assignments will occur" : u"", # New in v2.7.1.6
+    "Fullscreen/Fullsize only with 'Accessing AviSynth in threads' enabled" : u"", # New in v2.7.4.1
     "Invalid crop values detected.  Continue?" : u"Unzulässige Crop-Werte ermittelt. Weitermachen?",
     "Select autocomplete keywords" : u"", # New in v2.2.1
     "select all" : u"", # New in v2.2.1
@@ -1392,6 +1402,8 @@ messages = {
     "Clip successful released" : u"", # New in v2.6.7.0
     "Abandoned clip assigned. Select the tab?" : u"", # New in v2.6.7.7
     "Abandoned clip assigned: \"{0}\"" : u"", # New in v2.6.7.7
+    "Process display clip... " : u"", # New in v2.7.4.1
+    " If you close this dialog you should restart the program " : u"", # New in v2.7.4.1
     "Process display clip..." : u"", # New in v2.7.1.6
     "Waiting for display clip" : u"", # New in v2.7.1.6
     "Process finished" : u"", # New in v2.7.1.6
@@ -1438,6 +1450,7 @@ messages = {
     "Toggle \"%(label)s\" section" : u"Umschalten \"%(label)s\" Abschnitt",
     "Both videos must have the same width and height." : u"Beide Videos müssen die selben Abmessungen besitzen",
     "Snapshot dimensions different: %ix%i" : u"", # New in v2.6.9.4
+    " Closing this dialog will cancel the loading of the frame " : u"", # New in v2.7.4.1
     "Error playing frame {number}" : u"", # New in v2.6.9.4
     "Save changes before previewing?" : u"Speichern der Änderungen vor der Vorschau",
     "Select an external player" : u"Wähle einen externen Player",

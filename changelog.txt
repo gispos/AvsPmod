@@ -39,6 +39,40 @@ please rename this dll and replace the '-' with a '_'
 
 
 --------------------------
+Version 2.7.4.5 [2023-05-06] GPo
+--------------------------
+* Added audio playback, for full Info please read the readme_audio.txt
+- for faster playback: use 'Split Clip' and put Prefetch after the 'Resample Filter', see below (Options > Resample Filter)
+* Added audio scrubbing (audio sound while video frame is scrolling)
+* Added to play button context menu:'Play audio', 'Audio scrubbing', 'Audio scrub count'.
+* Added to Video > Play video > 'Play audio', 'Play scrub', 'Audio scrubbing', 'Downmix audio' (make a shortcut for 'Play scrub').
+* Added to Play button context menu 'Audio volume'. increase/decrease in Decibel.
+- Note: There is no level limiter, the audio can get clipping. 
+* Added Options > 'Prefetch display conversion' (Test it, I have it enabled).
+- the function uses Prefetch(2,2) for RGB conversion for the display. 
+- this speeds up the video frame drawing by about 1 to 30% depending on the color format. So also the playback.
+- if this function is switched on, the prefetch for the 'Resample filter' (see below) is superfluous and therefore not used.
+* Resample Filter (resample zoom):
+- it is now posible do use another function after the resample filter, the function must be writen after the resizer separated by a semicolon.
+- example: Spline36Resize;Prefetch(1) or Spline36Resize;sharpen(0.2).Prefetch(1) is also posible.
+- use prefetch after the resizer for more playback speed when the 'Resample Filter' is enabled.
+* The External Player button has got a context menu in which the function of the button can be selected (External Player, Audio scrub).
+- audio scrub will play min 36 video frames or 48 if audio scrub count 48 
+* Added Menubar > Options > 'Restore fullscreen', when toggle with the middle mouse button.
+* Changed color of timeline selection markers for video controls dark theme.
+* Improved 'Preview Filter' speed a bit.
+* Fixed drawing snapshot if 'Split View alternate' enabled.
+* Fixed: rare occurrence when clip frame count is 0 no error handling was done.
+* Bugfix: 'Fast Clip' ignored 'Toggle Tags' (Filters could not be switched off with 'Toggle Tags').
+* Bugfix: Copy new tab
+* Some other changes
+
+--------------------------
+Version 2.7.4.2,  2.7.4.3, 2.7.4.4 [2023-04-10] GPo
+--------------------------
+Only Pre-Release
+
+--------------------------
 Version 2.7.4.1 [2023-03-25] GPo
 --------------------------
 * Added: Options > Font and Colors > 'Video controls', color of video controls can be changed here (Dark theme).
