@@ -179,7 +179,8 @@ data_files = [
             'readme_FastClip.txt',
             'readme_LocateFrame.txt',
             'readme_FullscreenZoom.txt',
-            'readme_Audio.txt'
+            'readme_Audio.txt',
+            'license_cpuid'
             ]
         ),
         ('lib', lib_extra),
@@ -202,6 +203,7 @@ data_files = [
             'AvsP.ico',
             'icons.py',
             'global_vars.py',
+            'cpuid.py',
             'build_instructions_windows.txt',
             'avisynth_c.h' # or perhaps include it only for x64?
             ]
@@ -285,6 +287,7 @@ if x86_64:
     data_files.append(('', # XXX: this path shouldn't be hard-coded
         [os.path.join('build', 'lib.win-amd64-{0}.{1}'.format(*sys.version_info[:2]),
          'avisynth_cffi_ext.pyd')]))
+    data_files.append('DecodeYUVtoRGB.dll')
 
 # Generate the dist files
 packages = []

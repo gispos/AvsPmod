@@ -154,7 +154,7 @@ avs_sample_type_dict_pyaudio = {
     avisynth.avs.AVS_SAMPLE_INT8: pyaudio.paInt8,
     avisynth.avs.AVS_SAMPLE_INT16: pyaudio.paInt16,
     avisynth.avs.AVS_SAMPLE_INT24: pyaudio.paInt24,
-    avisynth.avs.AVS_SAMPLE_INT32: pyaudio.paInt32, # must test
+    avisynth.avs.AVS_SAMPLE_INT32: pyaudio.paInt32,
     avisynth.avs.AVS_SAMPLE_FLOAT: pyaudio.paFloat32,
 }
 
@@ -257,11 +257,11 @@ class AvsSimpleClipBase:
 
 class AvsClipBase:
 
-    def __init__(self,  script, filename='', workdir='', env=None, fitHeight=None,
+    def __init__(self, app, script, filename='', workdir='', env=None, fitHeight=None,
                  fitWidth=None, oldFramecount=240, display_clip=True, reorder_rgb=False,
                  matrix=['auto', 'tv'], interlaced=False, swapuv=False, bit_depth=None,
                  callBack=None, readmatrix=None, displayFilter=None, readFrameProps=False,
-                 resizeFilter=None, previewFilter=None, useSplitClip=False, app=None, audioVolume=0):
+                 resizeFilter=None, previewFilter=None, useSplitClip=False, audioVolume=0):
 
         def CheckVersion(env):
             try:
@@ -343,6 +343,8 @@ class AvsClipBase:
         self.avisynth_version = None
         self.displayFilter = displayFilter
         self.resizeFilter = resizeFilter
+        self.clip_colorspace = ''
+        self.split_clip_colorspace = ''
         self.properties = ''
         self.convert_to_rgb_error = None
         self.clip = None
@@ -352,7 +354,9 @@ class AvsClipBase:
         self.split_clip_arg = ''
         self.split_clip_filterarg = ''
         oldFramecount = max(1, oldFramecount)
-        self.prefetchRGB32 = self.app.options['prefetchrgb32']
+        self.prefetchRGB32 = self.app.options['prefetchrgb32']                   # Prefetch(2,2) RGB32 conversion
+        self.fastYUV420toRGB32 = x86_64 and app.options['yuv420torgb32fast'] and not app.options['fastyuvautoreset']
+        self.IsDecoderYUV420 = False                                             # True if function DecodeYUVtoRGB exists
         # audio scrubbing
         self.pyaudio = None
         self.audio_stream = None
@@ -361,9 +365,9 @@ class AvsClipBase:
         self.downMix_d = self.app.options['downmixaudio'] # downmix the display clip
         self.audioVolume = audioVolume
         self.AudioThread = threading.Thread()
-        self.lastAudiochannels = None
-        self.lastSampletype = None
-        self.lastAudiorate = None
+        self.lastAudiochannels = None  # store it
+        self.lastSampletype = None     # store it
+        self.lastAudiorate = None      # store it
         self.evAudioStop = threading.Event()
         self.evAudioFinished = threading.Event()
 
@@ -521,12 +525,23 @@ class AvsClipBase:
         self.interlaced = interlaced
         self.DisplayWidth, self.DisplayHeight = self.Width, self.Height
 
-        """ # I think not needed
-        if self.prefetchRGB32 and not self.env.function_exists('Prefetch'):
-            err = 'This Avisynth version has no Prefetch. You must disable Options > Prefetch display conversion'
-            if not self.CreateErrorClip(err):
-                return
-        """
+        if x86_64: # check or load DecodeYUVtoRGB
+            self.IsDecoderYUV420 = bool(self.env.function_exists('DecodeYUVtoRGB'))
+            if not self.IsDecoderYUV420:
+                decodeDll = os.path.join(app.programdir, 'DecodeYUVtoRGB.dll')
+                if os.path.isfile(decodeDll):
+                    try:
+                        self.env.invoke('LoadPlugin', decodeDll)
+                    except avisynth.AvisynthError as err:
+                        self.Framecount = oldFramecount
+                        self.split_clip = None
+                        if not self.CreateErrorClip(err):
+                            return
+                    else:
+                        self.IsDecoderYUV420 = bool(self.env.function_exists('DecodeYUVtoRGB'))
+            if not self.IsDecoderYUV420:
+                self.fastYUV420toRGB32 = False
+
         if display_clip and not self.CreateDisplayClip(matrix, interlaced, swapuv, bit_depth, readmatrix, killFilterClip=False, killSplitClip=False):
             return
 
@@ -559,6 +574,7 @@ class AvsClipBase:
         if (vi.is_yuv() or vi.is_yuva()) and not vi.is_y():
             self.WidthSubsampling = vi.get_plane_width_subsampling(avisynth.avs.AVS_PLANAR_U)
             self.HeightSubsampling = vi.get_plane_height_subsampling(avisynth.avs.AVS_PLANAR_U)
+
         self.FramerateNumerator = vi.fps_numerator
         self.FramerateDenominator = vi.fps_denominator
         try:
@@ -612,7 +628,9 @@ class AvsClipBase:
                     (self.lastAudiorate != vi.audio_samples_per_second):
                         self._createAudio(vi)
 
-
+    # self.KillAudio is here to late... error (some vars deleted)
+    # found no event in python that is called before freeing with None
+    # so you must first call KillAudio before AVI = None
     def __del__(self):
         self.preview_filter = None
         if self.initialized or self.env:
@@ -628,7 +646,6 @@ class AvsClipBase:
             #self.env.set_var("avsp_filter_clip", None)
             self.env = None # kill the env, I see no differnce in performance
             del self.evAudioStop
-            #self.audio_buffer = []
             if bool(__debug__):
                 print(u"Deleting allocated video memory for '{0}'".format(self.name))
         gc.collect()
@@ -661,6 +678,8 @@ class AvsClipBase:
             self.vi = self.main_clip_vi
             self.callBack('splitclip', -1)
 
+        self.KillAudio(showErr=False)
+
         fontFace, fontSize, fontColor = global_vars.options['errormessagefont'][:3]
         if not fontColor:
             fontColor = '$FF0000'
@@ -674,25 +693,32 @@ class AvsClipBase:
             yLine += fontSize
             nChars = max(nChars, len(errLine))
 
-        eLength = self.Framecount
+        eLength = max(1, self.Framecount)
         eWidth = nChars * fontSize / 2
         eHeight = yLine + fontSize / 4
-        firstLine = 'BlankClip(length=%(eLength)i,width=%(eWidth)i,height=%(eHeight)i)' % locals()
+        firstLine = 'BlankClip(length=%(eLength)i,width=%(eWidth)i,height=%(eHeight)i,audio_rate=0)' % locals()
         errText = firstLine + '.'.join(lineList)
         try:
             clip = self.env.invoke('Eval', errText)
             if not isinstance(clip, avisynth.AVS_Clip):
                 raise avisynth.AvisynthError("Not a clip")
             if display_clip_error:
+                vi = clip.get_video_info()
                 self.display_clip = clip
-                vi = self.display_clip.get_video_info()
+                self.DisplayWidth = v.width
+                self.DisplayHeight = v.height
+                self.vi_d = vi
+            else:
+                vi = clip.get_video_info()
+                self.main_clip = clip
+                self.clip = clip
+                self.display_clip = clip
+                self.main_clip_vi = vi
                 self.DisplayWidth = vi.width
                 self.DisplayHeight = vi.height
-            else:
-                self.main_clip = clip
-                self.clip = self.main_clip
-                self.main_clip_vi = self.main_clip.get_video_info()
-                self.vi = self.main_clip_vi
+                self.vi_d = vi
+                self.clip_colorspace = ('RGB32'*True)
+                self.SetClipInfo(vi)
         except avisynth.AvisynthError as err:
             return False
         self.callBack('errorclip', 0)
@@ -726,6 +752,7 @@ class AvsClipBase:
         self.bit_depth = bit_depth
         if interlaced is not None:
             self.interlaced = interlaced
+        prefetch = ''
 
         if isinstance(matrix, basestring):
             self.matrix = matrix
@@ -852,13 +879,14 @@ class AvsClipBase:
             if self.resizeFilter:
                 rf = self.CalcResizeFilter(self.vi)
                 if rf:
-                    prefetch = ''
                     f = rf[0]
                     sp = str(rf[0]).split(';')
                     if sp and len(sp) > 1:
-                        prefetch = '\n'+ sp[1].strip() if not self.prefetchRGB32 else '' # disable prefetch if RGB32 prefetch
+                        prefetch = sp[1].strip()
+                        if not prefetch.lower().startswith('prefetch'):
+                            prefetch = ''
                         f = sp[0].strip()
-                    args += '%s(%i,%i)%s' % (f, rf[1], rf[2], prefetch)
+                    args += '%s(%i,%i)' % (f, rf[1], rf[2])
             if args:
                 try:
                     self.display_clip = self.env.invoke('Eval', [self.display_clip, args])
@@ -888,7 +916,7 @@ class AvsClipBase:
             err = "Display filter error: Display-Clip length different"
             return self.CreateErrorClip(err=err, display_clip_error=True)
 
-        ## Test audio, last settings are stored  (do not kill and create the audio always)
+        ## audio, last settings are stored  (so we do not kill and create the audio always)
         if not self.PlayAudio or not vi.has_audio():
             err = _killaudio()
             if err is not None:
@@ -902,14 +930,13 @@ class AvsClipBase:
                     self._createAudio(vi)
 
         # ConvertToRGB32 is the bottleneck in video drawing. Video UHD ~70 fps after convert to RGB32 only ~29 fps
-        # the drawing itself costs only 2-3 fps
-
+        # the drawing itself costs only 2-7 fps
         self.convert_to_rgb_error = None
-        if not self._ConvertToRGB(vi, self.prefetchRGB32):
+        if not self._ConvertToRGB(vi, prefetch):
             err = self.convert_to_rgb_error
             if not err:
                 err = 'Display clip error ConvertToRGB32\n' + str(self.env.get_error())
-            return self.CreateErrorClip(err=err, display_clip_error=True)
+            return self.CreateErrorClip(err=err, display_clip_error=False)
         elif self.convert_to_rgb_error:
             self.callBack('displayerror', self.convert_to_rgb_error)
         return True
@@ -952,18 +979,20 @@ class AvsClipBase:
 
     # stop audio scrubbing playback ( not the scrubbing, only audio play )
     def StopAudioPlay(self, showErr=True, timeout=5.0):
+        def _error():
+            self.callBack('audioerror', 'Cannot stop audio play.\nDisable audio scrubbing and try again or restart the program.')
         if self.AudioThread.isAlive():
             self.evAudioStop.set()
             try:
                tout = self.evAudioFinished.wait(timeout=timeout)
             except:
                 if showErr:
-                    self.callBack('audioerror', 'Cannot stop audio play.\nDisable audio scrubbing and try again or restart the program.')
+                    _error()
                 return
             else:
                 if not tout:
                     if showErr:
-                        self.callBack('audioerror', 'Cannot stop audio play.\nDisable audio scrubbing and try again or restart the program.')
+                        _error()
                     return
         return True
 
@@ -1023,10 +1052,10 @@ class AvsClipBase:
                     if x86_64:
                         buf_cptr = ffi.from_buffer(audioBuf)
                     else:
-                        buf_cptr = ctypes.addressof(audioBuf)
+                        buf_cptr = ctypes.addressof(audioBuf) #~ctypes.pointer(audioBuf)
                     clip.get_audio(buf_cptr, samples_count*frame, samples_count)
                     if not self.evAudioStop.isSet() and not clip.get_error():
-                        self.audio_stream.write(audioBuf)
+                        self.audio_stream.write(audioBuf, samples_count)
                     del audioBuf
                 except:
                     pass
@@ -1038,7 +1067,7 @@ class AvsClipBase:
                 if x86_64:
                     buf_cptr = ffi.from_buffer(audioBuf)
                 else:
-                    buf_cptr = ctypes.addressof(audioBuf)
+                    buf_cptr = ctypes.addressof(audioBuf) #~ctypes.pointer(audioBuf)
 
                 # speed up, get first one buffer (3 frames) and start write with this buffer, then get the next buffers threadet
                 # this limits also the needed memory size and we can play a lot of frames
@@ -1062,7 +1091,11 @@ class AvsClipBase:
                             buf = q.get_nowait()
                         except:
                             break
-                        self.audio_stream.write(buf)
+                        if len(buf) == buf_size:
+                            try:
+                                self.audio_stream.write(frames=buf, num_frames=samples_count * 3)
+                            except IOError:
+                                break
                         del buf
                         if not self.evAudioStop.isSet() and loops > 2:
                             nextFrame += 3
@@ -1150,6 +1183,7 @@ class AvsClipBase:
         if self.audio_stream:
             if not self.KillAudio():
                 return
+        self.fastYUV420toRGB32 = False
         return cfunc.CreateFilterClip(self, f_args)
 
     # this calls now only avsp
@@ -1318,6 +1352,17 @@ class AvsClipBase:
                 return True
 
             Error()
+        return False
+
+    def _GetDisplayFrame(self, frame):
+        if self.display_clip:
+            self.display_frame = self.display_clip.get_frame(frame)
+            if self.display_clip.get_error():
+                return False
+            self.display_pitch = self.display_frame.get_pitch()
+            self.pBits = self.display_frame.get_read_ptr()
+            self.current_frame = frame
+            return True
         return False
 
     # coded: pfmod 2021
@@ -1869,7 +1914,7 @@ if os.name == 'nt':
         def GetMatrix(self):
             return AvsClipBase.GetMatrix(self)
 
-        """
+        """ Old
         def _ConvertToRGB(self):
             if not self.IsRGB32: # bug in avisynth v2.6 alphas with ConvertToRGB24
                 args = [self.display_clip, self.matrix, self.interlaced]
@@ -1898,14 +1943,31 @@ if os.name == 'nt':
             return True
         """
 
-        def _ConvertToRGB(self, vi, prefetch=False):
+        """ support for DecodeYUV and DecodeYV12
+        def _ConvertToRGB(self, vi, prefetch=''):
             if not vi.is_rgb32():
-                interlaced = 'True' if self.interlaced else 'False'
-                pr = '\nPrefetch(2,2)' if prefetch else ''
-                args = '\nConvertToRGB32(matrix="%s",interlaced=%s)%s' % (self.matrix, interlaced, pr)
+                if self.fastYUV420toRGB32 and vi.is_420() and (self.IsDecoderYUV420 or self.IsDecoderYV12):
+                    args = ''
+                    if self.IsDecoderYUV420 and (vi.width % 2 == 0):
+                        if self.resizeFilter and (self.prefetchRGB32 or prefetch):
+                            args = prefetch if prefetch else '\nPrefetch(2,2)'
+                        args += '\nDecodeYUVtoRGB(threads=1,matrix=1,gain=74,offset=-16)'
+                    elif vi.width % 64 == 0:
+                        if self.resizeFilter and (self.prefetchRGB32 or prefetch):
+                            args = prefetch if prefetch else '\nPrefetch(2,2)'
+                        args += '\nConvertBits(8)' if vi.bits_per_component() != 8 else ''
+                        args += '\nDecodeYV12toRGB(threads=1,matrix=1,gain=74,offset=-16)'
+                    else:
+                        args = '\nConvertToRGB32(matrix="%s",interlaced=%s)' % (self.matrix, str(self.interlaced))
+                        if self.prefetchRGB32 or (self.resizeFilter and prefetch):
+                            args += prefetch if prefetch else '\nPrefetch(2,2)'
+                else:
+                    args = '\nConvertToRGB32(matrix="%s",interlaced=%s)' % (self.matrix, str(self.interlaced))
+                    if self.prefetchRGB32 or (self.resizeFilter and prefetch):
+                        args += prefetch if prefetch else '\nPrefetch(2,2)'
                 try:
                     self.display_clip = self.env.invoke('Eval', [self.display_clip, args])
-                    if not isinstance(self.display_clip, avisynth.AVS_Clip):
+                    if not isinstance(self.display_clip, avisynth.AVS_Clip) or not self.display_clip.get_video_info().is_rgb32():
                         raise
                 except:
                     err = str(self.env.get_error())
@@ -1914,8 +1976,8 @@ if os.name == 'nt':
                     else:
                         self.convert_to_rgb_error = 'Unknown convert to RGB32 error\n Trying alternative RGB32 conversion'
 
-                    args = 'ConvertToYUV444(matrix="%s", interlaced=%s, ChromaInPlacement="left")\n' % (self.matrix, interlaced) + \
-                           'ConvertToRGB32(matrix="%s", interlaced=%s)' % (self.matrix, interlaced)
+                    args = 'ConvertToYUV444(matrix="%s",interlaced=%s,ChromaInPlacement="left")\n' % (self.matrix, str(self.interlaced)) + \
+                           'ConvertToRGB32(matrix="%s",interlaced=%s)' % (self.matrix, str(self.interlaced))
                     try:
                         self.display_clip = self.env.invoke('Eval', [self.display_clip, args])
                     except avisynth.AvisynthError as err:
@@ -1927,6 +1989,53 @@ if os.name == 'nt':
                             self.convert_to_rgb_error += '\nAttempt failed !'
                         return False
             return True
+        """
+        # support only DecodeYUVtoRGB
+        def _ConvertToRGB(self, vi, prefetch=''):
+            if not vi.is_rgb32():
+                if self.fastYUV420toRGB32 and vi.is_420() and self.IsDecoderYUV420:
+                    args = ''
+                    if self.resizeFilter and (self.prefetchRGB32 or prefetch):
+                        args = '\n' + prefetch if prefetch else '\nPrefetch(2,2)'
+                    args += '\nDecodeYUVtoRGB(threads=1,matrix=1,gain=74,offset=-16)'
+                else:
+                    args = '\nConvertToRGB32(matrix="%s",interlaced=%s)' % (self.matrix, str(self.interlaced))
+                    if self.prefetchRGB32 or (self.resizeFilter and prefetch):
+                        args += '\n' + prefetch if prefetch else '\nPrefetch(2,2)'
+                try:
+                    self.display_clip = self.env.invoke('Eval', [self.display_clip, args])
+                    if not isinstance(self.display_clip, avisynth.AVS_Clip) or not self.display_clip.get_video_info().is_rgb32():
+                        raise
+                except:
+                    err = str(self.env.get_error())
+                    if err:
+                        self.convert_to_rgb_error = err + '\nTrying alternative RGB32 conversion'
+                    else:
+                        self.convert_to_rgb_error = 'Unknown convert to RGB32 error\n Trying alternative RGB32 conversion'
+
+                    args = 'ConvertToYUV444(matrix="%s",interlaced=%s,ChromaInPlacement="left")\n' % (self.matrix, str(self.interlaced)) + \
+                           'ConvertToRGB32(matrix="%s",interlaced=%s)' % (self.matrix, str(self.interlaced))
+                    try:
+                        self.display_clip = self.env.invoke('Eval', [self.display_clip, args])
+                    except avisynth.AvisynthError as err:
+                        if self.convert_to_rgb_error:
+                            self.convert_to_rgb_error += '\nAttempt failed !'
+                        return False
+                    if not isinstance(self.display_clip, avisynth.AVS_Clip):
+                        if self.convert_to_rgb_error:
+                            self.convert_to_rgb_error += '\nAttempt failed !'
+                        return False
+            else:
+                if self.resizeFilter and (self.prefetchRGB32 or prefetch):
+                    args = '\n' + prefetch if prefetch else '\nPrefetch(2,2)'
+                    try:
+                        self.display_clip = self.env.invoke('Eval', [self.display_clip, args])
+                        if not isinstance(self.display_clip, avisynth.AVS_Clip):
+                            raise
+                    except avisynth.AvisynthError as err:
+                        return False
+
+            return True
 
         def _GetFrame(self, frame):
             if AvsClipBase._GetFrame(self, frame):
@@ -1934,8 +2043,19 @@ if os.name == 'nt':
                 return True
             return False
 
-        def DrawFrame(self, frame, dc=None, offset=(0,0), size=None, srcXY=(0,0)):
-            if not self._GetFrame(frame):
+        # test for playback
+        def _GetDisplayFrame(self, frame):
+            if AvsClipBase._GetDisplayFrame(self, frame):
+                self.bmih.biWidth = self.display_pitch * 8 / self.bmih.biBitCount
+                return True
+            return False
+
+        """
+        def DrawFrame(self, frame, dc=None, offset=(0,0), size=None, srcXY=(0,0), display_clip=False):
+            if display_clip:
+                if not self._GetDisplayFrame(frame):
+                    return
+            elif not self._GetFrame(frame):
                 return
             if dc:
                 hdc = dc.GetHDC()
@@ -1960,8 +2080,11 @@ if os.name == 'nt':
 
         """
         # GPo, alternativ, I see visual no problems, it is faster
-        def DrawFrame(self, frame, dc=None, offset=(0,0), size=None, srcXY=(0,0)):
-            if not self._GetFrame(frame):
+        def DrawFrame(self, frame, dc=None, offset=(0,0), size=None, srcXY=(0,0), display_clip=False):
+            if display_clip:
+                if not self._GetDisplayFrame(frame):
+                    return
+            elif not self._GetFrame(frame):
                 return
             if dc:
                 hdc = dc.GetHDC()
@@ -1973,7 +2096,7 @@ if os.name == 'nt':
                 DrawDibDraw(handleDib[0], hdc, offset[0], offset[1], w, h,
                             self.pInfo, self.pBits, srcXY[0], srcXY[1], w, h, 0)
                 return True
-        """
+
 
 # Use generical wxPython drawing support on other platforms
 else:

@@ -31,9 +31,15 @@ IsFieldBased(clip)
 IsFrameBased(clip)
 IsInterleaved(clip)
 IsPlanar(clip)
+IsPlanarRGB(clip)
+IsPlanarRGBA(clip)
+IsPackedRGB(clip)
 IsRGB(clip)
 IsRGB24(clip)
 IsRGB32(clip)
+IsRGB48(clip)
+IsRGB64(clip)
+IsY(clip)
 IsY8(clip)
 IsYUV(clip)
 IsYUY2(clip)
@@ -41,6 +47,10 @@ IsYV12(clip)
 IsYV16(clip)
 IsYV24(clip)
 IsYV411(clip)
+IsYUV420(clip)
+IsYUV422(clip)
+IsYUV444(clip)
+IsYUVA(clip)
 PixelType(clip)
 Width(clip)
 
@@ -615,7 +625,7 @@ int count=0
 
 DelayAudio(
 clip,
-float seconds
+float "seconds"=0.00 (-1.20 to 1.20)
 )
 
 DeleteFrame(

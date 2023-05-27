@@ -39,6 +39,25 @@ please rename this dll and replace the '-' with a '_'
 
 
 --------------------------
+Version 2.7.4.6 [2023-05-27] GPo
+--------------------------.
+* Play Thread revised:
+- under WinXP the frames were played 2-3 frames slower than the intended fps for the video (I hope fixed).
+- under Win10 64bit the maximum fps is about 10% higher on my system (FHD no filter). 
+* Video > Display, 3 menu items added.
+- 'Prefetch RGB display conversion' and 'Fast YUV420 display conversion' and ' - fast YUV auto reset'
+- Prefetch RGB display conversion: uses Prefetch(2,2) for the default (precise) RGB32 conversion (I recommend to turn it on, default).
+- Fast YUV420 display conversion: function 'DecodeYUVtoRGB' must exist (DecodeYUVtoRGB.dll) and CPU instructions AVX2 available.
+- if DecodeYUVtoRGB used, prefetch is disabled. So both can always be switched on.
+- the fast YUV decode will be always disable if: Preview Filter used or on clip refresh the option ' - fast YUV auto reset' enabled.
+- if function DecodeYUVtoRGB not found, the function is loaded from AvsPmod dir if the Dll exist.
+* Added CPU AVX2 availability check. If not, fast YUV decoding is disabled. Also disabled on x86 (no x86 DLL).
+- Big thanks to DTL and all contributors for this plugin. Also pinterf will improve the precise YUV to RGB32 conversion. Thanks.
+* Bugfix: Split View can get error on insert new tab and the video dimensions mismatch.
+* Bugfix of Bugfix: Fullscreen mode, if video dimensions equal to monitor dimensions.
+* Improved error handling for some conditions.
+
+--------------------------
 Version 2.7.4.5 [2023-05-06] GPo
 --------------------------
 * Added audio playback, for full Info please read the readme_audio.txt

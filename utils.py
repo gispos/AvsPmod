@@ -12,6 +12,11 @@
 import sys
 import os
 import wx
+import ctypes
+
+# The frequency of the performance counter is fixed at system boot and is consistent across all processors.
+_queryPerformanceFrequency = ctypes.c_int64()
+ctypes.windll.Kernel32.QueryPerformanceFrequency(ctypes.byref(_queryPerformanceFrequency))
 
 resource_str_threadwait = _("Waiting for Avisynth, thread still running.\n" \
                             "This dialog is automatically closed when avisynth returns.\n" \
@@ -163,8 +168,43 @@ def FindPattern_Fast(find, text):
         found += 1
     return found == len(sl)
 
+def IsAVX2():
+    def is_set(leaf, subleaf, reg_idx, bit):
+        import cpuid
+        cpu = cpuid.CPUID()
+        if not cpu.initialized:
+            cpu = None
+            return None
+        regs = cpu(leaf, subleaf)
+        cpu = None
+        if (1 << bit) & regs[reg_idx]:
+            return True
+    return is_set(7, 0, 1, 5)
 
-##### Test ####
+
+# high-resolution counter 1ms
+def milli_seconds():
+    tics = ctypes.c_int64()
+    ctypes.windll.Kernel32.QueryPerformanceCounter(ctypes.byref(tics))
+    ms = tics.value*1e3/_queryPerformanceFrequency.value
+    return ms
+
+# more accurate than wx.Millisleep()
+def milli_delay(delay):
+    fin = (milli_seconds() + delay)%(1<<32)
+    while milli_seconds() < fin:
+        pass
+# high-resolution counter < 1 micro
+def micro_seconds():
+    tics = ctypes.c_int64()
+    ctypes.windll.Kernel32.QueryPerformanceCounter(ctypes.byref(tics))
+    mc = tics.value*1e6/_queryPerformanceFrequency.value
+    return mc
+
+def micro_delay(delay):
+    fin = (micro_seconds() + delay)%(1<<32)
+    while micro_seconds() < fin:
+        pass
 
 """
 # Python program for A modified Naive Pattern Searching
