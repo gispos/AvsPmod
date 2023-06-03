@@ -6273,14 +6273,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.SlidersContextMenu = None
         self.StatusBarContextMenu = None
         self.Lock = threading.RLock()
-        self.framePaintLock = threading.RLock()
-        self.framePaintLock.locked = False
-        self.audioLock = threading.RLock()
+        #self.framePaintLock = threading.RLock()
+        #self.framePaintLock.locked = False
         self.getPixelInfo = False
         self.blockEventSize = False
         self.ClipRefreshPainter = None       # GPo, clip thread progress event blocker
         self.fullScreenWnd_IsShown = False
-        # audio test
+        # audio
         self.pyaudio = None
         self.audio_stream = None
         self.audio_buffer = None
@@ -11191,8 +11190,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                 submenu.Check(menu_id, self.displayFilter)
                             menu_id = submenu.FindItem(_('Fast YUV420 display conversion'))
                             if menu_id != wx.NOT_FOUND:
+                                submenu.Enable(menu_id, script.AVI is not None and script.AVI.IsDecoderYUV420)
                                 if submenu.IsEnabled(menu_id):
-                                    submenu.Check(menu_id, script.AVI and script.AVI.fastYUV420toRGB32 and script.AVI.IsDecoderYUV420 and script.AVI.vi.is_420())
+                                    submenu.Check(menu_id, script.AVI is not None and script.AVI.fastYUV420toRGB32 and script.AVI.IsDecoderYUV420 and script.AVI.vi.is_420())
 
                     d = {} # do not use self.previewFilterDict or SplitClip cannot found changes
                     self.UpdatePreviewFilterMenu(self.ParseScriptPreviewFilters(d))
@@ -19192,8 +19192,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     submenu.Check(x_id, self.displayFilter)
                 x_id = submenu.FindItem(_('Fast YUV420 display conversion'))
                 if x_id != wx.NOT_FOUND:
+                    submenu.Enable(x_id, script.AVI is not None and script.AVI.IsDecoderYUV420)
                     if submenu.IsEnabled(x_id):
-                        submenu.Check(x_id, script.AVI and script.AVI.fastYUV420toRGB32 and script.AVI.IsDecoderYUV420 and script.AVI.vi.is_420())
+                        submenu.Check(x_id, script.AVI is not None and script.AVI.fastYUV420toRGB32 and script.AVI.IsDecoderYUV420 and script.AVI.vi.is_420())
             d = {} # do not use self.previewFilterDict or SplitClip cannot find changes
             self.UpdatePreviewFilterMenu(self.ParseScriptPreviewFilters(d))
         try:
@@ -26717,7 +26718,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.paintedframe = frame
         return True
 
-
+    """
     def PaintAVIFrameLocked(self, inputdc, script, frame, shift=True, isPaintEvent=False, display_clip=False):
         with self.framePaintLock:
             if script.AVI is None:
@@ -26817,11 +26818,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         self.zoom_antialias = False
                         self.PaintCropRectangles(dc, script)
                     self.bmpVideo = bmp
-                """
+
                 # GPo, do not antialias if playback or frame step or mouse move, or zoom settings changed
                 # only if isPaintEvent and self.zoom_antialias not disabled
                 # in ShowVideoFrame() IdleCall.append(videoWindow.Refresh) fires OnIdle the antialias refresh
-                """
+
                 if (self.zoomfactor != 1 or self.zoomwindow) and (self.zoom_antialias and isPaintEvent):
                     inputdc = wx.GCDC(inputdc)
                 # DoPrepareDC causes NameError in wx2.9.1 and fixed in wx2.9.2
@@ -26831,6 +26832,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
             self.paintedframe = frame
             return True
+    """
 
     def PaintTrimSelectionMark(self, dc, script, frame):
         if self.trimDialog.IsShown() and self.markFrameInOut:
@@ -28170,6 +28172,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 factor = max(1, int(round(self.play_timer_resolution / interval)))
                 interval = int(round(interval * factor))
                 evFinish = threading.Event()
+                audioLock = threading.RLock()
 
                 def FrameError(idx, script, errmsg, framenum):
                     self.PlayPauseVideo(refreshFrame=False, forceStop=True)
@@ -28272,19 +28275,19 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                             evStopAudio.set()
 
                 def set_current_audio_frame(val): # absolute
-                    self.audioLock.acquire()
+                    audioLock.acquire()
                     self.current_audio_frame = val
-                    self.audioLock.release()
+                    audioLock.release()
                 def get_current_audio_frame():
-                    self.audioLock.acquire()
+                    audioLock.acquire()
                     re = self.current_audio_frame
-                    self.audioLock.release()
+                    audioLock.release()
                     return re
                 def get_set_current_audioframe(val):
-                    self.audioLock.acquire()
+                    audioLock.acquire()
                     re = self.current_audio_frame
                     self.current_audio_frame = val
-                    self.audioLock.release()
+                    audioLock.release()
                     return re
 
                 # play thread main loop
