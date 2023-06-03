@@ -355,7 +355,7 @@ class AvsClipBase:
         self.split_clip_filterarg = ''
         oldFramecount = max(1, oldFramecount)
         self.prefetchRGB32 = self.app.options['prefetchrgb32']                   # Prefetch(2,2) RGB32 conversion
-        self.fastYUV420toRGB32 = x86_64 and app.options['yuv420torgb32fast'] and not app.options['fastyuvautoreset']
+        self.fastYUV420toRGB32 = app.options['yuv420torgb32fast'] and not app.options['fastyuvautoreset']
         self.IsDecoderYUV420 = False                                             # True if function DecodeYUVtoRGB exists
         # audio scrubbing
         self.pyaudio = None
@@ -525,22 +525,22 @@ class AvsClipBase:
         self.interlaced = interlaced
         self.DisplayWidth, self.DisplayHeight = self.Width, self.Height
 
-        if x86_64: # check or load DecodeYUVtoRGB
-            self.IsDecoderYUV420 = bool(self.env.function_exists('DecodeYUVtoRGB'))
-            if not self.IsDecoderYUV420:
-                decodeDll = os.path.join(app.programdir, 'DecodeYUVtoRGB.dll')
-                if os.path.isfile(decodeDll):
-                    try:
-                        self.env.invoke('LoadPlugin', decodeDll)
-                    except avisynth.AvisynthError as err:
-                        self.Framecount = oldFramecount
-                        self.split_clip = None
-                        if not self.CreateErrorClip(err):
-                            return
-                    else:
-                        self.IsDecoderYUV420 = bool(self.env.function_exists('DecodeYUVtoRGB'))
-            if not self.IsDecoderYUV420:
-                self.fastYUV420toRGB32 = False
+        # check or load DecodeYUVtoRGB
+        self.IsDecoderYUV420 = bool(self.env.function_exists('DecodeYUVtoRGB'))
+        if not self.IsDecoderYUV420:
+            decodeDll = os.path.join(app.programdir, 'DecodeYUVtoRGB.dll')
+            if os.path.isfile(decodeDll):
+                try:
+                    self.env.invoke('LoadPlugin', decodeDll)
+                except avisynth.AvisynthError as err:
+                    self.Framecount = oldFramecount
+                    self.split_clip = None
+                    if not self.CreateErrorClip(err):
+                        return
+                else:
+                    self.IsDecoderYUV420 = bool(self.env.function_exists('DecodeYUVtoRGB'))
+        if not self.IsDecoderYUV420:
+            self.fastYUV420toRGB32 = False
 
         if display_clip and not self.CreateDisplayClip(matrix, interlaced, swapuv, bit_depth, readmatrix, killFilterClip=False, killSplitClip=False):
             return
@@ -836,7 +836,7 @@ class AvsClipBase:
 
             # Test audio downmix to 2 channels if self.downMix_d
             # Downmix is on CreateFilterClip (avsp_filter) disabled (speed up).
-            if self.downMix_d and self.vi.has_audio:
+            if self.downMix_d and self.vi.has_audio():
 
                 if self.vi.nchannels >= 8:
                     args += (
@@ -1083,7 +1083,7 @@ class AvsClipBase:
                         nextFrame = frame + 6
                     if loops > 2 and not self.evAudioStop.isSet():
                         timeout = 5.0/self.Framerate # after 5 frames (25fps = 0.2 sec) return is _get_buffer no audio samples given
-                        th = threading.Thread(target=_get_buffer, args=(buf_cptr, audioBuf, samples_count, clip, nextFrame, loops-2, timeout, q, q2))
+                        th = threading.Thread(target=_get_buffer, args=(buf_cptr, audioBuf, samples_count, clip, nextFrame, loops-2, timeout, q, q2,))
                         th.daemon = True
                         th.start()
                     while not self.evAudioStop.isSet():
@@ -1127,7 +1127,7 @@ class AvsClipBase:
                     vi = self.vi
                 self.evAudioStop.clear()
                 self.evAudioFinished.clear()
-                self.AudioThread = threading.Thread(target=_playaudio, args=(clip, vi, frame, loops, self.evAudioFinished))
+                self.AudioThread = threading.Thread(target=_playaudio, args=(clip, vi, frame, loops, self.evAudioFinished,))
                 self.AudioThread.daemon = True
                 self.AudioThread.start()
 
@@ -1137,7 +1137,7 @@ class AvsClipBase:
         self.lastAudiochannels = None
         self.lastSampletype = None
         self.lastAudiorate = None
-        if vi.has_audio:
+        if vi.has_audio():
             sample_type = avs_sample_type_dict_pyaudio.get(vi.sample_type, None)
             if sample_type:
                 self.pyaudio = pyaudio.PyAudio()
@@ -1943,61 +1943,18 @@ if os.name == 'nt':
             return True
         """
 
-        """ support for DecodeYUV and DecodeYV12
-        def _ConvertToRGB(self, vi, prefetch=''):
-            if not vi.is_rgb32():
-                if self.fastYUV420toRGB32 and vi.is_420() and (self.IsDecoderYUV420 or self.IsDecoderYV12):
-                    args = ''
-                    if self.IsDecoderYUV420 and (vi.width % 2 == 0):
-                        if self.resizeFilter and (self.prefetchRGB32 or prefetch):
-                            args = prefetch if prefetch else '\nPrefetch(2,2)'
-                        args += '\nDecodeYUVtoRGB(threads=1,matrix=1,gain=74,offset=-16)'
-                    elif vi.width % 64 == 0:
-                        if self.resizeFilter and (self.prefetchRGB32 or prefetch):
-                            args = prefetch if prefetch else '\nPrefetch(2,2)'
-                        args += '\nConvertBits(8)' if vi.bits_per_component() != 8 else ''
-                        args += '\nDecodeYV12toRGB(threads=1,matrix=1,gain=74,offset=-16)'
-                    else:
-                        args = '\nConvertToRGB32(matrix="%s",interlaced=%s)' % (self.matrix, str(self.interlaced))
-                        if self.prefetchRGB32 or (self.resizeFilter and prefetch):
-                            args += prefetch if prefetch else '\nPrefetch(2,2)'
-                else:
-                    args = '\nConvertToRGB32(matrix="%s",interlaced=%s)' % (self.matrix, str(self.interlaced))
-                    if self.prefetchRGB32 or (self.resizeFilter and prefetch):
-                        args += prefetch if prefetch else '\nPrefetch(2,2)'
-                try:
-                    self.display_clip = self.env.invoke('Eval', [self.display_clip, args])
-                    if not isinstance(self.display_clip, avisynth.AVS_Clip) or not self.display_clip.get_video_info().is_rgb32():
-                        raise
-                except:
-                    err = str(self.env.get_error())
-                    if err:
-                        self.convert_to_rgb_error = err + '\nTrying alternative RGB32 conversion'
-                    else:
-                        self.convert_to_rgb_error = 'Unknown convert to RGB32 error\n Trying alternative RGB32 conversion'
-
-                    args = 'ConvertToYUV444(matrix="%s",interlaced=%s,ChromaInPlacement="left")\n' % (self.matrix, str(self.interlaced)) + \
-                           'ConvertToRGB32(matrix="%s",interlaced=%s)' % (self.matrix, str(self.interlaced))
-                    try:
-                        self.display_clip = self.env.invoke('Eval', [self.display_clip, args])
-                    except avisynth.AvisynthError as err:
-                        if self.convert_to_rgb_error:
-                            self.convert_to_rgb_error += '\nAttempt failed !'
-                        return False
-                    if not isinstance(self.display_clip, avisynth.AVS_Clip):
-                        if self.convert_to_rgb_error:
-                            self.convert_to_rgb_error += '\nAttempt failed !'
-                        return False
-            return True
-        """
-        # support only DecodeYUVtoRGB
         def _ConvertToRGB(self, vi, prefetch=''):
             if not vi.is_rgb32():
                 if self.fastYUV420toRGB32 and vi.is_420() and self.IsDecoderYUV420:
                     args = ''
                     if self.resizeFilter and (self.prefetchRGB32 or prefetch):
                         args = '\n' + prefetch if prefetch else '\nPrefetch(2,2)'
-                    args += '\nDecodeYUVtoRGB(threads=1,matrix=1,gain=74,offset=-16)'
+                    if self.matrix[:3] == 'Rec':
+                        args += '\nDecodeYUVtoRGB(threads=1,matrix=1,gain=74,offset=0)'     # tv levels
+                    elif self.matrix[:2] == 'PC':
+                        args += '\nDecodeYUVtoRGB(threads=1,matrix=1,gain=64,offset=16)'    # full
+                    else:
+                        args += '\nDecodeYUVtoRGB(threads=1,matrix=1,gain=69, offset=0)'    # zero black and non-clipping superwhited
                 else:
                     args = '\nConvertToRGB32(matrix="%s",interlaced=%s)' % (self.matrix, str(self.interlaced))
                     if self.prefetchRGB32 or (self.resizeFilter and prefetch):

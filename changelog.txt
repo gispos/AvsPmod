@@ -37,6 +37,14 @@ AvsPmod can only provide a user-friendly editor if he has no problems with the n
 If, for example, there is a '-' in the file name of the dll, AvsPmod will report it at startup, 
 please rename this dll and replace the '-' with a '_'
 
+--------------------------
+Version 2.7.4.7 [2023-06-03] GPo
+--------------------------.
+* Audio playback is now WinXP 32bit compatible
+* Fast VUV > RGB conversion (DecodeYUVtoRGB.dll, DTL Doom9) now also for 32 bit available.
+* Added: Options > Font & Colors > Mis 2 > 'Video controls frame text field bold', use bold font style or not.
+* Added: avisynth 'DelayAudio' as a slider to filterdb.dat
+* Minor bugfix audio: In the playback, an attempt was always made to create the audio, even if the video did not contain any audio.
 
 --------------------------
 Version 2.7.4.6 [2023-05-27] GPo

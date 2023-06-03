@@ -625,7 +625,7 @@ int count=0
 
 DelayAudio(
 clip,
-float "seconds"=0.00 (-1.20 to 1.20)
+float seconds=0.00 (-2.00 to 2.00)
 )
 
 DeleteFrame(

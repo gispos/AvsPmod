@@ -31,7 +31,7 @@ description = _('An AviSynth script editor')
 url = 'http://avspmod.github.io/'
 url2 = 'https://github.com/gispos/AvsPmod/'
 license = 'GNU GPL v2'
-version = '2.7.4.6'
+version = '2.7.4.7'
 
 # stores the dpi scalling factor on startup
 ppi_factor = 1.0

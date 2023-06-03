@@ -18,6 +18,7 @@ import ctypes
 _queryPerformanceFrequency = ctypes.c_int64()
 ctypes.windll.Kernel32.QueryPerformanceFrequency(ctypes.byref(_queryPerformanceFrequency))
 
+
 resource_str_threadwait = _("Waiting for Avisynth, thread still running.\n" \
                             "This dialog is automatically closed when avisynth returns.\n" \
                             "If you abort this process, you should restart the program!")
