@@ -1,4 +1,4 @@
-The first AvsPmod version with audio playback. Don't expect too much from the 4K playback, but there is a useful function 'Audio scrubbing'. See below. 
+Don't expect too much from the 4K playback, but there is a useful function 'Audio scrubbing'. See below. 
 
 At the moment (I don't know if this will change) the avisynth audio mixer is used for downmix to stereo (I didn't spend any time on own audio downmix code).
 The need for an audio mixer is:
@@ -14,8 +14,8 @@ As default if the options.dat not existing, a Prefetch(1) is used, so Spline36Re
 This gives me 30% more speed when using the 'Resample Filter'. 
 Spline36Resize;sharpen(0.2).Prefetch(1) is also posible but makes it through the additional filter slower.
 
-I can playback 4K on a QHD monitor with 'Resample Filter,Prefetch(1)' without audio dropouts (max. ~26 fps). Without resample filter it is not possible.
-I think with a 4K monitor audio playback with 4K video will not be possible.
+I can playback 4K on a QHD monitor with 'Resample Filter,Prefetch(1)' without audio dropouts (max. ~29 fps).
+Use Video > Display > 'Fast YUV420 display conversion' or 'Prefetch RGB display conversion' for faster playback.
 
 Use 'Split Clip' (avsp_split) to temporarily turn off all subsequent filters for non-stuttering audio playback.
 ----------
@@ -29,8 +29,6 @@ If 'Split View' is activated, the audio of both clips will be played one after t
 Preview Filter:
 Audio scrubbing and audio mixer are turned off. So only video with 2 channel audio can be played back in the playback. 
 Or there must be enough device outputs to play all channels. Or you can insert an audio downmix function in the script. 
-
-It is the first version with audio, time will tell if and what can or must be changed.
 
 This audio mixers are used.
 You can also use your own mixer and add the function to the script, then no downmix will be used in AvsPmod, and the audio will also work with the 'Preview Filter'. Except scrubbing.
@@ -65,7 +63,3 @@ channels > 3:
     'fcc = GetChannel(3, 3)'
     'MixAudio(flr, fcc, 0.5858, 0.4142)'
            
-
-And finally, I have a request:
-For me, the 4 channel output does not work with Win10, so I have only stereo available, I can not check whether really all channels are read and directly forwarded to the output. 
-So if someone has a 6 channel system and hears all 6 channels with the audio mixer turned off, he should let me know so that I no longer have to worry about it.

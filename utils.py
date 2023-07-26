@@ -13,6 +13,7 @@ import sys
 import os
 import wx
 import ctypes
+import threading
 
 # The frequency of the performance counter is fixed at system boot and is consistent across all processors.
 _queryPerformanceFrequency = ctypes.c_int64()
@@ -182,13 +183,29 @@ def IsAVX2():
             return True
     return is_set(7, 0, 1, 5)
 
+class RepeatTimer(threading.Thread):
+    def __init__(self, interval, function, *args, **kwargs):
+        threading.Thread.__init__(self)
+        self.daemon = True
+        self.interval = interval
+        self.function = function
+        self.args = args
+        self.kwargs = kwargs
+        self.finished = threading.Event()
+    def cancel(self):
+        self.finished.set()
+    def run(self):
+        while not self.finished.is_set():
+            self.finished.wait(self.interval)
+            if not self.finished.is_set():
+                self.function(*self.args, **self.kwargs)
+        self.finished.set()
 
 # high-resolution counter 1ms
 def milli_seconds():
     tics = ctypes.c_int64()
     ctypes.windll.Kernel32.QueryPerformanceCounter(ctypes.byref(tics))
-    ms = tics.value*1e3/_queryPerformanceFrequency.value
-    return ms
+    return tics.value*1e3/_queryPerformanceFrequency.value
 
 # more accurate than wx.Millisleep()
 def milli_delay(delay):
@@ -199,8 +216,7 @@ def milli_delay(delay):
 def micro_seconds():
     tics = ctypes.c_int64()
     ctypes.windll.Kernel32.QueryPerformanceCounter(ctypes.byref(tics))
-    mc = tics.value*1e6/_queryPerformanceFrequency.value
-    return mc
+    return tics.value*1e6/_queryPerformanceFrequency.value
 
 def micro_delay(delay):
     fin = (micro_seconds() + delay)%(1<<32)

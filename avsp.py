@@ -147,6 +147,13 @@ import dpi
 import utils
 import Queue as queue
 
+import warnings
+if not sys.warnoptions:
+    warnings.simplefilter("ignore")
+os.environ["PYSDL2_DLL_PATH"] = os.path.abspath(os.path.dirname(sys.argv[0]))
+import sdl2
+import sdl2.ext
+
 from icons import AvsP_icon, next_icon, play_icon, pause_icon, external_icon, \
                   skip_icon, spin_icon, ok_icon, smile_icon, question_icon, \
                   rectangle_icon, dragdrop_cursor
@@ -3156,11 +3163,55 @@ class STCPrintout(wx.Printout):
         dc.SetBrush(wx.TRANSPARENT_BRUSH)
         dc.DrawRectangleRect(self.GetLogicalPageMarginsRect(self.page_setup_data))
 
+# Make safe calls to the main thread from other threads
+# Adapted from <http://thread.gmane.org/gmane.comp.python.wxpython/54892/focus=55223>
+class AsyncCall:
+    ''' Queues a func to run in thread of MainLoop.
+    Code may wait() on self.complete for self.result to contain
+    the result of func(*ar,**kwar).  It is set upon completion.
+    Wait() does this.'''
+    def __init__(self, func, *ar, **kwar):
+        self.result = self.noresult = object()
+        self.complete = threading.Event()
+        self.func, self.ar, self.kwar = func, ar, kwar
+        if threading.current_thread().name == 'MainThread':
+            self.TimeToRun()
+        else:
+            wx.CallAfter(self.TimeToRun)
+    def TimeToRun(self):
+        try:
+            self.result = self.func(*self.ar, **self.kwar)
+        except:
+            self.exception = sys.exc_info()
+        else:
+            self.exception = None
+        self.complete.set()
+    def Wait(self, timeout=None, failval=None):
+        self.complete.wait(timeout)
+        if self.exception:
+            # Python2:
+            # raise self.exception[0], self.exception[1], self.exception[2]
+            # port to Python3: https://portingguide.readthedocs.io/en/latest/exceptions.html
+            import six
+            six.reraise(self.exception[0], self.exception[1], self.exception[2])
+        if self.result is self.noresult:
+            return failval
+        return self.result
+
+# Decorator for AsyncCall class
+def AsyncCallWrapper(wrapped):
+    '''Decorator for AsyncCall class'''
+    def wrapper(*args, **kwargs):
+        return AsyncCall(wrapped, *args, **kwargs).Wait()
+    functools.update_wrapper(wrapper, wrapped)
+    return wrapper
+
 # for play thread
 class AvsAudio(object):
     def __init__(self, app):
         self.x86_64 = app.x86_64
         self.audio_stream = None
+        self.app = app
 
     def __del__(self):
         self.KillAudio()
@@ -3200,7 +3251,8 @@ class AvsAudio(object):
                 self.audio_cptr = None
                 self.samples_count = None
                 self.audio_buffer = None
-                wx.Bell()
+                if not self.app.currentScript.previewFilterIdx > 0: # on preview filter audio mixer is not uses (performance)
+                    wx.Bell()
                 return
             self.video_frames_buffered = buffer_count
             self.buffer_len = len(self.audio_buffer)
@@ -3235,84 +3287,895 @@ class AvsAudio(object):
             return self.audio_stream.is_active()
         return False
 
-# SplitClip Control test with slider
-"""
-class SplitClipCtrl(wx.Dialog):
-    def __init__(self, parent, title=_('SplitClip'), pos=wx.DefaultPosition, size=tuplePPI(600,300)):
-        style = wx.DEFAULT_DIALOG_STYLE | wx.STAY_ON_TOP | wx.RESIZE_BORDER | wx.FRAME_FLOAT_ON_PARENT# | wx.NO_FULL_REPAINT_ON_RESIZE | wx.CLIP_CHILDREN
-        wx.Dialog.__init__(self, parent, wx.ID_ANY, title, pos, size, style=style)
-        dpi.SetFontPPI(self)
-        self.parent = parent
-        self.Bind(wx.EVT_CLOSE, self.Close)
-        #factor = 1.0
-        self.videoWindow = wx.ScrolledWindow(self, wx.ID_ANY)
-        self.videoWindow.SetBackgroundColour(wx.BLACK)
-        #self.videoSlider = SliderPlus(self, parent, wx.ID_ANY, 0, 0, 240-1, dpiScale=factor, titleDict=None)
-        self.videoSlider = wx.Slider(self, wx.ID_ANY)
-        #self.videoSlider.Bind(wx.EVT_SCROLL_THUMBTRACK, self.OnSliderMove)
-        self.videoSlider.Bind(wx.EVT_SCROLL, self.OnSliderMove)
-        #self.videoSlider.SetTickFreq(10)
-        sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(self.videoWindow, 1, wx.EXPAND)
-        sizer.Add(self.videoSlider, 0, wx.EXPAND)
-        self.SetSizer(sizer)
-        sizer.Layout()
-        self.IsActive = False
-        self.Hide()
+class SDLWindow(object):
+    def __init__(self, app):
+        self.app = app
+        self.window = None
+        self.renderer = None
+        self.texture = None
+        self.running = False
+        self.video_w = None
+        self.video_h = None
+        self.timer = None
+        self.color_format = None
+        self.YUV = False
+        self.AVI = None
+        self.lastLClick = 0
+        self.isFullscreen = False
+        self.isFullsize = False
+        self.DAR = (1,1)
+        self.playback = False
+        self.YUV_matrix = self.app.options['sdlyuvmatrix']
+        self.resizeQuality = self.app.options['sdlresizequality']
+        self.sizeMode = 0
+        self.mouseOffset = None
+        #self.keystate = ctypes.c_uint8
+        #self.keystate = sdl2.SDL_GetKeyboardState(None)
+        #try:
+            #self.sdlCursor = wx.Cursor(os.path.join(self.app.programdir, r'sdl.cur'), wx.BITMAP_TYPE_CUR)
+        #except:
+            #self.sdlCursor = wx.StockCursor(wx.CURSOR_DEFAULT)
+        """
+        for itemName, shortcut, id in self.app.options['shortcuts']:
+            if itemName.endswith('D3D Window'):
+                wx.Bell()
+                print(shortcut)
+        """
+    def __del__(self):
+        self.running = False
+        self.Close()
 
-    def Activate(self, showFrame=True):
-        self.videoSlider.Enable(False)
-        script = self.parent.currentScript
-        if script.AVI and script.AVI.split_clip:  # do not use: script.AVI.IsSplitClip !
-            if not wx.IsBusy():
-                wx.BeginBusyCursor()
+    def StopPeepEvents(self):
+        if self.timer:
+            self.timer.cancel()
+            self.timer = None
+
+    def StartPeepEvents(self):
+        if not self.timer and self.running:
+            self.timer = utils.RepeatTimer(0.02, self.PeepEvents)
+            self.timer.start()
+    """
+    def GetWindowPosSize(self):
+        x, y, w, h = ctypes.c_int(),ctypes.c_int(),ctypes.c_int(),ctypes.c_int()
+        sdl2.SDL_GetWindowPosition(self.window, ctypes.byref(x), ctypes.byref(y))
+        sdl2.SDL_GetWindowSize(self.window, ctypes.byref(w), ctypes.byref(h))
+        return (x,y,w,h)
+    """
+
+    def StoreLastSize(self):
+        if self.window:
+            if not self.isFullscreen and not self.isFullsize:
+                if sdl2.SDL_GetWindowFlags(self.window) & sdl2.SDL_WINDOW_MAXIMIZED != sdl2.SDL_WINDOW_MAXIMIZED:
+                    x, y, w, h = ctypes.c_int(),ctypes.c_int(),ctypes.c_int(),ctypes.c_int()
+                    sdl2.SDL_GetWindowPosition(self.window, ctypes.byref(x), ctypes.byref(y))
+                    sdl2.SDL_GetWindowSize(self.window, ctypes.byref(w), ctypes.byref(h))
+                    self.app.options['sdlwindowrect'] = (max(x,0),max(y,0), max(w, 240), max(h,120))
+
+    def ResetLastSize(self):
+        self.SetResizable(True)
+        r = self.app.options['sdlwindowrect']
+        if r[0] < 20 or r[1] < 20:
+            r[0] = r[1] = 20
+        sdl2.SDL_SetWindowFullscreen(self.window, 0)
+        sdl2.SDL_SetWindowPosition(self.window, r[0] , r[1])
+        sdl2.SDL_SetWindowSize(self.window, r[2], r[3])
+
+    def Close(self):
+        self.running = False
+        if self.timer:
+            self.timer.cancel()
+        self.timer = None
+        if self.window:
+            self.StoreLastSize()
+            sdl2.SDL_DestroyWindow(self.window)
+            self.window = None
+        if self.renderer:
+            sdl2.SDL_DestroyRenderer(self.renderer)
+            self.renderer = None
+        if self.texture:
+            sdl2.SDL_DestroyTexture(self.texture)
+            self.texture = None
+        self.video_w = None
+        self.video_h = None
+        sdl2.ext.quit()
+        for i in range(self.app.scriptNotebook.GetPageCount()):
+            _AVI = self.app.scriptNotebook.GetPage(i).AVI
+            if _AVI is not None and _AVI.yv12_clip:
+                _AVI.DeleteYV12Clip()
+        #count = sys.getrefcount(self.AVI)
+        #if count > 2:
+        self.AVI = None
+        self.playback = False
+        if self.app.options['alwaysontop'] and not self.app.HasFlag(wx.STAY_ON_TOP):
+            self.app.ToggleWindowStyle(wx.STAY_ON_TOP)
+        #print(str(count))
+
+    def InitWND(self, playback=False):
+        mThread = threading.current_thread().name == 'MainThread'
+        if not self.running:
+            if playback or not mThread:
+                self.Close()
+                wx.MessageBox('SDL could not be initialazed in Thread. SDL_Error!')
+                return
             try:
-                re = script.AVI.SetSplitClip(True)
-            finally:
-                if wx.IsBusy():
-                    wx.EndBusyCursor()
-            if re:
-                self.IsActive = True
-                self.videoSlider.SetMax(script.AVI.Framecount)
-                self.videoSlider.SetValue(self.parent.videoSlider.GetValue())
-                self.videoSlider.Enable(True)
-                for slider in self.parent.GetVideoSliderList():
-                    slider.AVI_SplitClip = True
-                    slider.Refresh()
-                if showFrame:
-                    self.parent.ShowVideoFrame(forceCursor=True)
-        #super(SplitClipCtrl, self).Show()
-
-
-    def Close(self, event=None, showFrame=True):
-        self.IsActive = False
-        self.Hide()
-        for slider in self.parent.GetVideoSliderList():
-            slider.AVI_SplitClip = False
-            slider.Refresh()
-        script = self.parent.currentScript
-        if script.AVI and script.AVI.split_clip: # do not use: script.AVI.IsSplitClip !
-            if not wx.IsBusy():
-                wx.BeginBusyCursor()
-            try:
-                if not script.AVI.SetSplitClip(False):
+                sdl2.ext.init()
+                sdl2.ext.renderer.set_texture_scale_quality(self.resizeQuality) # nearest, linear, best
+                #sdl2.hints.SDL_SetHint(sdl2.hints.SDL_HINT_RENDER_DRIVER, "opengl")
+                #sdl2.hints.SDL_SetHint(sdl2.hints.SDL_HINT_RENDER_DRIVER, "direct3d")
+                #sdl2.hints.SDL_SetHint(sdl2.hints.SDL_HINT_RENDER_DIRECT3D_THREADSAFE, "1")
+                #sdl2.hints.SDL_SetHint(sdl2.hints.SDL_HINT_FRAMEBUFFER_ACCELERATION, "1")
+                #sdl2.hints.SDL_SetHint(sdl2.hints.SDL_HINT_FORCE_RAISEWINDOW, "1")
+                #sdl2.hints.SDL_SetHint(sdl2.hints.SDL_HINT_VIDEO_MINIMIZE_ON_FOCUS_LOSS, "1")
+                #sdl2.hints.SDL_SetHint(sdl2.hints.SDL_HINT_ALLOW_TOPMOST, "1")
+                self.SetYUVMatrix(self.YUV_matrix)
+                try:
+                    sdl2.SDL_SetCursor(sdl2.SDL_CreateSystemCursor(sdl2.SDL_SYSTEM_CURSOR_HAND))
+                except:
                     pass
-            finally:
-                if wx.IsBusy():
-                    wx.EndBusyCursor()
-        if showFrame:
-            self.parent.ShowVideoFrame(forceCursor=True)
+            except:
+                self.Close()
+                wx.MessageBox('SDL could not be initialazed.', 'SDL Error')
+                return
+        if self.window is None:
+            if mThread:
+                rect = self.app.options['sdlwindowrect']
+                if rect[0] < 0 or rect[1] < 0:
+                    rect[0] = rect[1] = 0
+                flags = sdl2.SDL_WINDOW_RESIZABLE|sdl2.SDL_WINDOW_ALWAYS_ON_TOP|sdl2.SDL_WINDOW_HIDDEN
+                if self.app.options['sdlnotitlebar']: flags = flags|sdl2.SDL_WINDOW_BORDERLESS
+                self.window = sdl2.SDL_CreateWindow('AvsPmod', rect[0], rect[1], rect[2], rect[3], flags)
+                #sdl2.surface.SDL_SetSurfaceRLE(sdl2.SDL_GetWindowSurface(self.window), 1)
+                #print(sdl2.surface.SDL_HasSurfaceRLE(sdl2.SDL_GetWindowSurface(self.window)))
+            if self.window is None:
+                wx.MessageBox('SDL Window could not be created!\n%s' % sdl2.SDL_GetError() or 'Not in thread', 'SDL Error')
+                self.Close()
+                return
+            if self.renderer:
+                sdl2.SDL_DestroyRenderer(self.renderer)
+                self.renderer = None
+            self.renderer = sdl2.SDL_CreateRenderer(self.window, -1, sdl2.SDL_RENDERER_ACCELERATED|sdl2.SDL_RENDERER_TARGETTEXTURE)
+        elif self.playback != playback:
+            if self.renderer:
+                sdl2.SDL_DestroyRenderer(self.renderer)
+                self.renderer = None
+            self.renderer = sdl2.SDL_CreateRenderer(self.window, -1, sdl2.SDL_RENDERER_ACCELERATED|sdl2.SDL_RENDERER_TARGETTEXTURE)
+        elif not self.renderer:
+            self.renderer = sdl2.SDL_CreateRenderer(self.window, -1, sdl2.SDL_RENDERER_ACCELERATED|sdl2.SDL_RENDERER_TARGETTEXTURE)
 
-    def Toggle(self, event=None):
-        if self.IsActive:
+        if self.renderer is None:
+            wx.MessageBox('SDL Renderer could not be created!\n%s' % sdl2.SDL_GetError() or 'Unknown', 'SDL Error')
             self.Close()
+            return
+
+        self.running = True
+        self.playback = playback
+        self.StartPeepEvents()
+        return True
+
+    def InitAVI(self, AVI, readMatrix=True):
+        self.AVI = None
+        if AVI is None or not self.running:
+            return
+        #if not AVI.vi.is_yuy2() and not AVI.IsRGB32: # YUY2 direct draw is slower, so we convert it to YV12 (YUY2 60fps, YV12=115fps)
+        getYUV = not AVI.IsRGB32 and AVI.error_message is None
+        if getYUV:
+            AVI.CreateYV12Clip(force=True) # creates only the clip if clip does not exists or the AVI.clip changed
+        if readMatrix:
+            self.SetYUVMatrix(AVI.matrix[len(AVI.matrix)-3:])
+
+        # All color formats convertet to YV12 except YV12 and RGB32
+        # YUY2 is slower when direct YUY2 drawing is used
+        if getYUV and (((AVI.vi.is_420() or AVI.vi.is_yuy2()) and AVI.bits_per_component == 8) or AVI.yv12_clip is not None):
+            #if (AVI.vi.is_420() or AVI.vi.is_yuy2()) and (AVI.bits_per_component == 8):
+                #self.color_format = 1 if AVI.vi.is_420() else 2
+            if AVI.vi.is_420() and (AVI.bits_per_component == 8):
+                self.color_format = 1
+            elif AVI.yv12_clip:
+                self.color_format = 100
+            else:
+                self.color_format = 2
+            self.YUV = True
+            self.video_w = AVI.Width
+            self.video_h = AVI.Height
+            if self.DAR == (1,1):
+                dar = (self.video_w, self.video_h)
+            else:
+                dar = (self.DAR[0], self.DAR[1])
+            sdl2.SDL_RenderSetLogicalSize(self.renderer, dar[0], dar[1])
+            if self.texture:
+                sdl2.SDL_DestroyTexture(self.texture)
+            cFormat = sdl2.SDL_PIXELFORMAT_IYUV if (self.color_format == 1 or self.color_format == 100) else sdl2.SDL_PIXELFORMAT_YUY2
+            try:
+                self.texture = sdl2.SDL_CreateTexture(self.renderer, cFormat, sdl2.SDL_TEXTUREACCESS_STREAMING, AVI.Width, AVI.Height)
+            except:
+                self.texture = None
+            else:
+                title = u'AvsPmod - YUV420P8 ' if self.color_format == 1 else u'AvsPmod - YV12 ' if self.color_format == 100 else u'AvsPmod - YUY2 '
+                sdl2.SDL_SetWindowTitle(self.window, title + self.GetRenderInfo())
+        else: # RGB32 display clip is used if AVI error_message or AVI.IsRGB32
+            self.YUV = False
+            self.color_format = 0
+            self.video_w = AVI.DisplayWidth
+            self.video_h = AVI.DisplayHeight
+
+            if self.DAR == (1,1):
+                dar = (self.video_w, self.video_h)
+            else:
+                dar = (self.DAR[0], self.DAR[1])
+            sdl2.SDL_RenderSetLogicalSize(self.renderer, dar[0], dar[1])
+            try:
+                if self.texture:
+                    sdl2.SDL_DestroyTexture(self.texture)            # ARGB8888 is a tick faster then RGB888
+                self.texture = sdl2.SDL_CreateTexture(self.renderer, sdl2.SDL_PIXELFORMAT_ARGB8888, sdl2.SDL_TEXTUREACCESS_STREAMING, AVI.DisplayWidth, AVI.DisplayHeight)
+            except:
+                self.texture = None
+            else:
+                sdl2.SDL_SetWindowTitle(self.window, u'AvsPmod - ARGB8888 ' + self.GetRenderInfo())
+
+        if self.texture:
+            self.AVI = AVI
+            if self.isFullscreen:
+                self.isFullscreen = False
+                if self.app.UseAviThread:
+                    self.ToggleFullscreen()
+                    #self.isFullsize = False
+            elif self.isFullsize:
+                self.isFullscreen = False
+                self.ToggleFullsize(True)
+            if sdl2.SDL_GetWindowFlags(self.window) & sdl2.SDL_WINDOW_SHOWN != sdl2.SDL_WINDOW_SHOWN:
+                sdl2.SDL_ShowWindow(self.window)
+                if not self.isFullscreen:
+                    wx.CallAfter(sdl2.SDL_RaiseWindow, self.window)
+            if self.app.HasFlag(wx.STAY_ON_TOP): # disable it
+                self.app.ToggleWindowStyle(wx.STAY_ON_TOP)
+            return True
         else:
-            self.Activate()
-    def OnSliderMove(self, event):
-        script = self.parent.currentScript
-        if script.AVI:
-            self.parent.ShowVideoFrame(self.videoSlider.GetValue())
-"""
+            wx.MessageBox('SDL Window could not create texture!\n%s' % sdl2.SDL_GetError() or 'Unknown', 'SDL Error')
+            self.Close()
+
+    def IsFullScreen(self):
+        return self.running and self.isFullscreen
+
+    def SetResizable(self, resizable):
+        if resizable:
+            if sdl2.SDL_GetWindowFlags(self.window) & sdl2.SDL_WINDOW_RESIZABLE != sdl2.SDL_WINDOW_RESIZABLE:
+                sdl2.SDL_SetWindowResizable(self.window, sdl2.SDL_TRUE)
+                #sdl2.SDL_SetWindowBordered(self.window, sdl2.SDL_TRUE) # Flicker
+        else:
+            if sdl2.SDL_GetWindowFlags(self.window) & sdl2.SDL_WINDOW_RESIZABLE == sdl2.SDL_WINDOW_RESIZABLE:
+                sdl2.SDL_SetWindowResizable(self.window, sdl2.SDL_FALSE)
+                #sdl2.SDL_SetWindowBordered(self.window, sdl2.SDL_FALSE)
+
+    def ToggleFullscreen(self, resetDefault=False):
+        if self.running:
+            if not self.app.UseAviThread and not self.isFullscreen:
+                wx.MessageBox(_("Fullscreen only with 'Accessing AviSynth in threads' enabled"), 'AvsPmod')
+                return
+            p = wx.GetMousePosition()
+            self.isFullscreen = not self.isFullscreen
+            if self.isFullscreen:
+                self.SetResizable(True)
+                sdl2.SDL_SetWindowFullscreen(self.window, sdl2.SDL_WINDOW_FULLSCREEN_DESKTOP)
+            else:
+                if self.isFullsize and not resetDefault:
+                    if self.IsSameMonitor():
+                        sdl2.SDL_SetWindowFullscreen(self.window, 0)
+                        self.ToggleFullsize(True)
+                    else:
+                        self.ResetLastSize()
+                        self.isFullsize = False
+                else:
+                    self.isFullsize = False
+                    self.ResetLastSize()
+            ctypes.windll.user32.SetCursorPos(p[0], p[1])
+            wx.CallAfter(sdl2.SDL_RaiseWindow, self.window)
+
+    # Spezial View, sets the height so that the video slider is shown
+    def ToggleFullsize(self, force=False):
+        if not self.running or not isinstance(self.AVI, pyavs.AvsClipBase) or not self.IsSameMonitor():
+            if self.isFullsize:
+                self.ResetWindowToNormalSize()
+            self.isFullsize = False
+            self.isFullscreen = False
+            wx.Bell()
+            return
+        if self.isFullsize and not force:
+            try:
+                rect = self.app.options['sdlwindowrect']
+            except:
+                wx.Bell()
+                return
+            if rect[0] < 0 or rect[1] < 0:
+                rect[0] = rect[1] = 0
+            self.SetResizable(True)
+            if self.isFullscreen:
+                self.ToggleFullscreen()
+            if sdl2.SDL_GetWindowFlags(self.window) & sdl2.SDL_WINDOW_MAXIMIZED == sdl2.SDL_WINDOW_MAXIMIZED:
+                sdl2.SDL_RestoreWindow(self.window)
+            sdl2.SDL_SetWindowPosition(self.window, rect[0], rect[1])
+            sdl2.SDL_SetWindowSize(self.window, rect[2], rect[3])
+            self.isFullsize = False
+            self.StoreLastSize()
+            return
+
+        if not self.app.IsMaximized():
+            self.app.Maximize(True)
+        if self.app.fullScreenWnd.IsFullScreen():
+            h = wx.GetDisplaySize()[1] - self.app.videoSlider.GetSize()[1]
+            if not self.app.fullScreenSizer.IsShown(self.app.videoControls):
+                self.app.fullScreenSizer.Fit(self.app.videoControls)
+                self.app.fullScreenSizer.Show(self.app.videoControls)
+                self.app.fullScreenSizer.Layout()
+                self.app.fullScreenSizer.Show(self.app.videoControls)
+        else:
+            h = self.app.videoWindow.ClientToScreen((0,self.app.videoWindow.GetSize()[1]))[1]
+        h -= (wx.SystemSettings.GetMetric(wx.SYS_BORDER_Y) - 1)
+
+        if self.isFullscreen:
+            self.ToggleFullscreen()
+        if sdl2.SDL_GetWindowFlags(self.window) & sdl2.SDL_WINDOW_MAXIMIZED == sdl2.SDL_WINDOW_MAXIMIZED:
+            sdl2.SDL_RestoreWindow(self.window)
+        if not self.isFullsize:
+            self.StoreLastSize()
+        self.SetResizable(False)
+        sdl2.SDL_SetWindowPosition(self.window, 0, 0)
+        sdl2.SDL_SetWindowSize(self.window, self.app.GetSize()[0], h)
+        self.isFullsize = True
+
+    def ResetWindowToNormalSize(self):
+        if not self.running:
+            return
+        if self.isFullscreen:
+            self.ToggleFullscreen()
+        if self.isFullsize:
+            self.ToggleFullsize()
+        self.isFullsize = False
+        self.isFullscreen = False
+        self.SetResizable(True)
+        if sdl2.SDL_GetWindowFlags(self.window) & sdl2.SDL_WINDOW_MAXIMIZED == sdl2.SDL_WINDOW_MAXIMIZED:
+            sdl2.SDL_RestoreWindow(self.window)
+        #x, y, w, h = ctypes.c_int(),ctypes.c_int(),ctypes.c_int(),ctypes.c_int()
+        #sdl2.SDL_GetWindowPosition(self.window, ctypes.byref(x), ctypes.byref(y))
+        #sdl2.SDL_GetWindowSize(self.window, ctypes.byref(w), ctypes.byref(h))
+
+    def IsSameMonitor(self):
+        return wx.Display.GetFromWindow(self.app) == sdl2.SDL_GetWindowDisplayIndex(self.window)
+
+    def HasFocus(self):
+        return self.running and sdl2.SDL_GetWindowFlags(self.window) & sdl2.SDL_WINDOW_INPUT_FOCUS == sdl2.SDL_WINDOW_INPUT_FOCUS
+
+    def SetForground(self):
+        if self.window and self.running:
+            """
+            wmInfo = sdl2.SDL_SysWMinfo()
+            sdl2.SDL_GetWindowWMInfo(self.window, wmInfo)
+            self.WndHandle = wmInfo.info.win.window
+            ctypes.windll.user32.SetForegroundWindow(self.WndHandle)
+            ctypes.windll.user32.BringWindowToTop(self.WndHandle)
+            ctypes.windll.user32.SetFocus(self.WndHandle)
+            #return
+            """
+            p = wx.GetMousePosition()
+            sdl2.SDL_RaiseWindow(self.window)
+            sdl2.SDL_WarpMouseInWindow(self.window, 50, 50) # else no forground
+            ctypes.windll.user32.SetCursorPos(p[0], p[1])
+            sdl2.SDL_RaiseWindow(self.window)
+
+    def SetYUVMatrix(self, Rec='709'):
+        if Rec == '601':
+            sdl2.surface.SDL_SetYUVConversionMode(sdl2.surface.SDL_YUV_CONVERSION_BT601)
+        else:
+            sdl2.surface.SDL_SetYUVConversionMode(sdl2.surface.SDL_YUV_CONVERSION_BT709)
+        self.YUV_matrix = Rec
+        self.app.options['sdlyuvmatrix'] = Rec
+
+    def OnPopupMenu(self):
+
+        def OnSetSize(event):
+            item = popup.FindItemById(event.GetId())
+            label = item.GetLabel()
+            if label == _('Fullsize'):
+                self.ToggleFullsize(self.isFullscreen)
+                return
+            if label == _('Fullscreen'):
+                self.ToggleFullscreen(True)
+                return
+            self.isFullsize = False
+            if label == _('Set size 1'): rect = self.app.options['sdlwindowrect1']
+            elif label == _('Set size 2'): rect = self.app.options['sdlwindowrect2']
+            else: rect = self.app.options['sdlwindowrect3']
+            if rect[0] < 0 or rect[1] < 0:
+                rect[0] = rect[1] = 0
+            self.SetResizable(True)
+            if self.isFullscreen:
+                self.ToggleFullscreen()
+            if sdl2.SDL_GetWindowFlags(self.window) & sdl2.SDL_WINDOW_MAXIMIZED == sdl2.SDL_WINDOW_MAXIMIZED:
+                sdl2.SDL_RestoreWindow(self.window)
+            sdl2.SDL_SetWindowPosition(self.window, rect[0], rect[1])
+            sdl2.SDL_SetWindowSize(self.window, rect[2], rect[3])
+            self.app.options['sdlwindowrect'] = rect
+            self.isFullsize = False
+        def OnSaveSize(event):
+            item = popup.FindItemById(event.GetId())
+            label = item.GetLabel()
+            if self.isFullscreen or self.isFullsize or sdl2.SDL_GetWindowFlags(self.window) & sdl2.SDL_WINDOW_MAXIMIZED == sdl2.SDL_WINDOW_MAXIMIZED:
+                wx.Bell()
+                return
+            x, y, w, h = ctypes.c_int(),ctypes.c_int(),ctypes.c_int(),ctypes.c_int()
+            sdl2.SDL_GetWindowPosition(self.window, ctypes.byref(x), ctypes.byref(y))
+            sdl2.SDL_GetWindowSize(self.window, ctypes.byref(w), ctypes.byref(h))
+            if label == _('Save 1'): self.app.options['sdlwindowrect1'] = (max(x,0),max(y,0), max(w, 240), max(h,120))
+            elif label == _('Save 2'): self.app.options['sdlwindowrect2'] = (max(x,0),max(y,0), max(w, 240), max(h,120))
+            else: self.app.options['sdlwindowrect3'] = (max(x,0),max(y,0), max(w, 240), max(h,120))
+        def OnOptions(event):
+            item = popup.FindItemById(event.GetId())
+            label = item.GetLabel()
+            if label == _('Allow fullsize'):
+                self.app.options['sdlallowfullsize'] = not self.app.options['sdlallowfullsize']
+                if not self.app.options['sdlallowfullsize'] and self.isFullsize:
+                    self.ToggleFullsize()
+            elif label == _('Move window with mouse'):
+                self.app.options['sdlallowmousemove'] = not self.app.options['sdlallowmousemove']
+                self.mouseOffset = None
+            elif label == _('No Titlebar and border'):
+                flag = sdl2.SDL_GetWindowFlags(self.window) & sdl2.SDL_WINDOW_BORDERLESS == sdl2.SDL_WINDOW_BORDERLESS
+                if flag:
+                    self.app.options['sdlnotitlebar'] = False
+                    flag = sdl2.SDL_TRUE
+                else:
+                    self.app.options['sdlnotitlebar'] = True
+                    flag = sdl2.SDL_FALSE
+                if self.isFullscreen:
+                    self.isFullsize = False
+                    self.ToggleFullscreen()
+                if self.isFullsize:
+                    self.isFullscreen = False
+                    self.ToggleFullsize()
+                self.SetResizable(True)
+                sdl2.SDL_SetWindowBordered(self.window, flag)
+                sdl2.SDL_SetWindowFullscreen(self.window, sdl2.SDL_WINDOW_FULLSCREEN_DESKTOP)
+                sdl2.SDL_SetWindowFullscreen(self.window, 0)
+        def OnSetQuality(event):
+            item = popup.FindItemById(event.GetId())
+            label = item.GetLabel()
+            if label.startswith('Anisotropic'): self.resizeQuality = 'best'
+            elif label.startswith('Nearest'): self.resizeQuality = 'nearest'
+            else: self.resizeQuality = 'linear'
+            self.app.options['sdlresizequality'] = self.resizeQuality
+            sdl2.ext.renderer.set_texture_scale_quality(self.resizeQuality)
+            if self.app.playing_video:
+                AsyncCall(self.app.StopPlayback).Wait()
+                self.app.PlayPauseVideo()
+            else:
+                self.InitAVI(self.AVI)
+                wx.CallAfter(self.Render_frame, self.AVI)
+        def OnSetMatrix(event):
+            item = popup.FindItemById(event.GetId())
+            label = item.GetLabel()
+            self.SetYUVMatrix(label)
+            if self.YUV:
+                if self.app.playing_video:
+                    AsyncCall(self.app.StopPlayback).Wait()
+                    self.app.PlayPauseVideo()
+                else:
+                    self.InitAVI(self.AVI, False)
+                    wx.CallAfter(self.Render_frame, self.AVI)
+        def OnSetDar(event):
+            item = popup.FindItemById(event.GetId())
+            label = item.GetLabel()
+            if label.startswith('DAR'):
+                s = label.split('DAR ')
+                if s[1] == '1:1':
+                    self.DAR = (1,1)
+                    dar = (self.video_w, self.video_h)
+                elif s[1] == '1.85:1':
+                    self.DAR = (37,20)
+                    dar = self.DAR
+                elif s[1] == '2.35:1':
+                    self.DAR = (47,20)
+                    dar = self.DAR
+                else:
+                    s = s[1].split(':')
+                    self.DAR = (int(s[0]), int(s[1]))
+                    dar = self.DAR
+                sdl2.SDL_RenderSetLogicalSize(self.renderer, dar[0], dar[1])
+                wx.CallAfter(self.Render_frame, self.AVI)
+        def OnClose(event):
+            wx.CallAfter(self.Close)
+        def OnSplitClip(event):
+            self.app.SplitClipCtrl.Toggle(focus=False)
+        def OnPlaybackBoth(event):
+            self.app.options['sdlplaybackboth'] = not self.app.options['sdlplaybackboth']
+            if self.app.playing_video:
+                AsyncCall(self.app.StopPlayback).Wait()
+                self.app.PlayPauseVideo()
+        def AddItem(menu, label, check, checked, handler):
+            id = wx.NewId()
+            menu.Append(id, _(label), kind=wx.ITEM_CHECK if check else wx.ITEM_NORMAL)
+            if check:
+                menu.Check(id, checked)
+            self.app.Bind(wx.EVT_MENU, handler, id=id)
+
+        popup = wx.Menu()
+        # size
+        sizeMenu = wx.Menu()
+        AddItem(sizeMenu, 'Set size 1', False, False, OnSetSize)
+        AddItem(sizeMenu, 'Set size 2', False, False, OnSetSize)
+        AddItem(sizeMenu, 'Set size 3', False, False, OnSetSize)
+        sizeMenu.AppendSeparator()
+        AddItem(sizeMenu, 'Save 1', False, False, OnSaveSize)
+        AddItem(sizeMenu, 'Save 2', False, False, OnSaveSize)
+        AddItem(sizeMenu, 'Save 3', False, False, OnSaveSize)
+        popup.AppendSubMenu(sizeMenu, 'Size')
+        if self.app.options['sdlallowfullsize'] and self.IsSameMonitor():
+            AddItem(popup, 'Fullsize', True, self.isFullsize and not self.isFullscreen, OnSetSize)
+        AddItem(popup, 'Fullscreen', True, self.isFullscreen, OnSetSize)
+        popup.AppendSeparator()
+        # dar
+        aspectMenu = wx.Menu()
+        AddItem(aspectMenu, 'DAR 1:1', True, self.DAR == (1,1), OnSetDar)
+        AddItem(aspectMenu, 'DAR 16:9', True, self.DAR == (16,9), OnSetDar)
+        AddItem(aspectMenu, 'DAR 4:3', True, self.DAR == (4,3), OnSetDar)
+        AddItem(aspectMenu, 'DAR 1.85:1', True, self.DAR == (37,20), OnSetDar)
+        AddItem(aspectMenu, 'DAR 2.35:1', True, self.DAR == (47,20), OnSetDar)
+        popup.AppendSubMenu(aspectMenu, 'Display AR')
+        # matrix
+        matrixMenu = wx.Menu()
+        AddItem(matrixMenu, '709', True, self.YUV_matrix == '709', OnSetMatrix)
+        AddItem(matrixMenu, '601', True, self.YUV_matrix == '601', OnSetMatrix)
+        # quality
+        qualityMenu = wx.Menu()
+        AddItem(qualityMenu, 'Anisotropic (best)', True, self.resizeQuality == 'best', OnSetQuality)
+        AddItem(qualityMenu, 'Linear (good)', True, self.resizeQuality == 'linear', OnSetQuality)
+        AddItem(qualityMenu, 'Nearest (no filter)', True, self.resizeQuality == 'nearest', OnSetQuality)
+        popup.AppendSubMenu(matrixMenu, 'YUV matrix')
+        popup.AppendSubMenu(qualityMenu, 'Resize quality')
+        optionsMenu = wx.Menu()
+        #self.app.options['sdlnotitlebar'] = sdl2.SDL_GetWindowFlags(self.window) & sdl2.SDL_WINDOW_BORDERLESS == sdl2.SDL_WINDOW_BORDERLESS
+        AddItem(optionsMenu, 'No Titlebar and border', True, self.app.options['sdlnotitlebar'], OnOptions)
+        AddItem(optionsMenu, 'Move window with mouse', True, self.app.options['sdlallowmousemove'] or self.app.options['sdlnotitlebar'], OnOptions)
+        AddItem(optionsMenu, 'Allow fullsize', True, self.app.options['sdlallowfullsize'], OnOptions)
+        popup.AppendSubMenu(optionsMenu, 'Additional')
+        popup.AppendSeparator()
+        # rest
+        if isinstance(self.AVI, pyavs.AvsClipBase):
+            AddItem(popup, 'Split Clip on/off', True, self.AVI.IsSplitClip, OnSplitClip)
+        AddItem(popup, 'Playback both', True, self.app.options['sdlplaybackboth'], OnPlaybackBoth)
+        popup.AppendSeparator()
+        AddItem(popup, 'Close', False, False, OnClose)
+        self.app.PopupMenu(popup)
+        popup.Destroy()
+
+    # we run timer thread, but we need calling events in the main thread
+    # but testet, it works for AvsPmod in thread
+    # only all output's uses the main thread, AsyncCall
+    #@AsyncCallWrapper
+    def PeepEvents(self):
+        """
+        def _handleMouse(full=True):
+            state = wx.GetMouseState()
+            if state.LeftIsDown() and not state.RightIsDown():
+                click = time.clock()
+                if not self.isFullscreen and not self.isFullsize and \
+                    (self.app.options['sdlallowmousemove'] or self.app.options['sdlnotitlebar']):
+                        self.mouseOffset = state.GetPosition()
+
+                if (click - 0.1 > self.lastLClick) and (click - 0.5 < self.lastLClick):
+                    if self.sizeMode == 1: # TODO ? not used, self.sizeMode is 0
+                        self.StoreLastSize()
+                        AsyncCall(self.ToggleFullsize).Wait()
+                    else:
+                        self.StoreLastSize()
+                        AsyncCall(self.ToggleFullscreen).Wait()
+                self.lastLClick = time.clock()
+            elif full:
+                self.mouseOffset = None
+                if state.RightIsDown() and not state.LeftIsDown():
+                    wx.CallAfter(self.OnPopupMenu)
+                elif state.Aux1IsDown():
+                    AsyncCall(self.app.GotoNextBookmark, reverse=True, forceCursor=True, focus=False).Wait()
+                elif state.Aux2IsDown():
+                    AsyncCall(self.app.GotoNextBookmark, reverse=False, forceCursor=True, focus=False).Wait()
+                elif state.MiddleIsDown():
+                    wx.CallAfter(self.Close)
+        """
+
+        #sdl2.events.SDL_PumpEvents()
+        #event = sdl2.SDL_Event()
+        events = sdl2.ext.get_events()
+
+        #b = False
+        try:
+            #while sdl2.events.SDL_PollEvent(ctypes.byref(event)) != 0:
+            for event in events:
+                """ test the loop, it is ok, fires only on sdl window input
+                if not b:
+                    b = True
+                    wx.Bell()
+                """
+                if event.type == sdl2.SDL_QUIT:
+                    AsyncCall(self.Close).Wait()
+                    if self.app.playing_video or self.app.playing_video == '':
+                        wx.CallAfter(self.app.StopPlayback)
+
+                elif event.type == sdl2.SDL_MOUSEWHEEL:
+                    if event.wheel.y > 0:
+                        if self.app.playing_video:
+                            AsyncCall(self.app.StopPlayback).Wait()
+                        AsyncCall(self.app.ShowVideoFrame, self.app.currentframenum + 1, focus=False).Wait()
+                    elif event.wheel.y < 0:
+                        if self.app.playing_video:
+                            AsyncCall(self.app.StopPlayback).Wait()
+                        AsyncCall(self.app.ShowVideoFrame, self.app.currentframenum - 1, focus=False).Wait()
+                    break
+                elif event.type == sdl2.SDL_MOUSEBUTTONUP:
+                    self.mouseOffset = None
+
+                elif event.type == sdl2.SDL_MOUSEBUTTONDOWN:
+                    #_handleMouse()
+                    #break
+                    if event.button.button == sdl2.SDL_BUTTON_LEFT:
+                        if not self.isFullscreen and not self.isFullsize and \
+                            (self.app.options['sdlallowmousemove'] or self.app.options['sdlnotitlebar']):
+                                self.mouseOffset = wx.GetMousePosition()
+                        else: self.mouseOffset = None
+
+                        click = time.clock()
+                        if (click - 0.1 > self.lastLClick) and (click - 0.5 < self.lastLClick):
+                            if self.sizeMode == 1: # TODO ? not used, self.sizeMode is 0
+                                self.StoreLastSize()
+                                AsyncCall(self.ToggleFullsize).Wait()
+                            else:
+                                self.StoreLastSize()
+                                AsyncCall(self.ToggleFullscreen).Wait()
+                        self.lastLClick = time.clock()
+                        break
+                    else:
+                        self.mouseOffset = None
+                        if event.button.button == sdl2.SDL_BUTTON_RIGHT:
+                            bstate = sdl2.ext.mouse_button_state()
+                            if bstate.left != 1 and bstate.right == 1:
+                                wx.CallAfter(self.OnPopupMenu)
+                                break
+                            else:
+                                pass # later
+                            break
+                        if event.button.button == sdl2.SDL_BUTTON_X1:
+                            AsyncCall(self.app.GotoNextBookmark, reverse=True, forceCursor=True, focus=False).Wait()
+                            break
+                        elif event.button.button == sdl2.SDL_BUTTON_X2:
+                            AsyncCall(self.app.GotoNextBookmark, reverse=False, forceCursor=True, focus=False).Wait()
+                            break
+                        elif event.button.button == sdl2.SDL_BUTTON_MIDDLE:
+                            wx.CallAfter(self.Close)
+                            break
+
+                elif event.type == sdl2.SDL_MOUSEMOTION:
+                    if self.mouseOffset is not None and event.button.button == sdl2.SDL_BUTTON_LEFT and not self.isFullscreen and not self.isFullsize:
+                        xy = wx.GetMousePosition()
+                        x, y = ctypes.c_int(0), ctypes.c_int(0)
+                        sdl2.SDL_GetWindowPosition(self.window, ctypes.byref(x), ctypes.byref(y))
+                        sdl2.SDL_SetWindowPosition(self.window, x.value + (xy[0] - self.mouseOffset[0]), y.value + (xy[1] - self.mouseOffset[1]))
+                        self.mouseOffset = xy
+
+                elif event.type == sdl2.SDL_KEYDOWN: # BUG on some keys no events (ESC, Enter, Arrows, Up, Down)
+                    #if ctypes.windll.user32.GetAsyncKeyState(int('0x27', 0)) > 100:
+                        #AsyncCall(self.app.ShowVideoFrame, self.app.currentframenum + 1, focus=False).Wait()
+                        #break
+                    """
+                    state = ctypes.c_uint8
+                    state = sdl2.SDL_GetKeyboardState(None)
+                    if state[SDL_SCANCODE_RIGHT]:
+                        print('sc_OK')
+                    """
+                    #print(event.key.keysym.sym)
+                    if event.key.keysym.sym == sdl2.SDLK_SPACE:
+                        wx.CallAfter(self.app.PlayPauseVideo, focus=False)
+                        break
+                    if event.key.keysym.sym in [sdl2.SDLK_KP_6, sdl2.SDLK_RIGHT]:
+                        if self.app.playing_video:
+                            AsyncCall(self.app.StopPlayback).Wait()
+                        AsyncCall(self.app.ShowVideoFrame, self.app.currentframenum + 1, focus=False).Wait()
+                        break
+                    if event.key.keysym.sym in [sdl2.SDLK_KP_4, sdl2.SDLK_LEFT]:
+                        if self.app.playing_video:
+                            AsyncCall(self.app.StopPlayback).Wait()
+                        AsyncCall(self.app.ShowVideoFrame, self.app.currentframenum - 1, focus=False).Wait()
+                        break
+                    if event.key.keysym.sym in [sdl2.SDLK_KP_8, sdl2.SDLK_UP]:
+                        AsyncCall(self.app.OnMenuVideoNextCustomUnit, focus=False).Wait()
+                        break
+                    if event.key.keysym.sym in [sdl2.SDLK_KP_2, sdl2.SDLK_DOWN]:
+                        AsyncCall(self.app.OnMenuVideoPrevCustomUnit, focus=False).Wait()
+                        break
+                    if event.key.keysym.sym in [sdl2.SDLK_KP_PERIOD, sdl2.SDLK_KP_0]:
+                        wx.CallAfter(self.Close)
+                        break
+                    if event.key.keysym.sym == sdl2.SDLK_MINUS:
+                        wx.CallAfter(self.app.SplitClipCtrl.Toggle, focus=False)
+                        break
+                elif event.type == sdl2.SDL_KEYUP:
+                    if event.key.keysym.sym == sdl2.SDLK_b:
+                        wx.CallAfter(self.app.OnMenuVideoBookmark)
+                        break
+
+                elif event.type == sdl2.SDL_WINDOWEVENT:
+                    if event.window.event == sdl2.SDL_WINDOWEVENT_SIZE_CHANGED:
+                        if self.renderer and not self.app.playing_video:
+                            AsyncCall(self.Render_frame, self.AVI).Wait()
+                    elif event.window.event == sdl2.SDL_WINDOWEVENT_ENTER:
+                        AsyncCall(sdl2.SDL_RaiseWindow, self.window).Wait()
+                    elif event.window.event == sdl2.SDL_WINDOWEVENT_RESTORED:
+                        if self.app.IsIconized():
+                            wx.CallAfter(self.app.Iconize, False)
+                    elif event.window.event == sdl2.SDL_WINDOWEVENT_FOCUS_GAINED:
+                        # SDL BUG: sdl gives no mouse event on first click if the window not focused
+                        self.mouseOffset = None
+                        if wx.GetMouseState().LeftIsDown():
+                            self.lastLClick = time.clock()
+                        #_handleMouse(False)
+                        #break
+                    #elif event.window.event == sdl2.SDL_WINDOWEVENT_RESIZED:
+                        #if self.renderer:
+                            #self.Render_frame(self.AVI)
+
+        except:
+            wx.Bell()
+            if self.isFullscreen:
+                AsyncCall(self.Close).Wait()
+                if self.app.playing_video or self.app.playing_video == '':
+                    wx.CallAfter(self.app.StopPlayback)
+
+    def CleareEvents(self):
+        sdl2.events.SDL_PumpEvents()
+        sdl2.events.SDL_FlushEvents(sdl2.events.SDL_FIRSTEVENT, sdl2.events.SDL_LASTEVENT)
+
+    def ShowError(self):
+        if self.running:
+            #sdl2.SDL_SetRenderDrawColor(self.renderer, 0, 0, 0, 255)
+            sdl2.SDL_RenderClear(self.renderer)
+            sdl2.SDL_RenderPresent(self.renderer)
+        else:
+            self.Close()
+
+    # with format check
+    def Render_frame(self, AVI, framenr=None):
+        #if self.playback and self.running:
+            #self.DeletePlaybackRenderer()
+        if AVI is None:
+            AVI = self.app.currentScript.AVI
+            if AVI is None:
+                self.ShowError()
+                return
+        if not self.running:
+            self.InitWND()
+            if self.InitAVI(AVI):
+                self.Render(AVI, framenr)
+            else:
+                self.ShowError()
+            return
+
+        if self.YUV:
+            if AVI.error_message:
+                if self.InitAVI(AVI):
+                    self.Render(AVI, framenr)
+            elif AVI.vi.is_420() and (AVI.bits_per_component == 8)\
+                and (self.video_w == AVI.Width) and (self.video_h == AVI.Height):
+                    if self.color_format == 1:
+                        self.AVI = AVI
+                        self.Render(AVI, framenr)
+                    elif self.InitAVI(AVI):
+                        #wx.Bell()
+                        self.Render(AVI, framenr)
+            elif self.color_format == 2 and AVI.vi.is_yuy2()\
+                and (self.video_w == AVI.Width) and (self.video_h == AVI.Height): # not used, by default converted to YV12
+                    self.AVI = AVI
+                    self.Render(AVI, framenr)
+            elif self.color_format == 100 and (AVI.yv12_clip and not AVI.IsRGB32) \
+                and (self.video_w == AVI.Width) and (self.video_h == AVI.Height):
+                    self.AVI = AVI
+                    self.Render(AVI, framenr)
+            elif self.InitAVI(AVI):
+                #wx.Bell()
+                self.Render(AVI, framenr)
+        else: # only RGB32 rendering
+            if (AVI.IsRGB32 or AVI.error_message) and (self.video_w == AVI.DisplayWidth) and (self.video_h == AVI.DisplayHeight):
+                self.AVI = AVI
+                self.Render(AVI, framenr)
+            elif self.InitAVI(AVI):
+                self.Render(AVI, framenr)
+
+    # fast for playback and Render_frame
+    # Playback calls directly this routine
+    def Render(self, AVI, framenr=None):
+        if (AVI is not self.AVI) or not self.running:
+            if self.app.playing_video or self.app.playing_video == '':
+                wx.CallAfter(self.app.StopPlayback)
+            return -1
+
+        if self.YUV:
+            if self.color_format == 100:
+                color_format = 1
+                if framenr is None:
+                    framenr = AVI.current_frame
+                try:
+                    frame = AVI.yv12_clip.get_frame(framenr)
+                except:
+                    return
+                if AVI.yv12_clip.get_error():
+                    return
+            else:
+                color_format = self.color_format
+                if framenr is None:
+                    frame = AVI.src_frame
+                    if frame is None:
+                        return
+                else:
+                    frame = AVI.clip.get_frame(framenr)
+                    if AVI.clip.get_error():
+                        return
+
+            pitch = frame.get_pitch()
+            ptrY = frame.get_read_ptr()
+            if color_format == 1: # 'YUV420P8
+                pitchUV = frame.get_pitch(avisynth.avs.AVS_PLANAR_U)
+                ptrU = frame.get_read_ptr(avisynth.avs.AVS_PLANAR_U)
+                ptrV = frame.get_read_ptr(avisynth.avs.AVS_PLANAR_V)
+                sdl2.SDL_UpdateYUVTexture(self.texture, None, ptrY, pitch, ptrU, pitchUV, ptrV, pitchUV)
+            else: # YUY2 is slow, so only used if no YV12 was created
+                sdl2.SDL_UpdateTexture(self.texture, None, ptrY, pitch)
+            sdl2.SDL_RenderClear(self.renderer)
+            sdl2.SDL_RenderCopyExF(self.renderer, self.texture, None, None, 0.0, None, sdl2.SDL_FLIP_NONE)
+        else:
+            # only if AVI.IsRGB32 or AVI.error_message then the Display Clip is used and AvsPmod filters can be shown
+            if framenr is None:
+                framenr = AVI.current_frame
+            if not AVI._GetFrame(framenr):
+                return
+            sdl2.SDL_UpdateTexture(self.texture, None, AVI.pBits, AVI.display_pitch)
+            #sdl2.SDL_UpdateTexture(self.texture, None, AVI.ptrY, AVI.pitch)
+            sdl2.SDL_RenderClear(self.renderer)
+            sdl2.SDL_RenderCopyExF(self.renderer, self.texture, None, None, 0.0, None, sdl2.SDL_FLIP_VERTICAL)
+
+        sdl2.SDL_RenderPresent(self.renderer)
+        return True
+
+    def CreatePlaybackRenderer(self, AVI):
+        AsyncCall(self.StopPeepEvents).Wait()
+        if self.renderer:
+            AsyncCall(sdl2.SDL_DestroyRenderer, self.renderer).Wait()
+            self.renderer = None
+        self.InitWND(True)
+        self.InitAVI(AVI)
+        AsyncCall(self.StartPeepEvents).Wait()
+
+    def DeletePlaybackRenderer(self):
+        AsyncCall(self.StopPeepEvents).Wait()
+        if self.renderer:
+            sdl2.SDL_DestroyRenderer(self.renderer)
+            self.renderer = None
+        if self.running:
+            AsyncCall(self.InitWND).Wait()
+            AsyncCall(self.InitAVI, self.AVI).Wait()
+            AsyncCall(self.StartPeepEvents).Wait()
+
+    def GetRenderInfo(self):
+        if not self.renderer:
+            return ''
+        info = sdl2.render.SDL_RendererInfo()
+        sdl2.SDL_GetRendererInfo(self.renderer, info)
+        """
+        flags = ''
+        if info.flags & sdl2.SDL_RENDERER_ACCELERATED == sdl2.SDL_RENDERER_ACCELERATED:
+            flags += 'GPU'
+        if info.flags & sdl2.SDL_RENDERER_SOFTWARE == sdl2.SDL_RENDERER_SOFTWARE:
+            flags += 'Software'
+        #if info.flags & sdl2.SDL_RENDERER_TARGETTEXTURE == sdl2.SDL_RENDERER_TARGETTEXTURE:
+            #flags += 'Texture'
+        """
+        return info.name #+ ' ' + flags
+
+
 # SplitClip Control with dialog, but dialog not used... later?
 class SplitClipCtrl(wx.Dialog):
     def __init__(self, parent, title=_('SplitClip'), pos=wx.DefaultPosition, size=tuplePPI(600,300)):
@@ -3333,7 +4196,7 @@ class SplitClipCtrl(wx.Dialog):
             script.lastSplitVideoPos = None
             self.parent.SetMinimumScriptPaneSize()
 
-    def Activate(self, showFrame=False):
+    def Activate(self, showFrame=False, focus=True):
         def _setSplitClip(script, q):
             re = script.AVI.SetSplitClip(True)
             q.put(re)
@@ -3393,12 +4256,12 @@ class SplitClipCtrl(wx.Dialog):
                 if showFrame:
                     self.CheckResizeNeeded(script)
                     self.parent.zoom_antialias = False
-                    self.parent.ShowVideoFrame(forceCursor=True)
+                    self.parent.ShowVideoFrame(forceCursor=True, focus=focus)
                     self.parent.ResetZoomAntialias()
                     self.parent.CheckPlayback()
                 #super(SplitClipCtrl, self).Show()
 
-    def Close(self, event=None, showFrame=False):
+    def Close(self, event=None, showFrame=False, focus=True):
         def _setSplitClip(script, q):
             re = script.AVI.SetSplitClip(False)
             q.put(re)
@@ -3464,15 +4327,15 @@ class SplitClipCtrl(wx.Dialog):
             if showFrame:
                 self.CheckResizeNeeded(script)
                 self.parent.zoom_antialias = False
-                self.parent.ShowVideoFrame(forceCursor=True)
+                self.parent.ShowVideoFrame(forceCursor=True, focus=focus)
                 self.parent.ResetZoomAntialias()
                 self.parent.CheckPlayback()
 
-    def Toggle(self, event=None):
+    def Toggle(self, event=None, focus=True):
         if self.IsActive:
-            self.Close(showFrame=True)
+            self.Close(showFrame=True, focus=focus)
         else:
-            self.Activate(showFrame=True)
+            self.Activate(showFrame=True, focus=focus)
 
 # test anti flicker
 """
@@ -3879,49 +4742,6 @@ class ScrapWindow(wx.Dialog): # PPI Font Size set under Font and Colors
 
     def write(self, msg):
         self.parent.MacroWriteToScrap(msg)
-
-# Make safe calls to the main thread from other threads
-# Adapted from <http://thread.gmane.org/gmane.comp.python.wxpython/54892/focus=55223>
-class AsyncCall:
-    ''' Queues a func to run in thread of MainLoop.
-    Code may wait() on self.complete for self.result to contain
-    the result of func(*ar,**kwar).  It is set upon completion.
-    Wait() does this.'''
-    def __init__(self, func, *ar, **kwar):
-        self.result = self.noresult = object()
-        self.complete = threading.Event()
-        self.func, self.ar, self.kwar = func, ar, kwar
-        if threading.current_thread().name == 'MainThread':
-            self.TimeToRun()
-        else:
-            wx.CallAfter(self.TimeToRun)
-    def TimeToRun(self):
-        try:
-            self.result = self.func(*self.ar, **self.kwar)
-        except:
-            self.exception = sys.exc_info()
-        else:
-            self.exception = None
-        self.complete.set()
-    def Wait(self, timeout=None, failval=None):
-        self.complete.wait(timeout)
-        if self.exception:
-            # Python2:
-            # raise self.exception[0], self.exception[1], self.exception[2]
-            # port to Python3: https://portingguide.readthedocs.io/en/latest/exceptions.html
-            import six
-            six.reraise(self.exception[0], self.exception[1], self.exception[2])
-        if self.result is self.noresult:
-            return failval
-        return self.result
-
-# Decorator for AsyncCall class
-def AsyncCallWrapper(wrapped):
-    '''Decorator for AsyncCall class'''
-    def wrapper(*args, **kwargs):
-        return AsyncCall(wrapped, *args, **kwargs).Wait()
-    functools.update_wrapper(wrapper, wrapped)
-    return wrapper
 
 # Generate macros_readme.txt
 def GenerateMacroReadme(file=None):
@@ -5561,7 +6381,10 @@ class SliderPlus(wx.Panel):
             x, y, w, h = self.GetRect()
             xmouse, ymouse = event.GetPosition()
             oldvalue = self.value
-            self.SetValue(self.startOffset + int(round((xmouse-self.xdelta-self.xo+self.wH/2) * (self.maxValue - self.minValue) / float(w-2*self.xo))))
+            try:
+                self.SetValue(self.startOffset + int(round((xmouse-self.xdelta-self.xo+self.wH/2) * (self.maxValue - self.minValue) / float(w-2*self.xo))))
+            except:
+                pass
             if self.value != oldvalue:
                 self._SendScrollEvent()
 
@@ -6273,8 +7096,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.SlidersContextMenu = None
         self.StatusBarContextMenu = None
         self.Lock = threading.RLock()
-        #self.framePaintLock = threading.RLock()
-        #self.framePaintLock.locked = False
+        self.framePaintLock = threading.RLock()
         self.getPixelInfo = False
         self.blockEventSize = False
         self.ClipRefreshPainter = None       # GPo, clip thread progress event blocker
@@ -6354,6 +7176,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.mintextlines = self.options['mintextlines']
         self.mainSplitter_SetSashPos = None
         self.SplitClipCtrl = SplitClipCtrl(self)
+        self.sdlWindow = SDLWindow(self)
 
         if os.path.isfile(self.macrosfilename):
             try:
@@ -6718,9 +7541,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.StopPlayback()
                 if self.propWindow.IsShown():
                     self.propWindow.Hide()
+                if self.sdlWindow and self.sdlWindow.running:
+                    sdl2.SDL_MinimizeWindow(self.sdlWindow.window)
             else:
                 if self.readFrameProps and self.propWindowParent == 0:
                     self.propWindow.Show()
+                if self.sdlWindow and self.sdlWindow.running:
+                    sdl2.SDL_RestoreWindow(self.sdlWindow.window)
                 self.mainSplitter.UpdateSize()
                 self.videoSplitter.UpdateSize()
                 try:
@@ -7613,7 +8440,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'defaultmatrix': 'auto,tv',
             'resetmatrix': False, # for real.finder, reset the matrix if not found
             'displayfilter': utils.resource_str_displayfilter,
-            'resizefilter': 'Spline36Resize',
+            'resizefilter': 'Spline36Resize;Prefetch(1,1)',
             'frametoframetime': False,         # GPo, recalc on video update last frame time to new framenum
             'fullsizemode': 3,                 # 0= show tabs always, 1= hide tabs only if row count > 1, 2= hide if fullsize else 0, 3= hide if fullsize else 1,  4= hide tabs always
             # AUTOSLIDER OPTIONS
@@ -7649,7 +8476,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'mouseauxdown': 'tab change',            # GPo 2020
             'tabautopreview': False,                 # GPo 2021
             'hidescrollbars': False,                 # GPo 2021
-            'scriptwindowbindmousewheel': 0,         # GPo 2021 # user problem with mouse wheel on editor
+            'scriptwindowbindmousewheel': 3,         # GPo 2021 # user problem with mouse wheel on editor, on large scripts it is faster if it set
             'playloop': False,                       # GPo 2020 playback loop
             'playbackthread': True,                  # GPo 2021, if true use separate thread for playback
             'avithread': True,                       # GPo 2021, if true use separate thread for loading and freeing the clip and frame
@@ -7673,7 +8500,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'propwinhorzscroll': False,              # GPo, property wnd scrollbar
             'propwinwordwarp': False,                # GPo, property wnd word warp
             'sessionbackupcount': 3,                 # GPo, max session backups at startup
-            'showresamplemenu': 0,                   # GPo, 1= as submenu, 2=normal 0= hide and disabled
+            'showresamplemenu': 0,                   # GPo, 1= as submenu, 2=normal 0= hidden and disabled
             'resizevideowindow': True,               # GPo, resize the video window on set zoom and tab change
             'showbuttontooltip': True,               # GPo, show video controls button tooltips
             'propwindowparent': 0,                   # GPo, property window parent (0,1) 0=propertyWnd, 1=sliderWnd
@@ -7684,15 +8511,14 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'numberwheelfaster': False,              # GPo, change OnMiddleUpScriptWindow the number wheel performance
             'threaddlgshowmem': True,                # GPo, thread dlg show free and script memory
             'usesplitclip': False,                   # GPo, on UpdateScriptAvi restore script.AVI.split_clip if AVI.IsSplitClip enabled on refresh
-            'usefastclip': True,                     # GPo, /**avsp_split**/ must be written in the script do use the fastClip.  AvsPmod is then the fastest Avisynth editor ;)
+            'usefastclip': True,                     # GPo, /**avsp_split**/ must be written in the script do use the fastClip.
             'cliprefreshpainter': True,              # GPo, paint the last frame during clip refresh if load Avisynth in threads enabled (disavantage
             'splitviewex': False,                    # GPo, use Split View alternate (self.splitViewEx)
             'fullscreenzoom': 1,                     # GPo, set zoom on fullscreen 0=None, 1=Normal, 2=Resample
             'fullscreendlgxy': 4,                    # GPo, position for static progress dlg on Fullsize/Fullscreen
-            #'usethemecolor': 0,                     # GPo, set color for slider, statusbar, etc...
-            'prefetchrgb32': True,                   # GPo, AVI uses Prefetch(2,2) after ConvertToRGB32(), 10 to 30% speedup
+            'prefetchrgb32': True,                   # GPo, AVI uses Prefetch(1,1) after ConvertToRGB32(), 10 to 30% speedup
             'yuv420torgb32fast': False,              # GPo, Use DecodeYUVtoRGB, only for CPU with AVX2
-            'fastyuvautoreset': True,
+            'fastyuvautoreset': False,
             'eol': 'auto',
             'loadstartupbookmarks': True,
             'nrecentfiles': 5,
@@ -7706,7 +8532,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             # TOGGLE OPTIONS
             'alwaysontop': False,
             'previewalwaysontop': False,
-            'singleinstance': False,
+            'singleinstance': True,
             'usemonospacedfont': False,
             'usesliderwindowprevfiltercolor': True,
             'usesliderwindowbackslider': False,
@@ -7723,11 +8549,23 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'ppiscalingscripttabs': 0,
             'ppiscalingvideocontrols': 0,
             'ppiscalingsliderwindow': 0,
-            # Audio
+            # Audio # GPo 2023
             'playaudio': True,
             'downmixaudio': True,
             'audioscrub': False,
             'audioscrubcount': 1,
+            # SDL d3d
+            'sdlwindowrect': (sdl2.SDL_WINDOWPOS_CENTERED, sdl2.SDL_WINDOWPOS_CENTERED, 460, 270),
+            'sdlwindowrect1': (sdl2.SDL_WINDOWPOS_CENTERED,sdl2.SDL_WINDOWPOS_CENTERED, 460, 270),
+            'sdlwindowrect2': (sdl2.SDL_WINDOWPOS_CENTERED,sdl2.SDL_WINDOWPOS_CENTERED, 460, 270),
+            'sdlwindowrect3': (sdl2.SDL_WINDOWPOS_CENTERED,sdl2.SDL_WINDOWPOS_CENTERED, 460, 270),
+            'sdlyuvmatrix': '709', #'auto',
+            'sdlresizequality': 'linear',      # GPo 2023, sdl resize quality nearest, linear, best
+            'sdlallowfullsize': True,
+            'sdlplaybackboth': False, # draw both video windows on playback (videoWindow, sdlWindow), this is slower
+            'sdlallowmousemove': True,
+            'sdlnotitlebar': False,
+            'sdlrendersafe': False,
         })
         # Import certain options from older version if necessary
         if oldOptions is not None:
@@ -8689,7 +9527,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 ((_('Show resample zoom menu*'), wxp.OPT_ELEM_LIST, 'showresamplemenu', _("Show/hide resample menu in zoom menu.\n!! Read Help > 'Resample filter readme'"), dict(choices=[(_('Hide (disabled)'),0), (_('As Submenu'),1), (_('Normal'),2)]) ), ),
                 ((_('Fullscreen zoom'), wxp.OPT_ELEM_LIST, 'fullscreenzoom', _('Zoom on Fullscreen. Note: Resample only if Resample enabled'), dict(choices=[(_('None'),0), (_('Normal'),1), (_('Resample'),2)]) ), ),
                 ((_('Fullscreen/Fullsize  progress dialog'), wxp.OPT_ELEM_LIST, 'fullscreendlgxy', _('Position for the static progress information on loading a frame'), dict(choices=[(_(r'top\left'),0), (_(r'top\right'),1), (_(r'top\center'),2), (_(r'bottom\left'),3), (_(r'bottom\right'),4)]) ), ),
-                #((_('Dark video controls theme*'), wxp.OPT_ELEM_LIST, 'usethemecolor', _('Only the video controls and statusbar can be colorized'), dict(choices=[(_('None'),0), (_('Video controls'),1), (_('+ Video window border'),2), (_('+ Statusbar'),3)]) ), ),
                 ((_('Display filter enabled on startup'), wxp.OPT_ELEM_CHECK, 'displayfilter_enabled', _('Enable the Display filter on startup'), dict() ), ),
             ),
         )
@@ -8723,6 +9560,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     # event is left up, but you can use it after the splitter pos has changed to recalc the preview
     def OnMainSplitterPosChanged(self, event=None):
+        self.mainSplitter.UpdateSize()
         if event:
             self.SaveLastSplitVideoPos()
         script = self.currentScript
@@ -8792,7 +9630,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         # listed as a function in 2.93 but not present even in 2.95 (if you set initial size, the window cannot be hidden! Big wx Bug!!)
         self.fullScreenWnd = wx.Frame(self, wx.ID_ANY,style=wx.NO_BORDER|wx.FRAME_FLOAT_ON_PARENT|wx.WANTS_CHARS) # not top level!! or problems with some dialogs
         self.fullScreenWnd.Hide()
-        #self.fullScreenWnd.Maximize(True)
 
         # Fullscreen window sizer
         fSizer = wx.BoxSizer(wx.VERTICAL)
@@ -8960,15 +9797,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.scriptNotebook.AddPage(scriptWindow, self.NewFileName)
         # Create the program's video preview window
         self.videoWindow = self.createVideoWindow(self.videoSplitter)
-        # test
-        #self.mainVideoWindow = self.createVideoWindow(self.videoSplitter)
-        #self.mainVideoWindow2 = self.createVideoWindow(self.fullScreenWnd)
-        #self.videoWindow = self.mainVideoWindow
 
         """
         def createVideoToolbar():
             int5 = intPPI(5)
-            vwToolbar = wx.Panel(self, size=(-1, -1))
+            #self.toolbarSplitter = wx.SplitterWindow(self.videoPane, wx.ID_ANY, style=wx.SP_3DSASH|wx.SP_NOBORDER|wx.SP_LIVE_UPDATE)
+            vwToolbar = wx.Panel(self.videoWindow, size=(-1, -1))
             font = wx.Font(9, wx.FONTFAMILY_DEFAULT,wx.FONTSTYLE_NORMAL,wx.FONTWEIGHT_BOLD,False)
             vwToolbar.SetFont(font)
             dpi.SetFontPPI(vwToolbar)
@@ -8976,9 +9810,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             vwToolbar.SetBackgroundColour(wx.Colour(40,40,40))
             vwToolbarSizer = wx.BoxSizer(wx.VERTICAL)
             vwToolbarSizer.Add(vwToolbar, 1, wx.LEFT)
-            self.SetSizer(vwToolbarSizer)
-
+            self.videoWindow.SetSizer(vwToolbarSizer)
+            #self.videoPane.SetSizer(vwToolbarSizer)
             self.vwToolbarSizer = vwToolbarSizer
+
             def _getVar(x):
                 return x()
             def _onMouseDown(event):
@@ -8989,7 +9824,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 obj = event.GetEventObject()
                 obj.SetForegroundColour(wx.Colour(240,240,10))
                 obj.Refresh()
-                obj.func(event=None)
+                obj.func(*obj.args, **obj.kwargs)
                 if obj.checked is None:
                     return
                 re = obj.checked(self)
@@ -9007,23 +9842,26 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 obj.Refresh()
 
             eventsList = [
-                ('Freeze Split View frame', self.OnMenuSplitViewFreeze, lambda b: self.splitView_freeze),
-                ('Split View on/off', self.OnMenuSplitView, None),
-                ('Split View alternate', self.OnMenuSplitViewEx, lambda b: self.splitViewEx),
+                ('Freeze Split View frame', self.OnMenuSplitViewFreeze,(),{}, lambda b: self.splitView_freeze),
+                ('Split View on/off', self.OnMenuSplitView,(),{}, None),
+                ('Split View alternate', self.OnMenuSplitViewEx,(),{}, lambda b: self.splitViewEx),
                 ('-', None, None),
-                ('Fullsize', self.OnMenuToggleFullsize, None),
-                ('Fullscreen', self.OnMenuToggleFullscreen, None),
+                ('Fullsize', self.OnMenuToggleFullsize,(),{}, None),
+                ('Fullscreen', self.OnMenuToggleFullscreen,(),{}, None),
+                ('D3D Window F', self.OnMenuVideoToogleSDLWindow,(),{'fullscreen':True}, None),
+                ('D3D Window N', self.OnMenuVideoToogleSDLWindow,(),{'fullscreen':False}, None),
                 ('-', None, None),
-                #('Take snapshot 1', self.TakeSnapShot(shotIdx=0), None),
-                #('Take snapshot 2', self.TakeSnapShot(shotIdx=1), None),
-                #('Show snapshot 1', self.OnMenuToggleFullscreen, None),
-                #('Show snapshot 2', self.OnMenuToggleFullscreen, None),
-                #('-', None, None),
+                ('Take snapshot 1', self.TakeSnapShot,(),{'shotIdx':0}, None),
+                ('Take snapshot 2', self.TakeSnapShot,(),{'shotIdx':1}, None),
+                ('Show snapshot 1', self.ShowSnapShot,(),{'index':0}, None),
+                ('Show snapshot 2', self.ShowSnapShot,(),{'index':1}, None),
+                ('-', None, None),
             ]
             sizer = wx.BoxSizer(wx.VERTICAL)
             sizer.AddSpacer(int5)
             ctrl = wx.CheckBox(vwToolbar, wx.ID_ANY, 'Hide on video click')
             ctrl.SetValue(True)
+            self.hideToolbarOnClick = ctrl
             #ctrl.SetForegroundColour(wx.Colour(240,240,240))
             sizer.Add(ctrl, 0, wx.ALIGN_CENTER_HORIZONTAL|wx.ALL, int5)
             sizer.AddSpacer(int5)
@@ -9040,9 +9878,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 ctrl.Bind(wx.EVT_LEFT_DOWN, _onMouseDown)
                 ctrl.Bind(wx.EVT_LEFT_UP, _onMouseUp)
                 ctrl.func = item[1]
-                ctrl.checked = item[2]
+                ctrl.args = item[2]
+                ctrl.kwargs = item[3]
+                ctrl.checked = item[4]
                 sizer.Add(ctrl, 0, wx.ALIGN_CENTER_HORIZONTAL|wx.LEFT|wx.RIGHT|wx.TOP, int5)
+
             vwToolbar.SetSizer(sizer)
+
             sizer.Layout()
             sizer.Fit(vwToolbar)
             self.vwToolbarSizer.Hide(vwToolbar)
@@ -9336,16 +10178,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             ('Edit -> Select All', 'Ctrl+A'),
             ),
         ]
-        """ # GPo removed, causes problems
-        self.menuBookmark = self.createMenu(
-            (
-                (''),
-                (_('sort ascending'), '', self.UpdateBookmarkMenu, _('Sort bookmarks ascending'), wx.ITEM_CHECK, True),
-                (_('show time'), '', self.UpdateBookmarkMenu, _('Show bookmarks with timecode'), wx.ITEM_CHECK, False),
-                (_('show title'), '', self.UpdateBookmarkMenu, _('Show bookmarks with title'), wx.ITEM_CHECK, True),
-            )
-        )
-        """
+
         self.yuv2rgbDict = {
             _('Resolution-based'): 'auto',
             _('BT.709'): '709',
@@ -9621,6 +10454,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     (''),
                     (_('Downmix audio'), '', self.OnMenuVideoDownmixAudio, _('Downmix the audio to 2 channels (Stereo). Avisynth Mixer is used.'), wx.ITEM_CHECK, self.options['downmixaudio']),
                     (_('Playback in threads'), '', self.OnMenuVideoSeparateThread, _('Use threads for playback. If assign avisynth in threads is enabled, playback uses also threads'), wx.ITEM_CHECK, self.options['playbackthread']),
+                    (_('Direct3D safe'), '', self.OnMenuVideoSDLRenderSafe, _('Direct3D window safe rendering. Safer but slower.'), wx.ITEM_CHECK, self.options['sdlrendersafe']),
                     ),
                 ),
                 (''),
@@ -9707,11 +10541,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     (''),
                     (_('Prefetch RGB display conversion'), '', self.OnMenuDisplayPrefetchRGB32, _('Display RGB conversion with Prefetch(2,2) for faster frame drawing'), wx.ITEM_CHECK, self.options['prefetchrgb32']),
                     (_('Fast YUV420 display conversion'), '', self.OnMenuDisplayFastYUV420ToRGB32, _('Display RGB conversion with plugin DecodeYUVtoRGB (lower quality, faster). Prerequisite: Video YUV420xxx and CPU with AVX2'), \
-                        wx.ITEM_CHECK if IsAVX2 else wx.ITEM_NORMAL, False),
+                        wx.ITEM_CHECK, False),
                     (_('- fast YUV420 auto reset'), '', self.OnMenuDisplayYUV420AutoReset, _('Reset on Clip refresh. Note: It resets always when you using Preview Filter'), \
-                        wx.ITEM_CHECK if IsAVX2 else wx.ITEM_NORMAL, self.options['fastyuvautoreset'] if IsAVX2 else False),
+                        wx.ITEM_CHECK, self.options['fastyuvautoreset'] if IsAVX2 else False),
                     ),
                 ),
+                (_('D3D Window'), 'Numpad .', self.OnMenuVideoToogleSDLWindow, _('Toggle D3D Window')),
                 (_('Background &color'),
                     (
                     (_('Default'), '', self.OnMenuVideoBackgroundColor, _("Follow current theme"), wx.ITEM_RADIO, True),
@@ -9862,6 +10697,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 (_('Resample filter readme'), '', self.OnMenuHelpResampleFilter, _('Open the Resample filters readme')),
                 (_('Split Clip readme'), '', self.OnMenuHelpSplitClip, _('Open the Split Clip readme')),
                 (_('Fast Clip readme'), '', self.OnMenuHelpFastClip, _('Open the Fast Clip readme')),
+                (_('D3D Window readme'), '', self.OnMenuHelpD3DWindow, _('Open the D3D Window readme')),
                 (_('Locate frame readme'), '', self.OnMenuHelpLocateFrame, _('Open the Locate frame readme')),
                 (_('Number wheel readme'), '', self.OnMenuHelpNumberWheel, _('Open the Number wheel readme')),
                 (_('Audio playback readme'), '', self.OnMenuHelpAudio, _('Open the Audio readme')),
@@ -10032,7 +10868,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     def createScriptNotebook(self):
         # Create the notebook
-
         class Notebook(wx.Notebook):
 
             def SetPageText(self, index, text):
@@ -10298,6 +11133,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.app.GotoNextBookmark(reverse=True, forceCursor=True)
             def OnMouseAux2Down(event):
                 self.app.GotoNextBookmark(reverse=False, forceCursor=True)
+
             """
             def OnMouseWheel(event): # Win10
                 if app.options['mousewheelfunc'] == 'frame_step':
@@ -10363,11 +11199,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     def createScriptWindow(self):
         int5 = intPPI(5)
         round5 = roundPPI(5)
-        # Create the instance of the window                         # GPo 2020, size,pos wx 2.9
-        #if self.options['usethemecolor'] > 0:
+        # Create the instance of the window
         scriptWindow = AvsStyledTextCtrl(self.scriptNotebook, self, pos=(-50,-50), size=(10,10), style=wx.NO_BORDER)
-        #else:
-            #scriptWindow = AvsStyledTextCtrl(self.scriptNotebook, self, pos=(-50,-50), size=(10,10), style=wx.STATIC_BORDER)
         # Bind variables to the window instance
         scriptWindow.filename = ""
         scriptWindow.workdir = ""
@@ -11190,9 +12023,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                 submenu.Check(menu_id, self.displayFilter)
                             menu_id = submenu.FindItem(_('Fast YUV420 display conversion'))
                             if menu_id != wx.NOT_FOUND:
-                                submenu.Enable(menu_id, script.AVI is not None and script.AVI.IsDecoderYUV420)
-                                if submenu.IsEnabled(menu_id):
-                                    submenu.Check(menu_id, script.AVI is not None and script.AVI.fastYUV420toRGB32 and script.AVI.IsDecoderYUV420 and script.AVI.vi.is_420())
+                                submenu.Enable(menu_id, script.AVI is not None and script.AVI.IsDecoderYUV420 and script.AVI.vi.is_420())
+                                #if submenu.IsEnabled(menu_id):
+                                submenu.Check(menu_id, script.AVI is not None and script.AVI.fastYUV420toRGB32 and script.AVI.IsDecoderYUV420 and script.AVI.vi.is_420())
 
                     d = {} # do not use self.previewFilterDict or SplitClip cannot found changes
                     self.UpdatePreviewFilterMenu(self.ParseScriptPreviewFilters(d))
@@ -12280,7 +13113,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.propWindow.Clear()
         self.CheckPlayback() # playback disabled read frame props temporally
 
-    def OnMenuVideoBookmark(self, event):
+    def OnMenuVideoBookmark(self, event=None):
         framenum = self.GetFrameNumber()
         self.AddFrameBookmark(framenum)
 
@@ -12543,6 +13376,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         frameTextCtrl.SetFocus()
 
     def OnMenuVideoPrevFrame(self, event):
+        if self.playing_video:
+            self.StopPlayback()
         unit = 'frames'
         offset = -1
         if event is not None:
@@ -12570,6 +13405,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.ShowVideoOffset(offset, units=unit)
 
     def OnMenuVideoNextFrame(self, event):
+        if self.playing_video:
+            self.StopPlayback()
         unit = 'frames'
         offset = +1
         if event is not None:
@@ -12618,15 +13455,15 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.PlayPauseVideo(refreshFrame=False)
         self.ShowVideoFrame(-1)
 
-    def OnMenuVideoPrevCustomUnit(self, event):
+    def OnMenuVideoPrevCustomUnit(self, event=None, focus=True):
         offset = -self.options['customjump']
         units = self.options['customjumpunits']
-        self.ShowVideoOffset(offset, units=units)
+        self.ShowVideoOffset(offset, units=units, focus=focus)
 
-    def OnMenuVideoNextCustomUnit(self, event):
+    def OnMenuVideoNextCustomUnit(self, event=None, focus=True):
         offset = +self.options['customjump']
         units = self.options['customjumpunits']
-        self.ShowVideoOffset(offset, units=units)
+        self.ShowVideoOffset(offset, units=units, focus=focus)
 
     def OnMenuVideoNextIFrame(self, event):
         self.JumpToNext_I_Frame(maxLoop=350)
@@ -12708,18 +13545,18 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         # Set the crop status text
         self.SetVideoStatusText()
 
-    def OnMenuToggleFullsize(self, event):
+    def OnMenuToggleFullsize(self, event=None):
         obj = self if not self.separatevideowindow else self.videoDialog
         if self.currentScript.AVI or obj.IsFullScreen():
             if not self.separatevideowindow and wx.GetKeyState(wx.WXK_SHIFT):
-                self.OnLeftDClickVideoWindow(None, toggleFullsize=False, toggleFullscreen=True)
+                self.OnLeftDClickVideoWindow(toggleFullsize=False, toggleFullscreen=True)
             else:
-                self.OnLeftDClickVideoWindow(None, toggleFullsize=True)
+                self.OnLeftDClickVideoWindow(toggleFullsize=True)
 
-    def OnMenuToggleFullscreen(self, event):
+    def OnMenuToggleFullscreen(self, event=None):
         obj = self if not self.separatevideowindow else self.videoDialog
         if obj is self and (self.currentScript.AVI or self.fullScreenWnd_IsShown):
-            self.OnLeftDClickVideoWindow(None, toggleFullsize=False, toggleFullscreen=True)
+            self.OnLeftDClickVideoWindow(toggleFullsize=False, toggleFullscreen=True)
 
     def OnMenuExtendedMove(self, event):
         if not self.KeyUpVideoWindow:
@@ -12729,7 +13566,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.extended_move = not self.extended_move
         self.ShowVideoFrame(forceLayout=True)
 
-    def OnMenuSplitViewEx(self, event):
+    def OnMenuSplitViewEx(self, event=None):
         self.splitViewEx = not self.splitViewEx
         if self.splitView:
             self.videoWindow.Refresh()
@@ -13479,7 +14316,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if not pyavs.AvsReloadLibrary():
             self.ExitProgram(restart=True)
 
-    # LocateFrame seems not be thread save
+    # LocateFrame seems not be thread safe
     """
     def OnMenuLocateFrame(self, event):
         def _locateframe(script, q):
@@ -13644,156 +14481,129 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
 
 
+
     def OnMenuTest(self, event):
         """
-        p = pyaudio.PyAudio()
-        info = p.get_host_api_info_by_index(0)
-        numdevices = info.get('deviceCount')
-        #for each audio device, determine if is an input or an output and add it to the appropriate list and dictionary
-        for i in range (0,numdevices):
-                #if p.get_device_info_by_host_api_device_index(0,i).get('maxInputChannels')>0:
-                        #print("Input Device id ", i, " - ", p.get_device_info_by_host_api_device_index(0,i).get('name'))
-
-                if p.get_device_info_by_host_api_device_index(0,i).get('maxOutputChannels')>0:
-                        print ("Output Device id ", i, " - ", p.get_device_info_by_host_api_device_index(0,i).get('name'))
-
-        #devinfo = p.get_device_info_by_index(1)
-        devinfo = p.get_default_output_device_info()
-        print ("Selected device is ",devinfo.get('name'), "; Channels ", devinfo.get('maxOutputChannels'))
-
-        p.terminate()
-        del p
+        hwnd = self.GetHandle()
+        wmInfo = sdl2.SDL_SysWMinfo()
+        sdl2.SDL_GetWindowWMInfo(self.sdlWindow.window, wmInfo)
+        sdlHandle = wmInfo.info.win.window
+        ctypes.windll.user32.SetParent(sdlHandle, hwnd)
+        return
+        """
         return
 
-        audio = pyaudio.PyAudio()
-        print(audio.get_default_output_device_info())
-        print(' ')
-        d_count = audio.get_device_count()
-        for i in range(d_count):
-            print(audio.get_device_info_by_index(i))
-            print(' ')
-        del audio
-        """
+        sdl2.ext.init(True)
+        #mode = u'linear'
+        #sdl2.hints.SDL_SetHint(sdl2.hints.SDL_HINT_RENDER_SCALE_QUALITY, mode)
+        sdl2.ext.renderer.set_texture_scale_quality('linear')
+        #sdl2.hints.SDL_SetHint(sdl2.hints.SDL_HINT_RENDER_DRIVER, "opengl")
+        def init():
 
-
-        """
-        disabler = wx.WindowDisabler()
-        th, event = self.ShowStaticProgress(nr=0)
-        time.sleep(15)
-        event.set()
-        del disabler
-        """
-
-        """
-        print('clientRect:' + str(self.videoWindow.GetClientRect()))
-        print('size:' + str(self.videoWindow.GetSize()))
-        print('sizewb:' + str(utils.GetSizeWithoutBorder(self.videoWindow)))
-        print('scrollbar' + str(wx.SystemSettings.GetMetric(wx.SYS_VSCROLL_X)))
-        print('border: ' + str(wx.SystemSettings.GetMetric(wx.SYS_BORDER_X)))
-        return
-        if self.videoPane.IsShown():
-            self.mainSplitter.Hide()
-            self.videoPane.Hide()
-        else:
-            self.videoSplitter.Unsplit()
-            self.mainSplitter.Show()
-            self.videoPane.Show()
-        """
-    """
-    def OnMenuTest(self, event):
-        import session_info
-        session_info.ShowSessionInfo(self)
-        return
-        script = self.currentScript
-        script.AnnotationSetText(5, 'Hallo')
-        script.AnnotationSetVisible(True)
-        return
-        script = self.currentScript.GetText()
-        arg1 = arg2 = filterarg = ''
-        found = end = False
-
-        t = time.time()
-        f_args = script.split('/**avsp_split', 1)
-        if len(f_args) == 2:
-            f_args[1] = f_args[1].strip()
-            if f_args[1].startswith('**/'):       # then /**avsp_fast_clip**/ without anny filter
-                arg1 = f_args[0].strip()
-                arg2 = f_args[1][3:].strip()
+            #Initialize SDL
+            if sdl2.SDL_Init( sdl2.SDL_INIT_VIDEO ) < 0:
+                return
             else:
-                s_args = f_args[1].split('**/', 1)
-                if len(s_args) == 2:
-                    arg1 = f_args[0].strip()
-                    arg2 = s_args[1]
-                    filterarg = s_args[0].strip()
-                    s = ''
-                    for line in filterarg.split('\n'):
-                        if not line.lstrip().startswith('#'):
-                            s += line + '\n'
-                    filterarg = s.strip()
-        print(str(time.time()-t))
+                gWindow = sdl2.SDL_CreateWindow( "SDL Tutorial", sdl2.SDL_WINDOWPOS_UNDEFINED, sdl2.SDL_WINDOWPOS_UNDEFINED, 1200, 800, sdl2.SDL_WINDOW_SHOWN )
+                if gWindow is None:
+                    print( "Window could not be created! SDL_Error: %s\n", sdl2.SDL_GetError() )
+                    return false
 
-
-        arg1 = arg2 = filterarg = ''
-        found = end = False
-        t = time.time()
-
-        if script.find('/**avsp_split') > -1:
-            for line in script.split('\n'):
-                if not found:
-                    if line.lstrip().startswith('/**avsp_split'):
-                        found = True
-                        if len(line) > 12 and line[13:].strip().startswith('**/'):
-                            end = True
-                        continue
-                    arg1 += line + '\n'
                 else:
-                    if not end:
-                        if line.lstrip().startswith('**/'):
-                            end = True
-                            continue
-                        if line.startswith('#'):
-                            filterarg += '\n'
-                        else:
-                            filterarg += line + '\n'
-                    else:
-                        arg2 += line + '\n'
-            filterarg = filterarg.strip()
-        print(str(time.time()-t))
+                    gScreenSurface = sdl2.SDL_GetWindowSurface( gWindow )
+            return True
+
+        #window = sdl2.ext.Window("AvsPmod", size=(1920, 1280),flags=sdl2.SDL_WINDOW_RESIZABLE|sdl2.SDL_WINDOW_OPENGL|sdl2.SDL_WINDOW_ALLOW_HIGHDPI)
+        window = sdl2.SDL_CreateWindow('AvsPmod', sdl2.SDL_WINDOWPOS_CENTERED, sdl2.SDL_WINDOWPOS_CENTERED, 1920, 1080, sdl2.SDL_WINDOW_RESIZABLE|sdl2.SDL_WINDOW_OPENGL)
+        #renderer = sdl2.ext.Renderer(window, 'direct3d')
+        renderer = sdl2.SDL_CreateRenderer(window, -1, 0)
+        #renderer = sdl2.ext.Renderer(window, 'opengl')
+
+        if self.currentScript.AVI is not None:
+            AVI = self.currentScript.AVI
+            frame =  AVI.display_frame
+            #frame =  AVI.src_frame
+            buff = frame.get_read_ptr()
+            pitch = frame.get_pitch()
+            #image = sdl2.SDL_CreateRGBSurfaceWithFormatFrom(buff, AVI.Width, AVI.Height, 8, pitch, sdl2.SDL_PIXELFORMAT_RGB888)
 
 
-        arg1 = arg2 = filterarg = ''
-        found = end = False
-        t = time.time()
+            sdl2.SDL_RenderSetLogicalSize(renderer, AVI.Width, AVI.Height)
+            #texture = sdl2.SDL_CreateTexture(renderer, sdl2.SDL_PIXELFORMAT_RGB888, sdl2.SDL_TEXTUREACCESS_STREAMING, AVI.Width, AVI.Height)
+            #texture = sdl2.SDL_CreateTexture(renderer, sdl2.SDL_PIXELFORMAT_IYUV, sdl2.SDL_TEXTUREACCESS_STREAMING, AVI.Width, AVI.Height)
+            #texture = sdl2.SDL_CreateTexture(renderer, sdl2.SDL_PIXELFORMAT_YUY2, sdl2.SDL_TEXTUREACCESS_STREAMING, AVI.Width, AVI.Height)
+            texture = sdl2.SDL_CreateTexture(renderer, sdl2.SDL_PIXELFORMAT_ARGB2101010, sdl2.SDL_TEXTUREACCESS_STREAMING, AVI.Width, AVI.Height)
 
-        f_args = script.split('/**avsp_split', 1)
-        pos = f_args[1].find('**/')
-        if len(f_args) == 2 :
-            for line in script.split('\n'):
-                if not found:
-                    if line.lstrip().startswith('/**avsp_split'):
-                        found = True
-                        if len(line) > 12 and line[13:].startswith('**/'):
-                            end = True
-                            break
-                    arg1 += line + '\n'
-                else:
-                    if not end:
-                        if line.lstrip().startswith('**/'):
-                            end = True
-                            break
-                        if line.startswith('#'):
-                            filterarg += '\n'
-                        else:
-                            filterarg += line + '\n'
-            if end:
-                pos = f_args[1].find('**/')
-                if pos > -1:
-                    arg2 = f_args[1][pos+3:]
-            filterarg = filterarg.strip()
-        print(str(time.time()-t))
+        else:
+            image = sdl2.SDL_LoadBMP("E:\\Temp\\test.bmp")
+            texture = sdl2.SDL_CreateTextureFromSurface(renderer, image)
 
-        return
-    """
+        #image = sdl2.SDL_LoadBMP("E:\\Temp\\test.bmp")
+        #image = sdl2.ext.image.load_bmp("E:\\Temp\\test.bmp")
+        #sdl2.SDL_RenderSetScale(renderer, 2.0, 1.0)
+
+
+        #texture = sdl2.ext.Texture(renderer,image)
+
+
+        #texture = sdl2.ext.CreateTextureFromSurface(renderer, image)
+
+
+        if self.currentScript.AVI is not None:
+            running = True
+            while running:
+                events = sdl2.ext.get_events()
+                for event in events:
+                    if event.type == sdl2.SDL_QUIT:
+                        running = False
+                        break
+
+                frame =  AVI.src_frame
+                #buff = frame.get_read_ptr()
+                pitch = frame.get_pitch()
+                pitchUV = frame.get_pitch(avisynth.avs.AVS_PLANAR_U)
+                ptrY = frame.get_read_ptr()
+                ptrU = frame.get_read_ptr(avisynth.avs.AVS_PLANAR_U)
+                ptrV = frame.get_read_ptr(avisynth.avs.AVS_PLANAR_V)
+                sdl2.SDL_UpdateTexture(texture, None, ptrY, pitch)
+                #sdl2.SDL_UpdateYUVTexture(texture, None, ptrY, pitch, ptrU, pitchUV, ptrY, pitchUV)
+
+                sdl2.SDL_RenderClear(renderer)
+                sdl2.SDL_RenderCopyExF(renderer, texture, None, None, 0.0, None, sdl2.SDL_FLIP_VERTICAL)
+                #sdl2.SDL_RenderCopyExF(renderer, texture, None, None, 0.0, None, sdl2.SDL_FLIP_NONE)
+                sdl2.SDL_RenderPresent(renderer)
+                sdl2.timer.SDL_Delay(10)
+            #renderer.copy(texture, None, None, sdl2.SDL_FLIP_VERTICAL)
+            #renderer.present()
+        elif image:
+            sdl2.SDL_RenderCopyExF(renderer, texture, None, None, 0.0, None, sdl2.SDL_FLIP_VERTICAL)
+            sdl2.SDL_RenderPresent(renderer)
+            running = True
+            while running:
+                events = sdl2.ext.get_events()
+                for event in events:
+                    if event.type == sdl2.SDL_QUIT:
+                        running = False
+                        break
+            """
+            image = sdl2.SDL_CreateRGBSurfaceWithFormatFrom(buff, AVI.Width, AVI.Height, 8, pitch, sdl2.SDL_PIXELFORMAT_RGB888)
+            texture = sdl2.ext.Texture(renderer, image)
+            renderer.copy(texture, flip=sdl2.SDL_FLIP_VERTICAL)
+            renderer.present()
+            #window.refresh()
+            #time.sleep(0.04)
+            """
+        sdl2.SDL_DestroyWindow(window)
+        sdl2.SDL_DestroyRenderer(renderer)
+        sdl2.SDL_DestroyTexture(texture)
+        sdl2.ext.quit()
+        return 0
+        """
+        processor = sdl2.ext.TestEventProcessor()
+        processor.run(window)
+        sdl2.ext.quit()
+        """
+
 
     def ShowFreeMemory(self, returnStr=False):
         if not returnStr and self.options['showfreememory'] < 1:
@@ -14786,7 +15596,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.options['usesplitclip'] = event.IsChecked()
         self.UpdateMenuItem(_('Additional'), event.IsChecked(), 'video', [_('Restore split clip if enabled')])
 
-    def OnMenuSplitViewFreeze(self, event):
+    def OnMenuSplitViewFreeze(self, event=None):
         self.splitView_freeze = not self.splitView_freeze
         if self.splitView:
             try:
@@ -15069,6 +15879,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.UpdateMenuItem(_('Play video'), event.IsChecked(), 'video', [_('Playback in threads')])
         self.CheckPlayback()
 
+    def OnMenuVideoSDLRenderSafe(self, event):
+        self.CheckPlayback()
+        self.options['sdlrendersafe'] = event.IsChecked()
+        self.UpdateMenuItem(_('Play video'), event.IsChecked(), 'video', [_('Direct3D safe')])
+        self.CheckPlayback()
+
     def OnMenuVideoSaveViewPos(self, event):
         if self.saveViewPos == 1:
             self.saveViewPos = 0
@@ -15235,12 +16051,16 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         id = event.GetId()
         if id != wx.NOT_FOUND:
             menuItem = self.GetMenuBar().FindItemById(id)
-            if not self.options['alwaysontop']:
-                self.options['alwaysontop'] = True
-                menuItem.Check(True)
-            else:
-                self.options['alwaysontop'] = False
-                menuItem.Check(False)
+        if self.sdlWindow.running:
+            menuItem.Check(self.options['alwaysontop'])
+            wx.MessageBox(_('D3DWindow is visible. Changes not possible'))
+            return
+        if not self.options['alwaysontop']:
+            self.options['alwaysontop'] = True
+            menuItem.Check(True)
+        else:
+            self.options['alwaysontop'] = False
+            menuItem.Check(False)
         self.ToggleWindowStyle(wx.STAY_ON_TOP)
 
     def OnMenuOptionsPreviewAlwaysOnTop(self, event):
@@ -15678,8 +16498,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     wx.Bell()
                     break
                 if script.AVI.fastYUV420toRGB32 != event.IsChecked():
-                    script.AVI.fastYUV420toRGB32 = event.IsChecked() and (script.previewFilterIdx < 1)
-                    if script.AVI.IsDecoderYUV420 and script.AVI.vi.is_420() and (script.previewFilterIdx < 1):
+                    script.AVI.fastYUV420toRGB32 = event.IsChecked() #and (script.previewFilterIdx < 1)
+                    if script.AVI.IsDecoderYUV420 and script.AVI.vi.is_420(): #and (script.previewFilterIdx < 1):
                         script.refreshAVI = True
                         script.display_clip_refresh_needed = True
                     elif script is self.currentScript:
@@ -15696,6 +16516,23 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     def OnMenuOptionsFastClip(self, event):
         self.options['usefastclip'] = event.IsChecked()
+
+    def OnMenuVideoToogleSDLWindow(self, event=None, fullscreen=None):
+        self.CheckPlayback()
+        if not self.sdlWindow:
+            self.sdlWindow = SDLWindow(self)
+        if not self.sdlWindow.running:
+            if fullscreen is True:
+                self.sdlWindow.isFullscreen = True
+            elif fullscreen is False:
+                self.sdlWindow.isFullscreen = False
+            self.sdlWindow.InitWND()
+            self.sdlWindow.Render_frame(self.currentScript.AVI)
+            self.sdlWindow.SetForground()
+        else:
+            self.sdlWindow.Close()
+        self.CheckPlayback()
+
     """
     def OnMenuOptionsAllowSplitClipFilter(self, event):
         self.options['fastclipallowfilter'] = event.IsChecked()
@@ -15959,6 +16796,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.OnHelpMenuExample('readme_LocateFrame.txt')
     def OnMenuHelpAudio(self, event):
         self.OnHelpMenuExample('readme_Audio.txt')
+    def OnMenuHelpD3DWindow(self, event):
+        self.OnHelpMenuExample('readme_D3D_Window.txt')
 
     def OnMenuHelpAbout(self, event):
         int5 = intPPI(5)
@@ -16196,6 +17035,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.CheckPlayback()
             self.play_speed_factor = 0.5
             self.CheckPlayback()
+        def OnSpeedMenu(event):
+            item = speedMenu.FindItemById(event.GetId())
+            speed = item.GetLabel()[:-1]
+            self.CheckPlayback()
+            self.play_speed_factor = int(speed)
+            self.CheckPlayback()
+
         popup = wx.Menu()
         dropMenu = wx.Menu()
         audioMenu = wx.Menu()
@@ -16231,6 +17077,26 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         dropMenu.Check(id, self.play_drop==True)
         AddDropFrameItems(dropMenu)
         popup.AppendMenu(wx.ID_ANY, _('Drop frames'), dropMenu)
+        popup.AppendSeparator()
+        # Speed x
+        speedMenu = wx.Menu()
+        id = wx.NewId()
+        speedMenu.Append(id, '2x', kind=wx.ITEM_CHECK)
+        speedMenu.Check(id, self.play_speed_factor == 2)
+        self.Bind(wx.EVT_MENU, OnSpeedMenu, id=id)
+        id = wx.NewId()
+        speedMenu.Append(id, '4x', kind=wx.ITEM_CHECK)
+        speedMenu.Check(id, self.play_speed_factor == 4)
+        self.Bind(wx.EVT_MENU, OnSpeedMenu, id=id)
+        id = wx.NewId()
+        speedMenu.Append(id, '8x', kind=wx.ITEM_CHECK)
+        speedMenu.Check(id, self.play_speed_factor == 8)
+        self.Bind(wx.EVT_MENU, OnSpeedMenu, id=id)
+        id = wx.NewId()
+        speedMenu.Append(id, '16x', kind=wx.ITEM_CHECK)
+        speedMenu.Check(id, self.play_speed_factor == 16)
+        self.Bind(wx.EVT_MENU, OnSpeedMenu, id=id)
+        popup.AppendMenu(wx.ID_ANY, 'Speed x', speedMenu)
         popup.AppendSeparator()
         # Speed
         id = wx.NewId()
@@ -17899,6 +18765,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             ypos = (ypos - self.yo) * new_zoom / old_zoom + self.yo
             return xpos - xrel, ypos - yrel
         """
+        def _sizeSdlWindow():
+            if self.sdlWindow and self.sdlWindow.running and self.sdlWindow.isFullsize:
+                self.sdlWindow.ToggleFullsize(True)
 
         def _saveLastZoom():
             script = self.currentScript
@@ -18067,13 +18936,52 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         script = self.currentScript
         if event:
             int50 = intPPI(50)
+            int100 = int50*2
+            mousePos = event.GetPosition()
             cRect = self.videoWindow.GetClientRect()
-            single = wx.Rect(cRect[2]-int50,0,int50,int50).Inside(event.GetPosition())
-            force = False if single else wx.Rect(cRect[2]-int50,cRect[3]-int50,int50,int50).Inside(event.GetPosition())
+            single = wx.Rect(cRect[2]-int50,0,int50,int50).Contains(mousePos)
+            force = False if single else wx.Rect(cRect[2]-int50,cRect[3]-int50,int50,int50).Contains(mousePos)
             #sameSize = False if single or force else wx.Rect(cRect[2]-int50,(cRect[3]/2)-intPPI(25),int50,int50).Inside(event.GetPosition())
             if single or force and self.options['showresamplemenu'] != 0:
                 self.OnMenuVideoZoomResampleFit(zoom=1, fitHeight=script.resizeFilter[3], single=single, sameSize=False)
                 event.Skip()
+                return
+            sdlFullscreen = wx.Rect(0,0,int50,int50).Contains(mousePos)
+            sdlFullsize = wx.Rect(0,cRect[3]-int50,int50,int50).Contains(mousePos)
+            if sdlFullscreen or (sdlFullsize and not self.options['sdlallowfullsize']):
+                if self.sdlWindow.running and not self.sdlWindow.isFullscreen:
+                    self.sdlWindow.ToggleFullscreen()
+                else:
+                    self.OnMenuVideoToogleSDLWindow(fullscreen=True)
+                event.Skip()
+                return
+            elif sdlFullsize and self.options['sdlallowfullsize']:
+                if self.sdlWindow.running and not self.sdlWindow.isFullsize:
+                    self.sdlWindow.ToggleFullsize(True)
+                else:
+                    self.sdlWindow.isFullscreen = False
+                    self.sdlWindow.isFullsize = True
+                    self.OnMenuVideoToogleSDLWindow()
+                event.Skip()
+                return
+
+            # normal fullscreen/fullsize
+            if wx.Rect(0,int50,int50, (cRect[3]-int100)//2).Contains(mousePos) and not self.fullScreenWnd.IsFullScreen():
+                self.OnLeftDClickVideoWindow(toggleFullscreen=True)
+                return
+            if wx.Rect(0,(cRect[3]-int100)//2,int50,(cRect[3]-int100)//2).Contains(mousePos) and not self.IsFullScreen():
+                self.OnLeftDClickVideoWindow(toggleFullsize=True)
+                if not self.IsResizeFilterFitFill(script) and self.options['showresamplemenu'] != 0:
+                    self.OnMenuVideoZoomResampleFit(zoom=1, fitHeight=True, single=False, sameSize=False)
+                return
+
+            if wx.Rect(cRect[2]-int50,int50,int50,(cRect[3]-int100)//2).Contains(mousePos) and not self.fullScreenWnd.IsFullScreen():
+                self.OnLeftDClickVideoWindow(toggleFullscreen=True)
+                return
+            if wx.Rect(cRect[2]-int50,(cRect[3]-int100)//2,int50,(cRect[3]-int100)//2).Contains(mousePos) and not self.IsFullScreen():
+                self.OnLeftDClickVideoWindow(toggleFullsize=True)
+                if not self.IsResizeFilterFitFill(script) and self.options['showresamplemenu'] != 0:
+                    self.OnMenuVideoZoomResampleFit(zoom=1, fitHeight=True, single=False, sameSize=False)
                 return
 
         ctrlKey = wx.GetKeyState(wx.WXK_CONTROL)
@@ -18179,6 +19087,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 if toggleFullsize or ctrlKey:
                     _closeFullscreen()
                     self.ShowFullScreen(show=not self.IsFullScreen(), style=wx.FULLSCREEN_NOCAPTION|wx.FULLSCREEN_NOMENUBAR|wx.FULLSCREEN_NOBORDER)
+                    _sizeSdlWindow()
                 else:
                     # wxPython splitterWindow cannot be hiden, so we need a Fullscreen frame
                     # listed as a function in 2.93 but not present even in 2.95
@@ -18228,9 +19137,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                             self.videoSlider._DefineBrushes(True, True)
                         else:
                             self.videoControls.SetBackgroundColour(ctrlColor)
+
+                        _sizeSdlWindow()
                     else:
                         scroll, needResplit = _closeFullscreen()
                         sash_pos, setminpanesize = _setValues(script)
+                        _sizeSdlWindow()
 
             elif self.fullScreenWnd.IsFullScreen():
                 scroll, needResplit, = _closeFullscreen()
@@ -18406,7 +19318,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.fullScreenSizer.Layout()
             self.ResetZoomAntialias()
         """
-        if self.vwToolbarSizer.IsShown(self.vwToolbar):
+        if self.hideToolbarOnClick.GetValue() and self.vwToolbarSizer.IsShown(self.vwToolbar):
             self.vwToolbarSizer.Show(self.vwToolbar, False)
             self.vwToolbarSizer.Layout()
         """
@@ -18558,6 +19470,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.fullScreenSizer.Layout()
             self.fullScreenSizer.Show(self.videoControls)
             return
+        """
+        if event and event.GetX() < 5:
+            self.vwToolbarSizer.Fit(self.vwToolbar)
+            self.vwToolbarSizer.Layout()
+            self.vwToolbarSizer.Show(self.vwToolbar)
+        """
 
         if self.cropDialog.IsShown() and event and event.LeftIsDown():
             script = self.currentScript
@@ -19192,9 +20110,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     submenu.Check(x_id, self.displayFilter)
                 x_id = submenu.FindItem(_('Fast YUV420 display conversion'))
                 if x_id != wx.NOT_FOUND:
-                    submenu.Enable(x_id, script.AVI is not None and script.AVI.IsDecoderYUV420)
-                    if submenu.IsEnabled(x_id):
-                        submenu.Check(x_id, script.AVI is not None and script.AVI.fastYUV420toRGB32 and script.AVI.IsDecoderYUV420 and script.AVI.vi.is_420())
+                    submenu.Enable(x_id, script.AVI is not None and script.AVI.IsDecoderYUV420 and script.AVI.vi.is_420())
+                    #if submenu.IsEnabled(x_id):
+                    submenu.Check(x_id, script.AVI is not None and script.AVI.fastYUV420toRGB32 and script.AVI.IsDecoderYUV420 and script.AVI.vi.is_420())
             d = {} # do not use self.previewFilterDict or SplitClip cannot find changes
             self.UpdatePreviewFilterMenu(self.ParseScriptPreviewFilters(d))
         try:
@@ -19264,7 +20182,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 dc.Blit(x, y, w, h, mdc, 0, 0)
                 return
 
-            if self.splitView or self.snapShotIdx > 0:
+            if self.splitView or self.snapShotIdx > 0 or self.playing_video:
                 dcc = wx.ClientDC(self.videoWindow)
                 self.PaintAVIFrame(dcc, self.currentScript, self.currentframenum, isPaintEvent=True)
             else:
@@ -19408,6 +20326,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.propWindow.Close()
         self.StopPlayback()
         self.KillScriptAVIAudio(showErr=False)
+        if self.sdlWindow and self.sdlWindow.running:
+            self.sdlWindow.Close()
 
         # Check if macros are still running
         macroShown = clipShown = False
@@ -19729,11 +20649,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     def StopPlayback(self):
         if self.playing_video:
-            self.PlayPauseVideo()
+            self.PlayPauseVideo(forceStop=True)
+        elif self.playing_video == '':
+            self.playing_video = False
 
     def CheckPlayback(self):
         if self.playing_video:
-            self.PlayPauseVideo(refreshFrame=False)
+            self.PlayPauseVideo(refreshFrame=False,forceStop=True)
             self.playing_video = ''
         elif self.playing_video == '':
             self.PlayPauseVideo()
@@ -22763,6 +23685,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         #self.currentScript.lastSplitVideoPosShown = sash_pos
 
     def CloseFullscreenWND(self, setMinPaneSize=False):
+        if self.sdlWindow.IsFullScreen() and self.sdlWindow.IsSameMonitor():
+            self.sdlWindow.ResetWindowToNormalSize()
         if self.fullScreenWnd.IsFullScreen():
             self.xo = self.yo = intPPI(5)
             script = self.currentScript
@@ -23396,6 +24320,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     pixelInfo = self.GetPixelInfo(event=None, string_=True)
                     if pixelInfo[1] is not None:
                         addon = pixelInfo
+                else:
+                    primary = self.sdlWindow.running
                 self.SetVideoStatusText(framenum, primary=primary, addon=addon)
 
             # Store video information (future use)
@@ -23414,6 +24340,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.ShowFreeMemory()
             if script.AVI.readFrameProps:
                 self.AVICallBack('property', script.AVI.properties)
+
+            if self.sdlWindow and self.sdlWindow.running:
+                self.sdlWindow.Render_frame(script.AVI)
 
         finally: # so also on abort (return)
             if wx.IsBusy():
@@ -23648,7 +24577,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.PlayPauseVideo()
 
     # GPo 2020 bmtype 0,1,2 or 3 (3 = only bookmarks with title)
-    def GotoNextBookmark(self, reverse=False, forceCursor=False, bmtype=[]):
+    def GotoNextBookmark(self, reverse=False, forceCursor=False, bmtype=[], focus=True):
         if self.playing_video:
             self.PlayPauseVideo()
             self.playing_video = ''
@@ -23690,7 +24619,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         self.zoom_antialias = False
         v = self.previewWindowVisible
-        self.ShowVideoFrame(new_frame, forceCursor=forceCursor)
+        self.ShowVideoFrame(new_frame, forceCursor=forceCursor, focus=focus)
         if self.options['zoom_antialias']:
             if self.zoomfactor != 1 or self.zoomwindow:
                 if not v: self.SaveCallYield()
@@ -23756,6 +24685,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             wx.CallAfter(_showMessage,'Convert RGB32 error', value)
         elif ident == 'audioerror':
             wx.CallAfter(_showMessage,'Audio Error', value)
+            """
+            elif ident == 'yv12clip_changed':
+                if self.sdlWindow and self.sdlWindow.running:
+                    wx.CallAfter(self.sdlWindow.Render_frame, self.currentScript.AVI)
+            elif ident == 'yv12clip_error':
+                wx.CallAfter(_showMessage,'YV12 Clip filter error', value)
+            """
         else:
             return
         return True
@@ -23773,6 +24709,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         if not self.KillScriptAVIAudio(script):
             return False
+
+        if self.sdlWindow:
+            if script.AVI is self.sdlWindow.AVI:
+                self.sdlWindow.AVI = None
 
         # if avisynth in progress we cannot release the clip also return
         if self.AviThread_Running(script, prompt=not self.AppClosing):
@@ -23964,7 +24904,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 return False
             ok = False
 
-            if self.fullScreenWnd.IsFullScreen() or self.IsFullScreen():
+            if self.fullScreenWnd.IsFullScreen() or self.IsFullScreen() or self.sdlWindow.IsFullScreen():
                 th.join(4) # 5 max or windows shows no response state
                 try:
                     ok = q.get_nowait()
@@ -24521,13 +25461,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                wx.EndBusyCursor()
 
         if boolNewAVI:
-            # SplitClipCtrl
-            if not script.AVI.IsErrorClip():
-                if self.SplitClipCtrl.IsActive and not script.AVI.IsSplitClip:
-                    self.SplitClipCtrl.Close()
-                elif script.AVI.IsSplitClip and not self.SplitClipCtrl.IsActive:
-                    self.SplitClipCtrl.Activate()
-            # Error
             if script.AVI.IsErrorClip():
                 script.lastSplitVideoPos = None
                 self.playing_video = False
@@ -24537,23 +25470,25 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     self.SplitClipCtrl.Close()
                 self.CloseFullscreenWND()
                 self.OnMenuVideoZoom(zoomfactor=1,show=False,resizeFilterOff=True,single=True,script=script)
-            elif newRefreshed and not self.zoomwindow \
-                and not self.IsResizeFilterFitFill(script) \
-                and ((oldWidth, oldHeight) != (script.AVI.Width, script.AVI.Height)):
-                #and self.options['resizevideowindow')
-                script.lastSplitVideoPos = None
+            elif script is self.currentScript:
+                if self.SplitClipCtrl.IsActive and not script.AVI.IsSplitClip:
+                    self.SplitClipCtrl.Close()
+                elif script.AVI.IsSplitClip and not self.SplitClipCtrl.IsActive:
+                    self.SplitClipCtrl.Activate()
 
-            script.autocrop_values = None
-            if self.cropDialog.IsShown():
-                if self.resizeFilter[0]:
-                    self.cropDialog.Hide()
-                else:
-                    self.PaintCropWarnings()
-            self.SetVideoStatusText()
-            if self.playing_video == '':
-                wx.CallAfter(self.PlayPauseVideo)
-            #else:
-                #script.AVI.SetAudio(self.options['audioscrub'], self.options['audioscrubcount'])
+                if newRefreshed and not self.zoomwindow and not self.IsResizeFilterFitFill(script) \
+                    and ((oldWidth, oldHeight) != (script.AVI.Width, script.AVI.Height)):
+                        script.lastSplitVideoPos = None
+
+                script.autocrop_values = None
+                if self.cropDialog.IsShown():
+                    if self.resizeFilter[0]:
+                        self.cropDialog.Hide()
+                    else:
+                        self.PaintCropWarnings()
+                self.SetVideoStatusText()
+                if self.playing_video == '':
+                    wx.CallAfter(self.PlayPauseVideo)
 
         return boolNewAVI
 
@@ -26518,9 +27453,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if self.fullScreenWnd_IsShown:
             return wx.ScreenDC().GetSize()
         wA, hA = utils.GetSizeWithoutBorder(self.videoWindow)
-        #wc, hc = self.videoWindow.GetClientSize()
         w, h = wA - 2 * self.xo, hA - 2 * self.yo
-        #sbarH = self.videoWindow.HasScrollbar(wx.HORIZONTAL)
 
         if not self.separatevideowindow:
             if self.zoomwindow and not self.previewWindowVisible:
@@ -26609,8 +27542,15 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         return True
 
     def PaintAVIFrame(self, inputdc, script, frame, shift=True, isPaintEvent=False, display_clip=False):
-        #if self.playing_video: # this calls the main thread if playback, playback calls direct PaintAVIFrameLocked
-            #return self.PaintAVIFrameLocked(inputdc, script, frame, shift, isPaintEvent, display_clip)
+        # use this if playback thread uses PaintAVIFrameLocked else disable it
+        if self.playing_video: # this calls the main thread if playback, playback calls direct PaintAVIFrameLocked
+            if self.framePaintLock.acquire(False): # With RLock the same thread can acquire multiple times if it has once unlocked
+                try:
+                    return self.PaintAVIFrameLocked(inputdc, script, frame, shift, isPaintEvent, display_clip)
+                finally:
+                    self.framePaintLock.release()
+            return True
+
         if script.AVI is None:
             if isPaintEvent:
                 if self.options['use_customvideobackground']:
@@ -26708,7 +27648,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             # only if isPaintEvent and self.zoom_antialias not disabled
             # in ShowVideoFrame() IdleCall.append(videoWindow.Refresh) fires OnIdle the antialias refresh
             """
-            if (self.zoomfactor != 1 or self.zoomwindow) and (self.zoom_antialias and isPaintEvent):
+            if (isPaintEvent and self.zoom_antialias) and (self.zoomfactor != 1 or self.zoomwindow):
                 inputdc = wx.GCDC(inputdc)
             # DoPrepareDC causes NameError in wx2.9.1 and fixed in wx2.9.2
             self.videoWindow.DoPrepareDC(inputdc)
@@ -26718,7 +27658,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.paintedframe = frame
         return True
 
-    """
+    # For playback, use Lock and not AsyncCall for entering and blocking the threads (main, play)
+    # main thread draws then only the frame if playthread at that moment not drawing a frame
+    # and playthread is blocking (waits) when main thread is drawing a frame
+    # AsyncCall 102 fps, RLock 148 fps (FHD with display prefetch), AsyncCall 80 fps, RLock 100 fps (without display prefetch)
+    # No problems with play thread, wx.MessageBox is thread safe, also same drawing routine but with RLock
     def PaintAVIFrameLocked(self, inputdc, script, frame, shift=True, isPaintEvent=False, display_clip=False):
         with self.framePaintLock:
             if script.AVI is None:
@@ -26782,7 +27726,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     self.videoWindow.DoPrepareDC(inputdc)
                     if not script.AVI.DrawFrame(frame, inputdc, display_clip=display_clip):
                         AsyncCall(self.ErrorMessage_GetFrame, script, frame).Wait()
-                        #self.ErrorMessage_GetFrame(script, frame)
+                        #self.ErrorMessage_GetFrame(script, frame) #
                         return None
             elif self.splitView:
                 if not AsyncCall(self.PaintSplitView, inputdc, frame, isPaintEvent).Wait():
@@ -26819,20 +27763,14 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         self.PaintCropRectangles(dc, script)
                     self.bmpVideo = bmp
 
-                # GPo, do not antialias if playback or frame step or mouse move, or zoom settings changed
-                # only if isPaintEvent and self.zoom_antialias not disabled
-                # in ShowVideoFrame() IdleCall.append(videoWindow.Refresh) fires OnIdle the antialias refresh
-
-                if (self.zoomfactor != 1 or self.zoomwindow) and (self.zoom_antialias and isPaintEvent):
+                if (isPaintEvent and self.zoom_antialias) and (self.zoomfactor != 1 or self.zoomwindow):
                     inputdc = wx.GCDC(inputdc)
-                # DoPrepareDC causes NameError in wx2.9.1 and fixed in wx2.9.2
                 self.videoWindow.DoPrepareDC(inputdc)
                 inputdc.SetUserScale(self.zoomfactor, self.zoomfactor)
                 inputdc.Blit(0, 0, w, h, dc, 0, 0)
 
             self.paintedframe = frame
             return True
-    """
 
     def PaintTrimSelectionMark(self, dc, script, frame):
         if self.trimDialog.IsShown() and self.markFrameInOut:
@@ -27323,7 +28261,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         '''
         if th.isAlive():
              # with normal ProgressDialog taskbar is showing on Fullscreen, so we create a static progress dialog without thread
-            if self.fullScreenWnd.IsFullScreen() or self.IsFullScreen():
+            if self.fullScreenWnd.IsFullScreen() or self.IsFullScreen() or self.sdlWindow.IsFullScreen():
                 disabler = wx.WindowDisabler()
                 #blocker = wx.EventBlocker(self)
                 if self.progressShown:
@@ -27457,7 +28395,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             wx.MilliSleep(1)
 
         if th.isAlive():
-            if self.fullScreenWnd.IsFullScreen() or self.IsFullScreen():
+            if self.fullScreenWnd.IsFullScreen() or self.IsFullScreen() or self.sdlWindow.IsFullScreen():
                 _t = time.time() + 4
             else:
                 _t = time.time() + self.progressDelayTime
@@ -27495,7 +28433,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     def WaitForFrameThread(self, script, th, nr):
         if th.IsRunning():
             # with normal ProgressDialog taskbar is showing on Fullscreen, so we create a static progress dialog without thread
-            if self.fullScreenWnd.IsFullScreen() or self.IsFullScreen():
+            if self.fullScreenWnd.IsFullScreen() or self.IsFullScreen() or self.sdlWindow.IsFullScreen():
                 disabler = wx.WindowDisabler()
                 #blocker = wx.EventBlocker(self)
                 if self.progressShown:
@@ -27629,7 +28567,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         th.Start(nr, srcFrame)
         # without title bar windows shows an dialog if program after 5 seconds doesn't response (and the task bar is showing)
-        if self.fullScreenWnd.IsFullScreen() or self.IsFullScreen():
+        if self.fullScreenWnd.IsFullScreen() or self.IsFullScreen() or self.sdlWindow.IsFullScreen():
             _t = time.time() + 4
         else:
             _t = time.time() + self.progressDelayTime
@@ -27744,150 +28682,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         wx.Yield()
         self.Lock.release()
 
-    # pyaudio
-    """
-    def CreateAudio(self, vi, buffer_count, start_stream, callback, createBuffer=True):
-        if self.x86_64:
-            from cffi import FFI
-            ffi = FFI()
-        self.KillAudio()
-
-        if vi.has_audio(): # and self.PlayAudio:
-            sample_type = pyavs.avs_sample_type_dict_pyaudio.get(vi.sample_type, None)
-            if sample_type:
-                if createBuffer:
-                    try:
-                        self.samples_count = vi.audio_samples_from_frames(1) # samples per frame
-                        buf_size = vi.bytes_per_audio_sample() * self.samples_count * buffer_count
-                        self.audio_buffer = ctypes.create_string_buffer(buf_size)
-                        if self.x86_64:
-                            self.audio_cptr = ffi.from_buffer(self.audio_buffer)
-                        else:
-                            self.audio_cptr = ctypes.pointer(self.audio_buffer)
-                    except:
-                        wx.Bell()
-                        return
-
-                self.pyaudio = pyaudio.PyAudio()
-                try:
-                    self.audio_stream = self.pyaudio.open(format=sample_type,
-                        channels=vi.nchannels, # can only play the available channels, otherwise error
-                        rate=vi.audio_samples_per_second,
-                        output=True,
-                        output_device_index=None,
-                        frames_per_buffer = self.samples_count * buffer_count,
-                        start=start_stream,
-                        stream_callback=callback)
-                except:
-                    if self.pyaudio:
-                        self.pyaudio.terminate()
-                        self.pyaudio = None
-                    self.audio_stream = None
-                    self.audio_frames_buffered = None
-                    self.audio_buffer = []
-                    #self.AVICallBack('audioerror', 'Error: Cannot create the audio output stream')
-                    #print('Error: Cannot create the audio output stream')
-                    return
-                self.audio_frames_buffered = buffer_count
-                #self.audio_silent = ctypes.create_string_buffer(buf_size)
-                self.audio_silent = ''
-                for i in range(len(self.audio_buffer)):
-                    self.audio_silent += chr(0)#+chr(0)+chr(0)
-                return True
-
-    def KillAudio(self):
-        if self.audio_stream is not None:
-            self.audio_stream.stop_stream()
-            i = 0
-            while self.audio_stream.is_active() and i < 20:
-                wx.MilliSleep(50)
-                i += 1
-            self.audio_stream.close()
-            if self.pyaudio:
-                self.pyaudio.terminate()
-                self.pyaudio = None
-            self.audio_stream = None
-            self.audio_silent = []
-            self.audio_buffer = []
-    """
-
-    """ AudioThread, but not working. Hm...? see run()
-    class AudioThread(threading.Thread):
-        def __init__(self, script, samples_count, audio_frames_buffered, q):
-            threading.Thread.__init__(self)
-            from cffi import FFI
-            ffi = FFI()
-            self.setDaemon(True)
-            self.script = script
-            self.clip = script.AVI.clip
-            self.samples_count = samples_count
-            self.audio_frames_buffered = audio_frames_buffered
-            self.q = q
-            self.exitEvent = threading.Event()
-            self.startEvent = threading.Event()
-            self.Lock = threading.RLock()
-            self.isRunning = False
-            self.buf_count = 1
-            self.isError = False
-
-            buf_size = script.AVI.vi.bytes_per_audio_sample() * self.samples_count * audio_frames_buffered
-            self.audio_buffer = ctypes.create_string_buffer(buf_size)
-            self.audio_cptr = ffi.from_buffer(self.audio_buffer)
-
-            self.start()
-        def Start(self, frame, buf_count=1):
-            self.frame = frame
-            self.buf_count = buf_count
-            self.isRunning = True
-            self.startEvent.set()
-        def Reset(self):
-            self.Lock.acquire()
-            self.isError = False
-            self.Lock.release()
-        def Exit(self):
-            self.exitEvent.set()
-            self.startEvent.set()
-        def IsRunning(self, timeout=0):
-            if timeout > 0:
-                t = time.time() + timeout
-                while t < time.time():
-                    self.Lock.acquire() # with lock not slower
-                    re = self.isRunning
-                    self.Lock.release()
-                    if not re:
-                        return False
-                    wx.MilliSleep(1)
-            self.Lock.acquire() # with lock not slower
-            re = self.isRunning
-            self.Lock.release()
-            return re
-        def IsError(self):
-            self.Lock.acquire()
-            re = self.isError
-            self.Lock.release()
-            return re
-        def run(self): # !!! ignores the event or blocks and does nothing. FrameThread is the same thread but it works.
-            while not self.exitEvent.isSet():
-                self.startEvent.wait()
-                wx.Bell()
-                if not self.exitEvent.isSet():
-                    #for i in range(self.buf_count):
-                    try:
-                        self.clip.get_audio(self.audio_cptr, self.samples_count*self.frame, self.samples_count*self.audio_frames_buffered)
-                        self.q.put.nowait(self.frame, self.audio_buffer[:])
-                    except:
-                        self.Lock.acquire()
-                        self.isError = True
-                        self.Lock.release()
-                    self.startEvent.clear()
-                    self.Lock.acquire()
-                    self.isRunning = False
-                    self.Lock.release()
-    """
-
-    def PlayPauseVideo(self, debug_stats=False, refreshFrame=True, forceStop=None):
+    def PlayPauseVideo(self, debug_stats=False, refreshFrame=True, forceStop=None, focus=True):
         """Play/pause the preview clip"""
-
         def SetSystemTimeResolution(high):
             if high:
                 self._timeBeginPeriod = ctypes.windll.winmm.timeBeginPeriod
@@ -27931,7 +28727,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 if self.PlayThread_Running(script, prompt=False):
                     th = script.PlayThread
                     t = time.time() + 5.0
-                    while th.isAlive() and time.time() <= t:
+                    while th.isAlive() and th.running == 1 and time.time() <= t:
                         # threads enters the main thread (AsyncCall) so we cannot block the main thread
                         # while waiting for play thread termination
                         if wx.GetApp().HasPendingEvents():
@@ -27948,16 +28744,16 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         wx.MilliSleep(20)
             except:
                 pass
-
             if refreshFrame:
                 if self.previewOK():
-                    self.ShowVideoFrame(self.currentframenum, forceLayout=True)
+                    self.ShowVideoFrame(self.currentframenum, forceLayout=True, focus=focus)
             if self.readFrameProps:
                 script.AVI.SetReadFrameProps(True)
             if self.options['audioscrub']:
                 script.AVI.SetAudio(True)
         else:
             script = self.currentScript
+            self.snapShotIdx = 0
             if script.AVI and script.AVI.IsAudioActive():
                 scrubbing = script.AVI.SetAudio(False)
                 if scrubbing:
@@ -27998,6 +28794,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 script.AVI.SetReadFrameProps(False)
             self.playing_video = True
             self.zoom_antialias = False
+
             self.play_button.SetBitmapLabel(self.bmpPause)
             self.play_button.Refresh()
             self.frameTextCtrl.SetForegroundColour(wx.BLACK) # GPo, for fast func
@@ -28172,7 +28969,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 factor = max(1, int(round(self.play_timer_resolution / interval)))
                 interval = int(round(interval * factor))
                 evFinish = threading.Event()
-                audioLock = threading.RLock()
+                audioLock = threading.Lock()
 
                 def FrameError(idx, script, errmsg, framenum):
                     self.PlayPauseVideo(refreshFrame=False, forceStop=True)
@@ -28212,11 +29009,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                  errmsg)), _('Error'), style=wx.OK|wx.ICON_ERROR)
 
                 def Replay():
-                    self.PlayPauseVideo(refreshFrame=False, forceStop=True)
-                    if self.ShowVideoFrame(self.videoSlider.startOffset):
-                        self.PlayPauseVideo()
+                    focus = not self.sdlWindow.HasFocus()
+                    self.PlayPauseVideo(refreshFrame=False, forceStop=True, focus=focus)
+                    if self.ShowVideoFrame(self.videoSlider.startOffset, focus=focus):
+                        self.PlayPauseVideo(focus=focus)
 
-                def UpdateCtrls(frame, fps):
+                def updateCtrls(frame, fps):
                     try:
                         self.videoSlider.SetValue(frame)
                         self.frameTextCtrl.Replace(0, -1, str(frame))
@@ -28227,19 +29025,28 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     except:
                         pass
 
-                def PaintFrame(script, frame, fps):
+                # default painting with AsyncCall
+                def paintFrame(script, frame, fps):
                     try:
-                        UpdateCtrls(frame, fps)
+                        updateCtrls(frame, fps)
                         re = self.PaintAVIFrame(wx.ClientDC(self.videoWindow), script, frame, shift=True, isPaintEvent=False, display_clip=False)
                     except:
                         return False
                     return re
 
-                def th_Update(frame, fps):
-                    AsyncCall(UpdateCtrls, frame, fps).Wait()
+                # sdl render frame in main thread, safe but slower ( AsyncCall )
+                def renderFrameSafe(script, frame, fps):
+                    updateCtrls(frame, fps)
+                    return self.sdlWindow.Render(script.AVI, frame)
 
-                def th_get_audio_buffer(avsAudio, clip, frame, buffer_count, config, q, evStop):
-                    def get_buffer(frame):
+
+                # only used if RLock painting (self.PaintAVIFrameLocked) or sdl fast rendering, then update the controls with a separate thread and AsyncCall
+                def th_Update(frame, fps):
+                    AsyncCall(updateCtrls, frame, fps).Wait()
+
+                # fetch the audio buffers in single threads for eache run
+                def th_get_audio_buffer(avsAudio, clip, frame, buffer_count, loops, q, evStop):
+                    def _get_buffer(frame):
                         try:
                             clip.get_audio(avsAudio.audio_cptr, avsAudio.samples_count*frame, avsAudio.samples_count*buffer_count)
                             if clip.get_error():
@@ -28249,20 +29056,83 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                             return avsAudio.audio_silent[:]
                     evFinish.clear()
                     try:
-                        buf = get_buffer(frame)
-                        q.put((frame, buf[:]), False)
-                        if not evStop.isSet():
-                            buf = get_buffer(frame+buffer_count)
-                            q.put((frame+buffer_count, buf[:]), False)
-                            if not evStop.isSet():
-                                buf = get_buffer(frame+buffer_count*2)
-                                q.put((frame+buffer_count*2, buf[:]), False)
-                                if config > 0 and not evStop.isSet():
-                                    buf = get_buffer(frame+buffer_count*3)
-                                    q.put((frame+buffer_count*3, buf[:]), False)
+                        for i in range(loops):
+                            buf = _get_buffer(frame)
+                            q.put((frame, buf[:]), False)
+                            if evStop.isSet():
+                                break
+                            frame += buffer_count
                     finally:
                         evFinish.set()
 
+                # fetch the audio buffers in one thread
+                def th_GetAudioBuffer(avsAudio, clip, buffer_count, loops, q, evStop, evGetBuffer):
+                    def _get_buffer(frame):
+                        try:
+                            clip.get_audio(avsAudio.audio_cptr, avsAudio.samples_count*frame, avsAudio.samples_count*buffer_count)
+                            if clip.get_error():
+                                raise
+                            return avsAudio.audio_buffer[:]
+                        except:
+                            return avsAudio.audio_silent[:]
+                    evFinish.clear()
+                    try:
+                        while not evStop.isSet() and self.playing_video:
+                            evGetBuffer.wait()
+                            fr = get_current_audio_frame()
+                            frame = fr + (buffer_count*loops) if fr > -1 else self.currentframenum
+                            for i in range(loops):
+                                if evStop.isSet():
+                                    break
+                                buf = _get_buffer(frame)
+                                q.put((frame, buf[:]), False)
+                                frame += buffer_count
+                            evGetBuffer.clear()
+                    finally:
+                        evFinish.set()
+
+                # fetch the audio buffers in one thread, but as thread class. This is used.
+                class GetAudioBuffer(threading.Thread):
+                    def __init__(self, app, avsAudio, clip, buffer_count, loops, q, evStop, evGetBuffer, evFinish, func_get_current_audio_frame):
+                        threading.Thread.__init__(self)
+                        self.daemon = True
+                        self.app = app
+                        self.avsAudio = avsAudio
+                        self.clip = clip
+                        self.buffer_count = buffer_count
+                        self.loops = loops
+                        self.q = q
+                        self.evStop = evStop
+                        self.evGetBuffer = evGetBuffer
+                        self.evFinish = evFinish
+                        self.audio_frames_buffered = self.avsAudio.samples_count*self.buffer_count
+                        self.get_current_audio_frame = func_get_current_audio_frame
+                    def run(self):
+                        def _get_buffer(frame):
+                            try:
+                                self.clip.get_audio(self.avsAudio.audio_cptr, self.avsAudio.samples_count*frame, self.audio_frames_buffered)
+                                if self.clip.get_error():
+                                    raise
+                                return self.avsAudio.audio_buffer[:]
+                            except:
+                                return self.avsAudio.audio_silent[:]
+                        self.evFinish.clear()
+                        try:
+                            while not self.evStop.isSet() and self.app.playing_video:
+                                self.evGetBuffer.wait()
+                                fr = self.get_current_audio_frame()
+                                frame = fr + (self.buffer_count*self.loops) if fr > -1 else self.app.currentframenum
+                                for i in range(self.loops):
+                                    if self.evStop.isSet():
+                                        break
+                                    buf = _get_buffer(frame)
+                                    self.q.put((frame, buf[:]), False)
+                                    frame += self.buffer_count
+                                self.evGetBuffer.clear()
+                        finally:
+                            self.evFinish.set()
+
+                # Audio Play Thread
                 def _playaudio(avsAudio, q_audio, evStopAudio):
                     while not evStopAudio.isSet() and self.playing_video:
                         try:
@@ -28290,7 +29160,47 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     audioLock.release()
                     return re
 
-                # play thread main loop
+                """
+                def sdlEvent():
+                    #self.sdlWindow.StopPeepEvents()
+                    self.Enable(False)
+                    while self.playing_video:
+
+                        #self.sdlWindow.PeepEvents()
+                        #sdl2.events.SDL_PumpEvents()
+                        #event = sdl2.SDL_Event()
+                        #while sdl2.events.SDL_PollEvent(ctypes.byref(event)) != 0:
+                            #pass
+
+                        if not self.sdlWindow.running:
+                            wx.CallAfter(self.StopPlayback)
+                            break
+                        if self.FrameReady != self.currentframenum:
+                            self.FrameReady = self.currentframenum
+                            if not self.sdlWindow.Render(self.sdlWindow.AVI, self.currentframenum):
+                                self.StopPlayback()
+                                self.waitFrame.set()
+                                break
+                            wx.Yield()
+                        self.waitFrame.set()
+                    self.Enable(True)
+                    #wx.CallAfter(self.sdlWindow.StartPeepEvents)
+                """
+                """ test sdl over event handling, PostEven is slow and ProzessEvent is not in the main thread. So all bad.
+                myEVT_CUSTOM = wx.NewEventType()
+                EVT_CUSTOM = wx.PyEventBinder(myEVT_CUSTOM, 1)
+
+                class MyEvent(wx.PyCommandEvent):
+                    def __init__(self, evtType, id):
+                        wx.PyCommandEvent.__init__(self, evtType, id)
+                self.Bind(EVT_CUSTOM, sdlRenderFrame)
+                self.sdlevent = MyEvent(myEVT_CUSTOM, self.GetId())
+                #self.sdlWindow.StopPeepEvents()
+                #event.SetMyVal('here is some custom data')
+                #self.GetEventHandler().ProcessEvent(self.sdlevent)
+                """
+
+                # video play thread main loop
                 def play(frame, interval, factor):
                     if script.AVI.downMix_d:
                         clip = script.AVI.display_clip
@@ -28299,19 +29209,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         clip = script.AVI.clip
                         vi = script.AVI.vi
 
-                    def audio_callback(in_data, frame_count, time_info, status_flags):
-                        try:
-                            try:
-                                fr, buf = q_audio.get_nowait()
-                            except:
-                                fr, buf = -1, avsAudio.audio_silent[:]
-
-                            if evStopAudio.isSet():
-                                raise
-                            return (buf, pyaudio.paContinue)
-                        except:
-                            evStopAudio.set()
-                            return (None, pyaudio.paAbort)
+                    renderSafe = self.options['sdlrendersafe']
+                    sdlWindow = self.sdlWindow and self.sdlWindow.running
+                    if sdlWindow:
+                        if not renderSafe:
+                            self.sdlWindow.CreatePlaybackRenderer(script.AVI)
+                        drawBoth = self.options['sdlplaybackboth']
 
                     play_speed_factor = self.play_speed_factor
                     drop_count = self.drop_count
@@ -28320,192 +29223,277 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     startTime = play_initial_time
                     audioTh = None
                     playAudioTh = None
-                    #updateTh = threading.Thread() # only if not AsyncCall used else disable it
+                    updateTh = threading.Thread() # only if PainAVIFrameLocked used else remove it and remove it also on loop end
                     if self.options['playaudio'] and vi.has_audio():
                         use_callback = False
                         avsAudio = AvsAudio(self)
-                        if avsAudio.CreateAudio(vi, 2, False, audio_callback if use_callback else None):
+                        if avsAudio.CreateAudio(vi, 2, False, audio_callback if use_callback else None): # audio samples of 2 video frames per loop and also per q_audio item
                             evStopAudio = threading.Event()
                             evFinish.set()
                             config = 0 # config 0, 3 x 2 frames (config is for test purpose )
                             q_audio = queue.Queue()
                             set_current_audio_frame(-1)
                             avsAudio.StartStream()
-                            if not use_callback:
+                            if not use_callback: # create the audio play thread
                                 playAudioTh =  threading.Thread(target=_playaudio, args=(avsAudio, q_audio, evStopAudio,))
                                 playAudioTh.daemon = True
                                 playAudioTh.start()
+
+                            # new, one audio thread for getting the audio buffer
+                            """
+                            evGetBuffer = threading.Event()
+                            audioTh = threading.Thread(target=th_GetAudioBuffer, args=(avsAudio, clip,  avsAudio.video_frames_buffered, 3 if config == 0 else 5, q_audio, evStopAudio, evGetBuffer,))
+                            audioTh.daemon = True
+                            audioTh.start()
+                            evGetBuffer.set() # preload the buffer
+                            """
+                            # new new, one audio thread for getting the audio buffer, but a thread class
+                            evGetBuffer = threading.Event()
+                            audioTh = GetAudioBuffer(self, avsAudio, clip,  avsAudio.video_frames_buffered, 3 if config == 0 else 5,
+                                                        q_audio, evStopAudio, evGetBuffer, evFinish, get_current_audio_frame)
+                            audioTh.start()
+                            evGetBuffer.set() # preload the buffer
                         else:
                             avsAudio = None
                     else:
                         avsAudio = None
 
-                    while self.playing_video:
+                    try:
+                        while self.playing_video:
+                            try:
+                                fps = float(self.currentframenum - play_initial_frame)  / (time.clock() - play_initial_time)
+                                #rfps = time.clock() - startTime
+                            except:
+                                fps = 0.00
+                            sfps = 'fps %4.2f ' % fps
+                            #sfps = 'fps %4.2f mspf %0.4f' % (fps, rfps)
 
-                        try:
-                            fps = float(self.currentframenum - play_initial_frame)  / (time.clock() - play_initial_time)
-                            #fps = float(self.currentframenum - play_initial_frame)  / ((utils.milli_seconds() - play_initial_time)/1000.0)
-                        except:
-                            fps = 0.00
-                        sfps = 'fps %4.2f ' % fps
-
-                        if (drop_count == 1) and play_speed_factor != 'max':
-                            frame = play_initial_frame
-                            increment = int(round(1000 * (time.clock() - play_initial_time) / interval)) * factor
-                            #increment = int(round((utils.milli_seconds() - play_initial_time) / interval)) * factor
-                        else:
-                            frame = self.currentframenum + drop_count
-                            increment = 1
-                            if self.loop_start > -1:  # GPo 2020. play loop, changes not needed if slider offset (selections then None)
-                                if (frame + 1 >= self.loop_end) or (frame + 1 < self.loop_start):
-                                    set_current_audio_frame(-1)
-                                    try:
-                                        while True:
-                                            f,p = q_audio.get_nowait()
-                                    except:
-                                        pass # clear the audio buffer
-                                    # check for next selection
-                                    start, stop = self.GetNextSliderSelection(frame+1, True, False)
-                                    if start is not None:
-                                        if script.AVI.Framecount -3 > start:
-                                            self.loop_end = min(stop, script.AVI.Framecount -1)
-                                            self.loop_start = min(start, self.loop_end -3)
-                                            frame = self.loop_start -1
-                                            play_initial_frame = frame
-                                            play_initial_time = time.clock()
-                                            #play_initial_time = utils.milli_seconds()
+                            if (drop_count == 1) and play_speed_factor != 'max':
+                                frame = play_initial_frame
+                                increment = int(round(1000 * (time.clock() - play_initial_time) / interval)) * factor
+                                #increment = int(round((utils.milli_seconds() - play_initial_time) / interval)) * factor
+                            else:
+                                frame = self.currentframenum + drop_count
+                                increment = 1
+                                if self.loop_start > -1:  # GPo 2020. play loop, changes not needed if slider offset (selections then None)
+                                    if (frame + 1 >= self.loop_end) or (frame + 1 < self.loop_start):
+                                        set_current_audio_frame(-1)
+                                        try:
+                                            while True:
+                                                f,p = q_audio.get_nowait()
+                                        except:
+                                            pass # clear the audio buffer
+                                        # check for next selection
+                                        start, stop = self.GetNextSliderSelection(frame+1, True, False)
+                                        if start is not None:
+                                            if script.AVI.Framecount -3 > start:
+                                                self.loop_end = min(stop, script.AVI.Framecount -1)
+                                                self.loop_start = min(start, self.loop_end -3)
+                                                frame = self.loop_start -1
+                                                play_initial_frame = frame
+                                                play_initial_time = time.clock()
+                                                #play_initial_time = utils.milli_seconds()
+                                            else:
+                                                self.loop_start = self.loop_end = -1
                                         else:
                                             self.loop_start = self.loop_end = -1
-                                    else:
-                                        self.loop_start = self.loop_end = -1
 
-                        frame += increment
-                        self.currentframenum = frame
+                            frame += increment
+                            self.currentframenum = frame
 
-                        script.AVI.display_clip.get_frame(frame)
-                        errmsg = script.AVI.display_clip.get_error()
-                        if errmsg is not None:
-                            wx.CallAfter(FrameError, 1, script, errmsg, frame)
-                            break
-                        """
-                        # PaintFrame must get the frame from both clips, so we get here threaded from both clips the frame and minimize the main thread time,
-                        # and _GetFrame is really threaded, but I don't know what priority Python threads have. Maybe the main thread is faster?
-                        if not script.AVI._GetFrame(frame):
-                            errmsg = script.AVI.error_message
-                            if not errmsg:
-                                errmsg = script.AVI.display_clip.get_error() or script.AVI.clip.get_error()
-                            if not errmsg:
-                                errmsg = 'Play Thread unknown GetFrame error'
-                            wx.CallAfter(FrameError, 1, script, errmsg, frame)
-                            break
-                        """
+                            ### get frame and draw routines
+                            if sdlWindow:
+                                """
+                                if self.sdlWindow.YUV and self.sdlWindow.color_format == 100:
 
-                        if ms_interval > 0:
-                            wait = (startTime+ms_interval)-time.clock()
-                            if wait > 0:
-                                time.sleep(wait) # precision depends on OS
-                            #time.sleep(max((startTime+ms_interval)-time.clock(), 0))
-
-                        startTime = time.clock()
-
-                        """ interresant
-                        dc = wx.ClientDC(self.videoWindow)
-                        self.videoWindow.DoPrepareDC(dc)
-                        if not script.AVI.DrawFrame(frame, dc):
-                            wx.CallAfter(self.ErrorMessage_GetFrame, script, frame)
-                            break
-                        """
-
-                        # paint frame and update the controls
-                        if not AsyncCall(PaintFrame, script, frame, sfps).Wait():
-                            errmsg = 'Play thread unknown paint frame error'
-                            wx.CallAfter(FrameError, 3, script, errmsg, frame)
-                            break
-
-                        """
-                        # Run's without AsyncCall and is also 10 - 20% faster. No Problems so far.
-                        # It uses a Rlock in PaintAVIFrameLocked to avoid collisions between the main and play thread
-                        # The main thread uses also this function if self.playing_video=True. Only SplitView calls then AsyncCall and enters the main thread
-                        if not self.PaintAVIFrameLocked(wx.ClientDC(self.videoWindow), script, frame):
-                            errmsg = 'Play thread unknown paint frame error'
-                            wx.CallAfter(FrameError, 3, script, errmsg, frame)
-                            break
-                        """
-                        if avsAudio and not evStopAudio.isSet():
-                            fr = get_set_current_audioframe(frame)
-                            qs = q_audio.qsize()
-                            if config == 0:
-                                if qs < 2: # config 2, 3 x buffercount frames (default 3 x 2)
-                                    fr = frame+(avsAudio.video_frames_buffered*3) if fr > -1 else frame   # config 2, 3 x 2 frames
-                                    audioTh = threading.Thread(target=th_get_audio_buffer, args=(avsAudio, clip, fr, avsAudio.video_frames_buffered, 0, q_audio, evStopAudio,))
-                                    audioTh.daemon = True
-                                    audioTh.start()
-                            elif qs < 2:
-                                fr = frame+(avsAudio.video_frames_buffered*4) if fr > -1 else frame   # config 1, 4 x 2 frames
-                                audioTh = threading.Thread(target=th_get_audio_buffer, args=(avsAudio, clip, fr, avsAudio.video_frames_buffered, 1, q_audio, evStopAudio,))
-                                audioTh.daemon = True
-                                audioTh.start()
-
-                        # use it only if not AsyncCall is used !!!
-                        """
-                        if not updateTh.isAlive():
-                            updateTh = threading.Thread(target=th_Update, args=(frame, sfps,))
-                            updateTh.daemon = True
-                            updateTh.start()
-                        """
-                        errmsg = script.AVI.error_message
-                        if errmsg is not None:
-                            wx.CallAfter(FrameError, 2, script, errmsg, frame)
-                            break
-
-                        script.lastFramenum = frame
-                        if not self.playing_video:
-                            break
-
-                        maxFrame = self.videoSlider.GetVirtualMax() #script.AVI.Framecount - 1 if self.videoSlider.endOffset == 0 else self.videoSlider.GetVirtualMax()
-                        if self.currentframenum >= maxFrame:
-                            # play loop
-                            if (self.loop_start > -1) and (self.loop_start < maxFrame - 3)\
-                                and (self.loop_end <= maxFrame): # continue, new lop_start is in the next run set
-                                continue
-                            else:                               # then trimDialog not shown
-                                if self.options['playloop'] and self.videoSlider.selmode == 0 and \
-                                    (self.videoSlider.maxValue - self.videoSlider.minValue > 3): # play also loop
-                                    wx.CallAfter(Replay)
-                                    break
+                                    try:
+                                        script.AVI.yv12_clip.get_frame(frame)
+                                    except:
+                                        break
+                                    errmsg = script.AVI.yv12_clip.get_error()
+                                    if errmsg is not None:
+                                        wx.CallAfter(FrameError, 1, script, errmsg, frame)
+                                        break
                                 else:
-                                    if self.videoSlider.offsetSet and self.timelineAutoScroll: # check for timeline range
-                                        if self.currentframenum < script.AVI.Framecount-1:
-                                            self.playing_video = False
-                                            AsyncCall(self.OnMenuSetTimeLineRange, frange=self.timelineRange).Wait()
-                                            self.playing_video = True
-                                            if self.currentframenum < self.videoSlider.GetVirtualMax():
-                                                continue
-                                    wx.CallAfter(self.PlayPauseVideo, forceStop=True) # stop playback
+                                """
+                                script.AVI.clip.get_frame(frame)
+                                errmsg = script.AVI.clip.get_error()
+                                if errmsg is not None:
+                                    wx.CallAfter(FrameError, 1, script, errmsg, frame)
                                     break
 
-                    # on thread termination wait for the other threads
-                    SetSystemTimeResolution(False)
-                    if avsAudio:
-                        evStopAudio.set()
-                        if audioTh and audioTh.isAlive():
-                            audioTh.join(5)
-                        if playAudioTh and playAudioTh.isAlive():
-                            playAudioTh.join(5)
+                                if ms_interval > 0:
+                                    wait = (startTime+ms_interval)-time.clock()
+                                    if wait > 0:
+                                        time.sleep(wait) # precision depends on OS
+                                    #time.sleep(max((startTime+ms_interval)-time.clock(), 0))
+                                startTime = time.clock()
 
-                        if (playAudioTh and playAudioTh.isAlive()) or (audioTh and audioTh.isAlive()):
-                            errmsg = "Play thread hangs, it's important that you save the scripts and restart the program!"
-                            wx.CallAfter(FrameError, 3, script, errmsg, frame)
+                                if renderSafe:
+                                    re = AsyncCall(renderFrameSafe, script, frame, sfps).Wait()
+                                    if not re:
+                                        if re is None: # then error
+                                            errmsg = script.AVI.clip.get_error()
+                                            if not errmsg:
+                                                errmsg = 'Play Thread unknown GetFrame error'
+                                            wx.CallAfter(FrameError, 1, script, errmsg, frame)
+                                        break
+                                else:
+                                    re = self.sdlWindow.Render(script.AVI, frame)
+                                    if not re:
+                                        if (re is not None) or (not self.sdlWindow.running):
+                                            break
+                                        errmsg = script.AVI.error_message
+                                        if not errmsg:
+                                            errmsg = script.AVI.display_clip.get_error() or script.AVI.clip.get_error()
+                                        if not errmsg:
+                                            errmsg = 'Play Thread unknown GetFrame error'
+                                        wx.CallAfter(FrameError, 1, script, errmsg, frame)
+                                        break
 
-                        evFinish.wait(timeout=5)
-                        avsAudio.KillAudio()
-                        avsAudio = None
-                    self.playing_video = False
+                                    if not updateTh.isAlive():
+                                        updateTh = threading.Thread(target=th_Update, args=(frame, sfps,))
+                                        updateTh.daemon = True
+                                        updateTh.start()
+
+                                if drawBoth and not self.PaintAVIFrameLocked(wx.ClientDC(self.videoWindow), script, frame):
+                                    errmsg = 'Play thread unknown paint frame error'
+                                    wx.CallAfter(FrameError, 3, script, errmsg, frame)
+                                    break
+
+                            else:
+                                """
+                                script.AVI.display_clip.get_frame(frame)
+                                errmsg = script.AVI.display_clip.get_error()
+                                if errmsg is not None:
+                                    wx.CallAfter(FrameError, 1, script, errmsg, frame)
+                                    break
+                                """
+
+                                # PaintFrame must get the frame from both clips, so we get here threaded from both clips the frame and minimize the main thread time,
+                                # and _GetFrame is really threaded, but I don't know what priority Python threads have. Maybe the main thread is faster?
+                                if not script.AVI._GetFrame(frame):
+                                    errmsg = script.AVI.error_message
+                                    if not errmsg:
+                                        errmsg = script.AVI.display_clip.get_error() or script.AVI.clip.get_error()
+                                    if not errmsg:
+                                        errmsg = 'Play Thread unknown GetFrame error'
+                                    wx.CallAfter(FrameError, 1, script, errmsg, frame)
+                                    break
+
+
+                                if ms_interval > 0:
+                                    wait = (startTime+ms_interval)-time.clock()
+                                    if wait > 0:
+                                        time.sleep(wait) # precision depends on OS
+                                    #time.sleep(max((startTime+ms_interval)-time.clock(), 0))
+                                startTime = time.clock()
+                                """
+                                # paint frame and update the controls, default painting routine uses AsyncCall
+                                if not AsyncCall(paintFrame, script, frame, sfps).Wait():
+                                    errmsg = 'Play thread unknown paint frame error'
+                                    wx.CallAfter(FrameError, 3, script, errmsg, frame)
+                                    break
+                                """
+
+                                # Run's without AsyncCall and is also 10 - 40% faster. No Problems so far.
+                                # It uses a Rlock in PaintAVIFrameLocked to avoid collisions between the main and play thread
+                                # The main thread uses also this function if self.playing_video=True.
+                                if not self.PaintAVIFrameLocked(wx.ClientDC(self.videoWindow), script, frame):
+                                    errmsg = 'Play thread unknown paint frame error'
+                                    wx.CallAfter(FrameError, 3, script, errmsg, frame)
+                                    break
+
+                            ### end get frame and draw routines
+
+
+                            if avsAudio and not evStopAudio.isSet():
+                                #fr = get_set_current_audioframe(frame)
+                                qs = q_audio.qsize()
+                                if config == 0:
+                                    if qs < 2: # config 0, 3 x buffercount frames (default 3 x 2)
+                                        set_current_audio_frame(frame)
+                                        evGetBuffer.set()
+                                elif qs < 2:
+                                    set_current_audio_frame(frame)
+                                    evGetBuffer.set()
+
+                            # use it only if self.PaintAVIFrameLocked is used !!! else slower
+                            if not sdlWindow and not updateTh.isAlive():
+                                updateTh = threading.Thread(target=th_Update, args=(frame, sfps,))
+                                updateTh.daemon = True
+                                updateTh.start()
+
+                            """
+                            errmsg = script.AVI.error_message
+                            if errmsg is not None:
+                                wx.CallAfter(FrameError, 2, script, errmsg, frame)
+                                break
+                            """
+
+                            script.lastFramenum = frame
+                            if not self.playing_video:
+                                break
+
+                            maxFrame = self.videoSlider.GetVirtualMax()
+                            if self.currentframenum >= maxFrame:
+                                # play loop
+                                if (self.loop_start > -1) and (self.loop_start < maxFrame - 3)\
+                                    and (self.loop_end <= maxFrame): # continue, new lop_start is in the next run set
+                                    continue
+                                else:                               # then trimDialog not shown
+                                    if self.options['playloop'] and self.videoSlider.selmode == 0 and \
+                                        (self.videoSlider.maxValue - self.videoSlider.minValue > 3): # play also loop
+                                        wx.CallAfter(Replay)
+                                        break
+                                    else:
+                                        if self.videoSlider.offsetSet and self.timelineAutoScroll: # check for timeline range
+                                            if self.currentframenum < script.AVI.Framecount-1:
+                                                self.playing_video = False
+                                                AsyncCall(self.OnMenuSetTimeLineRange, frange=self.timelineRange).Wait()
+                                                self.playing_video = True
+                                                if self.currentframenum < self.videoSlider.GetVirtualMax():
+                                                    continue
+                                        wx.CallAfter(self.PlayPauseVideo, forceStop=True) # stop playback
+                                        break
+                    finally:
+                        # on thread termination wait for the other threads
+                        SetSystemTimeResolution(False)
+                        if sdlWindow and not renderSafe:
+                            self.sdlWindow.DeletePlaybackRenderer()
+                        if avsAudio:
+                            evStopAudio.set() # signal to stop audio
+                            evGetBuffer.set() # signal audioTh to stop waiting
+                            if audioTh and audioTh.isAlive():
+                                audioTh.join(5)
+
+                            if playAudioTh and playAudioTh.isAlive():
+                                playAudioTh.join(5)
+
+                            if (playAudioTh and playAudioTh.isAlive()) or (audioTh and audioTh.isAlive()):
+                                errmsg = "Play thread hangs, it's important that you save the scripts and restart the program!"
+                                wx.CallAfter(FrameError, 3, script, errmsg, frame)
+
+                            if not evFinish.wait(timeout=5):
+                                errmsg = "Play thread hangs, it's important that you save the scripts and restart the program!"
+                                wx.CallAfter(FrameError, 3, script, errmsg, frame)
+                                return
+                            avsAudio.KillAudio()
+                            avsAudio = None
+                            audioTh = None
+                        if updateTh and updateTh.isAlive():
+                            updateTh.join(5)
+                            if updateTh.isAlive():
+                                errmsg = "Play thread hangs, it's important that you save the scripts and restart the program!"
+                                wx.CallAfter(FrameError, 3, script, errmsg, frame)
+                        script.PlayThread.running = 0
+                        self.playing_video = False
 
                 # run the playback
                 th = threading.Thread(target=play, args=(self.currentframenum, interval, factor,))
                 th.daemon = True
                 script.PlayThread = th
+                th.running = 1
                 th.start()
 
             else: # wx.Timer on *nix.  There's some pending events issues

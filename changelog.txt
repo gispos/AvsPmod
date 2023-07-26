@@ -38,8 +38,54 @@ If, for example, there is a '-' in the file name of the dll, AvsPmod will report
 please rename this dll and replace the '-' with a '_'
 
 --------------------------
+Version 2.7.5.0 [2023-07-24] GPo, Pre-Release 18
+--------------------------
+* Hardware Accelerated (GPU) renderer window reworked.
+- D3DWindow uses only ARGB8888 if the clip itself is RGB32 else YUV420P8 (YV12).
+- No one AvsPmod filter can be used, only 'Split Clip' can be used. Or the clip must be RGB32.
+- Existing functions and shortcuts: 
+-   double click=fullscreen or not, mouse forward-backward=bookmark next-previous, mouse wheel=frame step, 
+-   numpad 4,5=frame step, numpad 2,8=jump custom units, numpad 0 or numpad . or middle mouse = Close
+-   minus key=toggle'Split Clip', key b=add remove bookmark
+* Added: Direct3D context menu with some options (e.g. you can hide the title bar and borders). 
+* Added: Video > Play video > 'Direct3D safe'. 
+- renders safer but slower (ColorBars YV12, FHD 794fps, FHD safe 238fps, ColorBars UHD YUV420P10 141fps and safe 104fps).
+- enable the safe mode only if you get errors on the fast mode (fast mode runs fully threaded).
+* Added: New double click layout for the video window, see below or reade the D3D Window readme.
+* Added: Play button context menu 'Speed x' 2x up to 16x
+* Changed: 'Prefetch display conversion' from Prefetch(2,2) to Prefetch(1,1). Slower but safer.
+* Changed: The Preview filter doesn't disable 'Fast YUV420 display conversion'. The user should decide this himself.
+- Remember: if the "Fast YUV auto reset" option is selected, the fast YUV conversion will be disabled when the script is changed or refreshed. 
+* Bugfix: When creating audio and preview filter enabled.
+* Bugfix: When an error clip was created it could lead to a code error.
+* Bugfix: Menu error
+* Bugfix: On DisplayFilter error, clip error was not reset when DisplayFilter was switched off (refresh was needed).
+-----------------------------------------------------------------------
+Video window fullscreen/fullsize doubel click layout left 0 to 50 pixel: (Not D3D Window)
+___
+d3d fullscreen (top start, 0)
+___
+normal fullscreen (top start, 51 pixel)
+___
+normal fullsize (top start, half height)
+___
+d3d fullsize (top start, height - 50 pixel)
+___
+
+Video window doubel click layout right, width -50 pixel:
+___
+Resample Filter current script (top start, 0)
+___
+normal fullscreen (top start, 51 pixel)
+___
+normal fullsize (top start, half height)
+___
+Resample Filter all scripts (top start heigth -50 pixel)
+-----------------------------------------------------------------------
+
+--------------------------
 Version 2.7.4.7 - 2.7.4.8 [2023-06-03] GPo
---------------------------.
+--------------------------
 * Audio playback is now WinXP 32bit compatible
 * Fast VUV > RGB conversion (DecodeYUVtoRGB.dll, DTL Doom9) now also for 32 bit available.
 * Added: Options > Font & Colors > Mis 2 > 'Video controls frame text field bold', use bold font style or not.

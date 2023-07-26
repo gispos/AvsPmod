@@ -25,6 +25,7 @@
 #     wxPython (tested on v2.8 Unicode and v2.9, v3.0.2 as the latest "classic)
 #               or 4.0.2: experimental not finished
 #     py2exe (tested on v0.6.9)
+#     Cython for cfunc.pyd, PySDL2 for d3d window
 # Additional dependencies for x86-64:
 #     cffi (tested on v0.9.2)
 #     pycparser (tested on v2.10)
@@ -179,8 +180,11 @@ data_files = [
             'readme_FastClip.txt',
             'readme_LocateFrame.txt',
             'readme_FullscreenZoom.txt',
+            'readme_D3D_Window.txt',
             'readme_Audio.txt',
-            'license_cpuid'
+            'license_cpuid',
+	    'DecodeYUVtoRGB.dll',
+            'SDL2.dll'
             ]
         ),
         ('lib', lib_extra),
@@ -287,7 +291,6 @@ if x86_64:
     data_files.append(('', # XXX: this path shouldn't be hard-coded
         [os.path.join('build', 'lib.win-amd64-{0}.{1}'.format(*sys.version_info[:2]),
          'avisynth_cffi_ext.pyd')]))
-    data_files.append('DecodeYUVtoRGB.dll')
 
 # Generate the dist files
 packages = []

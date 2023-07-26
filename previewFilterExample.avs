@@ -25,7 +25,7 @@ Tweak(hue=0.0, sat=1.0, bright=0, cont=1.0, coring=True, sse=False, startHue=0, 
 
 /*
         The sliders are only updated automatically when a preview filter is selected, or with a normal script update (refresh, reload, etc.)
-        There is also the possibility to read only the slider again (slider context menu)	
+        Or you must enable or disable the Preview Filter for an slider update. And there is also the possibility to read only the slider again (slider context menu)	
 
         A possibility to see your own name in the 'Preview filter' menu. (multiple same names allowed)
         You just have to write something after 'avsp_filter' and the text in this line must be longer than 19 characters (including /**avsp_filter)
