@@ -3330,17 +3330,20 @@ class SDLWindow(object):
             self.timer.cancel()
             self.timer = None
 
-    def StartPeepEvents(self):
+    def StartPeepEvents(self, func):
         if not self.timer and self.running:
-            self.timer = utils.RepeatTimer(0.02, self.PeepEvents)
+            self.timer = utils.RepeatTimer(0.02, func)
             self.timer.start()
-    """
+        """
+        self.eventWait = True
+        wx.CallAfter(self.PeepEventsWait) # bullshit
+        """
+
     def GetWindowPosSize(self):
         x, y, w, h = ctypes.c_int(),ctypes.c_int(),ctypes.c_int(),ctypes.c_int()
         sdl2.SDL_GetWindowPosition(self.window, ctypes.byref(x), ctypes.byref(y))
         sdl2.SDL_GetWindowSize(self.window, ctypes.byref(w), ctypes.byref(h))
         return (x,y,w,h)
-    """
 
     def StoreLastSize(self):
         if self.window:
@@ -3449,7 +3452,10 @@ class SDLWindow(object):
 
         self.running = True
         self.playback = playback
-        self.StartPeepEvents()
+        if playback:
+            self.StartPeepEvents(self.PlayThreadPeepEvents) # AsyncCall, run events in main thread
+        else:
+            self.StartPeepEvents(self.PeepEvents) # Hm, events in thread ( change it to main thread ?)
         return True
 
     def InitAVI(self, AVI, readMatrix=True):
@@ -3846,10 +3852,14 @@ class SDLWindow(object):
         self.app.PopupMenu(popup)
         popup.Destroy()
 
+
     # we run timer thread, but we need calling events in the main thread
-    # but testet, it works for AvsPmod in thread
+    # but testet, it works for AvsPmod in thread if not Playback
     # only all output's uses the main thread, AsyncCall
-    #@AsyncCallWrapper
+    # But on Playback the events must run in main thread
+    def PlayThreadPeepEvents(self):
+        AsyncCall(self.PeepEvents).Wait()
+
     def PeepEvents(self):
         """
         def _handleMouse(full=True):
@@ -3897,6 +3907,7 @@ class SDLWindow(object):
                     AsyncCall(self.Close).Wait()
                     if self.app.playing_video or self.app.playing_video == '':
                         wx.CallAfter(self.app.StopPlayback)
+                    break
 
                 elif event.type == sdl2.SDL_MOUSEWHEEL:
                     if event.wheel.y > 0:
@@ -4013,6 +4024,11 @@ class SDLWindow(object):
                         self.mouseOffset = None
                         if wx.GetMouseState().LeftIsDown():
                             self.lastLClick = time.clock()
+                        if self.timer:
+                            self.timer.setInterval(0.02)
+                    elif event.window.event == sdl2.SDL_WINDOWEVENT_FOCUS_LOST:
+                        if self.timer:
+                            self.timer.setInterval(0.1)
                         #_handleMouse(False)
                         #break
                     #elif event.window.event == sdl2.SDL_WINDOWEVENT_RESIZED:
@@ -4025,6 +4041,143 @@ class SDLWindow(object):
                 AsyncCall(self.Close).Wait()
                 if self.app.playing_video or self.app.playing_video == '':
                     wx.CallAfter(self.app.StopPlayback)
+
+    """
+    # What an shit!! sdl2.events.SDL_WaitEvent() eating all application events
+    def PeepEventsWait(self):
+        event = sdl2.SDL_Event()
+        while self.eventWait and self.running:
+            try:
+                sdl2.events.SDL_WaitEvent(event)
+                #while sdl2.events.SDL_PollEvent(ctypes.byref(event)) != 0:
+                if event.type == sdl2.SDL_QUIT:
+                    self.eventWait = False
+                    AsyncCall(self.Close).Wait()
+                    if self.app.playing_video or self.app.playing_video == '':
+                        wx.CallAfter(self.app.StopPlayback)
+                    break
+
+                elif event.type == sdl2.SDL_MOUSEWHEEL:
+                    if event.wheel.y > 0:
+                        if self.app.playing_video:
+                            AsyncCall(self.app.StopPlayback).Wait()
+                        AsyncCall(self.app.ShowVideoFrame, self.app.currentframenum + 1, focus=False).Wait()
+                    elif event.wheel.y < 0:
+                        if self.app.playing_video:
+                            AsyncCall(self.app.StopPlayback).Wait()
+                        AsyncCall(self.app.ShowVideoFrame, self.app.currentframenum - 1, focus=False).Wait()
+
+                elif event.type == sdl2.SDL_MOUSEBUTTONUP:
+                    self.mouseOffset = None
+
+                elif event.type == sdl2.SDL_MOUSEBUTTONDOWN:
+                    #_handleMouse()
+                    #break
+                    if event.button.button == sdl2.SDL_BUTTON_LEFT:
+                        if not self.isFullscreen and not self.isFullsize and \
+                            (self.app.options['sdlallowmousemove'] or self.app.options['sdlnotitlebar']):
+                                self.mouseOffset = wx.GetMousePosition()
+                        else: self.mouseOffset = None
+
+                        click = time.clock()
+                        if (click - 0.1 > self.lastLClick) and (click - 0.5 < self.lastLClick):
+                            if self.sizeMode == 1: # TODO ? not used, self.sizeMode is 0
+                                self.StoreLastSize()
+                                AsyncCall(self.ToggleFullsize).Wait()
+                            else:
+                                self.StoreLastSize()
+                                AsyncCall(self.ToggleFullscreen).Wait()
+                        self.lastLClick = time.clock()
+
+                    else:
+                        self.mouseOffset = None
+                        if event.button.button == sdl2.SDL_BUTTON_RIGHT:
+                            bstate = sdl2.ext.mouse_button_state()
+                            if bstate.left != 1 and bstate.right == 1:
+                                wx.CallAfter(self.OnPopupMenu)
+
+                            else:
+                                pass # later
+
+                        if event.button.button == sdl2.SDL_BUTTON_X1:
+                            AsyncCall(self.app.GotoNextBookmark, reverse=True, forceCursor=True, focus=False).Wait()
+
+                        elif event.button.button == sdl2.SDL_BUTTON_X2:
+                            AsyncCall(self.app.GotoNextBookmark, reverse=False, forceCursor=True, focus=False).Wait()
+
+                        elif event.button.button == sdl2.SDL_BUTTON_MIDDLE:
+                            wx.CallAfter(self.Close)
+
+
+                elif event.type == sdl2.SDL_MOUSEMOTION:
+                    if self.mouseOffset is not None and event.button.button == sdl2.SDL_BUTTON_LEFT and not self.isFullscreen and not self.isFullsize:
+                        xy = wx.GetMousePosition()
+                        x, y = ctypes.c_int(0), ctypes.c_int(0)
+                        sdl2.SDL_GetWindowPosition(self.window, ctypes.byref(x), ctypes.byref(y))
+                        sdl2.SDL_SetWindowPosition(self.window, x.value + (xy[0] - self.mouseOffset[0]), y.value + (xy[1] - self.mouseOffset[1]))
+                        self.mouseOffset = xy
+
+                elif event.type == sdl2.SDL_KEYDOWN: # BUG on some keys no events (ESC, Enter, Arrows, Up, Down)
+                    #if ctypes.windll.user32.GetAsyncKeyState(int('0x27', 0)) > 100:
+                        #AsyncCall(self.app.ShowVideoFrame, self.app.currentframenum + 1, focus=False).Wait()
+                        #break
+
+                    if event.key.keysym.sym == sdl2.SDLK_SPACE:
+                        wx.CallAfter(self.app.PlayPauseVideo, focus=False)
+
+                    if event.key.keysym.sym in [sdl2.SDLK_KP_6, sdl2.SDLK_RIGHT]:
+                        if self.app.playing_video:
+                            AsyncCall(self.app.StopPlayback).Wait()
+                        AsyncCall(self.app.ShowVideoFrame, self.app.currentframenum + 1, focus=False).Wait()
+
+                    if event.key.keysym.sym in [sdl2.SDLK_KP_4, sdl2.SDLK_LEFT]:
+                        if self.app.playing_video:
+                            AsyncCall(self.app.StopPlayback).Wait()
+                        AsyncCall(self.app.ShowVideoFrame, self.app.currentframenum - 1, focus=False).Wait()
+
+                    if event.key.keysym.sym in [sdl2.SDLK_KP_8, sdl2.SDLK_UP]:
+                        AsyncCall(self.app.OnMenuVideoNextCustomUnit, focus=False).Wait()
+
+                    if event.key.keysym.sym in [sdl2.SDLK_KP_2, sdl2.SDLK_DOWN]:
+                        AsyncCall(self.app.OnMenuVideoPrevCustomUnit, focus=False).Wait()
+
+                    if event.key.keysym.sym in [sdl2.SDLK_KP_PERIOD, sdl2.SDLK_KP_0]:
+                        wx.CallAfter(self.Close)
+
+                    if event.key.keysym.sym == sdl2.SDLK_MINUS:
+                        wx.CallAfter(self.app.SplitClipCtrl.Toggle, focus=False)
+
+                elif event.type == sdl2.SDL_KEYUP:
+                    if event.key.keysym.sym == sdl2.SDLK_b:
+                        wx.CallAfter(self.app.OnMenuVideoBookmark)
+
+                elif event.type == sdl2.SDL_WINDOWEVENT:
+                    if event.window.event == sdl2.SDL_WINDOWEVENT_SIZE_CHANGED:
+                        if self.renderer and not self.app.playing_video:
+                            AsyncCall(self.Render_frame, self.AVI).Wait()
+                    elif event.window.event == sdl2.SDL_WINDOWEVENT_ENTER:
+                        AsyncCall(sdl2.SDL_RaiseWindow, self.window).Wait()
+                    elif event.window.event == sdl2.SDL_WINDOWEVENT_RESTORED:
+                        if self.app.IsIconized():
+                            wx.CallAfter(self.app.Iconize, False)
+                    elif event.window.event == sdl2.SDL_WINDOWEVENT_FOCUS_GAINED:
+                        # SDL BUG: sdl gives no mouse event on first click if the window not focused
+                        self.mouseOffset = None
+                        if wx.GetMouseState().LeftIsDown():
+                            self.lastLClick = time.clock()
+
+                        #_handleMouse(False)
+                        #break
+                    #elif event.window.event == sdl2.SDL_WINDOWEVENT_RESIZED:
+                        #if self.renderer:
+                            #self.Render_frame(self.AVI)
+            except:
+                wx.Bell()
+                if self.isFullscreen:
+                    AsyncCall(self.Close).Wait()
+                    if self.app.playing_video or self.app.playing_video == '':
+                        wx.CallAfter(self.app.StopPlayback)
+    """
 
     def CleareEvents(self):
         sdl2.events.SDL_PumpEvents()
@@ -4040,8 +4193,8 @@ class SDLWindow(object):
 
     # with format check
     def Render_frame(self, AVI, framenr=None):
-        #if self.playback and self.running:
-            #self.DeletePlaybackRenderer()
+        if self.running and (self.playback or self.app.playing_video):
+            return
         if AVI is None:
             AVI = self.app.currentScript.AVI
             if AVI is None:
@@ -4140,6 +4293,7 @@ class SDLWindow(object):
         sdl2.SDL_RenderPresent(self.renderer)
         return True
 
+    # for fast playback rendering the renderer and texture must be created from the playthread
     def CreatePlaybackRenderer(self, AVI):
         AsyncCall(self.StopPeepEvents).Wait()
         if self.renderer:
@@ -4147,7 +4301,8 @@ class SDLWindow(object):
             self.renderer = None
         self.InitWND(True)
         self.InitAVI(AVI)
-        AsyncCall(self.StartPeepEvents).Wait()
+        AsyncCall(self.StartPeepEvents, self.PlayThreadPeepEvents).Wait()
+        #AsyncCall(self.StartPeepEvents, self.PeepEvents).Wait()
 
     def DeletePlaybackRenderer(self):
         AsyncCall(self.StopPeepEvents).Wait()
@@ -4157,7 +4312,7 @@ class SDLWindow(object):
         if self.running:
             AsyncCall(self.InitWND).Wait()
             AsyncCall(self.InitAVI, self.AVI).Wait()
-            AsyncCall(self.StartPeepEvents).Wait()
+            AsyncCall(self.StartPeepEvents, self.PeepEvents).Wait()
 
     def GetRenderInfo(self):
         if not self.renderer:
@@ -23981,11 +24136,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         # Check thread still alive
         if self.AviThread_Running(script, prompt=False):
-            #try:
-                #self.DeletePendingEvents()
-           # except:
-                #pass
             return
+
+        #if self.playing_video and self.sdlWindow.running and not self.options['sdlrendersafe']:
+            #self.StopPlayback()
 
         if script.AVI is None:
             forceRefresh = True
@@ -24341,7 +24495,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if script.AVI.readFrameProps:
                 self.AVICallBack('property', script.AVI.properties)
 
-            if self.sdlWindow and self.sdlWindow.running:
+            if self.sdlWindow and self.sdlWindow.running and not self.playing_video:
                 self.sdlWindow.Render_frame(script.AVI)
 
         finally: # so also on abort (return)
@@ -28682,8 +28836,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         wx.Yield()
         self.Lock.release()
 
-    def PlayPauseVideo(self, debug_stats=False, refreshFrame=True, forceStop=None, focus=True):
+    # do not set reCall outside !! must be 0
+    def PlayPauseVideo(self, debug_stats=False, refreshFrame=True, forceStop=None, focus=True, reCall=0):
         """Play/pause the preview clip"""
+
+
         def SetSystemTimeResolution(high):
             if high:
                 self._timeBeginPeriod = ctypes.windll.winmm.timeBeginPeriod
@@ -28712,27 +28869,36 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     SetSystemTimeResolution(False)
             else:
                 self.play_timer.Stop()
-            script = self.currentScript
-            self.playing_video = False
-            wx.GetApp().ProcessIdle()
-            self.zoom_antialias = self.options['zoom_antialias']
 
-            self.play_button.SetBitmapLabel(self.bmpPlay)
-            self.play_button.Refresh()
-            if self.separatevideowindow:
-                self.play_button2.SetBitmapLabel(self.bmpPlay)
-                self.play_button2.Refresh()
+            script = self.currentScript
+            wx.GetApp().ProcessIdle()
+            self.playing_video = False
 
             try: # must wait for thread finish or the thread paint the frame after ShowVideoFrame
                 if self.PlayThread_Running(script, prompt=False):
                     th = script.PlayThread
-                    t = time.time() + 5.0
-                    while th.isAlive() and th.running == 1 and time.time() <= t:
-                        # threads enters the main thread (AsyncCall) so we cannot block the main thread
-                        # while waiting for play thread termination
-                        if wx.GetApp().HasPendingEvents():
-                            wx.GetApp().ProcessPendingEvents()
-                        th.join(0.1)
+                    th.onClosing = True
+                    try:
+                        t = time.time() + 5.0
+                        while th.isAlive() and th.running == 1 and time.time() <= t:
+                            # threads enters the main thread (AsyncCall) so we cannot block the main thread
+                            # while waiting for play thread termination
+                            if wx.GetApp().HasPendingEvents():
+                                wx.GetApp().ProcessPendingEvents()
+                            th.join(0.1)
+                        if th.isAlive() and th.running == 1:
+                            pass
+                            #wx.GetApp().ProcessIdle()
+                    finally:
+                        th.onClosing = False
+                    """
+                    # if play thread has entered the main thread call after again stop (max 2 times)
+                    if reCall < 1 and th.isAlive() and th.running == 1:
+                        wx.Bell()
+                        reCall += 1
+                        wx.CallAfter(self.PlayPauseVideo, refreshFrame=refreshFrame, forceStop=True, focus=focus, reCall=reCall)
+                        return
+                    """
 
                 if self.AviThread_Running(script, prompt=False, checkFrameThread=False):
                     script.AviThread.join(5.0)
@@ -28744,6 +28910,14 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         wx.MilliSleep(20)
             except:
                 pass
+
+            self.zoom_antialias = self.options['zoom_antialias']
+            self.play_button.SetBitmapLabel(self.bmpPlay)
+            self.play_button.Refresh()
+            if self.separatevideowindow:
+                self.play_button2.SetBitmapLabel(self.bmpPlay)
+                self.play_button2.Refresh()
+
             if refreshFrame:
                 if self.previewOK():
                     self.ShowVideoFrame(self.currentframenum, forceLayout=True, focus=focus)
@@ -28754,6 +28928,14 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         else:
             script = self.currentScript
             self.snapShotIdx = 0
+
+            th = script.PlayThread
+            if th and th.isAlive() and th.onClosing:
+                if wx.GetApp().HasPendingEvents():
+                    wx.GetApp().ProcessPendingEvents()
+                time.sleep(0.05)
+                return
+
             if script.AVI and script.AVI.IsAudioActive():
                 scrubbing = script.AVI.SetAudio(False)
                 if scrubbing:
@@ -29361,6 +29543,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                     wx.CallAfter(FrameError, 3, script, errmsg, frame)
                                     break
 
+
+
                             else:
                                 """
                                 script.AVI.display_clip.get_frame(frame)
@@ -29471,20 +29655,20 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                 playAudioTh.join(5)
 
                             if (playAudioTh and playAudioTh.isAlive()) or (audioTh and audioTh.isAlive()):
-                                errmsg = "Play thread hangs, it's important that you save the scripts and restart the program!"
+                                errmsg = "(1) Audio play thread hangs, it's important that you save the scripts and restart the program!"
                                 wx.CallAfter(FrameError, 3, script, errmsg, frame)
 
                             if not evFinish.wait(timeout=5):
-                                errmsg = "Play thread hangs, it's important that you save the scripts and restart the program!"
+                                errmsg = "(2) Audio play thread hangs, it's important that you save the scripts and restart the program!"
                                 wx.CallAfter(FrameError, 3, script, errmsg, frame)
                                 return
                             avsAudio.KillAudio()
                             avsAudio = None
                             audioTh = None
                         if updateTh and updateTh.isAlive():
-                            updateTh.join(5)
+                            updateTh.join(6)
                             if updateTh.isAlive():
-                                errmsg = "Play thread hangs, it's important that you save the scripts and restart the program!"
+                                errmsg = "(3) Play thread hangs, it's important that you save the scripts and restart the program!"
                                 wx.CallAfter(FrameError, 3, script, errmsg, frame)
                         script.PlayThread.running = 0
                         self.playing_video = False
@@ -29494,6 +29678,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 th.daemon = True
                 script.PlayThread = th
                 th.running = 1
+                th.onClosing = False
                 th.start()
 
             else: # wx.Timer on *nix.  There's some pending events issues

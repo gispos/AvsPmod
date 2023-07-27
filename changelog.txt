@@ -38,10 +38,10 @@ If, for example, there is a '-' in the file name of the dll, AvsPmod will report
 please rename this dll and replace the '-' with a '_'
 
 --------------------------
-Version 2.7.5.0 [2023-07-24] GPo, Pre-Release 18
+Version 2.7.5.0 - 2.7.5.1 [2023-07-27] GPo
 --------------------------
-* Hardware Accelerated (GPU) renderer window reworked.
-- D3DWindow uses only ARGB8888 if the clip itself is RGB32 else YUV420P8 (YV12).
+* Hardware Accelerated (GPU) renderer window (reade the Help > D3D Window readme).
+- the d3d renderer uses YUV420P8 (YV12) for all color formats. Only if the clip is RGB32 then ARGB8888 is used.
 - No one AvsPmod filter can be used, only 'Split Clip' can be used. Or the clip must be RGB32.
 - Existing functions and shortcuts: 
 -   double click=fullscreen or not, mouse forward-backward=bookmark next-previous, mouse wheel=frame step, 
@@ -54,12 +54,12 @@ Version 2.7.5.0 [2023-07-24] GPo, Pre-Release 18
 * Added: New double click layout for the video window, see below or reade the D3D Window readme.
 * Added: Play button context menu 'Speed x' 2x up to 16x
 * Changed: 'Prefetch display conversion' from Prefetch(2,2) to Prefetch(1,1). Slower but safer.
-* Changed: The Preview filter doesn't disable 'Fast YUV420 display conversion'. The user should decide this himself.
+* Changed: The Preview filter doesn't disable 'Fast YUV420 display conversion'.
 - Remember: if the "Fast YUV auto reset" option is selected, the fast YUV conversion will be disabled when the script is changed or refreshed. 
 * Bugfix: When creating audio and preview filter enabled.
 * Bugfix: When an error clip was created it could lead to a code error.
-* Bugfix: Menu error
-* Bugfix: On DisplayFilter error, clip error was not reset when DisplayFilter was switched off (refresh was needed).
+* Bugfix: In case of a 'Display Filter' error, clip error was not reset when the 'Display Filter' was switched off (refresh was needed).
+v2.7.5.1 Bugfix: Playback with D3DWindow and simultaneous actions in normal video window led to blocking of the program.
 -----------------------------------------------------------------------
 Video window fullscreen/fullsize doubel click layout left 0 to 50 pixel: (Not D3D Window)
 ___

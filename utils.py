@@ -194,6 +194,8 @@ class RepeatTimer(threading.Thread):
         self.finished = threading.Event()
     def cancel(self):
         self.finished.set()
+    def setInterval(self, interval):
+        self.interval = interval
     def run(self):
         while not self.finished.is_set():
             self.finished.wait(self.interval)

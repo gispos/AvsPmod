@@ -79,7 +79,7 @@ def main():
 
     tempdir = tempfile.mkdtemp()
     atexit.register(shutil.rmtree, tempdir)
-    programdirname = os.path.join(tempdir, global_vars.name)
+    programdirname = os.path.join(tempdir, global_vars.name + '_64' if x86_64 else global_vars.name + '_32')
 
     # Create/update the master translation file
     print('\nCreating translation file...')
@@ -128,6 +128,8 @@ def main():
             err = 1 #Breaks the upx, is error for LargAdressAware save time
 
     # Compress the files with UPX, if available
+    # DISABLED ! getting errors on the exe
+    """
     if x86_64:
         print("\nSkipping UPX'ing on x86-64 builds")
     elif  __debug__ or err == 1:
@@ -144,6 +146,7 @@ def main():
             subprocess.call(args)
         else:
             print("\nUPX not found")
+    """
 
     # Manage the files
     os.rename(os.path.join(programdirname, 'run.exe'),
