@@ -3311,10 +3311,6 @@ class SDLWindow(object):
         self.mouseOffset = None
         #self.keystate = ctypes.c_uint8
         #self.keystate = sdl2.SDL_GetKeyboardState(None)
-        #try:
-            #self.sdlCursor = wx.Cursor(os.path.join(self.app.programdir, r'sdl.cur'), wx.BITMAP_TYPE_CUR)
-        #except:
-            #self.sdlCursor = wx.StockCursor(wx.CURSOR_DEFAULT)
         """
         for itemName, shortcut, id in self.app.options['shortcuts']:
             if itemName.endswith('D3D Window'):
@@ -3338,30 +3334,132 @@ class SDLWindow(object):
         self.eventWait = True
         wx.CallAfter(self.PeepEventsWait) # bullshit
         """
+    def _checkDocking(self):
+        p =  self.GetWindowPosSize()
+        dw, dh = wx.DisplaySize()
+        snap = 0
+        # left, top and bottom
+        if p[0].value < -(p[2].value - (p[2].value // 1.4)):
+            if p[1].value < -(p[3].value - (p[3].value // 1.4)):
+                snap = 1
+            elif p[1].value > dh - (p[3].value // 1.4):
+                snap = 3
+        # right, top and bottom
+        elif p[0].value > dw - (p[2].value // 1.4):
+            if p[1].value < -(p[3].value - (p[3].value // 1.4)):
+                snap = 2
+            elif p[1].value > dh - (p[3].value // 1.4):
+                snap = 4
+        if snap > 0:
+            if self.IsSameMonitor():
+                self.app.options['sdlwindowdocking'] = snap
+                x,y = self._calcDockingPos()
+                if x:
+                    self.SetWindowPos(x, y, snap)
+                else:
+                    self.SetWindowPos(snap=0)
+                    wx.Bell()
+                self.HideTitleBar(True)
+
+    def _calcDockingPos(self, safeAsDefault=False, withOffset=False):
+        snap = self.app.options['sdlwindowdocking']
+        if snap < 1:
+            return None, None
+        int50 = intPPI(51)
+        p = self.GetWindowPosSize()
+        if withOffset:
+            w, h = p[2].value, p[3].value
+        else:
+            w = h = 0
+        if self.app.previewWindowVisible:
+            obj = self.app.videoWindow
+        else:
+            obj = self.app.currentScript
+            snap = 2 if snap == 1 else 4 if snap == 3 else snap
+        r = obj.GetClientRect()
+        if snap == 1:
+            x, y = r[0], r[1] + int50
+        elif snap == 2:
+            x, y = r[2]-w, r[1] + int50
+        elif snap == 3:
+            x, y = r[0], (r[3] - h) - int50
+        else:
+            x, y = r[2], (r[3] - h) - int50
+        x,y = obj.ClientToScreen(wx.Point(x,y))
+        #if obj == self.app:
+            #y = self.app.options['sdlwindowrect'][1].value
+        if safeAsDefault:
+            self.app.options['sdlwindowrect'][0].value = x
+            self.app.options['sdlwindowrect'][1].value = y
+        return x, y
 
     def GetWindowPosSize(self):
+        if not self.window:
+            return (None,None,None,None)
         x, y, w, h = ctypes.c_int(),ctypes.c_int(),ctypes.c_int(),ctypes.c_int()
         sdl2.SDL_GetWindowPosition(self.window, ctypes.byref(x), ctypes.byref(y))
         sdl2.SDL_GetWindowSize(self.window, ctypes.byref(w), ctypes.byref(h))
         return (x,y,w,h)
 
+    def SetWindowPos(self, x=None,y=None, snap=0, calcDockingPos=False):
+        if not self.running or not self.IsNormalSize():
+            return
+        p = self.GetWindowPosSize()
+        dw, dh = wx.DisplaySize()
+        if snap > 0:
+            if calcDockingPos:
+                x, y = self._calcDockingPos()
+            b = False
+            w = p[2].value if snap in [2,4] else 0
+            h = p[3].value if snap in [3,4] else 0
+            if x is not None:
+                if (p[0].value + w > x) or (p[0].value + w < x):
+                    b = True
+                x = x - w
+            if y is not None:
+                if (p[1].value + h > y) or (p[1].value + h < y):
+                    b = True
+                y = y - h
+            if not b:
+                return
+        if x is None: x = p[0].value
+        if y is None: y = p[1].value
+        x = max(min(x, dw-p[2].value), 0)
+        y = max(min(y, dh-p[3].value), 0)
+        sdl2.SDL_SetWindowPosition(self.window, x, y)
+        self.app.options['sdlwindowrect'][0].value = x
+        self.app.options['sdlwindowrect'][1].value = y
+
+    def _ensureWndPos(self, rect):
+        int50 = intPPI(50)
+        dw, dh = wx.DisplaySize()
+        if (rect[0].value < -(rect[2].value-int50)) or (rect[0].value > dw -int50)  or (rect[1].value < -(rect[3].value-int50)) or (rect[1].value > dh- int50):
+            rect[0].value = rect[1].value = 0
+        return rect
+
     def StoreLastSize(self):
-        if self.window:
-            if not self.isFullscreen and not self.isFullsize:
-                if sdl2.SDL_GetWindowFlags(self.window) & sdl2.SDL_WINDOW_MAXIMIZED != sdl2.SDL_WINDOW_MAXIMIZED:
-                    x, y, w, h = ctypes.c_int(),ctypes.c_int(),ctypes.c_int(),ctypes.c_int()
-                    sdl2.SDL_GetWindowPosition(self.window, ctypes.byref(x), ctypes.byref(y))
-                    sdl2.SDL_GetWindowSize(self.window, ctypes.byref(w), ctypes.byref(h))
-                    self.app.options['sdlwindowrect'] = (max(x,0),max(y,0), max(w, 240), max(h,120))
+        if self.window and self.IsNormalSize():
+            x, y, w, h = ctypes.c_int(),ctypes.c_int(),ctypes.c_int(),ctypes.c_int()
+            sdl2.SDL_GetWindowPosition(self.window, ctypes.byref(x), ctypes.byref(y))
+            sdl2.SDL_GetWindowSize(self.window, ctypes.byref(w), ctypes.byref(h))
+            self.app.options['sdlwindowrect'] = (x,y,w,h)
 
     def ResetLastSize(self):
         self.SetResizable(True)
         r = self.app.options['sdlwindowrect']
-        if r[0] < 20 or r[1] < 20:
-            r[0] = r[1] = 20
         sdl2.SDL_SetWindowFullscreen(self.window, 0)
-        sdl2.SDL_SetWindowPosition(self.window, r[0] , r[1])
         sdl2.SDL_SetWindowSize(self.window, r[2], r[3])
+        sdl2.SDL_SetWindowPosition(self.window, r[0] , r[1])
+        if self.app.options['sdlwindowdocking'] > 0:
+            x, y = self._calcDockingPos(False)
+            if x:
+                if x != r[0].value or y != r[1].value:
+                    self.SetWindowPos(x,y, self.app.options['sdlwindowdocking'])
+
+    def IsNormalSize(self):
+        return not self.isFullscreen and not self.isFullsize and \
+                sdl2.SDL_GetWindowFlags(self.window) & sdl2.SDL_WINDOW_MAXIMIZED != sdl2.SDL_WINDOW_MAXIMIZED and \
+                sdl2.SDL_GetWindowFlags(self.window) & sdl2.SDL_WINDOW_FULLSCREEN_DESKTOP != sdl2.SDL_WINDOW_FULLSCREEN_DESKTOP
 
     def Close(self):
         self.running = False
@@ -3389,6 +3487,7 @@ class SDLWindow(object):
         #if count > 2:
         self.AVI = None
         self.playback = False
+        self.mouseOffset = None
         if self.app.options['alwaysontop'] and not self.app.HasFlag(wx.STAY_ON_TOP):
             self.app.ToggleWindowStyle(wx.STAY_ON_TOP)
         #print(str(count))
@@ -3421,9 +3520,7 @@ class SDLWindow(object):
                 return
         if self.window is None:
             if mThread:
-                rect = self.app.options['sdlwindowrect']
-                if rect[0] < 0 or rect[1] < 0:
-                    rect[0] = rect[1] = 0
+                rect = self._ensureWndPos(self.app.options['sdlwindowrect'])
                 flags = sdl2.SDL_WINDOW_RESIZABLE|sdl2.SDL_WINDOW_ALWAYS_ON_TOP|sdl2.SDL_WINDOW_HIDDEN
                 if self.app.options['sdlnotitlebar']: flags = flags|sdl2.SDL_WINDOW_BORDERLESS
                 self.window = sdl2.SDL_CreateWindow('AvsPmod', rect[0], rect[1], rect[2], rect[3], flags)
@@ -3524,10 +3621,15 @@ class SDLWindow(object):
                 self.isFullscreen = False
                 if self.app.UseAviThread:
                     self.ToggleFullscreen()
-                    #self.isFullsize = False
             elif self.isFullsize:
                 self.isFullscreen = False
                 self.ToggleFullsize(True)
+
+            if self.app.options['sdlwindowdocking'] > 0:
+                if self.IsNormalSize():
+                    x, y = self._calcDockingPos(safeAsDefault=True)
+                    if x: self.SetWindowPos(x,y, self.app.options['sdlwindowdocking'])
+
             if sdl2.SDL_GetWindowFlags(self.window) & sdl2.SDL_WINDOW_SHOWN != sdl2.SDL_WINDOW_SHOWN:
                 sdl2.SDL_ShowWindow(self.window)
                 if not self.isFullscreen:
@@ -3540,7 +3642,7 @@ class SDLWindow(object):
             self.Close()
 
     def IsFullScreen(self):
-        return self.running and self.isFullscreen
+        return self.window and sdl2.SDL_GetWindowFlags(self.window) & sdl2.SDL_WINDOW_FULLSCREEN_DESKTOP == sdl2.SDL_WINDOW_FULLSCREEN_DESKTOP
 
     def SetResizable(self, resizable):
         if resizable:
@@ -3591,8 +3693,6 @@ class SDLWindow(object):
             except:
                 wx.Bell()
                 return
-            if rect[0] < 0 or rect[1] < 0:
-                rect[0] = rect[1] = 0
             self.SetResizable(True)
             if self.isFullscreen:
                 self.ToggleFullscreen()
@@ -3675,6 +3775,27 @@ class SDLWindow(object):
         self.YUV_matrix = Rec
         self.app.options['sdlyuvmatrix'] = Rec
 
+    def HideTitleBar(self, hide):
+        flag = sdl2.SDL_GetWindowFlags(self.window) & sdl2.SDL_WINDOW_BORDERLESS == sdl2.SDL_WINDOW_BORDERLESS
+        if flag == hide:
+            return
+        if flag:
+            self.app.options['sdlnotitlebar'] = False
+            flag = sdl2.SDL_TRUE
+        else:
+            self.app.options['sdlnotitlebar'] = True
+            flag = sdl2.SDL_FALSE
+        if self.isFullscreen:
+            self.isFullsize = False
+            self.ToggleFullscreen()
+        if self.isFullsize:
+            self.isFullscreen = False
+            self.ToggleFullsize()
+        self.SetResizable(True)
+        sdl2.SDL_SetWindowBordered(self.window, flag)
+        sdl2.SDL_SetWindowFullscreen(self.window, sdl2.SDL_WINDOW_FULLSCREEN_DESKTOP)
+        sdl2.SDL_SetWindowFullscreen(self.window, 0)
+
     def OnPopupMenu(self):
 
         def OnSetSize(event):
@@ -3690,8 +3811,7 @@ class SDLWindow(object):
             if label == _('Set size 1'): rect = self.app.options['sdlwindowrect1']
             elif label == _('Set size 2'): rect = self.app.options['sdlwindowrect2']
             else: rect = self.app.options['sdlwindowrect3']
-            if rect[0] < 0 or rect[1] < 0:
-                rect[0] = rect[1] = 0
+            rect = self._ensureWndPos(rect)
             self.SetResizable(True)
             if self.isFullscreen:
                 self.ToggleFullscreen()
@@ -3704,7 +3824,7 @@ class SDLWindow(object):
         def OnSaveSize(event):
             item = popup.FindItemById(event.GetId())
             label = item.GetLabel()
-            if self.isFullscreen or self.isFullsize or sdl2.SDL_GetWindowFlags(self.window) & sdl2.SDL_WINDOW_MAXIMIZED == sdl2.SDL_WINDOW_MAXIMIZED:
+            if not self.IsNormalSize():
                 wx.Bell()
                 return
             x, y, w, h = ctypes.c_int(),ctypes.c_int(),ctypes.c_int(),ctypes.c_int()
@@ -3725,22 +3845,11 @@ class SDLWindow(object):
                 self.mouseOffset = None
             elif label == _('No Titlebar and border'):
                 flag = sdl2.SDL_GetWindowFlags(self.window) & sdl2.SDL_WINDOW_BORDERLESS == sdl2.SDL_WINDOW_BORDERLESS
-                if flag:
-                    self.app.options['sdlnotitlebar'] = False
-                    flag = sdl2.SDL_TRUE
-                else:
-                    self.app.options['sdlnotitlebar'] = True
-                    flag = sdl2.SDL_FALSE
-                if self.isFullscreen:
-                    self.isFullsize = False
-                    self.ToggleFullscreen()
-                if self.isFullsize:
-                    self.isFullscreen = False
-                    self.ToggleFullsize()
-                self.SetResizable(True)
-                sdl2.SDL_SetWindowBordered(self.window, flag)
-                sdl2.SDL_SetWindowFullscreen(self.window, sdl2.SDL_WINDOW_FULLSCREEN_DESKTOP)
-                sdl2.SDL_SetWindowFullscreen(self.window, 0)
+                self.HideTitleBar(not flag)
+            elif label == _('Disable docking'):
+                self.app.options['sdlwindowdocking'] = 0
+            elif label == _('Enable docking'):
+                wx.MessageBox(_('In a monitor corner move the window more than half the size out of the monitor'), 'AvsPmod D3D Window')
         def OnSetQuality(event):
             item = popup.FindItemById(event.GetId())
             label = item.GetLabel()
@@ -3841,6 +3950,9 @@ class SDLWindow(object):
         AddItem(optionsMenu, 'No Titlebar and border', True, self.app.options['sdlnotitlebar'], OnOptions)
         AddItem(optionsMenu, 'Move window with mouse', True, self.app.options['sdlallowmousemove'] or self.app.options['sdlnotitlebar'], OnOptions)
         AddItem(optionsMenu, 'Allow fullsize', True, self.app.options['sdlallowfullsize'], OnOptions)
+        if self.app.options['sdlwindowdocking'] > 0:
+            AddItem(optionsMenu, 'Disable docking', False, False, OnOptions)
+        else: AddItem(optionsMenu, 'Enable docking', False, False, OnOptions)
         popup.AppendSubMenu(optionsMenu, 'Additional')
         popup.AppendSeparator()
         # rest
@@ -3894,15 +4006,15 @@ class SDLWindow(object):
         #event = sdl2.SDL_Event()
         events = sdl2.ext.get_events()
 
-        #b = False
+        b = False
         try:
             #while sdl2.events.SDL_PollEvent(ctypes.byref(event)) != 0:
             for event in events:
-                """ test the loop, it is ok, fires only on sdl window input
-                if not b:
-                    b = True
-                    wx.Bell()
-                """
+                #test the loop, it is ok, fires only on sdl window input
+                #if not b:
+                    #b = True
+                    #wx.Bell()
+
                 if event.type == sdl2.SDL_QUIT:
                     AsyncCall(self.Close).Wait()
                     if self.app.playing_video or self.app.playing_video == '':
@@ -3921,10 +4033,12 @@ class SDLWindow(object):
                     break
                 elif event.type == sdl2.SDL_MOUSEBUTTONUP:
                     self.mouseOffset = None
+                    if event.button.button == sdl2.SDL_BUTTON_LEFT:
+                        self._checkDocking()
 
                 elif event.type == sdl2.SDL_MOUSEBUTTONDOWN:
-                    #_handleMouse()
-                    #break
+                    if self.timer.interval > 0.02:
+                        self.timer.setInterval(0.02)
                     if event.button.button == sdl2.SDL_BUTTON_LEFT:
                         if not self.isFullscreen and not self.isFullsize and \
                             (self.app.options['sdlallowmousemove'] or self.app.options['sdlnotitlebar']):
@@ -3940,7 +4054,6 @@ class SDLWindow(object):
                                 self.StoreLastSize()
                                 AsyncCall(self.ToggleFullscreen).Wait()
                         self.lastLClick = time.clock()
-                        break
                     else:
                         self.mouseOffset = None
                         if event.button.button == sdl2.SDL_BUTTON_RIGHT:
@@ -3959,15 +4072,17 @@ class SDLWindow(object):
                             break
                         elif event.button.button == sdl2.SDL_BUTTON_MIDDLE:
                             wx.CallAfter(self.Close)
-                            break
+                    break
 
                 elif event.type == sdl2.SDL_MOUSEMOTION:
-                    if self.mouseOffset is not None and event.button.button == sdl2.SDL_BUTTON_LEFT and not self.isFullscreen and not self.isFullsize:
-                        xy = wx.GetMousePosition()
-                        x, y = ctypes.c_int(0), ctypes.c_int(0)
-                        sdl2.SDL_GetWindowPosition(self.window, ctypes.byref(x), ctypes.byref(y))
-                        sdl2.SDL_SetWindowPosition(self.window, x.value + (xy[0] - self.mouseOffset[0]), y.value + (xy[1] - self.mouseOffset[1]))
-                        self.mouseOffset = xy
+                    if self.mouseOffset:
+                        state = wx.GetMouseState() # SDL Bug no left down event on first focus
+                        if state.LeftIsDown() and not self.isFullscreen and not self.isFullsize:
+                            xy = state.GetPosition()
+                            x, y = ctypes.c_int(0), ctypes.c_int(0)
+                            sdl2.SDL_GetWindowPosition(self.window, ctypes.byref(x), ctypes.byref(y))
+                            sdl2.SDL_SetWindowPosition(self.window, x.value + (xy[0] - self.mouseOffset[0]), y.value + (xy[1] - self.mouseOffset[1]))
+                            self.mouseOffset = xy
 
                 elif event.type == sdl2.SDL_KEYDOWN: # BUG on some keys no events (ESC, Enter, Arrows, Up, Down)
                     #if ctypes.windll.user32.GetAsyncKeyState(int('0x27', 0)) > 100:
@@ -4021,14 +4136,19 @@ class SDLWindow(object):
                             wx.CallAfter(self.app.Iconize, False)
                     elif event.window.event == sdl2.SDL_WINDOWEVENT_FOCUS_GAINED:
                         # SDL BUG: sdl gives no mouse event on first click if the window not focused
-                        self.mouseOffset = None
                         if wx.GetMouseState().LeftIsDown():
                             self.lastLClick = time.clock()
+                        if not self.isFullscreen and not self.isFullsize and \
+                            (self.app.options['sdlallowmousemove'] or self.app.options['sdlnotitlebar']):
+                                self.mouseOffset = wx.GetMousePosition()
                         if self.timer:
                             self.timer.setInterval(0.02)
+
                     elif event.window.event == sdl2.SDL_WINDOWEVENT_FOCUS_LOST:
+                        self.mouseOffset = None
                         if self.timer:
                             self.timer.setInterval(0.1)
+                        break
                         #_handleMouse(False)
                         #break
                     #elif event.window.event == sdl2.SDL_WINDOWEVENT_RESIZED:
@@ -4301,8 +4421,8 @@ class SDLWindow(object):
             self.renderer = None
         self.InitWND(True)
         self.InitAVI(AVI)
-        AsyncCall(self.StartPeepEvents, self.PlayThreadPeepEvents).Wait()
-        #AsyncCall(self.StartPeepEvents, self.PeepEvents).Wait()
+        #AsyncCall(self.StartPeepEvents, self.PlayThreadPeepEvents).Wait()
+        AsyncCall(self.StartPeepEvents, self.PeepEvents).Wait()
 
     def DeletePlaybackRenderer(self):
         AsyncCall(self.StopPeepEvents).Wait()
@@ -4692,6 +4812,8 @@ class PropWindow(wx.Dialog):
             return
         if not self.textCtrl.IsShown():
             self.textCtrl.Show()
+        if (self.textCtrl.GetParent() == self) and self.parent.options['propwindowdocking']:
+            self.SetWindowPos(snap=3)
         super(PropWindow, self).Show()
         if ctrl:
             ctrl.SetFocus()
@@ -4714,6 +4836,42 @@ class PropWindow(wx.Dialog):
             self.Close()
         else:
             self.OnShow()
+    # only 3 bottom-left is used
+    def SetWindowPos(self, x=None,y=None, snap=0):
+        '''snap 1=top-left, 2=top-right, 3=bottom-left, 4=bottom-right'''
+        if not self.Active or (self.textCtrl.GetParent() != self):
+            return
+        p = self.GetRect()
+        if snap > 0:
+            # calculate the snap
+            int50 = intPPI(51)
+            r = self.parent.GetClientRect()
+            r[3] -= self.parent.videoControls.GetSize()[1]
+            if snap == 1:
+                x, y = r[0], r[1] + int50
+            elif snap == 2:
+                x, y = r[2], r[1] + int50
+            elif snap == 3:
+                x, y = r[0], r[3] - int50
+            else:
+                x, y = r[2], r[3] - int50
+            x,y = self.parent.ClientToScreen(wx.Point(x,y))
+            # check the positon
+            b = False
+            w = p[2] if snap in [2,4] else 0
+            if (p[0] + w > x) or (p[0] + w < x):
+                b = True
+            x = x - w
+            h = p[3] if snap in [3,4] else 0
+            if (p[1] + h > y) or (p[1] + h < y):
+                b = True
+            y = y - h
+            if not b: # current pos is same, so return
+                return
+        if x is None: x = p[0]
+        if y is None: y = p[1]
+        self.SetDimensions(x,y, p[2],p[3])
+
 
 # Dialog for scrap window
 class ScrapWindow(wx.Dialog): # PPI Font Size set under Font and Colors
@@ -7689,113 +7847,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self.OnNotebookPageChanged)
         self.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGING, self.OnNotebookPageChanging)
 
-        #leave it, if thread progress is shown LayoutVideoWindows doesn't work if self Iconized and no event skip called
-        def OnIconize(event):
-            self.blockEventSize = True
-            if self.IsIconized():
-                self.StopPlayback()
-                if self.propWindow.IsShown():
-                    self.propWindow.Hide()
-                if self.sdlWindow and self.sdlWindow.running:
-                    sdl2.SDL_MinimizeWindow(self.sdlWindow.window)
-            else:
-                if self.readFrameProps and self.propWindowParent == 0:
-                    self.propWindow.Show()
-                if self.sdlWindow and self.sdlWindow.running:
-                    sdl2.SDL_RestoreWindow(self.sdlWindow.window)
-                self.mainSplitter.UpdateSize()
-                self.videoSplitter.UpdateSize()
-                try:
-                    #wx.GetApp().SafeYieldFor(self.videoWindow, wx.wxEVT_PAINT)
-                    wx.GetApp().SafeYieldFor(self, wx.wxEVT_PAINT)
-                except:
-                    pass
-            event.Skip()
-        self.Bind(wx.EVT_ICONIZE, OnIconize)
-
-        """
-        def OnMaximaze(event):
-            #if self.currentScript.GetSize()[1] > 4:
-                #wx.CallAfter(self.SetMinimumScriptPaneSize)
-            print('On Maximaze')
-            event.Skip()
-        self.Bind(wx.EVT_MAXIMIZE, OnMaximaze)
-
-        """
-        """
-        def OnShow(event):
-            if self.readFrameProps and self.propWindowParent == 0:
-                self.propWindow.Show()
-            if self.mainSplitter.IsSplit():
-                self.mainSplitter.UpdateSize()
-                self.videoSplitter.UpdateSize()
-            event.Skip()
-        self.Bind(wx.EVT_SHOW, OnShow)
-        """
-
-        """
-        def OnModalDialogClosed(event):
-            print('Modal Close')
-            event.Skip()
-        self.Bind(wx.EVT_WINDOW_MODAL_DIALOG_CLOSED, OnModalDialogClosed)
-        """
-
-        if not self.separatevideowindow:
-            def OnSize(event):
-                if event.GetEventType() != wx.EVT_CLOSE.typeId:
-                    if self.titleEntry:
-                        self.scriptNotebook.SetFocus()
-                # It's bad for switchin fullsize mode on playback
-                if not self.blockEventSize and not self.ClipRefreshPainter:
-                    if self.previewWindowVisible:
-                        script = self.currentScript
-                        size = script.GetSize()[self.mainSplitter.GetSplitMode() == wx.SPLIT_HORIZONTAL]
-                        self.mainSplitter_SetSashPos = None if size > 4 else 1
-                        if self.zoomwindow or self.zoomfactor != 1:
-                            func = (self.ShowVideoFrame, tuple(), {'focus': False})
-                            if not func in self.IdleCall:
-                                if self.options['zoom_antialias']:
-                                    self.zoom_antialias = False
-                                    # first Reset, IdleCall pops from last to first
-                                    self.IdleCall.append((self.ResetZoomAntialias, tuple(), {}))
-                                self.IdleCall.append(func)
-                        elif self.IsResizeFilterFitFill(script):
-                            func = (self.ShowVideoFrame_checkResizeFilter, tuple(), {'script': script})
-                            if not func in self.IdleCall:
-                                self.IdleCall.append(func)
-
-                    # set minpanesize again if size changed ( maximaze, restore, fullscreen)
-                    if self.mainSplitter.GetSplitMode() == wx.SPLIT_HORIZONTAL:
-                        func = (self.SetMinimumScriptPaneSize, tuple(), {'mlines': self.mintextlines})
-                        if not func in self.IdleCall:
-                            self.IdleCall.append(func)
-
-                self.blockEventSize = False
-                event.Skip()
-            self.Bind(wx.EVT_SIZE, OnSize) # Size is also called on Maximaze and Restore
-        else:
-            def OnSize(event): # after size
-                if self.previewWindowVisible and event.GetEventType() != wx.EVT_CLOSE.typeId:
-                    if not self.blockEventSize and not self.ClipRefreshPainter:
-                        if not self.videoDialog.IsMaximized() and not self.videoDialog.IsFullScreen():
-                            self.options['dimensions2'] = (self.videoDialog.GetRect())
-                        script = self.currentScript
-                        if self.zoomwindow or self.zoomfactor != 1:
-                            func = (self.ShowVideoFrame, tuple(), {'focus': False})
-                            if not func in self.IdleCall:
-                                if self.options['zoom_antialias']:
-                                    self.zoom_antialias = False
-                                    # first Reset, IdleCall pops from last to first
-                                    self.IdleCall.append((self.ResetZoomAntialias, tuple(), {}))
-                                self.IdleCall.append(func)
-                        elif self.IsResizeFilterFitFill(script):
-                            func = (self.ShowVideoFrame_checkResizeFilter, tuple(), {'script': script, 'forceLayout': False})
-                            if not func in self.IdleCall:
-                                self.IdleCall.append(func)
-                    self.blockEventSize = False
-                event.Skip()
-            self.videoDialog.Bind(wx.EVT_SIZE, OnSize)
-
         # Command line arguments
         self.UpdateRecentFilesList()
         self.reloadList = []
@@ -7848,15 +7899,147 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         for slider in self.GetVideoSliderList():
             slider.numDivisor = self.options['timelinenumdivisor']
 
-        if self.separatevideowindow:
+         #leave it, if thread progress is shown LayoutVideoWindows doesn't work if self Iconized and no event skip called
+        def OnIconize(event):
+            self.blockEventSize = True
+            if self.IsIconized():
+                self.StopPlayback()
+                if self.propWindow.IsShown():
+                    self.propWindow.Hide()
+                if self.sdlWindow and self.sdlWindow.running and self.sdlWindow.IsSameMonitor():
+                    sdl2.SDL_MinimizeWindow(self.sdlWindow.window)
+            else:
+                if self.readFrameProps and self.propWindowParent == 0:
+                    self.propWindow.Show()
+                self.mainSplitter.UpdateSize()
+                self.videoSplitter.UpdateSize()
+                try:
+                    wx.GetApp().SafeYieldFor(self, wx.wxEVT_PAINT)
+                except:
+                    pass
+
+                if self.sdlWindow and self.sdlWindow.running and self.sdlWindow.IsSameMonitor():
+                    sdl2.SDL_RestoreWindow(self.sdlWindow.window)
+                    if self.options['sdlwindowdocking'] > 0:
+                        self.Update()
+                        wx.CallAfter(self.sdlWindow.SetWindowPos, snap=self.options['sdlwindowdocking'], calcDockingPos=True)
+            event.Skip()
+        self.Bind(wx.EVT_ICONIZE, OnIconize)
+
+        """
+        def OnMaximaze(event):
+            #if self.currentScript.GetSize()[1] > 4:
+                #wx.CallAfter(self.SetMinimumScriptPaneSize)
+            print('On Maximaze')
+            event.Skip()
+        self.Bind(wx.EVT_MAXIMIZE, OnMaximaze)
+        """
+
+        """
+        def OnShow(event):
+            if self.readFrameProps and self.propWindowParent == 0:
+                self.propWindow.Show()
+            if self.mainSplitter.IsSplit():
+                self.mainSplitter.UpdateSize()
+                self.videoSplitter.UpdateSize()
+            event.Skip()
+        self.Bind(wx.EVT_SHOW, OnShow)
+        """
+
+        """
+        def OnModalDialogClosed(event):
+            print('Modal Close')
+            event.Skip()
+        self.Bind(wx.EVT_WINDOW_MODAL_DIALOG_CLOSED, OnModalDialogClosed)
+        """
+
+        if not self.separatevideowindow:
+            def OnSize(event):
+                if event.GetEventType() != wx.EVT_CLOSE.typeId:
+                    if self.titleEntry:
+                        self.scriptNotebook.SetFocus()
+                # It's bad for switchin fullsize mode on playback
+                if not self.blockEventSize and not self.ClipRefreshPainter:
+                    if self.previewWindowVisible:
+                        script = self.currentScript
+                        size = script.GetSize()[self.mainSplitter.GetSplitMode() == wx.SPLIT_HORIZONTAL]
+                        self.mainSplitter_SetSashPos = None if size > 4 else 1
+                        if self.zoomwindow or self.zoomfactor != 1:
+                            func = (self.ShowVideoFrame, tuple(), {'focus': False})
+                            if not func in self.IdleCall:
+                                if self.options['zoom_antialias']:
+                                    self.zoom_antialias = False
+                                    # first Reset, IdleCall pops from last to first
+                                    self.IdleCall.append((self.ResetZoomAntialias, tuple(), {}))
+                                self.IdleCall.append(func)
+                        elif self.IsResizeFilterFitFill(script):
+                            func = (self.ShowVideoFrame_checkResizeFilter, tuple(), {'script': script})
+                            if not func in self.IdleCall:
+                                self.IdleCall.append(func)
+
+                    # set minpanesize again if size changed ( maximaze, restore, fullscreen)
+                    if self.mainSplitter.GetSplitMode() == wx.SPLIT_HORIZONTAL:
+                        func = (self.SetMinimumScriptPaneSize, tuple(), {'mlines': self.mintextlines})
+                        if not func in self.IdleCall:
+                            self.IdleCall.append(func)
+
+                if self.propWindow.Active and (self.propWindowParent == 0) and (self.options['propwindowdocking']):
+                    self.IdleCallDict['propSetWindowPos'] = self.propWindow.SetWindowPos(snap=3)
+
+                # else video window is sizing
+                if not self.previewWindowVisible:
+                    if self.sdlWindow and self.sdlWindow.running and self.sdlWindow.IsNormalSize() and\
+                            self.sdlWindow.IsSameMonitor() and self.options['sdlwindowdocking'] > 0:
+                        wx.CallAfter(self.sdlWindow.SetWindowPos, snap=self.options['sdlwindowdocking'], calcDockingPos=True)
+
+                self.blockEventSize = False
+                event.Skip()
+            self.Bind(wx.EVT_SIZE, OnSize) # Size is also called on Maximaze and Restore
+        else:
+            def OnSize(event): # after size
+                if self.previewWindowVisible and event.GetEventType() != wx.EVT_CLOSE.typeId:
+                    if not self.blockEventSize and not self.ClipRefreshPainter:
+                        if not self.videoDialog.IsMaximized() and not self.videoDialog.IsFullScreen():
+                            self.options['dimensions2'] = (self.videoDialog.GetRect())
+                        script = self.currentScript
+                        if self.zoomwindow or self.zoomfactor != 1:
+                            func = (self.ShowVideoFrame, tuple(), {'focus': False})
+                            if not func in self.IdleCall:
+                                if self.options['zoom_antialias']:
+                                    self.zoom_antialias = False
+                                    # first Reset, IdleCall pops from last to first
+                                    self.IdleCall.append((self.ResetZoomAntialias, tuple(), {}))
+                                self.IdleCall.append(func)
+                        elif self.IsResizeFilterFitFill(script):
+                            func = (self.ShowVideoFrame_checkResizeFilter, tuple(), {'script': script, 'forceLayout': False})
+                            if not func in self.IdleCall:
+                                self.IdleCall.append(func)
+                    self.blockEventSize = False
+                event.Skip()
+            self.videoDialog.Bind(wx.EVT_SIZE, OnSize)
+
             def OnActivate(event):
                 if event.GetActive():
                     self.currentScript.SetFocus()
                 event.Skip()
             self.Bind(wx.EVT_ACTIVATE, OnActivate)
 
+            def OnMainFrameSize(event):
+                if self.propWindow.Active and (self.propWindowParent == 0) and (self.options['propwindowdocking']):
+                    self.IdleCallDict['propSetWindowPos'] = self.propWindow.SetWindowPos(snap=3)
+                event.Skip()
+            self.Bind(wx.EVT_SIZE, OnMainFrameSize)
+
         def OnMove(event):
             self.currentScript.UpdateCalltip()
+            if self.propWindow.Active and (self.propWindowParent == 0) and (self.options['propwindowdocking']):
+                self.IdleCallDict['propSetWindowPos'] = self.propWindow.SetWindowPos(snap=3)
+
+            if self.sdlWindow and self.sdlWindow.running and self.sdlWindow.IsNormalSize() and\
+                    self.sdlWindow.IsSameMonitor() and self.options['sdlwindowdocking'] > 0:
+                wx.CallAfter(self.sdlWindow.SetWindowPos, snap=self.options['sdlwindowdocking'], calcDockingPos=True)
+            #~if self.options['sdlwindowdocking'] > 0:
+                #self.OnVideoWindowSize() # Hm, or separate calculation and processing
             event.Skip()
         self.Bind(wx.EVT_MOVE, OnMove)
 
@@ -8660,6 +8843,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'showbuttontooltip': True,               # GPo, show video controls button tooltips
             'propwindowparent': 0,                   # GPo, property window parent (0,1) 0=propertyWnd, 1=sliderWnd
             'propwindowparentsize': intPPI(200),     # GPo, property text height in the slider window
+            'propwindowdocking': True,               # GPo, property window docking on mainform 0=None, 1=bootom-left, 2=bottom-right
             'sliderwindowwidth': -intPPI(400),       # GPo, default slider window width, must be negative!
             'optionsdlgsize': (300, 300),            # GPo, not important, only width is set after layout
             'numberwheel': False,                    # GPo, enable/disable number wheel
@@ -8721,6 +8905,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'sdlallowmousemove': True,
             'sdlnotitlebar': False,
             'sdlrendersafe': False,
+            'sdlwindowdocking': 0,
         })
         # Import certain options from older version if necessary
         if oldOptions is not None:
@@ -9678,7 +9863,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 ((_('Delay before thread progress dialog appears'), wxp.OPT_ELEM_SPIN, 'progressdelaytime', _('If accessing Avisynth in threads enabled, this setting determines the delay in seconds before the dialog appears. Can be double (clip, frame)'), dict(min_val=10, max_val=360) ), ),
                 ((_('Thread progress dialog behave'), wxp.OPT_ELEM_LIST, 'threadprogressopt', _('Select the progress dialog behave for loading Avisynth in threads. First entry is the old behave, you can minimize the program with the windows button'), \
                     dict(choices=[(_('Show progress, (program no response)'),0), (_('Show progress (Shift hide program)'), 1), (_('Hide progress (Ctrl do show, Shift hide program)'), 2),]) ), ),
-                ((_('Show frame properties*'), wxp.OPT_ELEM_LIST, 'propwindowparent', _('Place you want show the frame properties'), dict(choices=[(_('Separate window'),0), (_('Slider window top'),1), (_('Slider window bottom'),2)]) ), ),
+                ((_('Show frame properties*'), wxp.OPT_ELEM_LIST, 'propwindowparent', _('Place you want show the frame properties'), dict(choices=[(_('Separate window'),0), (_('Slider window top'),1), (_('Slider window bottom'),2)]) ),
+                 (_('Separate window docking'), wxp.OPT_ELEM_CHECK, 'propwindowdocking', _('Dock bottom-left on main frame'), dict() ), ),
                 ((_('Show resample zoom menu*'), wxp.OPT_ELEM_LIST, 'showresamplemenu', _("Show/hide resample menu in zoom menu.\n!! Read Help > 'Resample filter readme'"), dict(choices=[(_('Hide (disabled)'),0), (_('As Submenu'),1), (_('Normal'),2)]) ), ),
                 ((_('Fullscreen zoom'), wxp.OPT_ELEM_LIST, 'fullscreenzoom', _('Zoom on Fullscreen. Note: Resample only if Resample enabled'), dict(choices=[(_('None'),0), (_('Normal'),1), (_('Resample'),2)]) ), ),
                 ((_('Fullscreen/Fullsize  progress dialog'), wxp.OPT_ELEM_LIST, 'fullscreendlgxy', _('Position for the static progress information on loading a frame'), dict(choices=[(_(r'top\left'),0), (_(r'top\right'),1), (_(r'top\center'),2), (_(r'bottom\left'),3), (_(r'bottom\right'),4)]) ), ),
@@ -9952,6 +10138,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.scriptNotebook.AddPage(scriptWindow, self.NewFileName)
         # Create the program's video preview window
         self.videoWindow = self.createVideoWindow(self.videoSplitter)
+
 
         """
         def createVideoToolbar():
@@ -10846,6 +11033,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 ),
                 (''),
                 (_('Video tutorials && more'), '', self.OnMenuHelpExampleVideos, _('On Google Drive')),
+                (''),
                 (_('Accessing in threads readme'), '', self.OnMenuHelpAccessInThreads, _('Open the accessing in threads readme')),
                 (_('Preview filter example'), '', self.OnMenuHelpPreviewFilters, _('Open the Preview filter examples')),
                 (_('Apply filters readme'), '', self.OnMenuHelpApplyFilters, _('Open the Apply filters readme')),
@@ -11567,6 +11755,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         videoWindow.Bind(wx.EVT_RIGHT_UP, self.OnRightUpVideoWindow)          # GPo 2018
         videoWindow.Bind(wx.EVT_MOUSE_CAPTURE_LOST, self.OnMouseCaptureLost)  # GPo 2020
         videoWindow.Bind(wx.EVT_SCROLLWIN, self.OnScrollVideoWindow)          # GPo 2020
+        videoWindow.Bind(wx.EVT_SIZE, self.OnVideoWindowSize)                 # GPo 2023
         self.BindObjMouseAux(videoWindow)                                     # GPo 2020
         return videoWindow
 
@@ -18924,6 +19113,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if self.sdlWindow and self.sdlWindow.running and self.sdlWindow.isFullsize:
                 self.sdlWindow.ToggleFullsize(True)
 
+
         def _saveLastZoom():
             script = self.currentScript
             xy = self.videoWindow.GetViewStart()
@@ -19332,6 +19522,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     if self.fullScreenWnd.IsFullScreen(): # should never be, but...
                         self.CloseFullscreenWND()
                     self.DisableResizeFilter(onlyFitFill=True) # we must reset all resizeFilter if not preview visible when changing the fullsize mode
+            #if self.options['sdlwindowdocking'] > 0:
+                #self.OnVideoWindowSize()
             if event:
                 event.Skip()
 
@@ -19744,6 +19936,15 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.zoom_antialias = False
             self.IdleCall.append((self.OnAfterScrollVideoWindow, tuple(), {}))
         event.Skip()
+
+    def OnVideoWindowSize(self, event=None):
+        if self.previewWindowVisible and not self.separatevideowindow:
+            if self.sdlWindow and self.sdlWindow.running and self.sdlWindow.IsNormalSize() and \
+                     (self.options['sdlwindowdocking'] > 0) and self.sdlWindow.IsSameMonitor():
+                self.IdleCallDict['sdlSetWindowPos'] = self.sdlWindow.SetWindowPos(snap=self.options['sdlwindowdocking'], calcDockingPos=True)
+        if event:
+            event.Skip()
+
 
     """ # zoom_antialias is the block on the leg
     def OnSizeVideoWindow(self, event=None):
@@ -23922,13 +24123,18 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.mainSplitter.Freeze()
             self.mainSplitter.Unsplit()
             self.TryThaw(self.mainSplitter)
+            if self.sdlWindow and self.sdlWindow.running and self.options['sdlwindowdocking'] > 0 \
+                    and self.sdlWindow.IsNormalSize() and self.sdlWindow.IsSameMonitor():
+                r = self.GetClientRect()
+                x,y = self.ClientToScreen(wx.Point(r[2],0))
+                sdl = self.sdlWindow.GetWindowPosSize()
+                self.sdlWindow.SetWindowPos(x-sdl[2].value, sdl[1].value)
         else:
-            if self.videoDialog.IsShown(): #and (not self.fullScreenWnd.IsFullScreen() or (self.fullScreenWnd.IsFullScreen() and self.options['fullscreenzoom'] == 0)):
+            if self.videoDialog.IsShown():
                 self.SaveZoom()
             self.videoDialog.Hide()
 
         self.previewWindowVisible = False
-
         try:
             if self.cropDialog.IsShown():
                 self.OnCropDialogCancel(None)
@@ -24589,6 +24795,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if self.previewOK():
             if not self.IsFullScreen():
                 self.currentScript.lastSplitVideoPos = sash_pos # GPo new
+
+        if self.options['sdlwindowdocking'] > 0:
+            self.OnVideoWindowSize()
 
     def GetMainSplitterNegativePosition(self, pos=None, forcefit=False): #, forfill=True):
         if not forcefit and isinstance(self.currentScript.lastSplitVideoPos, int): #self.currentScript.lastSplitVideoPos is not None:
@@ -32146,7 +32355,7 @@ class MainApp(wxp.App):
     def FilterEvent(self, event):
         t = event.GetEventType()
         if t == wx.EVT_KEY_DOWN.typeId:
-            print('Key down')
+            print('Key down')0
         if t == wx.EVT_PAINT.typeId or t == wx.EVT_NC_PAINT.typeId or t == wx.EVT_ERASE_BACKGROUND.typeId:
             return -1
         return 0

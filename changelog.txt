@@ -38,6 +38,18 @@ If, for example, there is a '-' in the file name of the dll, AvsPmod will report
 please rename this dll and replace the '-' with a '_'
 
 --------------------------
+Version 2.7.5.2 [2023-08-04] GPo
+--------------------------
+* New docking option for the frame properties window when 'Separate window' is selected in the options.
+- if the docking option is selected (default), the window docks at the bottom-left of the main window.
+- free space bottom 50 pixels for the double click action 'd3d window fullsize'.
+* New docking option for the D3D Window (dock on video window).
+-   My recommendation: top-right or bottom-right
+-   Enabling: move the window in the desired monitor corner more then half size of the window outsite the corner.
+-   Disabling: d3d window context menu Additional > 'Disable docking'
+* Improved moving the d3d window with the mouse (sometimes no response at first mouse botton down).
+
+--------------------------
 Version 2.7.5.0 - 2.7.5.1 [2023-07-27] GPo
 --------------------------
 * Hardware Accelerated (GPU) renderer window (reade the Help > D3D Window readme).

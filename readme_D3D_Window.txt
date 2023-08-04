@@ -17,7 +17,13 @@ numpad 4,5 = frame step
 numpad 2,8 = jump custom units
 numpad 0 or numpad . or middle mouse = Close
 minus key = toggle 'Split Clip'
-key b = add or remove bookmark 
+key b = add or remove bookmark
+
+Docking option for the D3D Window (dock on video window).
+-   My recommendation: top-right or bottom-right
+-   Enabling: move the window in the desired monitor corner more then half size of the window outsite the corner.
+-   Disabling: d3d window context menu Additional > 'Disable docking'
+ 
 
 Video Window Double Click Layout (not D3D Window)
 -------------------------------------------------
