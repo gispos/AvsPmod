@@ -3461,6 +3461,7 @@ class SDLWindow(object):
                 sdl2.SDL_GetWindowFlags(self.window) & sdl2.SDL_WINDOW_MAXIMIZED != sdl2.SDL_WINDOW_MAXIMIZED and \
                 sdl2.SDL_GetWindowFlags(self.window) & sdl2.SDL_WINDOW_FULLSCREEN_DESKTOP != sdl2.SDL_WINDOW_FULLSCREEN_DESKTOP
 
+    # On closing the window we get all free
     def Close(self):
         self.running = False
         if self.timer:
@@ -3530,6 +3531,8 @@ class SDLWindow(object):
                 wx.MessageBox('SDL Window could not be created!\n%s' % sdl2.SDL_GetError() or 'Not in thread', 'SDL Error')
                 self.Close()
                 return
+            sdl2.SDL_SetWindowMinimumSize(self.window, 128, 72)
+
             if self.renderer:
                 sdl2.SDL_DestroyRenderer(self.renderer)
                 self.renderer = None
@@ -3549,10 +3552,12 @@ class SDLWindow(object):
 
         self.running = True
         self.playback = playback
+        """
         if playback:
             self.StartPeepEvents(self.PlayThreadPeepEvents) # AsyncCall, run events in main thread
         else:
-            self.StartPeepEvents(self.PeepEvents) # Hm, events in thread ( change it to main thread ?)
+        """
+        self.StartPeepEvents(self.PeepEvents) # Hm, events in thread ( change it to main thread ?)
         return True
 
     def InitAVI(self, AVI, readMatrix=True):
@@ -3808,19 +3813,29 @@ class SDLWindow(object):
                 self.ToggleFullscreen(True)
                 return
             self.isFullsize = False
-            if label == _('Set size 1'): rect = self.app.options['sdlwindowrect1']
-            elif label == _('Set size 2'): rect = self.app.options['sdlwindowrect2']
-            else: rect = self.app.options['sdlwindowrect3']
-            rect = self._ensureWndPos(rect)
             self.SetResizable(True)
             if self.isFullscreen:
                 self.ToggleFullscreen()
             if sdl2.SDL_GetWindowFlags(self.window) & sdl2.SDL_WINDOW_MAXIMIZED == sdl2.SDL_WINDOW_MAXIMIZED:
                 sdl2.SDL_RestoreWindow(self.window)
+            self.isFullsize = False
+            if label == _('Set height 16/9'):
+                p = self.GetWindowPosSize()
+                if p[2].value < 64: p[2].value = 128
+                p[2].value = int(round(p[2].value / 16.0)) * 16
+                p[3].value = int(round(p[2].value/16.0*9.0))
+                if p[3].value-100 < wx.DisplaySize()[1] and p[3].value > 79:
+                    sdl2.SDL_SetWindowSize(self.window, p[2], p[3])
+                else: wx.Bell()
+                return
+            elif label == _('Set size 1'): rect = self.app.options['sdlwindowrect1']
+            elif label == _('Set size 2'): rect = self.app.options['sdlwindowrect2']
+            elif label == _('Set size 3'): rect = self.app.options['sdlwindowrect3']
+            else: return
+            rect = self._ensureWndPos(rect)
             sdl2.SDL_SetWindowPosition(self.window, rect[0], rect[1])
             sdl2.SDL_SetWindowSize(self.window, rect[2], rect[3])
             self.app.options['sdlwindowrect'] = rect
-            self.isFullsize = False
         def OnSaveSize(event):
             item = popup.FindItemById(event.GetId())
             label = item.GetLabel()
@@ -3917,6 +3932,7 @@ class SDLWindow(object):
         AddItem(sizeMenu, 'Set size 1', False, False, OnSetSize)
         AddItem(sizeMenu, 'Set size 2', False, False, OnSetSize)
         AddItem(sizeMenu, 'Set size 3', False, False, OnSetSize)
+        AddItem(sizeMenu, 'Set height 16/9', False, False, OnSetSize)
         sizeMenu.AppendSeparator()
         AddItem(sizeMenu, 'Save 1', False, False, OnSaveSize)
         AddItem(sizeMenu, 'Save 2', False, False, OnSaveSize)
@@ -3968,9 +3984,9 @@ class SDLWindow(object):
     # we run timer thread, but we need calling events in the main thread
     # but testet, it works for AvsPmod in thread if not Playback
     # only all output's uses the main thread, AsyncCall
-    # But on Playback the events must run in main thread
-    def PlayThreadPeepEvents(self):
-        AsyncCall(self.PeepEvents).Wait()
+    # But on Playback the events must run in main thread... Changed! running in thread is OK.
+    #~def PlayThreadPeepEvents(self):
+        #~AsyncCall(self.PeepEvents).Wait()
 
     def PeepEvents(self):
         """
@@ -4623,6 +4639,376 @@ class StaticTextEx(wx.StaticText):
     def OnErase(self, evt):
         pass
 """
+from wx.lib.agw import ultimatelistctrl as ULCtrl
+class ScriptSelector(wx.Dialog):
+    def __init__(self, parent, title=_('Script selector'), pos=(0, 340), size=tuplePPI(340,600)):
+        style = wx.DEFAULT_DIALOG_STYLE | wx.STAY_ON_TOP | wx.RESIZE_BORDER | wx.FRAME_FLOAT_ON_PARENT| wx.BORDER_SIMPLE# | wx.NO_FULL_REPAINT_ON_RESIZE | wx.CLIP_CHILDREN
+        wx.Dialog.__init__(self, parent, wx.ID_ANY, title, pos, size, style=style)
+        dpi.SetFontPPI(self)
+        self.parent = parent
+        self.Active = False
+        self.Notebook = wxp.Notebook(self, style=wx.BORDER_NONE, invert_scroll=self.parent.options['invertscrolling'])
+        self.Notebook.parent = self
+        self.Hide()
+        self.optionsFilename = os.path.join(self.parent.programdir, 'selector.dat')
+        self.scriptDict = collections.OrderedDict({})
+        scriptDict = self.scriptDict
+        scriptDict['Tab 1'] = {'scripts': [], 'idx': -1,}
+        self.options = {}
+        self.options.update({
+        'scriptdict': self.scriptDict,
+        'uvlistctrl': True,
+        'sortorder': 0,
+        'dimensions': (0, 340, 340, 600),
+        'backcolor' : None,
+        'fontcolor' : None,
+        })
+        #self.BackgroundColor = self.parent.
+        self.useUVListCtrl = self.options['uvlistctrl']
+
+        class UVListCtrl(ULCtrl.UltimateListCtrl):
+            def OnGetItemText(self, line, col):
+                nb = self.parent
+                try:
+                    tabName = nb.GetPageText(nb.GetSelection())
+                    path, name, txt, flag = scriptDict[tabName]['scripts'][line]
+                except:
+                    path = name = flag = ''
+                if col == 0:
+                    return flag + name
+                elif col == 1:
+                    return path
+            def OnGetItemToolTip(self, line, col): # else error
+                return ''
+            def OnGetItemTextColour(self, line, col): # else somtimes wrong textcolor
+                state = self.GetItemState(line, ULCtrl.ULC_STATE_SELECTED)
+                return wx.YELLOW if state & ULCtrl.ULC_STATE_SELECTED == ULCtrl.ULC_STATE_SELECTED else wx.Colour(220,220,220)
+            #def OnGetItemColumnImage(self, line, col):
+                #return None
+            #def OnGetItemColumnKind(self, line, col):
+                #return 0
+            def OnGetItemAttr(self, item):
+                state = self.GetItemState(item, ULCtrl.ULC_STATE_SELECTED)
+                selected = state & ULCtrl.ULC_STATE_SELECTED == ULCtrl.ULC_STATE_SELECTED
+                self.ItemAttr.SetBackgroundColour(wx.Colour(0,0,0) if selected else wx.Colour(40,40,40))
+                self.ItemAttr.SetTextColour(wx.YELLOW if selected else wx.Colour(220,220,220))
+                if selected and self.app.tabName and item:
+                    self.app.scriptDict[self.app.tabName]['idx'] = item
+                return self.ItemAttr
+            def OnSize(self, event): # copied and modded
+                if not self.IsShownOnScreen():
+                    if self._mainWin:
+                        wx.CallAfter(self._mainWin.ResizeColumns)
+                if not self._mainWin:
+                    return
+                if self.IsShownOnScreen():
+                    self.SetColumnWidth(1, ULCtrl.ULC_AUTOSIZE_FILL)
+                self.DoLayout()
+
+        class VListCtrl(wxp.ListCtrl):
+            def OnGetItemText(self, item, column):
+                nb = self.parent
+                try:
+                    tabName = nb.GetPageText(nb.GetSelection())
+                    path, name, txt, flag = scriptDict[tabName]['scripts'][item]
+                except:
+                    path = name = flag = ''
+                if column == 0:
+                    return flag + name
+                elif column == 1:
+                    return path
+
+        if self.useUVListCtrl:
+            self.classList = UVListCtrl
+        else:
+            self.classList = VListCtrl
+
+        sizer = wx.BoxSizer()
+        sizer.Add(self.Notebook, 1, wx.EXPAND)
+        self.SetSizer(sizer)
+        self.tabName = None
+        self.listCtrl = self.CreateClassList()
+        self.Notebook.AddPage(self.listCtrl, 'Tab 1')
+        self.firstRun = True
+        #self.ReadOptions()
+
+        def OnPageChanged(event):
+            nb = self.Notebook
+            if nb.GetPageCount() > 0:
+                self.tabName = nb.GetPageText(nb.GetSelection())
+                data = self.scriptDict[self.tabName]
+                count = len(data['scripts'])
+                self.listCtrl.SetItemCount(count)
+                if data['idx'] > -1 and data['idx'] < count:
+                    self.listCtrl.Select(data['idx'], True)
+                    self.listCtrl.Focus(data['idx'])
+                else: data['idx'] = -1
+            else: self.tabName = None
+            self.listCtrl.Refresh()
+            self.listCtrl.Update()
+        self.Notebook.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGED, OnPageChanged)
+        def OnClose(event):
+            self.SaveOptions()
+            event.Skip()
+        self.Bind(wx.EVT_CLOSE, OnClose)
+        def OnShow(event):
+            if self.firstRun:
+                self.ReadOptions()
+                self.firstRun = False
+            event.Skip()
+        self.Bind(wx.EVT_SHOW, OnShow)
+
+    def AddTab(self, event=None):
+        i = 1
+        s = 'Tab '
+        while s + str(i) in self.scriptDict.keys():
+            i += 1
+        s = s + str(i)
+        self.scriptDict[s] = {'scripts': [], 'idx': -1,}
+        self.listCtrl.SetItemCount(0)
+        self.Notebook.AddPage(self.listCtrl, s)
+        self.Notebook.SetSelection(self.Notebook.GetPageCount()-1)
+
+    def OnRemoveTab(self, event=None, idx=None):
+        if idx is None:
+            idx = self.Notebook.GetSelection()
+        if idx > self.Notebook.GetPageCount()-1:
+            idx = self.Notebook.GetPageCount()-1
+        tabName = self.Notebook.GetPageText(idx)
+        self.listCtrl.SetItemCount(0)
+        self.Notebook.RemovePage(idx)
+        del self.scriptDict[tabName]
+        if self.Notebook.GetPageCount() < 1:
+            self.AddTab()
+
+    def OnRemoveAllTabs(self, event):
+        dlg = wx.MessageDialog(self, _('Remove all tabs?'),'Selector',wx.YES_NO|wx.CENTER_FRAME)
+        ok = dlg.ShowModal()
+        dlg.Destroy()
+        if ok != wx.ID_YES:
+            return
+        count = self.Notebook.GetPageCount()
+        for i in range(count):
+            self.OnRemoveTab(idx=i)
+    def OnListCtrlDClick(self, event):
+        idx = self.listCtrl.GetFirstSelected()
+        if idx < 0: return
+        nb = self.Notebook
+        tabName = nb.GetPageText(nb.GetSelection())
+        path, name, txt, flag = self.scriptDict[tabName]['scripts'][idx]
+        script = os.path.join(path, name)
+        if os.path.isfile(script):
+            self.parent.OpenFile(script)
+        else:
+            for i in range(self.parent.scriptNotebook.GetPageCount()):
+                if self.parent.scriptNotebook.GetPageText(i) == name:
+                    self.parent.scriptNotebook.SetSelection(i)
+                    break
+            if flag.find('< ') < 0:
+                flag += '< '
+    def OnListCtrlRightUp(self, event):
+        path, name, txt, flag = self.GetValues()
+        popup = wx.Menu()
+        ctrl = self.listCtrl
+        id = wx.NewId()
+        popup.Append(id, _('Add or update all scripts'), kind=wx.ITEM_NORMAL)
+        ctrl.Bind(wx.EVT_MENU,  lambda f: self.AddAllScripts(update=True), id=id)
+        id = wx.NewId()
+        popup.Append(id, _('Clear and add all scripts'), kind=wx.ITEM_NORMAL)
+        ctrl.Bind(wx.EVT_MENU,  lambda f: self.AddAllScripts(update=False), id=id)
+        id = wx.NewId()
+        popup.Append(id, _('Add or update script'), kind=wx.ITEM_NORMAL)
+        ctrl.Bind(wx.EVT_MENU, self.AddScript, id=id)
+        popup.AppendSeparator()
+        id = wx.NewId()
+        popup.Append(id, _('New Tab'), kind=wx.ITEM_NORMAL)
+        ctrl.Bind(wx.EVT_MENU, self.AddTab, id=id)
+        id = wx.NewId()
+        popup.Append(id, _('Remove tab'), kind=wx.ITEM_NORMAL)
+        ctrl.Bind(wx.EVT_MENU, self.OnRemoveTab, id=id)
+        id = wx.NewId()
+        popup.Append(id, _('Remove all tabs'), kind=wx.ITEM_NORMAL)
+        ctrl.Bind(wx.EVT_MENU, self.OnRemoveAllTabs, id=id)
+        if self.listCtrl.GetItemCount() > 0:
+            popup.AppendSeparator()
+            id = wx.NewId()
+            popup.Append(id, _('Check scripts exists'), kind=wx.ITEM_NORMAL)
+            ctrl.Bind(wx.EVT_MENU, self.CheckExist, id=id)
+            if txt:
+                id = wx.NewId()
+                popup.Append(id, _('Copy to AvsPmod tab'), kind=wx.ITEM_NORMAL)
+                ctrl.Bind(wx.EVT_MENU, lambda f: self.NewAvsPmodTab(), id=id)
+        ctrl.PopupMenu(popup)
+        popup.Destroy()
+    def GetIndex(self, tabName, path, name):
+        sList = self.scriptDict[tabName]['scripts']
+        for i, item in enumerate(sList):
+            if item[0] == path and item[1] == name:
+                return i
+        return -1
+    def GetValues(self, idx=None):
+        nb = self.Notebook
+        tabName = nb.GetPageText(nb.GetSelection())
+        sList = self.scriptDict[tabName]['scripts']
+        if idx is None:
+            idx = self.listCtrl.GetFirstSelected()
+        if idx < 0 or idx >= len(sList):
+            return None, None, None, None
+        return sList[idx]
+    def CreateClassList(self):
+        if issubclass(self.classList, ULCtrl.UltimateListCtrl):
+            ULCtrl.WIDTH_COL_DEFAULT = 80
+            ULCtrl.WIDTH_COL_MIN = 10
+            listCtrl = self.classList(self.Notebook, wx.ID_ANY, agwStyle=wx.LC_REPORT|wx.LC_SINGLE_SEL|wx.LC_VIRTUAL|wx.LC_VRULES|ULCtrl.ULC_NO_HIGHLIGHT)
+            listCtrl.parent = self.Notebook  # Idiot!
+            listCtrl.app = self
+            listCtrl.SetBackgroundColour((40,40,40))
+            #listCtrl.Bind(ULCtrl.EVT_LIST_ITEM_RIGHT_CLICK, self.OnListCtrlRightUp)
+            listCtrl.Bind(wx.EVT_CONTEXT_MENU, self.OnListCtrlRightUp)
+            listCtrl.Bind(wx.EVT_RIGHT_UP, self.OnListCtrlRightUp)
+            listCtrl.ItemAttr = ULCtrl.UltimateListItemAttr()
+            #listCtrl._mainWin._highlightBrush = wx.Brush(wx.YELLOW)
+            #listCtrl._mainWin._highlightUnfocusedBrush = wx.Brush(wx.YELLOW)
+            #listCtrl._mainWin._highlightUnfocusedBrush2 = wx.Brush(wx.YELLOW)
+        else:
+            listCtrl = self.classList(self.Notebook, wx.ID_ANY, style=wx.LC_REPORT|wx.LC_SINGLE_SEL|wx.LC_VIRTUAL|wx.LC_HRULES|wx.LC_VRULES|wx.BORDER_NONE)
+            listCtrl.Bind(wx.EVT_CONTEXT_MENU, self.OnListCtrlRightUp)
+            listCtrl.Bind(wx.EVT_RIGHT_UP, self.OnListCtrlRightUp)
+
+        listCtrl.Bind(wx.EVT_LEFT_DCLICK, self.OnListCtrlDClick)
+        listCtrl.InsertColumn(0, _('Name'))
+        listCtrl.InsertColumn(1, _('Path'))
+        listCtrl.SetItemCount(0)
+        return listCtrl
+    def AddScript(self, event):
+        nb = self.Notebook
+        tabName = nb.GetPageText(nb.GetSelection())
+        script, idx = self.parent.getScriptAtIndex(self.parent.scriptNotebook.GetSelection())
+        txt = script.GetText()
+        if script.filename:
+            path, name = os.path.split(script.filename)
+            flag = ''
+        else:
+            path, name, flag = 'No File', self.parent.scriptNotebook.GetPageText(idx), '< '
+        idx = self.GetIndex(tabName, path, name)
+        if idx < 0:
+            self.scriptDict[tabName]['scripts'].append((path, name, txt, flag))
+            self.listCtrl.SetItemCount(0)
+            self.listCtrl.SetItemCount(len(self.scriptDict[tabName]['scripts']))
+            self.scriptDict[tabName]['scripts'].sort(key=lambda k: k[1])
+        else:
+            p = self.scriptDict[tabName]['scripts'][idx]
+            if p[2] != txt:
+                self.scriptDict[tabName]['scripts'][idx] = (p[0], p[1], txt, flag)
+            self.listCtrl.Select(idx)
+            self.listCtrl.Focus(idx)
+        self.listCtrl.Refresh()
+        if issubclass(self.classList, ULCtrl.UltimateListCtrl):
+            self.listCtrl.SetColumnWidth(0, ULCtrl.ULC_AUTOSIZE_FILL)
+        else: self.listCtrl.SetColumnWidth(0, wx.LIST_AUTOSIZE)
+    def AddAllScripts(self, event=None, update=False):
+        nb = self.Notebook
+        tabName = nb.GetPageText(nb.GetSelection())
+        if not update:
+            self.scriptDict[tabName]['scripts'] = []
+            self.listCtrl.SetItemCount(0)
+        for i in range(self.parent.scriptNotebook.GetPageCount()):
+            script = self.parent.scriptNotebook.GetPage(i)
+            txt = script.GetText()
+            if script.filename:
+                path, name = os.path.split(script.filename)
+                flag = ''
+            else:
+                path, name, flag = 'No File', self.parent.scriptNotebook.GetPageText(i), '< '
+            idx = self.GetIndex(tabName, path, name)
+            if idx < 0:
+                self.scriptDict[tabName]['scripts'].append((path, name, txt, flag))
+            elif update:
+                p = self.scriptDict[tabName]['scripts'][idx]
+                if p[2] != txt:
+                    self.scriptDict[tabName]['scripts'][idx] = (p[0], p[1], txt, flag)
+        self.listCtrl.SetItemCount(0)
+        self.listCtrl.SetItemCount(len(self.scriptDict[tabName]['scripts']))
+        self.scriptDict[tabName]['scripts'].sort(key=lambda k: k[1])
+        self.listCtrl.Refresh()
+        if issubclass(self.classList, ULCtrl.UltimateListCtrl):
+            self.listCtrl.SetColumnWidth(0, ULCtrl.ULC_AUTOSIZE_FILL)
+        else: self.listCtrl.SetColumnWidth(0, wx.LIST_AUTOSIZE)
+    def CheckExist(self, event=None):
+        wx.GetApp().SafeYieldFor(self, wx.wxEVT_PAINT)
+        nb = self.Notebook
+        tabName = nb.GetPageText(nb.GetSelection())
+        sList = self.scriptDict[tabName]['scripts']
+        self.listCtrl.SetCursor(wx.StockCursor(wx.CURSOR_WAIT))
+        x = notfound =0
+        for i, item in enumerate(sList):
+            if x > 10:
+                x = 0
+                wx.GetApp().SafeYieldFor(self, wx.wxEVT_PAINT)
+                if wx.GetKeyState(wx.WXK_ESCAPE):
+                    break
+            if not os.path.isfile(os.path.join(item[0], item[1])):
+                notfound += 1
+                sList[i] = (item[0], item[1], item[2], '< ')
+            elif item[2].find('< '):
+                sList[i] = (item[0], item[1], item[2], item[3].replace('< ', ''))
+            x += 1
+        self.listCtrl.SetCursor(wx.StockCursor(wx.CURSOR_DEFAULT))
+        self.listCtrl.Refresh()
+        if notfound > 0:
+            wx.Bell()
+    def NewAvsPmodTab(self):
+        nb = self.Notebook
+        tabName = nb.GetPageText(nb.GetSelection())
+        idx = self.listCtrl.GetFirstSelected()
+        if idx < 0: return
+        path, name, txt, flag = self.scriptDict[tabName]['scripts'][idx]
+        if not txt:
+            return
+        self.parent.NewTab(copyselected=False, copytab=False, text=txt, select=True, insertnext=False)
+        self.listCtrl.Refresh()
+    def SaveOptions(self):
+        self.options['dimensions'] = self.GetRect()
+        self.options['scriptdict'].clear()
+        self.options['scriptdict'].update(self.scriptDict)
+        for key, value in self.options['scriptdict'].iteritems():
+            self.options['scriptdict'][key]['scripts'].sort(key=lambda k: k[1])
+        with open(self.optionsFilename, mode='wb') as f:
+            cPickle.dump(self.options, f, protocol=0)
+    def ReadOptions(self):
+        try:
+            with open(self.optionsFilename, 'rb') as f:
+                self.options = cPickle.load(f)
+        except:
+            return
+        self.listCtrl.SetItemCount(0)
+        if len(self.options['scriptdict']) < 1:
+            return
+        self.scriptDict.clear()
+        self.scriptDict.update(self.options['scriptdict'])
+
+        while self.Notebook.GetPageCount():
+            self.Notebook.RemovePage(0)
+
+        for key, value in self.scriptDict.iteritems():
+            self.Notebook.AddPage(self.listCtrl, key)
+            #self.Notebook.SetSelection(self.Notebook.GetPageCount()-1) # needed for uvlistctrl
+        self.Notebook.SetSelection(self.Notebook.GetPageCount()-1) # needed for uvlistctrl
+        self.Notebook.SetSelection(0)
+        tabName = self.Notebook.GetPageText(0)
+        self.listCtrl.SetItemCount(len(self.scriptDict[tabName]['scripts']))
+        r = self.options['dimensions']
+        if issubclass(self.classList, ULCtrl.UltimateListCtrl):
+            self.listCtrl.SetColumnWidth(0, r[2] + 50)
+            self.listCtrl.SetColumnWidth(1, ULCtrl.ULC_AUTOSIZE_FILL)
+            #self.listCtrl.SetColumnShown(1,False)
+        else:
+            self.listCtrl.SetColumnWidth(0, wx.LIST_AUTOSIZE)
+        self.SetDimensions(*r)
+        if self.IsShown():
+            self.listCtrl.Refresh()
+            self.listCtrl.Update()
+
 
 # Dialog for property window
 class PropWindow(wx.Dialog):
@@ -7490,6 +7876,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.mainSplitter_SetSashPos = None
         self.SplitClipCtrl = SplitClipCtrl(self)
         self.sdlWindow = SDLWindow(self)
+        self.ScriptSelector = None #ScriptSelector(self)
 
         if os.path.isfile(self.macrosfilename):
             try:
@@ -8894,10 +9281,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'audioscrub': False,
             'audioscrubcount': 1,
             # SDL d3d
-            'sdlwindowrect': (sdl2.SDL_WINDOWPOS_CENTERED, sdl2.SDL_WINDOWPOS_CENTERED, 460, 270),
-            'sdlwindowrect1': (sdl2.SDL_WINDOWPOS_CENTERED,sdl2.SDL_WINDOWPOS_CENTERED, 460, 270),
-            'sdlwindowrect2': (sdl2.SDL_WINDOWPOS_CENTERED,sdl2.SDL_WINDOWPOS_CENTERED, 460, 270),
-            'sdlwindowrect3': (sdl2.SDL_WINDOWPOS_CENTERED,sdl2.SDL_WINDOWPOS_CENTERED, 460, 270),
+            'sdlwindowrect': (ctypes.c_int(200), ctypes.c_int(200), ctypes.c_int(460), ctypes.c_int(270)),
+            'sdlwindowrect1': (ctypes.c_int(200), ctypes.c_int(200), ctypes.c_int(460), ctypes.c_int(270)),
+            'sdlwindowrect2': (ctypes.c_int(200), ctypes.c_int(200), ctypes.c_int(460), ctypes.c_int(270)),
+            'sdlwindowrect3': (ctypes.c_int(200), ctypes.c_int(200), ctypes.c_int(460), ctypes.c_int(270)),
             'sdlyuvmatrix': '709', #'auto',
             'sdlresizequality': 'linear',      # GPo 2023, sdl resize quality nearest, linear, best
             'sdlallowfullsize': True,
@@ -10982,6 +11369,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     (_('External player'), 'F6', self.OnMenuVideoExternalPlayer, _('Play the current script in an external program')),
                     (_('External tool arg1'), '', self.OnMenuExternalToolArg1, _('Run the current script with an external program and arg1')),
                     (_('External tool arg2'), '', self.OnMenuExternalToolArg2, _('Run the current script with an external program and arg2')),
+                    (''),
+                    (_('Script selector'), '', self.ShowScriptSelector, ''),
                     ),
                 ),
                 (_('Frame properties'), '', self.OnMenuVideoTogglePropWindow, _('Show/Hide the properties window')),
@@ -14824,9 +15213,17 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                             self.propWindow.Toggle()
 
 
+    def ShowScriptSelector(self, event):
+        if self.ScriptSelector is None:
+             self.ScriptSelector = ScriptSelector(self)
+        self.ScriptSelector.Show()
 
 
     def OnMenuTest(self, event):
+        #self.ScriptSelector.AddTabsScripts()
+        #self.ScriptSelector.SaveOptions()
+        #self.ScriptSelector.ReadOptions()
+
         """
         hwnd = self.GetHandle()
         wmInfo = sdl2.SDL_SysWMinfo()
@@ -21231,11 +21628,15 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     def GetMarkedScriptFromFile(self, filename, returnFull=False):
         txt, f_encoding, eol = self.GetTextFromFile(filename)
-        lines = txt.rstrip().split('\n')
-        lines.reverse()
-        header = '### AvsP marked script ###'
 
-        if self.options['savemarkedavs'] and (lines[0] == header):  # GPo, added save option must also enabled
+        if self.options['savemarkedavs']:
+            lines = txt.rstrip().split('\n')
+            lines.reverse()
+            header = '### AvsP marked script ###'
+        else:
+            lines = None
+
+        if lines is not None and (lines[0] == header):  # GPo, added save option must also enabled
             newlines = []
             for line in lines[1:]:
                 if line == header:
@@ -22015,6 +22416,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     def LoadSession(self, filename=None, saverecentdir=True, resize=True, backup=False, startup=False):
         # Get the filename to load from the user
+        #t = time.time()
         if filename is None or not os.path.isfile(filename):
             filefilter = 'Session (*.ses)|*.ses'
             initialdir = self.options['recentdirSession']
@@ -22136,6 +22538,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 dirname = os.path.dirname(filename)
                 if os.path.isdir(dirname):
                     self.options['recentdirSession'] = dirname
+
+        #print(time.time() - t)
         return True
 
     def LoadTab(self, item, compat=False, hidePreview=False, loadBookmarks=True):
@@ -22168,10 +22572,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         setSavePoint = False
                 except UnicodeEncodeError:
                     setSavePoint = False
+
                 if item['hash'] is not None:
                     hash = md5(txtFromFile.encode('utf8')).hexdigest()
                     if item['hash'] != hash:
                         reload = True
+
         index = self.OpenFile(filename=scriptname, f_encoding=item['f_encoding'],
                               eol=item.get('eol'), workdir=item['workdir'], scripttext=item['text'],
                               setSavePoint=setSavePoint, splits=item['splits'],
