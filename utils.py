@@ -170,6 +170,13 @@ def FindPattern_Fast(find, text):
         found += 1
     return found == len(sl)
 
+def GetKeyShortCut(label, shortcuts):
+    for itemName, shortcut, id in shortcuts:
+        if itemName.endswith(label):
+            accel = wx.GetAccelFromString('\t'+ shortcut)
+            if accel and accel.IsOk():
+                return accel.GetKeyCode()
+
 def IsAVX2():
     def is_set(leaf, subleaf, reg_idx, bit):
         import cpuid
@@ -224,6 +231,9 @@ def micro_delay(delay):
     fin = (micro_seconds() + delay)%(1<<32)
     while micro_seconds() < fin:
         pass
+
+def GetById(ID):
+    return ctypes.cast(id(ID), ctypes.py_object).value
 
 """
 # Python program for A modified Naive Pattern Searching

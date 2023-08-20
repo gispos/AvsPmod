@@ -233,19 +233,19 @@ class StdoutStderrWindow:
         """Set the window to be used as the popup Frame's parent."""
         self.parent = parent
 
-
     def CreateOutputWindow(self, st):
-        self.frame = wx.Frame(self.parent, -1, self.title, self.pos, self.size,
-                              style=wx.DEFAULT_FRAME_STYLE)
-        dpi.SetFontPPI(self.frame)
-        self.text  = TextCtrl(self.frame, -1, "",
+        if self.frame is None:
+            self.frame = wx.Frame(self.parent, -1, self.title, self.pos, self.size,
+                                  style=wx.DEFAULT_FRAME_STYLE)
+            dpi.SetFontPPI(self.frame)
+            self.text  = TextCtrl(self.frame, -1, "",
                                  style=wx.TE_MULTILINE|wx.TE_READONLY)
-        self.text.AppendText(st)
+            wx.EVT_CLOSE(self.frame, self.OnCloseWindow)
+        if st:
+            self.text.AppendText(st)
         self.frame.Show(True)
-        wx.EVT_CLOSE(self.frame, self.OnCloseWindow)
 
-
-    def OnCloseWindow(self, event):
+    def OnCloseWindow(self, event=None):
         if self.frame is not None:
             self.frame.Destroy()
         self.frame = None
@@ -279,7 +279,7 @@ class StdoutStderrWindow:
 
     def close(self):
         if self.frame is not None:
-            wx.CallAfter(self.frame.Close)
+            wx.CallAfter(self.OnCloseWindow, None)
 
 
     def flush(self):

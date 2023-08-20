@@ -38,14 +38,14 @@ If, for example, there is a '-' in the file name of the dll, AvsPmod will report
 please rename this dll and replace the '-' with a '_'
 
 --------------------------
-Version 2.7.5.3 [2023-08-08] GPo
+Version 2.7.5.2 - 2.7.5.3 final [2023-08-20] GPo
 --------------------------
-* Improved loading speed if not Program Options > Save\Load > 'Save or read AvsPmod marked script' enabled.
-* Added Video > Tools > 'Script selector' (in progress)
+v2.7.5.3
+* Video > Tools > 'Script selector' finished, read the readme
 * Bugfix: D3D Window
---------------------------
-Version 2.7.5.2 [2023-08-04] GPo
---------------------------
+* Bugfix: Frame properties window
+* Bugfix: timline Bookmarks on tab change not set if 'Read from script' disabled or no bookmarks saved in the script.
+v2.7.5.2
 * New docking option for the frame properties window when 'Separate window' is selected in the options.
 - if the docking option is selected (default), the window docks at the bottom-left of the main window.
 - free space bottom 50 pixels for the double click action 'd3d window fullsize'.
