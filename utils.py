@@ -210,6 +210,24 @@ class RepeatTimer(threading.Thread):
                 self.function(*self.args, **self.kwargs)
         self.finished.set()
 
+class WaitTimer(threading.Thread):
+    def __init__(self, wait, function, *args, **kwargs):
+        threading.Thread.__init__(self)
+        self.daemon = True
+        self.wait = wait
+        self.function = function
+        self.args = args
+        self.kwargs = kwargs
+        self.finished = threading.Event()
+    def cancel(self):
+        self.finished.set()
+    def run(self):
+        while not self.finished.is_set():
+            self.finished.wait(self.wait)
+            if not self.finished.is_set():
+                self.function(*self.args, **self.kwargs)
+                return
+
 # high-resolution counter 1ms
 def milli_seconds():
     tics = ctypes.c_int64()

@@ -38,6 +38,11 @@ If, for example, there is a '-' in the file name of the dll, AvsPmod will report
 please rename this dll and replace the '-' with a '_'
 
 --------------------------
+Version 2.7.5.4 [2023-10-04] GPo
+--------------------------
+* Some fixes e.g. 'Run analisys pass' error handling, bugfix 'Script Selector' and more.
+
+--------------------------
 Version 2.7.5.2 - 2.7.5.3 final [2023-08-20] GPo
 --------------------------
 v2.7.5.3
