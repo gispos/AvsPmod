@@ -280,7 +280,6 @@ class AvsClipBase:
                 return
             return True
 
-
         # Internal variables
         self.initialized = False
         self.error_message = None
@@ -288,7 +287,6 @@ class AvsClipBase:
         self.app = app
         self.callBack = callBack
         self.name = filename
-        self.error_message = None
         self.current_frame = -1
         self.pBits = None
         self.display_clip = None
@@ -405,6 +403,8 @@ class AvsClipBase:
         if isinstance(script, avisynth.AVS_Clip):
             self.main_clip = script
         else:
+            # set script encoding (system or utf8)
+            avisynth.setEncoding(self.env, script)
             # vpy hack, remove when VapourSynth is supported
             if os.name == 'nt' and filename.endswith('.vpy'):
                 if self.env.function_exists('AutoloadPlugins'): # AviSynth+
@@ -685,6 +685,7 @@ class AvsClipBase:
 
         self.KillAudio(showErr=False)
         self.DeleteYV12Clip()
+        self.resizeFilter = None
 
         fontFace, fontSize, fontColor = global_vars.options['errormessagefont'][:3]
         if not fontColor:
@@ -695,7 +696,7 @@ class AvsClipBase:
         nChars = 0
         for errLine in err.split('\n'):
             lineList.append('Subtitle("""%s""",y=%i,font="%s",size=%i,text_color=%s,align=8)' %
-                (errLine, yLine, fontFace.encode(sys.getfilesystemencoding()), fontSize, fontColor))
+                (errLine, yLine, fontFace.encode(self.env.encoding), fontSize, fontColor))
             yLine += fontSize
             nChars = max(nChars, len(errLine))
 
@@ -740,7 +741,7 @@ class AvsClipBase:
                     return "Audio Error: Cannot close the audio stream. Try again or disable audio scrubbing."
             return None
 
-        # was turned off by CreateErrorClip
+        # is turned off by CreateErrorClip
         if self.IsSplitClip:
             if killSplitClip or not self.split_clip:
                 self.IsSplitClip = False
@@ -780,7 +781,7 @@ class AvsClipBase:
             matrix[1] = 'Rec' if matrix[1] == 'tv' else 'PC.'
             self.matrix = matrix[1] + matrix[0]
 
-        # was turned off by CreateErrorClip
+        # is turned off by CreateErrorClip
         if self.preview_filter:
             if killFilterClip:
                 self.preview_filter = None
@@ -795,124 +796,129 @@ class AvsClipBase:
                 if err:
                     self.callBack('error', err, 'Preview filter error')
 
-        ### skip all filters if error clip
-        #if self.error_message is None:
-        if bit_depth:
-            try:
-                if self.IsYV12 or self.IsYV24 or self.IsY8:
-                    if bit_depth == 's16':
-                        args = [self.clip, 0, 0, 0, self.Height / 2]
-                        self.display_clip = self.env.invoke('Crop', args)
-                    elif bit_depth == 's10':
-                        if self.env.function_exists('mt_lutxy'):
-                            args = (
-                            'msb = Crop(0, 0, Width(), Height() / 2)\n'
-                            'lsb = Crop(0, Height() / 2, Width(), Height() / 2)\n'
-                            'mt_lutxy(msb, lsb, "x 8 << y + 2 >>", chroma="process")')
-                            self.display_clip = self.env.invoke("Eval", [self.clip, args])
-                    elif bit_depth == 'i16':
-                        args = ('AssumeBFF().TurnLeft().SeparateFields().'
-                                'TurnRight().AssumeFrameBased().SelectOdd()')
-                        self.display_clip = self.env.invoke("Eval", [self.clip, args])
-                    elif bit_depth == 'i10':
-                        if self.env.function_exists('mt_lutxy'):
-                            args = (
-                            'AssumeBFF().TurnLeft().SeparateFields().TurnRight().AssumeFrameBased()\n'
-                            'mt_lutxy(SelectOdd(), SelectEven(), "x 8 << y + 2 >>", chroma="process")')
-                            self.display_clip = self.env.invoke("Eval", [self.clip, args])
-                    if not isinstance(self.display_clip, avisynth.AVS_Clip):
-                        raise avisynth.AvisynthError("Not a clip")
-                else:
-                    self.bit_depth = None
-                    self.callBack('bit_depth', -1)
+        ############################################
+        ### Skip all other filters if error clip ###
+        ############################################
 
-            except avisynth.AvisynthError as err:
-                return self.CreateErrorClip(display_clip_error=True)
-
-        if swapuv and self.IsYUV and not self.IsY:
-            try:
-                self.display_clip = self.env.invoke('SwapUV', self.display_clip)
-            except avisynth.AvisynthError as err:
-                return self.CreateErrorClip(display_clip_error=True)
-
-        # display, audio mixer and resize filter
-        # set first the display filter then looking for audio channels
-        args = ''
-        if self.displayFilter:
-            args = self.displayFilter + '\n'
-
-        # Test audio downmix to 2 channels if self.downMix_d
-        # Downmix is on CreateFilterClip (avsp_filter) disabled (speed up).
-        if self.downMix_d and self.vi.has_audio():
-
-            if self.vi.nchannels >= 8:
-                args += (
-                      'a = ConvertAudioToFloat()\n'
-                      'flr = Getchannel(a, 1, 2, 3, 4)\n'
-                      'blr = Getchannel(a, 5, 6)\n'
-                      'slr = Getchannel(a, 7, 8)\n'
-                      'sur = MixAudio(blr, slr, 1.0, 1.0)\n'
-                      'mc = mergechannels(flr, sur)\n'
-                      'flr = GetChannel(mc, 1, 2)\n'
-                      'fcc = GetChannel(mc, 3, 3)\n'
-                      'lrc = MixAudio(flr, fcc, 0.3694, 0.2612)\n'
-                      'blr = GetChannel(mc, 5, 6)\n'
-                      'MixAudio(lrc, blr, 1.0, 0.3694)\n'
-                      )
-            elif self.vi.nchannels >= 6:
-                args += (
-                        'flr = GetChannel(1, 2)\n'
-                        'fcc = GetChannel(3, 3)\n'
-                        'lrc = MixAudio(flr, fcc, 0.3694, 0.2612)\n'
-                        'blr = GetChannel(5, 6)\n'
-                        'MixAudio(lrc, blr, 1.0, 0.3694)\n'
-                        )
-            elif self.vi.nchannels >= 4:
-                args += (
-                        'flr = GetChannel(1, 2)\n'
-                        'blr = GetChannel(3, 4)\n'
-                        'MixAudio(flr, blr, 0.5, 0.5)\n'
-                        )
-            elif self.vi.nchannels == 3:
-                args += (
-                        'flr = GetChannel(1, 2)\n'
-                        'fcc = GetChannel(3, 3)\n'
-                        'MixAudio(flr, fcc, 0.5858, 0.4142)\n'
-                        )
-            if self.audioVolume != 0:
-                args += 'AmplifyDB(%i)\n' % (self.audioVolume)
-
-        # at last the resize filter if prefetch is used
-        if self.resizeFilter:
-            rf = self.CalcResizeFilter(self.vi)
-            if rf:
-                f = rf[0]
-                sp = str(rf[0]).split(';')
-                if sp and len(sp) > 1:
-                    prefetch = sp[1].strip()
-                    if not prefetch.lower().startswith('prefetch'):
-                        prefetch = ''
-                    f = sp[0].strip()
-                args += '%s(%i,%i)' % (f, rf[1], rf[2])
-        if args:
-            try:
-                self.display_clip = self.env.invoke('Eval', [self.display_clip, args])
-            except:
+        if self.error_message is None:
+            if bit_depth:
                 try:
-                    err = self.error_message or self.display_clip.get_error()
+                    if self.IsYV12 or self.IsYV24 or self.IsY8:
+                        if bit_depth == 's16':
+                            args = [self.clip, 0, 0, 0, self.Height / 2]
+                            self.display_clip = self.env.invoke('Crop', args)
+                        elif bit_depth == 's10':
+                            if self.env.function_exists('mt_lutxy'):
+                                args = (
+                                'msb = Crop(0, 0, Width(), Height() / 2)\n'
+                                'lsb = Crop(0, Height() / 2, Width(), Height() / 2)\n'
+                                'mt_lutxy(msb, lsb, "x 8 << y + 2 >>", chroma="process")')
+                                self.display_clip = self.env.invoke("Eval", [self.clip, args])
+                        elif bit_depth == 'i16':
+                            args = ('AssumeBFF().TurnLeft().SeparateFields().'
+                                    'TurnRight().AssumeFrameBased().SelectOdd()')
+                            self.display_clip = self.env.invoke("Eval", [self.clip, args])
+                        elif bit_depth == 'i10':
+                            if self.env.function_exists('mt_lutxy'):
+                                args = (
+                                'AssumeBFF().TurnLeft().SeparateFields().TurnRight().AssumeFrameBased()\n'
+                                'mt_lutxy(SelectOdd(), SelectEven(), "x 8 << y + 2 >>", chroma="process")')
+                                self.display_clip = self.env.invoke("Eval", [self.clip, args])
+                        if not isinstance(self.display_clip, avisynth.AVS_Clip):
+                            raise avisynth.AvisynthError("Not a clip")
+                    else:
+                        self.bit_depth = None
+                        self.callBack('bit_depth', -1)
+
+                except avisynth.AvisynthError as err:
+                    return self.CreateErrorClip(display_clip_error=True)
+
+            if swapuv and self.IsYUV and not self.IsY:
+                try:
+                    self.display_clip = self.env.invoke('SwapUV', self.display_clip)
+                except avisynth.AvisynthError as err:
+                    return self.CreateErrorClip(display_clip_error=True)
+
+            # display, audio mixer and resize filter
+            # set first the display filter then looking for audio channels
+            args = ''
+            if self.displayFilter:
+                args = self.displayFilter + '\n'
+
+            # Test audio downmix to 2 channels if self.downMix_d
+            # Downmix is on CreateFilterClip (avsp_filter) disabled (speed up).
+            if self.downMix_d and self.vi.has_audio():
+
+                if self.vi.nchannels >= 8:
+                    args += (
+                          'a = ConvertAudioToFloat()\n'
+                          'flr = Getchannel(a, 1, 2, 3, 4)\n'
+                          'blr = Getchannel(a, 5, 6)\n'
+                          'slr = Getchannel(a, 7, 8)\n'
+                          'sur = MixAudio(blr, slr, 1.0, 1.0)\n'
+                          'mc = mergechannels(flr, sur)\n'
+                          'flr = GetChannel(mc, 1, 2)\n'
+                          'fcc = GetChannel(mc, 3, 3)\n'
+                          'lrc = MixAudio(flr, fcc, 0.3694, 0.2612)\n'
+                          'blr = GetChannel(mc, 5, 6)\n'
+                          'MixAudio(lrc, blr, 1.0, 0.3694)\n'
+                          )
+                elif self.vi.nchannels >= 6:
+                    args += (
+                            'flr = GetChannel(1, 2)\n'
+                            'fcc = GetChannel(3, 3)\n'
+                            'lrc = MixAudio(flr, fcc, 0.3694, 0.2612)\n'
+                            'blr = GetChannel(5, 6)\n'
+                            'MixAudio(lrc, blr, 1.0, 0.3694)\n'
+                            )
+                elif self.vi.nchannels >= 4:
+                    args += (
+                            'flr = GetChannel(1, 2)\n'
+                            'blr = GetChannel(3, 4)\n'
+                            'MixAudio(flr, blr, 0.5, 0.5)\n'
+                            )
+                elif self.vi.nchannels == 3:
+                    args += (
+                            'flr = GetChannel(1, 2)\n'
+                            'fcc = GetChannel(3, 3)\n'
+                            'MixAudio(flr, fcc, 0.5858, 0.4142)\n'
+                            )
+                if self.audioVolume != 0:
+                    args += 'AmplifyDB(%i)\n' % (self.audioVolume)
+
+            # at last the resize filter if prefetch is used
+            if self.resizeFilter:
+                rf = self.CalcResizeFilter(self.vi)
+                if rf:
+                    f = rf[0]
+                    sp = str(rf[0]).split(';')
+                    if sp and len(sp) > 1:
+                        prefetch = sp[1].strip()
+                        if not prefetch.lower().startswith('prefetch'):
+                            prefetch = ''
+                        f = sp[0].strip()
+                    args += '%s(%i,%i)' % (f, rf[1], rf[2])
+            if args:
+                try:
+                    self.display_clip = self.env.invoke('Eval', [self.display_clip, args])
                 except:
-                    err = None
-                if not err:
-                    err = self.env.get_error()
-                if not err:
+                    try:
+                        err = self.error_message or self.display_clip.get_error()
+                    except:
+                        err = None
+                    if not err:
+                        err = self.env.get_error()
+                    if not err:
+                        err = "Unknown Display or Resize filter error: Cannot create display clip"
+                    else:
+                        err = 'Display or Resize filter error:\n' + str(err)
+                    return self.CreateErrorClip(err=err, display_clip_error=True)
+                if not isinstance(self.display_clip, avisynth.AVS_Clip):
                     err = "Unknown Display or Resize filter error: Cannot create display clip"
-                else:
-                    err = 'Display or Resize filter error:\n' + str(err)
-                return self.CreateErrorClip(err=err, display_clip_error=True)
-            if not isinstance(self.display_clip, avisynth.AVS_Clip):
-                err = "Unknown Display or Resize filter error: Cannot create display clip"
-                return self.CreateErrorClip(err=err, display_clip_error=True)
-        ### end skip all filters
+                    return self.CreateErrorClip(err=err, display_clip_error=True)
+        ##################################
+        ### End Skip all other filters ###
+        ##################################
 
         vi = self.display_clip.get_video_info()
         self.vi_d = vi
@@ -946,8 +952,6 @@ class AvsClipBase:
             return self.CreateErrorClip(err=err, display_clip_error=False)
         elif self.convert_to_rgb_error:
             self.callBack('displayerror', self.convert_to_rgb_error)
-        if self.error_message:
-            self.error_message = None
         return True
 
     # test not used

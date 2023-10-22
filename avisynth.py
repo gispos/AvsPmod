@@ -69,7 +69,21 @@ else:
     FUNCTYPE = ctypes.CFUNCTYPE
 
 
-encoding = sys.getfilesystemencoding()
+default_encoding = sys.getfilesystemencoding()
+encoding = default_encoding
+
+def setEncoding(env, s):
+    global encoding
+    try:
+        tmp = s.encode(default_encoding)
+        tmp = tmp.decode(default_encoding)
+        if tmp == s:
+            encoding = default_encoding
+        else:
+            encoding = 'utf8'
+    except:
+        encoding = 'utf8'
+    env.encoding = encoding # only for error text needed
 
 weak_dict = weakref.WeakKeyDictionary()
 
@@ -351,6 +365,7 @@ class AVS_ScriptEnvironment(object):
     def __init__(self, version=6):
         self.cdata = avs_create_script_environment(version)
         weak_dict[self] = []
+        encoding = default_encoding
 
     def from_param(obj):
         if not isinstance(obj, AVS_ScriptEnvironment):
@@ -790,16 +805,15 @@ class AVS_Clip:
     # start and count are in samples
         return avs_get_audio(self, buf, start, count)
 
-    def get_frame_audio(self, n):
-        src = self.get_frame(n)
-        vi = self.get_video_info()
+    def get_frame_audio(self, n, vi=None):
+        if not vi:
+            vi = self.get_video_info()
         if vi.has_audio():
             start = vi.audio_samples_from_frames(n)
             count = vi.audio_samples_from_frames(1)
-            buffer_size = count * vi.sample_type() * vi.audio_channels()
+            buffer_size = vi.bytes_per_audio_sample() * count
             buffer = ctypes.create_string_buffer(buffer_size)
-            return avs_get_audio(self, ctypes.addressof(buffer), max(0, start),
-                                 count) # start and count are in samples
+            return avs_get_audio(self, ctypes.addressof(buffer), max(0, start), count) # start and count are in samples
 
     def set_cache_hints(self, cachehints, frame_range):
         return avs_set_cache_hints(self, cachehints, frame_range)

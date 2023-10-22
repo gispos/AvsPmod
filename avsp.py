@@ -136,6 +136,7 @@ def _(s):
 builtins._ = _ # Python3
 # Python2 only: __builtin__._ = _
 
+#sys.getfilesystemencoding = lambda: 'UTF-8'
 encoding = sys.getfilesystemencoding()
 
 import wx
@@ -8215,6 +8216,7 @@ class SliderPlus(wx.Panel):
         #~self.mouse_wheel_rotation = 0  # GPo, not used
         # Internal display variables
         self.isclicked = False
+        self.buttonDown = False
         self.xdelta = None
         self.selections = None
         self.selmode = 0
@@ -8270,8 +8272,9 @@ class SliderPlus(wx.Panel):
             colorHandle2 = (min(r+50, 255),min(g+50,255),min(b+50,255)) #(185,185,185)
             colorOffset = (max(r-20, 0),max(g-20,0),max(b-15,0))  #(85, 80, 85)
             brushHandleHighlight = colorHandle2
+            colorTBookmarks = (0,0,255)
             #self.colorSelections = self.selectionsHilightColor
-            self.app.frameTextCtrl.SetBackgroundColour(wx.Colour(185,190,190))
+            self.app.frameTextCtrl.SetBackgroundColour(wx.Colour(185,195,195))
         else:
             self.IsThemeColor = False
             self.colorBackground = self.oldBackgroundColour #  wx.SystemSettings.GetColour(wx.SYS_COLOUR_WINDOW)
@@ -8284,6 +8287,7 @@ class SliderPlus(wx.Panel):
             colorHandle2 = wx.SystemSettings.GetColour(wx.SYS_COLOUR_BTNHIGHLIGHT)
             colorOffset = self.colorBackground
             brushHandleHighlight = colorHandle2
+            colorTBookmarks = (0,0,255)
             #self.colorSelections = wx.BLUE
             self.app.frameTextCtrl.SetBackgroundColour(wx.WHITE)
         self.parent.SetBackgroundColour(self.colorBackground)
@@ -8323,6 +8327,8 @@ class SliderPlus(wx.Panel):
         self.brushGrayText = wx.Brush(colorGrayText)
         self.penBookmarks = wx.Pen(colorBookmarks)
         self.brushBookmarks = wx.Brush(colorBookmarks)
+        self.brushTBookmarks = wx.Brush(colorTBookmarks)
+        self.penTBookmarks = wx.Pen(colorTBookmarks)
         self.brushOffset = wx.Brush(colorOffset)
         self.penOffset = wx.Pen(colorOffset)
         self.brushSplitClip =  wx.Brush(self.app.options['timelinesplitclipcolor'])  # default wx.Brush((100,160,120))
@@ -8335,7 +8341,7 @@ class SliderPlus(wx.Panel):
 
     def _OnLeftDown(self, event):
         self.app.lastshownframe = self.app.paintedframe
-        self.paintWait = False
+        self.paintWait = self.buttonDown = False
         mousepos = event.GetPosition()
         x, y, w, h = self.GetRect()
         rectHandle = self._getRectHandle()
@@ -8343,6 +8349,7 @@ class SliderPlus(wx.Panel):
         if rectHandle.Inside(mousepos): # slider button itself
             self._StopPlaying()
             self.isclicked = True
+            self.buttonDown = True
             self.paintWait = True
             self.xdelta = mousepos.x - rectHandle.x
             self.CaptureMouse()
@@ -8382,6 +8389,8 @@ class SliderPlus(wx.Panel):
             self.ReleaseMouse()
             self.adjust_handle = True
             self._SendScrollEndEvent()
+            if self.selmode == 1 and wx.GetKeyState(wx.WXK_CONTROL):
+                self.BookmarkRangeToSelection()
         else:
             # If clicked on a bookmark, go to that frame
             mousepos = event.GetPosition()
@@ -8522,7 +8531,7 @@ class SliderPlus(wx.Panel):
             if pixelpos == lastpixelpos: # speed it up if next bookmark pixelpos the last one (int rounding float/int)
                 continue
             if value in self.titleDict:
-                dc.SetBrush(wx.BLUE_BRUSH)
+                dc.SetBrush(self.brushTBookmarks)
             else:
                 dc.SetBrush(self.brushBookmarks)
             p1 = wx.Point(pixelpos, h-wT/2)
@@ -8701,6 +8710,30 @@ class SliderPlus(wx.Panel):
                     dc.SetPen(self.penGrayText)
                     dc.SetBrush(self.brushGrayText)
                 dc.DrawPolygon((p1, p2, p3))
+
+    def BookmarkRangeToSelection(self):
+        if not self.bookmarks:
+            return
+        frame = frame2 = self.GetValue()
+        bml = [value for value in self.bookmarks.keys()]
+        bml.sort()
+        if frame in bml:
+            frame += 1
+
+        dec = 1 if self.app.options['bookmarkrangedec'] else 0
+        idx = bisect.bisect_left(bml, frame) or -1
+        bm = 0 if idx < 0 else bml[idx-1]
+
+        idx = bisect.bisect_right(bml, frame2)
+        bm2 = self.GetMax()-1 if idx == len(bml) else bml[idx] - dec
+        if bm2 > bm:
+            for slider in self.app.GetVideoSliderList():
+                if bm-dec in slider.selectionsDict.keys() and slider.selectionsDict[bm-dec] == 2:
+                    del slider.selectionsDict[bm-dec] # auto join the bookmark range
+                    slider.SetBookmark(bm2, 2, refresh=True)
+                else:
+                    slider.SetBookmark(bm, 1, refresh=False)
+                    slider.SetBookmark(bm2, 2, refresh=True)
 
     # GPo 2020 changed (childSelectionsDict = script selectionsDict)
     def _createSelections(self):
@@ -8936,7 +8969,7 @@ class SliderPlus(wx.Panel):
         return None
 
     def HitTestSelectionButton(self, mousepos):
-        if self.selmode == 1:
+        if self.selmode == 1 and not self.buttonDown:
             x, y, w, h = self.GetRect()
             pixelpos = int(self.value* (w-2*self.xo) / float(self.maxValue - self.minValue))
             rectLeftButton = wx.Rect(pixelpos-self.wH/2+self.xo-self.wH, self.yo-3, self.wH, (h-self.yo-self.yo2+6)/1)
@@ -10509,6 +10542,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'timelinehidenumbers': True,             # GPo, automatically hide the numbers if trim dialog shown
             'timelinenumdivisor': 5,                 # GPo, timline number divisor e.g. 10 shows 9 numbers
             'timelinesplitclipcolor': (100,160,120), # GPo, timeline color if Split Clip enabled
+            'bookmarkrangedec': True,                # GPo, reduce the end selection by the value 1 on setting the bookmark range
             'autosnapshot': True,                    # GPo, automatically take snapshot 2 on clip refresh
             'propwinhorzscroll': False,              # GPo, property wnd scrollbar
             'propwinwordwarp': False,                # GPo, property wnd word warp
@@ -13935,10 +13969,18 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         choiceSizer.Add(choiceBoxInsert, 0, wx.RIGHT, intPPI(5))
         dlg.ctrls['choiceInsert'] = choiceBoxInsert
         # Create a static text message
+        """
         staticText = wx.StaticText(dlg, wx.ID_ANY,
             _(
                 'Use the buttons which appear on the video slider '
                 'handle to create the frame selections to trim.'
+            )
+        )
+        """
+        staticText = wx.StaticText(dlg, wx.ID_ANY,
+            _(
+                'For selections use the smal buttons on the video slider. '
+                'For bookmark range press Ctrl and use the slider button.'
             )
         )
         staticText.Wrap(choiceSizer.GetMinSize()[0])
@@ -13953,6 +13995,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             event.Skip()
         checkBox4.Bind(wx.EVT_CHECKBOX, OnCheckBox4)
         checkBox4.SetValue(self.options['timelinehidenumbers'])
+        # bookmark range
+        def OnCheckBox5(event):
+            self.options['bookmarkrangedec'] = event.IsChecked()
+        checkBox5 = wx.CheckBox(dlg, wx.ID_ANY, _('Bookmark range -1'))
+        checkBox5.SetValue(self.options['bookmarkrangedec'])
+        checkBox5.Bind(wx.EVT_CHECKBOX, OnCheckBox5)
         # Create the dialog buttons
         buttonApply = wx.Button(dlg, wx.ID_OK, _('Apply'))
         dlg.Bind(wx.EVT_BUTTON, self.OnTrimDialogApply, buttonApply)
@@ -13972,7 +14020,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         sizer.Add(clipSizer, 0, wx.LEFT|wx.RIGHT|wx.BOTTOM, intPPI(10))
         sizer.Add(choiceSizer, 0, wx.ALL, intPPI(5))
         sizer.Add(wx.StaticLine(dlg), 0, wx.EXPAND|wx.TOP, intPPI(5))
-        sizer.Add(checkBox4, 0, wx.ALL, intPPI(10))
+        #sizer.Add(checkBox4, 0, wx.ALL, intPPI(10))
+
+        exSizer = wx.BoxSizer(wx.HORIZONTAL)
+        exSizer.Add(checkBox4, 0, wx.ALL, intPPI(10))
+        exSizer.Add(checkBox5, 0, wx.ALL, intPPI(10))
+        sizer.Add(exSizer)
+
         sizer.Add(staticText, 0, wx.ALIGN_CENTER|wx.EXPAND|wx.ALL, intPPI(5))
         sizer.Add(buttonSizer, 0, wx.ALIGN_CENTER|wx.ALL, intPPI(10))
         dlg.SetSizer(sizer)
@@ -17709,6 +17763,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         progress.Update(100, _('Finished (%s fps average)\n*** live and let live ***') % (
                         '%#.4g' % (frame_count / elapsed_time) if elapsed_time else 'INF'))
         progress.Destroy()
+        wx.GetApp().ProcessIdle()
         return True
 
     def OnMenuVideoRunFPSAnalysis(self, event):
@@ -17754,11 +17809,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 if not progress.Update(frame * 100/ frame_count, _('Average %#.4g fps\nFrame %s/%s (%#.4g fps)') %   # GPo 2020
                                       (frame_read/ elapsed_time, frame, frame_count, fps))[0]:
                     progress.Destroy()
+                    wx.GetApp().ProcessIdle()
                     return False
         elapsed_time = time.time() - initial_time
         progress.Update(100, _('Finished (%s fps average)\n*** live and let live ***') % (
                         '%#.4g' % (frame_count / elapsed_time) if elapsed_time else 'INF'))
         progress.Destroy()
+        wx.GetApp().ProcessIdle()
         return True
 
     def OnMenuVideoPlay(self, event):
@@ -20988,19 +21045,19 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 return
 
             # normal fullscreen/fullsize
-            if wx.Rect(0,int50,int50, (cRect[3]-int100)//2).Contains(mousePos) and not self.fullScreenWnd.IsFullScreen():
+            if wx.Rect(0, int50, int50, cRect[3]//2).Contains(mousePos) and not self.fullScreenWnd.IsFullScreen():
                 self.OnLeftDClickVideoWindow(toggleFullscreen=True)
                 return
-            if wx.Rect(0,(cRect[3]-int100)//2,int50,(cRect[3]-int100)//2).Contains(mousePos) and not self.IsFullScreen():
+            if wx.Rect(0, cRect[3]//2, int50, cRect[3]-int50).Contains(mousePos) and not self.IsFullScreen():
                 self.OnLeftDClickVideoWindow(toggleFullsize=True)
                 if not self.IsResizeFilterFitFill(script) and self.options['showresamplemenu'] != 0:
                     self.OnMenuVideoZoomResampleFit(zoom=1, fitHeight=True, single=False, sameSize=False)
                 return
 
-            if wx.Rect(cRect[2]-int50,int50,int50,(cRect[3]-int100)//2).Contains(mousePos) and not self.fullScreenWnd.IsFullScreen():
+            if wx.Rect(cRect[2]-int50, int50, int50, cRect[3]//2).Contains(mousePos) and not self.fullScreenWnd.IsFullScreen():
                 self.OnLeftDClickVideoWindow(toggleFullscreen=True)
                 return
-            if wx.Rect(cRect[2]-int50,(cRect[3]-int100)//2,int50,(cRect[3]-int100)//2).Contains(mousePos) and not self.IsFullScreen():
+            if wx.Rect(cRect[2]-int50, cRect[3]//2, int50, cRect[3]-int50).Contains(mousePos) and not self.IsFullScreen():
                 self.OnLeftDClickVideoWindow(toggleFullsize=True)
                 if not self.IsResizeFilterFitFill(script) and self.options['showresamplemenu'] != 0:
                     self.OnMenuVideoZoomResampleFit(zoom=1, fitHeight=True, single=False, sameSize=False)
@@ -21212,78 +21269,14 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 int50 = intPPI(50)
                 cRect = self.videoWindow.GetClientRect()
                 single = wx.Rect(cRect[2]-int50,0,int50,int50).Inside(event.GetPosition()) or shiftdown
-                if single:
+                force = False if single else wx.Rect(cRect[2]-int50,cRect[3]-int50,int50,int50).Inside(event.GetPosition())
+                if single or force:
                     rf = self.currentScript.resizeFilter
                     if self.currentScript.AVI:
-                        zoom = -1 if self.currentScript.AVI.Width != self.currentScript.AVI.DisplayWidth else 2
-                        self.OnMenuVideoZoomResampleFit(zoom=zoom, fitHeight=rf[3], doScroll=shiftdown)
+                        #zoom = -1 if self.currentScript.AVI.Width != self.currentScript.AVI.DisplayWidth else 2
+                        zoom = 2 if rf[2] != 2 else -1
+                        self.OnMenuVideoZoomResampleFit(zoom=zoom, fitHeight=rf[3], single=single, doScroll=shiftdown)
                     return
-                    #~self.OnMenuVideoZoomResampleFit(zoom=2 if rf[2] != 2 else -1, fitHeight=rf[3], doScroll=shiftdown)
-                    #~self.OnMenuVideoZoomResampleFit(zoom = -1 if rf[2] != 1 else 2, fitHeight=rf[3], doScroll=shiftdown)
-                    #return
-
-            if self.zoomwindow:
-                self.zoomwindow = False
-                self.zoomwindowfill = False
-                self.zoomwindowfit = False
-                self.zoomfactor = 1
-                old_zoomfactor = 1
-            else:
-                old_zoomfactor = self.zoomfactor
-                if self.zoomfactor != 1: self.zoomfactor = 1
-                else: self.zoomfactor = 2
-
-            if self.videoWindow.HasCapture():
-                try:
-                    self.videoWindow.ReleaseMouse()  # GPo 2020, must release otherwise videoWindow moves
-                except:
-                    pass
-                self.videoWindow.SetCursor(wx.StockCursor(wx.CURSOR_DEFAULT))
-            self.videoWindow.Freeze()
-            try:
-                self.ZoomAndScroll(old_zoomfactor, self.zoomfactor)
-                if event.LeftIsDown() and not self.currentScript.AVI.IsErrorClip():
-                    videoWindow = self.videoWindow
-                    videoWindow.CaptureMouse()
-                    videoWindow.SetCursor(wx.StockCursor(wx.CURSOR_HAND))
-                    videoWindow.oldPoint = event.GetPosition()
-                    videoWindow.oldOrigin = videoWindow.GetViewStart()
-                    if self.getPixelInfo:
-                        if self.getPixelInfo == 'string':
-                            self.pixelInfo = self.GetPixelInfo(event, string_=True)
-                        else:
-                            self.pixelInfo = self.GetPixelInfo(event)
-                        self.getPixelInfo = False
-                """
-                # GPo new test
-                if self.options['resizevideowindow'] and not self.separatevideowindow: #and not self.IsFullSize():
-                    #if self.mainSplitter.GetMinimumPaneSize() > 1:
-                    self.currentScript.lastSplitVideoPos = None
-                    sash_pos = self.GetMainSplitterNegativePosition(pos=None, forcefit=True)
-                    self.mainSplitter.SetSashPosition(sash_pos)
-                """
-            finally:
-                self.TryThaw(self.videoWindow)
-        else:
-            event.Skip() # show context menu
-
-    # GPo 2018
-    def OnRightUpVideoWindow(self, event):
-        if event.LeftIsDown():
-            if self.options['showresamplemenu'] > 0: # then resample enabled
-                shiftdown = event.ShiftDown()
-                int50 = intPPI(50)
-                cRect = self.videoWindow.GetClientRect()
-                single = wx.Rect(cRect[2]-int50,0,int50,int50).Inside(event.GetPosition()) or shiftdown
-                if single:
-                    rf = self.currentScript.resizeFilter
-                    if self.currentScript.AVI:
-                        zoom = -1 if self.currentScript.AVI.Width != self.currentScript.AVI.DisplayWidth else 2
-                        self.OnMenuVideoZoomResampleFit(zoom=zoom, fitHeight=rf[3], doScroll=shiftdown)
-                    return
-                    #~self.OnMenuVideoZoomResampleFit(zoom=2 if rf[2] != 2 else -1, fitHeight=rf[3], doScroll=shiftdown)
-                    #~self.OnMenuVideoZoomResampleFit(zoom = -1 if rf[2] != 1 else 2, fitHeight=rf[3], doScroll=shiftdown)
-                    #return
 
             if self.zoomwindow:
                 self.zoomwindow = False
@@ -22992,6 +22985,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         except UnicodeDecodeError:
             f_encoding = encoding
             txt = raw_txt.decode(f_encoding)
+
         if '\r' in txt:
             eol = 'crlf'
             txt = txt.replace('\r\n', '\n') # to simplify text handling on macros and avoid mixing line endings
@@ -25721,8 +25715,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if show_preview:
             self.ShowVideoFrame()
 
-    def SetScriptSplitVideoPos(self):
-        if self.options['resizevideowindow']:
+    def SetScriptSplitVideoPos(self, script=None, ignorResizeOption=None):
+        if script is None:
+            script = self.currentScript
+        if not ignorResizeOption and self.options['resizevideowindow']:
             sash_pos = None
         else:
             if self.oldLastSplitVideoPos is not None:
@@ -25730,8 +25726,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             else:
                 sash_pos = self.GetMainSplitterNegativePosition(pos=None, forcefit=True)
         self.SetMinimumScriptPaneSize()
-        self.currentScript.lastSplitVideoPos = sash_pos
-        #self.currentScript.lastSplitVideoPosShown = sash_pos
+        script.lastSplitVideoPos = sash_pos
+        #script.lastSplitVideoPosShown = sash_pos
 
     def CloseFullscreenWND(self, setMinPaneSize=False):
         if self.sdlWindow.IsFullScreen() and self.sdlWindow.IsSameMonitor():

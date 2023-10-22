@@ -8,6 +8,8 @@
 # Copyright:   (c) GPo 2021
 # Licence:     <your licence>
 #-------------------------------------------------------------------------------
+import sys
+encoding = sys.getfilesystemencoding()
 
 def GetMatrixName(idx):
     namedict = {
@@ -114,6 +116,18 @@ def GetGOPClosedName(idx):
         return namedict[idx]
     return '?'
 
+""" test for system or utf8 encoding and return encoded string
+def EncodeString(s):
+    try:
+        tmp = s.encode(encoding)
+        txt = tmp.decode(encoding)
+        if txt == s:
+            return s.encode(encoding, 'backslashreplace')
+        else:
+            return s.encode('utf8', 'backslashreplace')
+    except UnicodeDecodeError:
+        return s.encode(encoding, 'backslashreplace')
+"""
 """
 def GetPropNameValue(key, value):
     propCharDict = {
