@@ -43,7 +43,7 @@ Version 2.7.5.5 [2023-10-22] GPo
 * New Trim Editor function: Bookmark range to selections (the trim editor must be visible for this).
 - if you press Ctrl while clicking the slider, you set the selection in the range from the previous/or current to the next bookmark.
 - if 'Bookmark range -1' is checked in the trim editor, the end selection is shortened by one frame (useful for scene change bookmarks).
-* UTF-8 file names can now be used in the script, but do not mix extended ascii table (german umlauts) and utf8 (eg. japanese name) in one script. 
+* UTF-8 file names can now be used in the script. 
 * Fixed: error handling on creating a clip.
 
 --------------------------
