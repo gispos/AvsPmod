@@ -16,7 +16,7 @@
 
 # Übersetzt von Henrik . AvsP 2.0.1  Danke für die Hilfe, besonders LigH ,doxville,Brother John, Selur und Rippraff !
 
-version = "2.7.4.2"
+version = "2.7.5.6"
 
 messages = {
     "Note: When clicking on the calltip press Ctrl for file search or Shift for web search only." : u"", # New in v2.7.1.6
@@ -32,9 +32,49 @@ messages = {
     "Cancel" : u"Abbrechen",
     "Page:" : u"", # New in v2.3.1
     "Page: %d" : u"", # New in v2.3.1
+    "Fullscreen only with 'Accessing AviSynth in threads' enabled" : u"", # New in v2.7.5.6
+    "Fullsize" : u"", # New in v2.7.3.7
+    "Fullscreen" : u"", # New in v2.7.1.6
+    "Set height 16/9" : u"", # New in v2.7.5.6
+    "Set size 1" : u"", # New in v2.7.5.6
+    "Set size 2" : u"", # New in v2.7.5.6
+    "Set size 3" : u"", # New in v2.7.5.6
+    "Save 1" : u"", # New in v2.7.5.6
+    "Save 2" : u"", # New in v2.7.5.6
+    "Allow fullsize" : u"", # New in v2.7.5.6
+    "Move window with mouse" : u"", # New in v2.7.5.6
+    "No Titlebar and border" : u"", # New in v2.7.5.6
+    "Disable docking" : u"", # New in v2.7.5.6
+    "Enable docking" : u"", # New in v2.7.5.6
+    "In a monitor corner move the window more than half the size out of the monitor" : u"", # New in v2.7.5.6
     "SplitClip" : u"", # New in v2.7.1.9
     "Some variables are not set correctly\nYou should restart the program!" : u"", # New in v2.7.3.1
     "Split Clip Error" : u"", # New in v2.7.3.1
+    "Script selector" : u"", # New in v2.7.5.6
+    "Name" : u"",
+    "Bookmarks" : u"", # New in v2.4.0
+    "Path" : u"", # New in v2.7.5.6
+    "Remove all tabs?" : u"", # New in v2.7.5.6
+    "Tab name already exists" : u"", # New in v2.7.5.6
+    "Error" : u"Fehler",
+    "Edit" : u"", # New in v2.7.5.6
+    "Options && Aditional" : u"", # New in v2.7.5.6
+    "The tab is a Marker tab and protected." : u"", # New in v2.7.5.6
+    "The tab is delete-protected, but still delete?" : u"", # New in v2.7.5.6
+    "Marker tabs and locked tabs are write protected." : u"", # New in v2.7.5.6
+    "Script path and name already exist. Allow for All ?" : u"", # New in v2.7.5.6
+    "Remove selection?" : u"", # New in v2.7.5.6
+    "Items without text: %i" : u"", # New in v2.7.5.6
+    "Information" : u"",
+    "%i files selected! Keep going?" : u"", # New in v2.7.5.6
+    "Files not exists: %i" : u"", # New in v2.7.5.6
+    "Error while loading the backup file." : u"", # New in v2.7.5.6
+    "Error while saving the backup file." : u"", # New in v2.7.5.6
+    "Error while saving the options file." : u"", # New in v2.7.5.6
+    "Error while saving the data file." : u"", # New in v2.7.5.6
+    "Error while loading the options file." : u"", # New in v2.7.5.6
+    "Error while loading the data file." : u"", # New in v2.7.5.6
+    "Wrong data Version. Cannot load data file" : u"", # New in v2.7.5.6
     "Frame properties" : u"", # New in v2.6.9.8
     "Word warp" : u"", # New in v2.6.9.8
     "Horz scroll" : u"", # New in v2.6.9.8
@@ -67,7 +107,6 @@ messages = {
     "The max value must be a multiple of %(mod)s!" : u"Der max Wert muss ein Vielfaches sein von %(mod)s!",
     "The initial value must be a multiple of %(mod)s!" : u"",
     "The difference between the min and max must be greater than %(mod)s!" : u"Der anfängliche Wert muss ein Vielfaches sein von %(mod)s",
-    "Error" : u"Fehler",
     "Define user slider" : u"Definiere Anwenderschieberegler",
     "Slider label:" : u"Schiebereglerbezeichnung",
     "Min value:" : u"Min Wert:",
@@ -471,6 +510,8 @@ messages = {
     "Show frame properties*" : u"", # New in v2.7.1.6
     "Slider window bottom" : u"", # New in v2.7.1.6
     "Slider window top" : u"", # New in v2.7.1.6
+    "Dock bottom-left on main frame" : u"", # New in v2.7.5.6
+    "Separate window docking" : u"", # New in v2.7.5.6
     "As Submenu" : u"", # New in v2.7.1.6
     "Hide (disabled)" : u"", # New in v2.7.1.6
     "Show resample zoom menu*" : u"", # New in v2.7.1.6
@@ -492,6 +533,9 @@ messages = {
     "Resolution-based" : u"", # New in v2.3.0
     "Display" : u"", # New in v2.6.7.0
     "YUV -> RGB" : u"", # New in v2.6.7.0
+    "Next tab" : u"Nächster Tab",
+    "Previous tab" : u"Vorheriger Tab",
+    "Previously selected tab" : u"Zuvor selektierter Tab",
     "Extend selection to line down position" : u"", # New in v2.2.1
     "Scroll down" : u"", # New in v2.2.1
     "Extend rectangular selection to line down position" : u"", # New in v2.2.1
@@ -627,11 +671,8 @@ messages = {
     "Backup the current session for next program run" : u"Aktuelle Session für nächsten Programmlauf speichern", 
     "Load last session startup backup" : u"", # New in v2.7.1.6
     "Reload startup session" : u"", # New in v2.7.1.6
-    "Next tab" : u"Nächster Tab",
     "Switch to next script tab" : u"Schalte zum nächsten Skript-Tab",
-    "Previous tab" : u"Vorheriger Tab",
     "Switch to previous script tab" : u"Schalte zum vorherigen Skript-Tab",
-    "Previously selected tab" : u"Zuvor selektierter Tab",
     "Toggle between the last two selected tabs" : u"Schalte zwischen den 2 zuletzt selektierten Tabs",
     "Show the scrap window" : u"Zeige das Ablage Fenster",
     "Clear file history" : u"Datei History löschen",
@@ -720,7 +761,6 @@ messages = {
     "Set selection as display filter..." : u"", # New in v2.6.9.4
     "Shows the display filter dialog with the selected text" : u"", # New in v2.6.9.4
     "&Video" : u"",
-    "Bookmarks" : u"", # New in v2.4.0
     "Bookmarks to script" : u"", # New in v2.5.1.18
     "Bookmarks from script" : u"", # New in v2.5.1.18
     "Add/Remove bookmark" : u"", # New in v2.2.1
@@ -744,6 +784,12 @@ messages = {
     "Remove all title from the bookmarks" : u"", # New in v2.6.6.0
     "Not include this tab on any group" : u"", # New in v2.5.0
     "Add tab to this group" : u"", # New in v2.5.0
+    "Change current group..." : u"", # New in v2.7.5.6
+    "Change current tab group" : u"", # New in v2.7.5.6
+    "Change current and left tab group" : u"", # New in v2.7.5.6
+    "Change current/left tabs group..." : u"", # New in v2.7.5.6
+    "Change current and right tab group" : u"", # New in v2.7.5.6
+    "Change current/right tabs group..." : u"", # New in v2.7.5.6
     "Clear current tab group" : u"", # New in v2.5.0
     "Clear all tab groups" : u"", # New in v2.5.0
     "Use the difference between showed frames when the tabs were added to the group as offsets" : u"", # New in v2.5.0
@@ -797,8 +843,18 @@ messages = {
     "Maximum speed" : u"", # New in v2.4.0
     "Loop playback for trim editor selections or at the end of the clip" : u"", # New in v2.6.7.0
     "Play loop" : u"", # New in v2.6.3.5
-    "Use a separate thread for playback. If avisynth threads used, playback uses also threads" : u"", # New in v2.6.7.0
-    "Use separate thread" : u"", # New in v2.6.7.0
+    "Play audio at playback. Only if Playback in threads or assign avisynth in threads is enabled." : u"", # New in v2.7.5.6
+    "Play audio" : u"", # New in v2.7.5.6
+    "Play audio while scrolling the video. The number can be set in the context menu of the play button" : u"", # New in v2.7.5.6
+    "Audio scrubbing" : u"", # New in v2.7.5.6
+    "Play scrub" : u"", # New in v2.7.5.6
+    "Play the current frame audio (duration 36 frames). Use Split View for sync check." : u"", # New in v2.7.5.6
+    "Downmix the audio to 2 channels (Stereo). Avisynth Mixer is used." : u"", # New in v2.7.5.6
+    "Downmix audio" : u"", # New in v2.7.5.6
+    "Use threads for playback. If assign avisynth in threads is enabled, playback uses also threads" : u"", # New in v2.7.5.6
+    "Playback in threads" : u"", # New in v2.7.5.6
+    "Direct3D window safe rendering. Safer but slower." : u"", # New in v2.7.5.6
+    "Direct3D safe" : u"", # New in v2.7.5.6
     "Crop editor..." : u"Crop Editor...",
     "Show the crop editor dialog" : u"Zeige den Crop Editor Dialog",
     "&Trim selection editor" : u"&Trim Auswahl Editor",
@@ -830,9 +886,6 @@ messages = {
     "Select the display filter from template" : u"", # New in v2.6.9.4
     "Edit current display filter..." : u"", # New in v2.6.9.4
     "Edit the current display filter" : u"", # New in v2.6.9.4
-    "&Flip" : u"", # New in v2.2.1
-    "Flip video preview upside down" : u"", # New in v2.2.1
-    "Flip video preview from left to right" : u"", # New in v2.2.1
     "&YUV -> RGB" : u"", # New in v2.2.1
     "Swap chroma channels (U and V)" : u"", # New in v2.2.1
     "Get the coefficients from source or script, if the matrix available" : u"", # New in v2.6.7.0
@@ -852,6 +905,9 @@ messages = {
     "Try to get the matrix from source or script" : u"", # New in v2.6.7.0
     "Globally to default" : u"", # New in v2.6.7.0
     "Reset all scripts to default values" : u"", # New in v2.7.1.6
+    "&Flip" : u"", # New in v2.2.1
+    "Flip video preview upside down" : u"", # New in v2.2.1
+    "Flip video preview from left to right" : u"", # New in v2.2.1
     "Bit &depth" : u"", # New in v2.6.1.5
     "Regular 8-bit depth (default)" : u"", # New in v2.5.1 r452
     "8-bit" : u"", # New in v2.5.1 r452
@@ -863,6 +919,14 @@ messages = {
     "Interleaved yuv420p10 or yuv444p10" : u"", # New in v2.5.1 r452
     "Interleaved 16-bit (little-endian)" : u"", # New in v2.5.1 r452
     "Interleaved yuv420p16 or yuv444p16" : u"", # New in v2.5.1 r452
+    "Display RGB conversion with Prefetch(2,2) for faster frame drawing" : u"", # New in v2.7.5.6
+    "Prefetch RGB display conversion" : u"", # New in v2.7.5.6
+    "Display RGB conversion with plugin DecodeYUVtoRGB (lower quality, faster). Prerequisite: Video YUV420xxx and CPU with AVX2" : u"", # New in v2.7.5.6
+    "Fast YUV420 display conversion" : u"", # New in v2.7.5.6
+    "- fast YUV420 auto reset" : u"", # New in v2.7.5.6
+    "Reset on Clip refresh. Note: It resets always when you using Preview Filter" : u"", # New in v2.7.5.6
+    "D3D Window" : u"", # New in v2.7.5.6
+    "Toggle D3D Window" : u"", # New in v2.7.5.6
     "Background &color" : u"", # New in v2.5.1 r452
     "Follow current theme" : u"", # New in v2.5.1 r452
     "Use RGB {hex_value}" : u"", # New in v2.5.1 r452
@@ -924,7 +988,6 @@ messages = {
     "Enable/disable the 'Split Clip' (Help -> readme Split Clip)" : u"", # New in v2.7.1.9
     "Split Clip on/off" : u"", # New in v2.7.1.9
     "Enable/disable Fullsize mode. Ctrl + double click (Esc chancel)" : u"", # New in v2.7.3.7
-    "Fullsize" : u"", # New in v2.7.3.7
     "Expands the left shift area of the video window" : u"", # New in v2.6.3.5
     "Toggle extended left move" : u"Umschalten erweiteter linker Bereich",
     "Save/Restore last display viewing position on tab change" : u"", # New in v2.7.1.6
@@ -933,7 +996,6 @@ messages = {
     "Save pos && zoom on tab change" : u"", # New in v2.7.1.6
     "Additional" : u"", # New in v2.6.6.3
     "Enable/disable Fullscreen mode. Shift + double click (Esc chancel)" : u"", # New in v2.7.3.7
-    "Fullscreen" : u"", # New in v2.7.1.6
     "Adjusts the video window height to the output height (zooming with Keyboard)" : u"", # New in v2.7.1.6
     "Resize video window" : u"", # New in v2.7.1.6
     "On refresh video: Use previous frame time if frame count and frame rate different" : u"", # New in v2.7.1.6
@@ -955,8 +1017,8 @@ messages = {
     "Run FPS analysis" : u"", # New in v2.7.1.6
     "Locate frame" : u"", # New in v2.7.3.7
     "Reade the LocateFrame readme" : u"", # New in v2.7.3.7
-    "External player" : u"Externer Player",
     "Play the current script in an external program" : u"Wiedergabe des aktuellen Skripts in einem externen Programm",
+    "External player" : u"Externer Player",
     "External tool arg1" : u"", # New in v2.6.3.5
     "Run the current script with an external program and arg1" : u"", # New in v2.6.3.5
     "External tool arg2" : u"", # New in v2.6.3.5
@@ -975,6 +1037,8 @@ messages = {
     "Multiline tab style" : u"", # New in v2.7.1.6
     "Hide the video window scrollbars" : u"", # New in v2.6.7.2
     "Hide video window scrollbars" : u"Videofenster Scrollbalken verstecken",
+    "Restore Fullscreen when toggle with middle mouse button" : u"", # New in v2.7.5.6
+    "Restore fullscreen" : u"", # New in v2.7.5.6
     "/**avsp_split**/ must be written in to the script. Read the Fast Clip readme" : u"", # New in v2.7.3.7
     "Use 'Ultra Fast Clip'" : u"", # New in v2.7.3.7
     "Accessing AviSynth in threads" : u"Zugriff auf AviSynth in Threads",
@@ -1036,10 +1100,16 @@ messages = {
     "Split Clip readme" : u"", # New in v2.7.1.9
     "Fast Clip readme" : u"", # New in v2.7.3.7
     "Open the Fast Clip readme" : u"", # New in v2.7.3.7
+    "D3D Window readme" : u"", # New in v2.7.5.6
+    "Open the D3D Window readme" : u"", # New in v2.7.5.6
     "Locate frame readme" : u"", # New in v2.7.3.7
     "Open the Locate frame readme" : u"", # New in v2.7.3.7
     "Number wheel readme" : u"", # New in v2.7.1.9
     "Open the Number wheel readme" : u"", # New in v2.7.3.1
+    "Open the Script selector readme" : u"", # New in v2.7.5.6
+    "Script selector readme" : u"", # New in v2.7.5.6
+    "Audio playback readme" : u"", # New in v2.7.5.6
+    "Open the Audio readme" : u"", # New in v2.7.5.6
     "DPI info" : u"", # New in v2.6.9.4
     "DPI information" : u"", # New in v2.6.6.0
     "Displays the available memory in the status bar" : u"", # New in v2.6.7.1
@@ -1065,11 +1135,14 @@ messages = {
     "&Macros" : u"", # New in v2.2.1
     "Close" : u"Schließen",
     "Close..." : u"Schließen...",
-    "Close all others" : u"Schließe alle anderen",
-    "Close all left" : u"Links alle schließen",
-    "Close all right" : u"Rechts alle schließen",
+    "All others" : u"Alle anderen", # New in v2.7.5.6
+    "All on left" : u"Alle links", # New in v2.7.5.6
+    "All on right" : u"Alle rechts", # New in v2.7.5.6
+    "All unopened" : u"Alle ungeöffnete", # New in v2.7.5.6
     "Rename" : u"Umbenennen",
     "Group" : u"", # New in v2.5.0
+    "Change current and left tabs group" : u"Ändere aktuellen und linke Tab's Gruppe",
+    "Change current and right tabs group" : u"Ändere aktuellen und rechte Tab's Gruppe",
     "Save" : u"Speichern",
     "Save as..." : u"Speichere als...",
     "Reload" : u"Neu laden",
@@ -1080,7 +1153,7 @@ messages = {
     "Tab change loads bookmarks" : u"Tab Wechsel läd Bookmarks",
     "Save/Restore last zoom settings on tab change" : u"", # New in v2.7.1.6
     "Copy to new tab" : u"Zu einem neuen Tab kopieren",
-    "Split View insert tab" : u"", # New in v2.6.6.0
+    "Split View insert tab" : u"Split View Tab einfügen",
     "Auto preview" : u"", # New in v2.6.6.0
     "Sort by name" : u"", # New in v2.7.1.9
     "Reposition to" : u"", # New in v2.2.1
@@ -1092,9 +1165,10 @@ messages = {
     "Show nothing" : u"", # New in v2.6.8.7
     "Show time" : u"", # New in v2.6.8.7
     "Auto scroll" : u"", # New in v2.6.8.7
-    "Auto reset" : u"", # New in v2.6.8.7
+    "Auto reset range" : u"", # New in v2.7.5.6
+    "Free scroll range" : u"", # New in v2.7.5.6
     "Custom..." : u"", # New in v2.6.8.7
-    "Crop editor" : u"Cropeditor",
+    "Crop editor" : u"",
     "You can drag the crop regions with the left mouse button when this dialog is visible, cropping the edge closest to the initial mouse click." : u"Bei diesem Dialog ,kann die Cropfunktion auch mittels linker Maustaste im Bild ausgeführt werden.",
     "Auto-crop" : u"", # New in v2.4.0
     "Samples" : u"Vorlagen",
@@ -1114,12 +1188,13 @@ messages = {
     "Insert clips commands: " : u"", # New in v2.5.1.18
     "Insert Dissolve(trim,) commands: " : u"", # New in v2.5.1.18
     "Insert Dissolve(clips,) commands: " : u"", # New in v2.5.1.18
-    "Use the buttons which appear on the video slider handle to create the frame selections to trim." : u"Video-Schieberegler für die Bildauswahl zum trimmen benutzen ",
+    "For selections use the smal buttons on the video slider. For bookmark range press Ctrl and use the slider button." : u"", # New in v2.7.5.6
     "Hide timeline numbers" : u"", # New in v2.6.8.7
+    "Bookmark range -1" : u"", # New in v2.7.5.6
     "Clear" : u"Löschen",
     "Split View alternate" : u"", # New in v2.7.3.7
     "&Optionen" : u"", # New in v2.7.1.6
-    "Cannot close tabs in groups if rows count greater 1\nYou must disable multiline tab style" : u"", # New in v2.7.3.7
+    "Cannot close tabs in groups if rows count greater 1\nYou must disable Options -> Multiline tab style" : u"", # New in v2.7.5.6
     "The script's directory doesn't exist anymore!" : u"Das Skript Verzeichnis exestiert nicht mehr",
     "'Groups offset bookmarks' has been switched off, otherwise undefined assignments will occur" : u"", # New in v2.7.1.6
     "Print Preview" : u"", # New in v2.3.1
@@ -1142,6 +1217,8 @@ messages = {
     "Frame No." : u"Frame Nr.",
     "Time **" : u"Zeit **",
     "Left-click on a selected item or double-click to edit.\n\n*  RED - a historic title, not a real bookmark.\n** Time may be unavailable or incorrect before preview refreshed." : u"", # New in v2.3.0
+    "Current group is None\nThis will also assign the group to all tabs without a group" : u"", # New in v2.7.5.6
+    "Enter new group" : u"", # New in v2.7.5.6
     "Image saved to \"{0}\"" : u"", # New in v2.5.0
     "No image to save" : u"Kein Bild zum speichern",
     "Error requesting frame {number}" : u"", # New in v2.5.0
@@ -1186,6 +1263,7 @@ messages = {
     "Timeline selections:" : u"", # New in v2.6.8.7
     "Could not find the macros folder!" : u"", # New in v2.2.1
     "Failed to import the selected tool" : u"Werkzeug importieren ist Fehlgeschlagen",
+    "D3DWindow is visible. Changes not possible" : u"", # New in v2.7.5.6
     "Basic (1)" : u"", # New in v2.5.1 r452
     "Override all fonts to use a specified monospace font (no effect on scrap window)" : u"", # New in v2.2.1
     "Use monospaced font:" : u"Verwende monospaced Schriftart",
@@ -1241,7 +1319,8 @@ messages = {
     "Colorize the video controls and slider side bar\nDark default (100,96,100)" : u"", # New in v2.7.4.1
     "Video controls color:" : u"", # New in v2.7.4.1
     "Slider window extras (Snapshot):" : u"", # New in v2.6.7.7
-    "Information" : u"",
+    "Use bold font for video controls frame text field" : u"", # New in v2.7.5.6
+    "Video controls frame text field bold" : u"", # New in v2.7.5.6
     "Settings have been read from backup file\n" : u"Die Einstellungen wurden aus dem Backup gelesen",
     "File extension shouldn't contain dots!" : u"", # New in v2.5.1 r452
     "Insert aborted:" : u"Eingabe abgebrochen",
@@ -1263,7 +1342,7 @@ messages = {
     "Avisynth filter (you can run short macro by adding #> at line start" : u"", # New in v2.6.9.4
     "Display filters only affects the display drawing." : u"", # New in v2.6.9.4
     "It is applied as last filter to all tabs." : u"", # New in v2.6.9.4
-    "Insert a valid avisynth resizer" : u"", # New in v2.7.1.6
+    "Insert a valid avisynth resizer.\nYou can add one function separated by semicolon.\nExample: Spline36Resize;Prefetch(2,2)" : u"", # New in v2.7.5.6
     "Associating .avs files will write to the windows registry." : u"Assoziation von .avs-Dateien wird in die Windows Registry geschrieben.",
     "Do you wish to continue?" : u"Wollen Sie weitermachen ?",
     "Associate avs files for all users?" : u"", # New in v2.4.0
@@ -1280,6 +1359,8 @@ messages = {
     "Active thread on Doom9's forum" : u"", # New in v2.2.1
     "This program is freeware under the GPL license." : u"Dieses Programm ist Freeware unter der GPL Lizenz.",
     "Input a frame number or time (hr:min:sec) and hit Enter. Right-click to retrieve from history. Or input a text and set the bookmark title." : u"", # New in v2.6.8.7
+    "Audio scrub count" : u"", # New in v2.7.5.6
+    "Audio volume" : u"", # New in v2.7.5.6
     "Drop frames" : u"", # New in v2.4.0
     "Half speed" : u"", # New in v2.6.6.0
     "\"I\" frame" : u"", # New in v2.7.3.1
@@ -1287,6 +1368,7 @@ messages = {
     "1 Minute" : u"", # New in v2.6.6.3
     "1 Second" : u"", # New in v2.6.6.3
     "1 Frame" : u"", # New in v2.6.8.7
+    "Audio scrub" : u"", # New in v2.7.5.6
     "bookmark highlight color..." : u"", # New in v2.6.3.5
     "selection highlight color..." : u"", # New in v2.6.3.5
     "split clip highlight color..." : u"", # New in v2.7.3.1
@@ -1309,6 +1391,9 @@ messages = {
     "Remove all" : u"", # New in v2.6.8.7
     "Remove all other" : u"", # New in v2.6.8.7
     "Trim editor..." : u"", # New in v2.6.8.7
+    "Audio Error" : u"", # New in v2.7.5.6
+    "Cannot close the audio play, disable audio scrubbing or try again." : u"", # New in v2.7.5.6
+    "Cannot switch tabs: Audio play cannot be closed.\nDisable audio scrubbing or try again." : u"", # New in v2.7.5.6
     "Cannot switch tabs while crop editor is open!" : u"Kann keine Tabs schalten,weil der Cropeditor noch geöffnet ist",
     "Cannot switch tabs while trim editor is open!" : u"Tabs können nicht geschaltet werden,solange der Trim editor geöffnet ist.",
     "'Tab change load bookmarks' has been switched off, otherwise undefined assignments will occur" : u"", # New in v2.7.1.6
@@ -1350,7 +1435,6 @@ messages = {
     "Program zoom" : u"Programm-Zoom",
     "Bookmark title" : u"", # New in v2.4.0
     "Note: The \"\\t\\t\" or \"\\T\\T\" is used to separate the left and right portions of the status bar\n         message." : u"", # New in v2.3.0
-    "Slider update immediately" : u"Sofortige Schieberegler Aktualisierung",
     "A macro is still running. Close anyway?" : u"", # New in v2.3.0
     "A clip thread is still running. Close anyway?" : u"", # New in v2.6.7.0
     "Save changes before closing?  Press Ctrl to apply to all" : u"", # New in v2.7.1.9
@@ -1477,6 +1561,7 @@ messages = {
     "Is bit-depth set correctly?" : u"", # New in v2.5.1 r452
     "Is resample filter insert correctly?" : u"", # New in v2.7.1.6
     "Is display filter set correctly?" : u"", # New in v2.7.1.6
+    "Unknown Error: Not a clip" : u"", # New in v2.7.5.6
     "Invalid string: " : u"", # New in v2.4.0
     "Failed to open the AVI file" : u"Konnte die AVI-Datei nicht öffnen",
     "Failed to open the AVI frame" : u"Konnte das AVI-Einzelbild nicht öffnen",
@@ -1630,6 +1715,7 @@ messages = {
     "Output file (.avi):" : u"Ausgabedatei (.avi):",
     "# of passes:" : u"# of passes:",
     "Priority:" : u"Priorität",
+    "Cannot write the options file avs2avi_gui.dat.\nAvsPmod\tools folder write protected?" : u"", # New in v2.7.5.6
     "Error: Unknown button" : u"Fehler: Unkekannte Schaltfläche",
     "AviSynth script (*.avs)|*.avs" : u"AviSynth Skript (*.avs)|*.avs",
     "Save the avi as" : u"AVI-Datei speichern als",

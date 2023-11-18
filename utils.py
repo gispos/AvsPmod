@@ -253,6 +253,7 @@ def micro_delay(delay):
 def GetById(ID):
     return ctypes.cast(id(ID), ctypes.py_object).value
 
+
 """
 # Python program for A modified Naive Pattern Searching
 # algorithm that is optimized for the cases when all

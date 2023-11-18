@@ -61,6 +61,8 @@ import global_vars
 import threading
 import time
 
+sys_encoding = sys.getfilesystemencoding()
+#encoding = 'utf8'
 #globals()['__debug__'] = True
 
 try: _
@@ -355,9 +357,9 @@ class AvsClipBase:
         self.split_clip_arg = ''
         self.split_clip_filterarg = ''
         oldFramecount = max(1, oldFramecount)
-        self.prefetchRGB32 = self.app.options['prefetchrgb32']                   # Prefetch(2,2) RGB32 conversion
+        self.prefetchRGB32 = self.app.options['prefetchrgb32']  # Prefetch(1,1) RGB32 conversion
         self.fastYUV420toRGB32 = app.options['yuv420torgb32fast'] and not app.options['fastyuvautoreset']
-        self.IsDecoderYUV420 = False                                             # True if function DecodeYUVtoRGB exists
+        self.IsDecoderYUV420 = False  # True if function DecodeYUVtoRGB exists
         # audio scrubbing
         self.pyaudio = None
         self.audio_stream = None
@@ -403,8 +405,6 @@ class AvsClipBase:
         if isinstance(script, avisynth.AVS_Clip):
             self.main_clip = script
         else:
-            # set script encoding (system or utf8)
-            avisynth.setEncoding(self.env, script)
             # vpy hack, remove when VapourSynth is supported
             if os.name == 'nt' and filename.endswith('.vpy'):
                 if self.env.function_exists('AutoloadPlugins'): # AviSynth+
@@ -671,6 +671,7 @@ class AvsClipBase:
             err = str(err)
             if not err:
                 err = _('Unknown Error: Not a clip')
+
         self.error_message = err
 
         if self.preview_filter:
@@ -696,7 +697,7 @@ class AvsClipBase:
         nChars = 0
         for errLine in err.split('\n'):
             lineList.append('Subtitle("""%s""",y=%i,font="%s",size=%i,text_color=%s,align=8)' %
-                (errLine, yLine, fontFace.encode(self.env.encoding), fontSize, fontColor))
+                (errLine, yLine, fontFace.encode(sys_encoding), fontSize, fontColor))
             yLine += fontSize
             nChars = max(nChars, len(errLine))
 

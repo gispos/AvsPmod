@@ -68,22 +68,8 @@ else:
     avidll = ctypes.CDLL(path)
     FUNCTYPE = ctypes.CFUNCTYPE
 
-
-default_encoding = sys.getfilesystemencoding()
-encoding = default_encoding
-
-def setEncoding(env, s):
-    global encoding
-    try:
-        tmp = s.encode(default_encoding)
-        tmp = tmp.decode(default_encoding)
-        if tmp == s:
-            encoding = default_encoding
-        else:
-            encoding = 'utf8'
-    except:
-        encoding = 'utf8'
-    env.encoding = encoding # only for error text needed
+sys_encoding = sys.getfilesystemencoding()
+encoding = 'utf8'
 
 weak_dict = weakref.WeakKeyDictionary()
 
@@ -365,7 +351,6 @@ class AVS_ScriptEnvironment(object):
     def __init__(self, version=6):
         self.cdata = avs_create_script_environment(version)
         weak_dict[self] = []
-        encoding = default_encoding
 
     def from_param(obj):
         if not isinstance(obj, AVS_ScriptEnvironment):
@@ -463,16 +448,6 @@ class AVS_ScriptEnvironment(object):
                             new_height, rel_offsetU, rel_offsetV, new_pitchUV)
 
     def propToChar(self, key, value):
-        """ v1
-        s = func.GetPropNameValue(key, value)
-        return '[' + s + ']' if s else ''
-        """
-        """ v2
-        f = propCharDict.get(key, None)
-        if f is not None:
-            return '[' + f(value) + ']'
-        return ''
-        """
         if key in propCharDict:
             return '[' + propCharDict[key](value) + ']'
         return ''

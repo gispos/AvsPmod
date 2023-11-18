@@ -35,9 +35,9 @@ There are two options for deactivating the resize filter:
 If not 'Save view pos on tab change' or 'Save pos & zoom on tab change' enabled then all tabs disables the resize filter.
 
 Certain functions are not possible with the resample filter: 
-Crop dialog, read pixel values from avisynth, and a few things are not yet running smoothly: Split View and Preview Filter together.
+Crop dialog, read pixel values from avisynth.
 
-If a resize is active this is indicated in the status bar with an 'r' in front of zoom and dimensions. 
+If a resize is active this is indicated in the status bar with an 'r' in front of zoom and dimensions. And with a green triangle at the top left.  
 
 * Big Note: 
 - If Avisynth is trimmed too much with SetMemoryMax, all AvsPmod filters will take longer. 

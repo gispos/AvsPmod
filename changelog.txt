@@ -38,12 +38,44 @@ If, for example, there is a '-' in the file name of the dll, AvsPmod will report
 please rename this dll and replace the '-' with a '_'
 
 --------------------------
+Version 2.7.5.6 [2023-11-18]
+--------------------------
+* UTF-8 changes:
+- under the Options menu there is the entry 'Force UTF-8', which can be used to determine whether UTF-8 or system encoding is used. 
+- this affects: saving the script, transferring the script to Avisynth and creating a preview script e.g. for the external player.
+- when switching, the script is reinitialized. For compatibility reasons it is switched on as standard.
+- if the script is already UTF-8 encoded when it is opened, this option only affects the transfer to avisnth.
+- !! So if you don't need system encoding, just leave it set to UTF-8 and forget the function. !!
+- some may be surprised... I need this option privately and always save with system encoding.
+------
+* Video > Video information new entry 'Current script UTF-8 encoded', 'True' or 'False' or 'True with BOM'.
+* New Menus: Video > Groups > 'Change current group...', 'Change current/left tabs group...', 'Change current/right tabs group...'
+* Group assignment improved: It is now possible to set the group of the tab to None, change the frame number and reassign it to the group.
+- was not possible before and messed things up.
+* Mouse pointer now changes when it is in the area of a zoom action (50 pixel area left or right), e.g. fullscreen, fullsize, resample zoom.
+* If the mouse is in a zoom action area, action is displayed as a hint. Program options > Misc 2 > 'Show hint for the zoom action area' default enabled.
+- available options: 'Off', 'On - staticaly', 'On - auto hide'
+- if 'Reset' is displayed, it is the same as with a double click outside the action area. 
+* New statusbar popup menu entry 'Free scroll range', Complete timeline area can be scrolled (on status bar) without having to press Ctrl.
+- Reminder status bar (timeline range): 
+-- double-click left or right to move the timeline area, middle mouse click returns to frame position, Shift pressed increases the scroll rate
+-- focus on Video Window: if the Ctrl + Alt keys are held down, the Up or Down key moves the timeline area.
+* New tab popup menu entry: Close... > 'All unopened', closes all tabs that are not initialized.
+* Slider context menu new entry: 'Timeline range...' if statusbar is not visible (fullscreen) you can now show the context menu 'Timeline range'.
+- or press Ctrl when right-clicking on the slider area.The timeline context menu will then also appear. 
+* Resample zoom filter menu now on as default. 
+* Fix: In fullscreen mode, not all shortcuts for "Next tab", "Previous tab" or "Previous selected tab" worked (e.g. F1..F12).
+* Fix: If the 'Close all right' or 'Close all left' tabs menu was used, the bookmarks of the current tab were also deleted.
+* 'Script Selector', another bugfix. 
+* Minor other modifications
+
+--------------------------
 Version 2.7.5.5 [2023-10-22] GPo
 --------------------------
 * New Trim Editor function: Bookmark range to selections (the trim editor must be visible for this).
 - if you press Ctrl while clicking the slider, you set the selection in the range from the previous/or current to the next bookmark.
 - if 'Bookmark range -1' is checked in the trim editor, the end selection is shortened by one frame (useful for scene change bookmarks).
-* UTF-8 file names can now be used in the script. 
+* UTF-8 file names can now be used in the script, but do not mix extended ascii table (german umlauts) and utf8 (eg. japanese name) in one script. 
 * Fixed: error handling on creating a clip.
 
 --------------------------
