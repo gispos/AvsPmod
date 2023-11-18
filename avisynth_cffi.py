@@ -86,7 +86,7 @@ propCharDict = {
 }
 
 sys_encoding = sys.getfilesystemencoding()
-encoding = 'utf8'
+encoding = sys_encoding
 
 abi = False
 
@@ -1612,11 +1612,15 @@ class AVS_Value(object):
     def set_string(self, value, env=None):
         if self.is_defined():
             self.release()
+        env = env or self.env
+        if env is not None:
+            _encoding = env.encoding
+        else:
+            _encoding = encoding
         if isinstance(value, unicode):
             # mbcs will replace invalid characters anyway
-            value = value.encode(encoding, 'backslashreplace')
+            value = value.encode(_encoding, 'backslashreplace')
         chars = ffi.new('char[]', value)
-        env = env or self.env
         if isinstance(env, AVS_ScriptEnvironment):
             chars = env.save_string(chars)
         avs.avs_new_value_string_w(chars, self.cdata)
@@ -1624,10 +1628,14 @@ class AVS_Value(object):
     def set_error(self, value, env=None):
         if self.is_defined():
             self.release()
-        if isinstance(value, unicode):
-            value = value.encode(encoding, 'backslashreplace')
-        chars = ffi.new('char[]', value)
         env = env or self.env
+        if env is not None:
+            _encoding = env.encoding
+        else:
+            _encoding = encoding
+        if isinstance(value, unicode):
+            value = value.encode(_encoding, 'backslashreplace')
+        chars = ffi.new('char[]', value)
         if isinstance(env, AVS_ScriptEnvironment):
             chars = env.save_string(chars)
         avs.avs_new_value_error_w(chars, self.cdata)
@@ -1855,8 +1863,9 @@ class AVS_Clip(object):
 
 class AVS_ScriptEnvironment(object):
 
-    def __init__(self, version=6):
+    def __init__(self, version=6, _encoding=encoding):
         self.cdata = avs.avs_create_script_environment(version)
+        self.encoding = _encoding
 
     def __del__(self):
         avs.avs_delete_script_environment(self.cdata)
@@ -1912,7 +1921,7 @@ class AVS_ScriptEnvironment(object):
 
     def get_var(self, name, type=False):
         if isinstance(name, unicode):
-            name = name.encode(encoding, 'backslashreplace')
+            name = name.encode(self.encoding, 'backslashreplace')
         value = AVS_Value(env=self)
         avs.avs_get_var_w(self.cdata, name, value.cdata)
         if value.get_type() is None:
@@ -1959,7 +1968,7 @@ class AVS_ScriptEnvironment(object):
 
     def set_working_dir(self, new_dir):
         if isinstance(new_dir, unicode):
-            new_dir = new_dir.encode(encoding, 'backslashreplace')
+            new_dir = new_dir.encode(self.encoding, 'backslashreplace')
         return avs.avs_set_working_dir(self.cdata, new_dir)
 
     def propToChar(self, key, value):

@@ -10409,7 +10409,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'exitstatus': 0,
             'reservedshortcuts': ['Escape', 'Tab', 'Shift+Tab', 'Ctrl+Z', 'Ctrl+Y', 'Ctrl+X', 'Ctrl+C', 'Ctrl+V', 'Ctrl+A'],
             # GENERAL OPTIONS
-            'avs_encoding': sys.getfilesystemencoding(),
             'altdir': os.path.join('%programdir%', 'tools'),
             'usealtdir': False,
             'pluginsdir': '',
@@ -10741,16 +10740,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if os.path.isdir(workdir):
                 os.chdir(workdir)
 
-    def OnMenuOptionsSetAvisynthEncoding(self, event):
-        if self.options['avs_encoding'] == 'utf8':
-            self.options['avs_encoding'] = sys.getfilesystemencoding()
-        else:
-            self.options['avs_encoding'] = 'utf8'
-        if avisynth.encoding != self.options['avs_encoding']:
-            avisynth.encoding = self.options['avs_encoding']
-            if self.currentScript.AVI:
-                self.OnMenuVideoRefresh(None)
-
     def LoadAvisynth(self):
         '''Load avisynth.dll/avxsynth.so'''
         global avisynth
@@ -10761,7 +10750,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     import avisynth_cffi as avisynth
                 else:
                     import avisynth
-                avisynth.encoding = self.options['avs_encoding']
                 break
             except OSError as err:
                 if __debug__:
@@ -12743,7 +12731,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 (_('Video information'), '', self.OnMenuVideoInfo, _('Show information about the video in a dialog box')),
             ),
             (_('&Options'),
-                (_('Force UTF-8 encoding'), '', self.OnMenuOptionsSetAvisynthEncoding, _('Script encoding UTF-8 else system default'), wx.ITEM_CHECK, self.options['avs_encoding']=='utf8'),
+                #(_('Force UTF-8 encoding'), '', self.OnMenuOptionsSetAvisynthEncoding, _('Script encoding UTF-8 else system default'), wx.ITEM_CHECK, self.options['avs_encoding']=='utf8'),
                 (_('Always on top'), '', self.OnMenuOptionsAlwaysOnTop, _('Keep this window always on top of others'), wx.ITEM_CHECK, self.options['alwaysontop']),
                 (_('Video preview always on top'), '', self.OnMenuOptionsPreviewAlwaysOnTop, _('If the video preview is detached, keep it always on top of other windows'), wx.ITEM_CHECK, self.options['previewalwaysontop']),
                 (_('Disable video preview'), '', self.OnMenuOptionsDisablePreview, _('If checked, the video preview will not be shown under any circumstances'), wx.ITEM_CHECK, self.options['disablepreview']),
@@ -23162,15 +23150,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         except UnicodeDecodeError:
             f_encoding = sys.getfilesystemencoding()
             txt = raw_txt.decode(f_encoding)
-            """ convert it only on saving the script
-            try:
-                utxt = txt.encode('utf8')
-                utxt = utxt.decode('utf8')
-                f_encoding = 'utf8'
-                txt = utxt
-            except:
-                pass
-            """
 
         if '\r' in txt:
             eol = 'crlf'
@@ -23483,7 +23462,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         return
 
             # Encode text and save it to the specified file
-            txt, encoding = self.GetEncodedText(script, txt, forceUtf8=self.options['avs_encoding']=='utf8')
+            txt, encoding = self.GetEncodedText(script, txt, forceUtf8=False)
             try:
                 with open(filename, 'wb') as f:
                     f.write(txt)
@@ -23604,7 +23583,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         return encoded_txt
     """
 
-    def GetEncodedText(self, script, txt, forceUtf8=True):
+    def GetEncodedText(self, script, txt, forceUtf8=False):
         '''Prepare a text for saving it to file or for Run External Player
         Prefer system's encoding to utf-8, for my privat purpose
         '''
@@ -23637,7 +23616,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if txt != txt2:
                 encoded = False
 
-        # fallback to utf-8, if forceUtf8 actually pointless but...
+        # fallback to utf-8
         if not encoded:
             encoding = 'utf8'
             try:
@@ -29709,7 +29688,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     def MakePreviewScriptFile(self, script):
         txt = self.getCleanText(script.GetText())
         txt = self.stripComment_2(txt)
-        txt, encoding = self.GetEncodedText(script, txt, forceUtf8=self.options['avs_encoding']=='utf8')
+        txt, encoding = self.GetEncodedText(script, txt, forceUtf8=False)
         # Construct the filename of the temporary avisynth script
         dirname = self.GetProposedPath(only='dir')
         if os.path.isdir(dirname):
@@ -31978,9 +31957,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         # option save toggle tags in script, self.options['savetoggletags']
         # whe can save the toggle tags in the script #>[sharp=0], so check the toggled filters here
         isClean = self.cleanToggleTags(script.GetText()) == script.GetText()
-        needUtf8 = script.encoding != 'utf8' and self.options['avs_encoding'] == 'utf8'
 
-        if not script.GetModify() and isClean and os.path.isfile(script.filename) and not needUtf8:
+        if not script.GetModify() and isClean and os.path.isfile(script.filename):
             # Always use original script if there are no unsaved changes
             previewname = script.filename
             boolTemp = False
@@ -31998,7 +31976,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         self.SaveScript(script.filename, index)
                     elif ID == wx.ID_CANCEL:
                         pass
-            if isClean and not needUtf8:
+            if isClean:
                 previewname = script.filename
                 boolTemp = False
             else: # GPo new, enable/disable the filters

@@ -38,14 +38,12 @@ If, for example, there is a '-' in the file name of the dll, AvsPmod will report
 please rename this dll and replace the '-' with a '_'
 
 --------------------------
-Version 2.7.5.6 [2023-11-18]
+Version 2.7.5.7 [2023-11-18]
 --------------------------
 * UTF-8 changes:
-- under the Options menu there is the entry 'Force UTF-8', which can be used to determine whether UTF-8 or system encoding is used. 
-- this affects: saving the script, transferring the script to Avisynth and creating a preview script e.g. for the external player.
-- when switching, the script is reinitialized. For compatibility reasons it is switched off as standard.
-- if the script is already UTF-8 encoded when it is opened, this option only affects the transfer to avisnth.
-- !! So if you prefer UTF-8 encoding, you must enable it, but problems may occur with some source filters. !!
+- The encoding for the Avisynth script transfer is now set for each script depending on the content in the script. 
+- No default UTF-8 can be used, that would be wrong and cause problems with source filters that cannot use UTF-8. 
+- e.g. DirectShowSource does not work with UTF-8 depending on the country setting and the characters it contains. 
 ------
 * Video > Video information new entry 'Current script UTF-8 encoded', 'True' or 'False' or 'True with BOM'.
 * New Menus: Video > Groups > 'Change current group...', 'Change current/left tabs group...', 'Change current/right tabs group...'
@@ -67,6 +65,11 @@ Version 2.7.5.6 [2023-11-18]
 * Fix: If the 'Close all right' or 'Close all left' tabs menu was used, the bookmarks of the current tab were also deleted.
 * 'Script Selector', another bugfix. 
 * Minor other modifications
+
+--------------------------
+Version 2.7.5.6 [2023-11-18]
+--------------------------
+deleted
 
 --------------------------
 Version 2.7.5.5 [2023-10-22] GPo

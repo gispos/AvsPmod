@@ -169,6 +169,16 @@ def AvsReloadLibrary():
         raise ValueError("Fatal Error: Cannot load avisynth.dll")
     return True
 
+def GetEncoding(txt):
+    if isinstance(txt, unicode):
+        try:
+            s = txt.encode(sys_encoding)
+            if s.decode(sys_encoding) == txt:
+                return sys_encoding
+        except:
+            pass
+        return 'utf8'
+    return sys_encoding
 
 # for e.g. analysis pass
 class AvsSimpleClipBase:
@@ -182,8 +192,10 @@ class AvsSimpleClipBase:
             if not isinstance(env, avisynth.AVS_ScriptEnvironment):
                 raise TypeError("env must be a PIScriptEnvironment or None")
         else:
+            if isinstance(script, avisynth.AVS_Clip):
+                raise ValueError("env must be defined when providing a clip")
             try:
-                env = avisynth.AVS_ScriptEnvironment(6)
+                env = avisynth.AVS_ScriptEnvironment(6, GetEncoding(script))
             except OSError: # only on OSError
                 return
             except:
@@ -381,8 +393,9 @@ class AvsClipBase:
         else:
             if isinstance(script, avisynth.AVS_Clip):
                 raise ValueError("env must be defined when providing a clip")
+            # set the script encoding
             try:
-                env = avisynth.AVS_ScriptEnvironment(6)
+                env = avisynth.AVS_ScriptEnvironment(6, GetEncoding(script))
             except OSError: # only on OSError
                 return
             except:
