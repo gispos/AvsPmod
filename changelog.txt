@@ -43,10 +43,9 @@ Version 2.7.5.6 [2023-11-18]
 * UTF-8 changes:
 - under the Options menu there is the entry 'Force UTF-8', which can be used to determine whether UTF-8 or system encoding is used. 
 - this affects: saving the script, transferring the script to Avisynth and creating a preview script e.g. for the external player.
-- when switching, the script is reinitialized. For compatibility reasons it is switched on as standard.
+- when switching, the script is reinitialized. For compatibility reasons it is switched off as standard.
 - if the script is already UTF-8 encoded when it is opened, this option only affects the transfer to avisnth.
-- !! So if you don't need system encoding, just leave it set to UTF-8 and forget the function. !!
-- some may be surprised... I need this option privately and always save with system encoding.
+- !! So if you prefer UTF-8 encoding, you must enable it, but problems may occur with some source filters. !!
 ------
 * Video > Video information new entry 'Current script UTF-8 encoded', 'True' or 'False' or 'True with BOM'.
 * New Menus: Video > Groups > 'Change current group...', 'Change current/left tabs group...', 'Change current/right tabs group...'

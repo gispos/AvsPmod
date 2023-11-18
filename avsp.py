@@ -10409,7 +10409,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'exitstatus': 0,
             'reservedshortcuts': ['Escape', 'Tab', 'Shift+Tab', 'Ctrl+Z', 'Ctrl+Y', 'Ctrl+X', 'Ctrl+C', 'Ctrl+V', 'Ctrl+A'],
             # GENERAL OPTIONS
-            'avs_encoding': 'utf8',
+            'avs_encoding': sys.getfilesystemencoding(),
             'altdir': os.path.join('%programdir%', 'tools'),
             'usealtdir': False,
             'pluginsdir': '',
@@ -29810,7 +29810,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if self.overlayData:
             try:
                 x,y,s,t = self.overlayData
-                if force or time.time() > t:
+                if force or time.time() >= t:
                     cSize = self.videoWindow.GetClientSize()
                     self.overlayData = None
                     xx = 18 if x < intPPI(60) else cSize[0] - 200
