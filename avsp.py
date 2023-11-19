@@ -10516,6 +10516,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'savetoggletags': False,                # GPo, save toggle tags within the script
             # MISC OPTIONS
             'lang': 'eng',
+            'save_utf8': False,                     # GPo, always save the script UTF-8 encoded
             'startupsession': True,
             'alwaysloadstartupsession': False,
             'closeneversaved': False,
@@ -12731,7 +12732,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 (_('Video information'), '', self.OnMenuVideoInfo, _('Show information about the video in a dialog box')),
             ),
             (_('&Options'),
-                #(_('Force UTF-8 encoding'), '', self.OnMenuOptionsSetAvisynthEncoding, _('Script encoding UTF-8 else system default'), wx.ITEM_CHECK, self.options['avs_encoding']=='utf8'),
                 (_('Always on top'), '', self.OnMenuOptionsAlwaysOnTop, _('Keep this window always on top of others'), wx.ITEM_CHECK, self.options['alwaysontop']),
                 (_('Video preview always on top'), '', self.OnMenuOptionsPreviewAlwaysOnTop, _('If the video preview is detached, keep it always on top of other windows'), wx.ITEM_CHECK, self.options['previewalwaysontop']),
                 (_('Disable video preview'), '', self.OnMenuOptionsDisablePreview, _('If checked, the video preview will not be shown under any circumstances'), wx.ITEM_CHECK, self.options['disablepreview']),
@@ -12747,6 +12747,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 (_('On cancel assign the clip later'), '', self.OnMenuOptionsAviThreadAssignLater, _('AvsPmod should normally be closed after a thread has been canceled by the user. This option tries to assign the clip to the script after the thread has internaly finished.'), wx.ITEM_CHECK, self.options['avithreadassignlater']),
                 (_('Detach Thread ( test only! ) ...'), '', self.OnMenuDetachThread, _('Warning! test only')),
                 (''),
+                (_('Force UTF-8 on saving the script'), '', self.OnMenuOptionsSetSaveEncoding, _('Always save the script UTF-8 encoded else system locale or UTF-8'), wx.ITEM_CHECK, self.options['save_utf8']),
                 (_('Associate .avs files with AvsPmod'), '', self.OnMenuOptionsAssociate, _('Configure this computer to open .avs files with AvsP when double-clicked. Run again to disassociate')),
                 (''),
                 (_('Fonts and colors...'), '', self.OnMenuOptionsFontsAndColors, _('Edit the various AviSynth script fonts and colors')),
@@ -16674,9 +16675,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
 
     def OnMenuTest(self, event):
-        #self.ScriptSelector.AddTabsScripts()
-        #self.ScriptSelector.SaveOptions()
-        #self.ScriptSelector.ReadOptions()
 
         """
         hwnd = self.GetHandle()
@@ -18131,8 +18129,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         SetFontPPI(dlg)
         vi = self.GetVideoInfoDict(clean=True)
         t_selFrames, t_selCount = countSelections('timeline')
-        isUtf8 = 'True' if script.encoding == 'utf8' else 'True with BOM' if script.encoding == 'utf-8-sig' else 'False'
-
+        isScriptUtf8 = 'True' if script.encoding.lower() in ('utf8', 'utf-8') else 'True with BOM' if script.encoding == 'utf-8-sig' else 'False'
+        avsEncoding = 'UTF-8' if self.currentScript.AVI.env.encoding == 'utf8' else 'System locale: ' + self.currentScript.AVI.env.encoding
         labels = (
             (_('Video'),
                 (
@@ -18157,7 +18155,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 (
                 (_('Bookmarks:'), '%i timeline, %i backup, %i saved' % (len(self.GetBookmarkFrameList()), len(script.bookmarks), self.OnMenuBookmarksFromScript(getOnlyCount=True))),
                 (_('Timeline selections:'), '%i frames (%.02f %%) in %i selections' % (t_selFrames, float(t_selFrames/(vi['framecount']/100.00)), t_selCount)),
-                (_('Current script UTF-8 encoded:'), '%s' % isUtf8),
+                (_('Script UTF-8 encoded:'), '%s' % isScriptUtf8),
+                (_('Script Avisynth encoding:'), '%s' % avsEncoding),
                 ),
             )
         )
@@ -18230,6 +18229,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         obj.__dict__['last'] = self.macroVars['last']
         obj.__dict__['avsp'].Last = self.macroVars['last']
         self.macroVars['last'] = obj.avsp_run()
+
+    def OnMenuOptionsSetSaveEncoding(self, event):
+        self.options['save_utf8'] = not self.options['save_utf8']
+        if self.options['save_utf8']:
+            wx.MessageBox(_('Some source filters do not work with UTF-8 encoding.'), _('Warning'))
 
     def OnMenuOptionsAlwaysOnTop(self, event):
         id = event.GetId()
@@ -23462,7 +23466,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         return
 
             # Encode text and save it to the specified file
-            txt, encoding = self.GetEncodedText(script, txt, forceUtf8=False)
+            txt, encoding = self.GetEncodedText(script, txt, forceUtf8=self.options['save_utf8'])
             try:
                 with open(filename, 'wb') as f:
                     f.write(txt)
@@ -29688,7 +29692,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     def MakePreviewScriptFile(self, script):
         txt = self.getCleanText(script.GetText())
         txt = self.stripComment_2(txt)
-        txt, encoding = self.GetEncodedText(script, txt, forceUtf8=False)
+        txt, encoding = self.GetEncodedText(script, txt, forceUtf8=self.options['save_utf8'])
         # Construct the filename of the temporary avisynth script
         dirname = self.GetProposedPath(only='dir')
         if os.path.isdir(dirname):
@@ -29796,7 +29800,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     yy = 18 if y < cSize[1]//2 else cSize[1]-26-intPPI(12)
                     self.videoWindow.RefreshRect(wx.Rect(xx, yy, 200, yy+intPPI(14)))
                 elif t > 0:
-                    wx.CallLater(t, self.ResetOverlay, force=False)
+                    wx.CallLater(500, self.ResetOverlay, force=False)
             except:
                 self.overlayData = None
 
@@ -29808,7 +29812,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if timeout > 100:
                 wx.CallLater(timeout, self.ResetOverlay, force=False)
 
-    def DrawOverlay(self, dc=None):
+    def DrawOverlay(self):
         try:
             x,y,s,t = self.overlayData
         except:
@@ -29969,7 +29973,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             inputdc.Blit(0, 0, w, h, dc, 0, 0)
 
         if self.overlayData:
-            self.DrawOverlay(inputdc)
+            self.DrawOverlay()
 
         self.paintedframe = frame
         return True

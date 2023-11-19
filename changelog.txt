@@ -38,6 +38,13 @@ If, for example, there is a '-' in the file name of the dll, AvsPmod will report
 please rename this dll and replace the '-' with a '_'
 
 --------------------------
+Version 2.7.5.8 [2023-11-19]
+--------------------------
+* Options menu > 'Force UTF-8 on saving the script' (for the sake of peace).
+- as already mentioned: Some source filters do not work with UTF-8. See version 2.7.5.7 below.
+* New Video information entry 'Script Avisynth encoding', 'UTF-8' or 'System locale: xxx'
+
+--------------------------
 Version 2.7.5.7 [2023-11-18]
 --------------------------
 * UTF-8 changes:
