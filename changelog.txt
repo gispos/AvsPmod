@@ -40,7 +40,7 @@ please rename this dll and replace the '-' with a '_'
 --------------------------
 Version 2.7.5.8 [2023-11-19]
 --------------------------
-* Options menu > 'Force UTF-8 on saving the script' (for the sake of peace).
+* Program Options > Save / Load > 'Force UTF-8 encoding on saving the script' (for the sake of peace).
 - as already mentioned: Some source filters do not work with UTF-8. See version 2.7.5.7 below.
 * New Video information entry 'Script Avisynth encoding', 'UTF-8' or 'System locale: xxx'
 
