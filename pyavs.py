@@ -195,7 +195,7 @@ class AvsSimpleClipBase:
             if isinstance(script, avisynth.AVS_Clip):
                 raise ValueError("env must be defined when providing a clip")
             try:
-                env = avisynth.AVS_ScriptEnvironment(6, GetEncoding(script, forceUTF8))
+                env = avisynth.AVS_ScriptEnvironment(6, GetEncoding(script, forceUtf8))
             except OSError: # only on OSError
                 return
             except:
