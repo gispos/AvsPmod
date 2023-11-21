@@ -62,7 +62,6 @@ import threading
 import time
 
 sys_encoding = sys.getfilesystemencoding()
-#encoding = 'utf8'
 #globals()['__debug__'] = True
 
 try: _
@@ -169,20 +168,21 @@ def AvsReloadLibrary():
         raise ValueError("Fatal Error: Cannot load avisynth.dll")
     return True
 
-def GetEncoding(txt):
+def GetEncoding(txt, force_utf8):
     if isinstance(txt, unicode):
-        try:
-            s = txt.encode(sys_encoding)
-            if s.decode(sys_encoding) == txt:
-                return sys_encoding
-        except:
-            pass
+        if not force_utf8:
+            try:
+                s = txt.encode(sys_encoding)
+                if s.decode(sys_encoding) == txt:
+                    return sys_encoding
+            except:
+                pass
         return 'utf8'
     return sys_encoding
 
 # for e.g. analysis pass
 class AvsSimpleClipBase:
-    def __init__(self,  script, filename='', workdir='', env=None):
+    def __init__(self,  script, filename='', workdir='', env=None, forceUTF8=False):
         self.initialized = False
         self.env = None
         self.parent_env = env
@@ -195,7 +195,7 @@ class AvsSimpleClipBase:
             if isinstance(script, avisynth.AVS_Clip):
                 raise ValueError("env must be defined when providing a clip")
             try:
-                env = avisynth.AVS_ScriptEnvironment(6, GetEncoding(script))
+                env = avisynth.AVS_ScriptEnvironment(6, GetEncoding(script, forceUTF8))
             except OSError: # only on OSError
                 return
             except:
@@ -395,7 +395,7 @@ class AvsClipBase:
                 raise ValueError("env must be defined when providing a clip")
             # set the script encoding
             try:
-                env = avisynth.AVS_ScriptEnvironment(6, GetEncoding(script))
+                env = avisynth.AVS_ScriptEnvironment(6, GetEncoding(script, self.app.options['force_avisynth_utf8']))
             except OSError: # only on OSError
                 return
             except:

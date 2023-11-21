@@ -10517,6 +10517,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             # MISC OPTIONS
             'lang': 'eng',
             'save_utf8': False,                     # GPo, always save the script UTF-8 encoded
+            'force_avisynth_utf8': False,           # force UTF-8 encoding when passing the script to Avisynth
             'startupsession': True,
             'alwaysloadstartupsession': False,
             'closeneversaved': False,
@@ -11545,6 +11546,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 ((_('Save or read avs scripts with AvsPmod markings'), wxp.OPT_ELEM_CHECK, 'savemarkedavs', _('Save and read AvsPmod-specific markings (user sliders, toggle tags, etc) as a commented section in the *.avs file'), dict() ), ),
                 ((_('Save toggle tags within the script ( read the hint! )'), wxp.OPT_ELEM_CHECK, 'savetoggletags', _('Do not remove toggle tags and disabled filters.\nCan make the saved script unreadable for other programs if You not use #> in front of the toggle tag: #>[sharp=0]'), dict() ), ),
                 ((_('Force UTF-8 encoding on saving the script'), wxp.OPT_ELEM_CHECK, 'save_utf8', _('Always save the script UTF-8 encoded else system locale or UTF-8'), dict() ), ),
+                ((_('Force Avisynth UTF-8 encoding'), wxp.OPT_ELEM_CHECK, 'force_avisynth_utf8', _('Always pass the script to Avisynth encoded in UTF-8, otherwise with the system locale or UTF-8'), dict() ), ),
                 ((_('Start dialogs on the last used directory'), wxp.OPT_ELEM_CHECK, 'userecentdir', _("If unchecked, the script's directory is used"), dict() ), ),
                 ((_('Start save image dialogs on the last used directory'), wxp.OPT_ELEM_CHECK, 'useimagesavedir', _("If unchecked, the script's directory is used"), dict() ), ),
                 ((_('Default image filename pattern'), wxp.OPT_ELEM_STRING, 'imagenamedefaultformat', _("Choose a default pattern for image filenames. %s -> script title, %06d -> frame number padded to six digits"), dict() ), ),
@@ -17827,7 +17829,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         progress = wx.ProgressDialog(message=_('Starting analysis pass...'), title=_('Run analysis pass'),
                                      style=wx.PD_CAN_ABORT|wx.PD_ELAPSED_TIME|wx.PD_REMAINING_TIME|wx.PD_APP_MODAL)
-        AVI = pyavs.AvsSimpleClipBase(script.GetText(), filename=filename, workdir=workdir)
+        AVI = pyavs.AvsSimpleClipBase(script.GetText(), filename=filename, workdir=workdir, forceUtf8=self.options['force_avisynth_utf8'])
         if AVI is None:
             progress.Destroy()
             wx.GetApp().ProcessIdle() # make sure progress is hiden
@@ -18129,7 +18131,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         SetFontPPI(dlg)
         vi = self.GetVideoInfoDict(clean=True)
         t_selFrames, t_selCount = countSelections('timeline')
-        isScriptUtf8 = 'True' if script.encoding.lower() in ('utf8', 'utf-8') else 'True with BOM' if script.encoding == 'utf-8-sig' else 'False'
         avsEncoding = 'UTF-8' if self.currentScript.AVI.env.encoding == 'utf8' else 'System locale: ' + self.currentScript.AVI.env.encoding
         labels = (
             (_('Video'),
@@ -18155,7 +18156,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 (
                 (_('Bookmarks:'), '%i timeline, %i backup, %i saved' % (len(self.GetBookmarkFrameList()), len(script.bookmarks), self.OnMenuBookmarksFromScript(getOnlyCount=True))),
                 (_('Timeline selections:'), '%i frames (%.02f %%) in %i selections' % (t_selFrames, float(t_selFrames/(vi['framecount']/100.00)), t_selCount)),
-                (_('Script UTF-8 encoded:'), '%s' % isScriptUtf8),
                 (_('Script Avisynth encoding:'), '%s' % avsEncoding),
                 ),
             )
