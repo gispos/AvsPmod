@@ -182,7 +182,7 @@ def GetEncoding(txt, force_utf8):
 
 # for e.g. analysis pass
 class AvsSimpleClipBase:
-    def __init__(self,  script, filename='', workdir='', env=None, forceUTF8=False):
+    def __init__(self,  script, filename='', workdir='', env=None, forceUtf8=False):
         self.initialized = False
         self.env = None
         self.parent_env = env
