@@ -38,6 +38,20 @@ If, for example, there is a '-' in the file name of the dll, AvsPmod will report
 please rename this dll and replace the '-' with a '_'
 
 --------------------------
+Version 2.7.6.0 [2023-11-28]
+--------------------------
+* Fullsize mode uses now the zoom settings from Fullscreen mode. (Program settings > Misc 2 > 'Fullscreen\Fullsize zoom').
+- but only if the fullsize is activated by a double click with the mouse in the zoom action area. 
+- when activated via a shortcut or menu, the current zoom is used. 
+* Video Window hide scroll bars is now as default enabled (Options > 'Hide video window scrollbars').
+* Zoom with mouse wheel overrides the zoom 'Fill' or 'Fit' settings (you can now always zooming with the mouse wheel).
+* New zoom menu entry 'Custom', acts only as Indicator if the current zoom not in the other fixed value menus.
+* Zoom action area: 'Resize single' and 'Resize all' changes the color yellow or blue depending on the function.
+- if it is yellow, the resize filter is switched on when double-clicked, and switched off if it is blue.
+- is it preceded by a +, this indicates that the global resample filter is switched on, i.e. that the resample is active every time a new tab is opened.
+* Some small other changes
+
+--------------------------
 Version 2.7.5.9 [2023-11-21]
 --------------------------
 * Program Options > Save/Load > 'Force Avisynth UTF-8 encoding' (pass the script to Avisynth always UTF-8 encoded else system locale or UTF-8)
