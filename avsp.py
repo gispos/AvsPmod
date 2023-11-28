@@ -12313,8 +12313,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             (_('Antialiasing'), '', self.OnMenuVideoZoomAntialias, _("If zoom not 100 %, the preview is drawing antialiased"), wx.ITEM_CHECK, self.options['zoom_antialias']),
         )
         _resampleMenu = (
-            ('Resample fill', '^', self.OnMenuVideoZoomResampleFill, _("Use resample filter"), wx.ITEM_NORMAL),
-            ('Resample fit', '<', self.OnMenuVideoZoomResampleFit, _("Use resample filter"), wx.ITEM_NORMAL),
+            ('Resample fill', '', self.OnMenuVideoZoomResampleFill, _("Use resample filter"), wx.ITEM_NORMAL),
+            ('Resample fit', '', self.OnMenuVideoZoomResampleFit, _("Use resample filter"), wx.ITEM_NORMAL),
             ('50% resample', '', self.OnMenuVideoZoomResampleZoom, _("Use resample filter"), wx.ITEM_NORMAL),
             ('75% resample', '', self.OnMenuVideoZoomResampleZoom, _("Use resample filter"), wx.ITEM_NORMAL),
             ('200% resample!', '', self.OnMenuVideoZoomResampleZoom, _("Use resample filter"), wx.ITEM_NORMAL),
