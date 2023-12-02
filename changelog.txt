@@ -38,6 +38,12 @@ If, for example, there is a '-' in the file name of the dll, AvsPmod will report
 please rename this dll and replace the '-' with a '_'
 
 --------------------------
+Version 2.7.6.1 [2023-12-01]
+--------------------------
+* Fix: The resample filter sets the wrong size for 'Fullsize' when double-clicking in the zoom action area.
+* Another Bugfix for the 'Script Selector'
+
+--------------------------
 Version 2.7.6.0 [2023-11-28]
 --------------------------
 * Fullsize mode uses now the zoom settings from Fullscreen mode. (Program settings > Misc 2 > 'Fullscreen\Fullsize zoom').
