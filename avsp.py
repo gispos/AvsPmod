@@ -135,8 +135,6 @@ def _(s):
 
 builtins._ = _ # Python3
 # Python2 only: __builtin__._ = _
-
-#sys.getfilesystemencoding = lambda: 'utf-8'
 encoding = sys.getfilesystemencoding()
 
 import wx
@@ -168,6 +166,27 @@ floatPPI = dpi.floatPPI
 SetFontPPI = dpi.SetFontPPI
 
 #globals()['__debug__'] = True
+
+""" test
+import multiprocessing
+avs_manager = None
+
+def _avs_proc_get_frn(obj):
+    return obj.get()
+
+class AvsAVIClass(object):
+    def __init__(self):
+        self.var = None
+
+    def set(self, value):
+        self.var = value
+
+    def get(self):
+        if self.var:
+            return int(pyavs.AvsClipBase(self.var).current_frame)
+        else:
+            return -1
+"""
 
 # Filter database for each tab
 class AvsFilterDict(collections.MutableMapping):
@@ -2182,6 +2201,8 @@ class AvsStyledTextCtrl(stc.StyledTextCtrl):
         elif event.LeftIsDown():
             xypos = event.GetPosition()
             self.SetCurrentPos(self.PositionFromPoint(xypos))
+        if self.app.overlayData:
+            self.app.ResetOverlay()
 
     def OnLeftMouseDown(self, event):
         #~ self.CallTipCancelCustom()
@@ -3456,6 +3477,7 @@ class SDLWindow(object):
             if x:
                 if x != r[0].value or y != r[1].value:
                     self.SetWindowPos(x,y, self.app.options['sdlwindowdocking'])
+        self.app.playback_drawBoth = self.app.options['sdlplaybackboth'] and (self.IsNormalSize() or not self.IsSameMonitor())
 
     def IsNormalSize(self):
         return not self.isFullscreen and not self.isFullsize and \
@@ -3642,6 +3664,14 @@ class SDLWindow(object):
                     wx.CallAfter(sdl2.SDL_RaiseWindow, self.window)
             if self.app.HasFlag(wx.STAY_ON_TOP): # disable it
                 self.app.ToggleWindowStyle(wx.STAY_ON_TOP)
+            '''
+            # Automatic switch both drawing on or off (On only if Normal size or not same Monitor and the option 'sdlplaybackboth' is set).
+            # For faster access to the playback variable, we set the value 'self.app.playback_drawBoth' in sdlWindow several times
+            # to determine whether both windows (sdl and normal) should be drawn (this is more complicated, but faster).
+            # Otherwise we would have to get all the required values for each frame in the loop,
+            # or we cannot turn on/off the both drawing automatically on change the sdl window Fullscreen/Fullsize or Normal size.
+            '''
+            self.app.playback_drawBoth = self.app.options['sdlplaybackboth'] and (self.IsNormalSize() or not self.IsSameMonitor())
             return True
         else:
             wx.MessageBox('SDL Window could not create texture!\n%s' % sdl2.SDL_GetError() or 'Unknown', 'SDL Error')
@@ -3681,6 +3711,7 @@ class SDLWindow(object):
                 else:
                     self.isFullsize = False
                     self.ResetLastSize()
+            self.app.playback_drawBoth = self.app.options['sdlplaybackboth'] and (self.IsNormalSize() or not self.IsSameMonitor())
             ctypes.windll.user32.SetCursorPos(p[0], p[1])
             wx.CallAfter(sdl2.SDL_RaiseWindow, self.window)
 
@@ -3708,6 +3739,7 @@ class SDLWindow(object):
             sdl2.SDL_SetWindowSize(self.window, rect[2], rect[3])
             self.isFullsize = False
             self.StoreLastSize()
+            self.app.playback_drawBoth = self.app.options['sdlplaybackboth'] and (self.IsNormalSize() or not self.IsSameMonitor())
             return
 
         if not self.app.IsMaximized():
@@ -3733,6 +3765,7 @@ class SDLWindow(object):
         sdl2.SDL_SetWindowPosition(self.window, 0, 0)
         sdl2.SDL_SetWindowSize(self.window, self.app.GetSize()[0], h)
         self.isFullsize = True
+        self.app.playback_drawBoth = self.app.options['sdlplaybackboth'] and not self.IsSameMonitor()
 
     def ResetWindowToNormalSize(self):
         if not self.running:
@@ -3746,6 +3779,7 @@ class SDLWindow(object):
         self.SetResizable(True)
         if sdl2.SDL_GetWindowFlags(self.window) & sdl2.SDL_WINDOW_MAXIMIZED == sdl2.SDL_WINDOW_MAXIMIZED:
             sdl2.SDL_RestoreWindow(self.window)
+        self.app.playback_drawBoth = self.app.options['sdlplaybackboth']
         #x, y, w, h = ctypes.c_int(),ctypes.c_int(),ctypes.c_int(),ctypes.c_int()
         #sdl2.SDL_GetWindowPosition(self.window, ctypes.byref(x), ctypes.byref(y))
         #sdl2.SDL_GetWindowSize(self.window, ctypes.byref(w), ctypes.byref(h))
@@ -3837,6 +3871,7 @@ class SDLWindow(object):
             sdl2.SDL_SetWindowPosition(self.window, rect[0], rect[1])
             sdl2.SDL_SetWindowSize(self.window, rect[2], rect[3])
             self.app.options['sdlwindowrect'] = rect
+            self.app.playback_drawBoth = self.app.options['sdlplaybackboth'] and (self.IsNormalSize() or not self.IsSameMonitor())
         def OnSaveSize(event):
             item = popup.FindItemById(event.GetId())
             label = item.GetLabel()
@@ -3917,14 +3952,20 @@ class SDLWindow(object):
             self.app.SplitClipCtrl.Toggle(focus=False)
         def OnPlaybackBoth(event):
             self.app.options['sdlplaybackboth'] = not self.app.options['sdlplaybackboth']
+            self.app.playback_drawBoth = self.app.options['sdlplaybackboth'] and (self.IsNormalSize() or not self.IsSameMonitor())
+            """
             if self.app.playing_video:
                 AsyncCall(self.app.StopPlayback).Wait()
                 self.app.PlayPauseVideo()
-        def AddItem(menu, label, check, checked, handler):
+            """
+
+        def AddItem(menu, label, check, checked, handler, enabled=True):
             id = wx.NewId()
             menu.Append(id, _(label), kind=wx.ITEM_CHECK if check else wx.ITEM_NORMAL)
             if check:
                 menu.Check(id, checked)
+            if not enabled:
+                menu.Enable(id, False)
             self.app.Bind(wx.EVT_MENU, handler, id=id)
 
         popup = wx.Menu()
@@ -3975,7 +4016,8 @@ class SDLWindow(object):
         # rest
         if isinstance(self.AVI, pyavs.AvsClipBase):
             AddItem(popup, 'Split Clip on/off', True, self.AVI.IsSplitClip, OnSplitClip)
-        AddItem(popup, 'Playback both', True, self.app.options['sdlplaybackboth'], OnPlaybackBoth)
+        drawBoth = self.IsNormalSize() or not self.IsSameMonitor()
+        AddItem(popup, 'Playback both', True, self.app.options['sdlplaybackboth'] and drawBoth, OnPlaybackBoth, drawBoth)
         popup.AppendSeparator()
         AddItem(popup, 'Close', False, False, OnClose)
         self.app.PopupMenu(popup)
@@ -9129,6 +9171,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.ClipRefreshPainter = None       # GPo, clip thread progress event blocker
         self.fullScreenWnd_IsShown = False
         self.overlayData = None  # Data for overlay hint tuple (x, y, text, kill_time)
+        self.playback_drawBoth = False # playback sdlWindow and video window (only for playback, disbled is sdlWindow Fullscreen or Fullsize)
         # audio
         self.pyaudio = None
         self.audio_stream = None
@@ -10576,6 +10619,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'cliprefreshpainter': True,              # GPo, paint the last frame during clip refresh if load Avisynth in threads enabled (disavantage
             'splitviewex': False,                    # GPo, use Split View alternate (self.splitViewEx)
             'fullscreenzoom': 2,                     # GPo, set zoom on fullscreen 0=None, 1=Normal, 2=Resample
+            'disablefullscreenzoom': False,          # GPo, temporaly disable the fullsize\fullscreen zoom see 'fullscreenzoom'
             'fullscreendlgxy': 4,                    # GPo, position for static progress dlg on Fullsize/Fullscreen
             'prefetchrgb32': True,                   # GPo, AVI uses Prefetch(1,1) after ConvertToRGB32(), 10 to 30% speedup
             'yuv420torgb32fast': False,              # GPo, Use DecodeYUVtoRGB, only for CPU with AVX2
@@ -12299,6 +12343,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.backgroundColorDict = dict([(v,k) for k,v in self.backgroundLabelDict.items()])
 
         # zoom and resample menus info
+        self.options['disablefullscreenzoom'] = False # on startup false
         _zoomMenu = (
             (reverseZoomLabelDict['25'], '', self.OnMenuVideoZoom, _('Zoom video preview to 25%'), wx.ITEM_RADIO, False),
             (reverseZoomLabelDict['50'], '', self.OnMenuVideoZoom, _('Zoom video preview to 50%'), wx.ITEM_RADIO, False),
@@ -12313,7 +12358,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             (_('Zoom in'), 'Numpad +', self.OnZoomInOut, _("Enlarge preview image to next zoom level. Not work under 'Fill window' or 'Fit inside window'")),
             (_('Zoom out'), 'Numpad -', self.OnZoomInOut, _("Shrink preview image to previous zoom level. Not work under 'Fill window' or 'Fit inside window'")),
             (''),
-            (_('Antialiasing'), '', self.OnMenuVideoZoomAntialias, _("If zoom not 100 %, the preview is drawing antialiased"), wx.ITEM_CHECK, self.options['zoom_antialias']),
+            (_('Antialiasing'), '', self.OnMenuVideoZoomAntialias, _("If zoom not 100 %, the preview is drawing antialiased (slower)"), wx.ITEM_CHECK, self.options['zoom_antialias']),
+            (_('Disable Fullscreen zoom'), '', self.OnMenuVideoFullscreenZoomOff, _('Do not change the current zoom for Fullsize or Fullscreen'), wx.ITEM_CHECK, self.options['disablefullscreenzoom']),
         )
         _resampleMenu = (
             ('Resample fill', '', self.OnMenuVideoZoomResampleFill, _("Use resample filter"), wx.ITEM_NORMAL),
@@ -13314,7 +13360,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         scriptWindow.lastSplitSliderPos = self.options['sliderwindowwidth']
         scriptWindow.userHidSliders = False
         scriptWindow.lastFramenum = 0
-        scriptWindow.lastLength = None
+        scriptWindow.lastFramecount = None
         scriptWindow.group = None
         scriptWindow.old_group = None
         scriptWindow.group_frame = 0
@@ -13502,7 +13548,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         videoWindow.Bind(wx.EVT_MIDDLE_DOWN, self.OnMiddleDownVideoWindow)
         videoWindow.Bind(wx.EVT_LEFT_DOWN, self.OnLeftDownVideoWindow)
         videoWindow.Bind(wx.EVT_MOTION, self.OnMouseMotionVideoWindow)
-        videoWindow.Bind(wx.EVT_LEAVE_WINDOW, self.OnMouseLeaveVideoWindow)
+        videoWindow.Bind(wx.EVT_LEAVE_WINDOW, self.OnMouseLeaveVideoWindow) # get some times lost
+        #videoWindow.Bind(wx.EVT_KILL_FOCUS, self.OnMouseLeaveVideoWindow)
         videoWindow.Bind(wx.EVT_LEFT_UP, self.OnLeftUpVideoWindow)
         videoWindow.Bind(wx.EVT_LEFT_DCLICK, self.OnLeftDClickVideoWindow)    # GPo 2018
         videoWindow.Bind(wx.EVT_RIGHT_UP, self.OnRightUpVideoWindow)          # GPo 2018
@@ -14530,7 +14577,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         elif script.AVI is not None:
             valueMax = script.AVI.Framecount-1
         else:
-            valueMax = script.lastLength if script.lastLength is not None else self.videoSlider.GetMax()
+            valueMax = script.lastFramecount if script.lastFramecount is not None else self.videoSlider.GetMax()
 
         if r_start is not None and r_end is not None:
             r_start = max(0, r_start)
@@ -16688,6 +16735,25 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
 
     def OnMenuTest(self, event):
+        """ multiprocess test
+        AVI = self.currentScript.AVI
+        q = avs_manager.Queue()
+        q.put(AVI)
+        """
+        """
+        AVI = self.currentScript.AVI
+        avs_manager.start()
+        inst = avs_manager.AvsAVIClass()
+        inst.set(AVI)
+
+        p = multiprocessing.Process(target=_avs_proc_get_frn, args=[inst])
+        p.start()
+        p.join(2)
+        p.terminate()
+
+        resw = inst.get()
+        print(resw)
+        """
 
         """
         hwnd = self.GetHandle()
@@ -16698,7 +16764,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         return
         """
         return
-
+        '''
         sdl2.ext.init(True)
         #mode = u'linear'
         #sdl2.hints.SDL_SetHint(sdl2.hints.SDL_HINT_RENDER_SCALE_QUALITY, mode)
@@ -16809,7 +16875,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         processor.run(window)
         sdl2.ext.quit()
         """
-
+        '''
 
     def ShowFreeMemory(self, returnStr=False):
         if not returnStr and self.options['showfreememory'] < 1:
@@ -17182,6 +17248,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 menu.Check(self.zoom_antialias)
         if self.zoomfactor != 1 or self.zoomwindow:
             self.videoWindow.Refresh()
+
+    def OnMenuVideoFullscreenZoomOff(self, event):
+        self.options['disablefullscreenzoom'] = event.IsChecked()
+        for i in range(self.scriptNotebook.GetPageCount()):
+            self.scriptNotebook.GetPage(i).lastFsZoom = None
 
     def ResetZoomAntialias(self, forceYield=True, enabledWnd=None):
         if self.options['zoom_antialias']:
@@ -19958,7 +20029,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             Error()
             return False
 
-        # Set some related key variables (affects other functions)
         bmSet = False # bookmarks not set, its nicer to set bookmarks after show frame
         boolNewAvi = False
         IsErrorClip = False
@@ -19968,7 +20038,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.HidePreviewWindow()
 
         if self.fullScreenWnd_IsShown or self.IsFullScreen():
-            if self.options['fullscreenzoom'] == 2:
+            if self.options['disablefullscreenzoom'] and not self.IsResizeFilterFitFill(script):
+                pass
+            elif self.options['fullscreenzoom'] == 2:
                 rf = script.resizeFilter
                 if not rf[0] or rf[2] != 1 or not rf[3]:
                     script.resizeFilter = (True, rf[1], 1, True)
@@ -19981,7 +20053,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     self.OnMenuVideoZoom(zoomfactor='fill', show=False, resizeFilterOff=True, single=True)
                     script.lastFsZoom = None
         else:
-            if self.options['resizevideowindow']:
+            if self.options['resizevideowindow'] and not self.IsResizeFilterFitFill(script): # and not script.resizeFilter[0]:
                 script.lastSplitVideoPos = None
             else:
                 if self.oldLastSplitVideoPos is not None: # eg. IsErrorClip()
@@ -19996,10 +20068,25 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 else:
                     script.lastSplitVideoPos = None
             """
+        ### new test 9.12.
+        #if self.options['disablefullscreenzoom']:
+        """
+        if self.fullScreenWnd_IsShown:
+            if script.lastFsZoom:
+                if script.resizeFilter != script.lastFsZoom[5]:
+                    script.resizeFilter = script.lastFsZoom[5]
+                    script.display_clip_refresh_needed = True
+        elif script.lastZoom:
+            if script.resizeFilter != script.lastZoom[5]:
+                script.resizeFilter = script.lastZoom[5]
+                script.display_clip_refresh_needed = True
+        ### end new test
+        """
 
         resize_need_refresh = False
         if script.resizeFilter[0]:
-            if script.resizeFilter[2] == 1 and script.AVI and script.AVI.resizeFilter and not self.splitView:
+            #~if script.resizeFilter[2] == 1 and script.AVI and script.AVI.resizeFilter and not self.splitView:
+            if script.resizeFilter[2] == 1 and script.AVI and not self.splitView: ### new test 9.12.
                 try:
                     f, dw, dh, aw, ah = self.CalcResizeFilter(script, fitHeight=script.resizeFilter[3])
                 except:
@@ -20105,11 +20192,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     self.frameTextCtrl2.SetForegroundColour(color)
                     self.frameTextCtrl2.Replace(0, -1, str(frame))
 
-                if script.lastLength is not None:
+                if script.lastFramecount is not None:
                     # the new
-                    if self.timelineAutoReset or not self.videoSlider.offsetSet or (script.lastLength < 50):
+                    if self.timelineAutoReset or not self.videoSlider.offsetSet or (script.lastFramecount < 50):
                         for slider in self.GetVideoSliderList():
-                            slider.SetRange(0, script.lastLength - 1, refresh=False)
+                            slider.SetRange(0, script.lastFramecount - 1, refresh=False)
                             slider.SetOffset(0, 0)
                         self.timelineRange = 0
                         self.videoSlider.SetValue(frame)
@@ -20118,10 +20205,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         if self.videoSlider.offsetSet and self.videoSlider.GetVirtualMax() < frame \
                             or self.videoSlider.startOffset > frame:
                             if self.timelineAutoScroll:
-                                self.OnMenuSetTimeLineRange(frange=self.timelineRange, r_center=frame, r_maxrange=script.lastLength)
+                                self.OnMenuSetTimeLineRange(frange=self.timelineRange, r_center=frame, r_maxrange=script.lastFramecount)
                             else:
                                 # if not autoScroll set the min and max allowed frame nr
-                                frame = min(frame, self.videoSlider.startOffset + script.lastLength)
+                                frame = min(frame, self.videoSlider.startOffset + script.lastFramecount)
                                 frame = max(frame, self.videoSlider.startOffset)
                                 self.videoSlider.SetValue(frame)
                         else:
@@ -20258,9 +20345,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     self.oldDisplayVideoSize = (None, None)
                 # save zoom
                 if self.fullScreenWnd_IsShown and (self.options['fullscreenzoom'] == 2):
-                    #self.currentScript.lastZoom = None
-                    oldScript.lastZoom = ((0,0),1,False,False,False,oldScript.resizeFilter)
-                    self.SaveZoom(oldScript) # saveFsZoom
+                    #~oldScript.lastZoom = ((0,0),1,False,False,False,oldScript.resizeFilter)
+                    self.SaveZoom(oldScript) ### new test 9.12.
                 else:
                     self.SaveZoom(oldScript)
             else:
@@ -21030,8 +21116,37 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 script,
                 self.mainSplitter.GetSashPosition()
                 )
+            script.lastZoom = tuple(self.savedFsStartZoom) # new test 9.12.
+
         def _setFullscreenZoom(script, display_clip_refresh, isFullscreen):
             global forceCursor
+            ### new test 9.12.
+            if self.options['disablefullscreenzoom']:# and (((not self.IsResizeFilterFitFill(script) and not script.lastFsZoom)) or script.lastFsZoom): # do not change the zoom
+                self.forceZoom = True
+                #print('run')
+                #~if self.saveViewPos in (1,2) and script.lastFsZoom and script.resizeFilter != script.lastFsZoom[5]: # restore the last resample fullscreen zoom
+                if script.lastFsZoom and script.resizeFilter != script.lastFsZoom[5]:
+                    if script.lastFsZoom[5][0]:
+                        zoom = script.lastFsZoom[5][2]
+                        #print(zoom)
+                        display_clip_refresh = False
+                        self.OnMenuVideoZoomResampleFit(zoom=zoom, fitHeight=False, single=True, forceEnabled=True, force_Size=None, forceCursor=False)
+                    else:
+                        self.OnMenuVideoZoom(zoomfactor=script.lastFsZoom[1], show=True, resizeFilterOff=True, single=True, scroll=None, resetAntialias=False)
+                        display_clip_refresh = False
+                    return display_clip_refresh
+                    forceCursor = self.IsResizeFilterFitFill(script)
+                display_clip_refresh = True
+                return True
+            ### end
+            """
+                if self.saveViewPos in (1,2) and script.lastFsZoom: # restore the last resample fullscreen zoom
+                    zoom = script.lastFsZoom[5][2]
+                    self.OnMenuVideoZoomResampleFit(zoom=zoom, fitHeight=False, single=True, forceEnabled=True, force_Size=None, forceCursor=False)
+                    forceCursor = True
+            """
+                #return display_clip_refresh
+
             if self.options['fullscreenzoom'] == 2 or self.IsResizeFilterFitFill(script):
                 rf = script.resizeFilter
                 try:
@@ -21042,14 +21157,26 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 if not rf[0] or rf[2] != 1 or not rf[3] or rf != rf2:
                     if self.saveViewPos in (1,2):
                         self.forceZoom = True
-                    # Grrrr, doesnt work for fullsize why???
-                    size = wx.ScreenDC().GetSize() if isFullscreen else None
-                    self.OnMenuVideoZoomResampleFit(zoom=1, fitHeight=True, single=True, forceEnabled=True, force_Size=size, forceCursor=False)
+                    ### new
+                    if self.options['disablefullscreenzoom'] and script.lastFsZoom: # restore the last resample fullscreen zoom
+                        zoom = script.lastFsZoom[5][2]
+                        self.OnMenuVideoZoomResampleFit(zoom=zoom, fitHeight=False, single=True, forceEnabled=True, force_Size=None, forceCursor=False)
+                    else: ### new end
+                        # Grrrr, doesnt work for fullsize (main splitter is frozen)
+                        size = wx.ScreenDC().GetSize() if isFullscreen else None
+                        self.OnMenuVideoZoomResampleFit(zoom=1, fitHeight=True, single=True, forceEnabled=True, force_Size=size, forceCursor=False)
                     display_clip_refresh = False
                     forceCursor = True
                 else:
                     if self.saveViewPos in (1,2):
                         self.forceZoom = True
+                        ### new test 9.12. restore the last resample fullscreen zoom
+                        if script.lastFsZoom:
+                            zoom = script.lastFsZoom[5][2]
+                            if (zoom != rf[2]) or (rf2[2] != zoom):
+                                self.OnMenuVideoZoomResampleFit(zoom=zoom, fitHeight=False, single=True, forceEnabled=True, force_Size=None, forceCursor=False)
+                                display_clip_refresh = False
+                        ### new end
                     else:
                         self.zoomfactor = 1
             elif self.options['fullscreenzoom'] > 0:
@@ -21173,8 +21300,20 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                             self.currentScript.display_clip_refresh_needed = True
                             if self.splitView and self.splitView_nextScript is script:
                                 self.splitView_nextScript.display_clip_refresh_needed = True
+                        ### new test 9.12.
+                        if self.currentScript.lastZoom:
+                            if self.currentScript.resizeFilter != self.currentScript.lastZoom[5]:
+                                self.currentScript.resizeFilter = self.currentScript.lastZoom[5]
+                            self.currentScript.display_clip_refresh_needed = True
+                        elif self.resizeFilter[0]:
+                            self.currentScript.resizeFilter = tuple(self.resizeFilter)
+                            self.currentScript.display_clip_refresh_needed = True
+                        ### end new test
+                        else:
                             self.OnMenuVideoZoom(zoomfactor=1, show=False, resizeFilterOff=False)
-                            self.currentScript.lastZoom = None
+                            if self.IsResizeFilterFitFill(self.currentScript):
+                                self.currentScript.display_clip_refresh_needed = True
+                            #self.currentScript.lastZoom = None
                             scroll = None
                 if isinstance(script, AvsStyledTextCtrl):
                     if not forceCursor:
@@ -21544,11 +21683,38 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     def OnLeftDownVideoWindow(self, event):
         script = self.currentScript
-        if self.fullScreenWnd.IsFullScreen() and self.fullScreenSizer.IsShown(self.videoControls):
-            self.zoom_antialias = False
-            self.fullScreenSizer.Show(self.videoControls, False)
-            self.fullScreenSizer.Layout()
-            self.ResetZoomAntialias()
+        if self.fullScreenWnd.IsFullScreen():
+            if self.fullScreenSizer.IsShown(self.videoControls): # hide the timeline
+                self.zoom_antialias = False
+                self.fullScreenSizer.Show(self.videoControls, False)
+                self.fullScreenSizer.Layout()
+                self.ResetZoomAntialias()
+
+            """ Is now on OnMouseMotionVideoWindow
+            if self.previewOK(script) and not self.cropDialog.IsShown():
+                mPos = event.GetPosition()
+                cSize = self.videoWindow.GetClientSize()
+                if mPos[1] <= intPPI(10) and mPos[0] > intPPI(50) and mPos[0] < cSize[0] - intPPI(50):
+                    s = self.scriptNotebook.GetPageText(self.scriptNotebook.GetSelection())
+                    self.SetOverlay(0,0, s, 0)
+            """
+            """ Is now on OnMouseMotionVideoWindow
+            if self.previewOK(script) and not self.cropDialog.IsShown(): # display the zoom
+                mPos = event.GetPosition()
+                cSize = self.videoWindow.GetClientSize()
+                if mPos[1] <= intPPI(50) and mPos[0] > intPPI(50) and mPos[0] < cSize[0] - intPPI(50):
+                    zoom = 'Zoom 1x'
+                    width, height = script.AVI.DisplayWidth, script.AVI.DisplayHeight
+                    if script.resizeFilter[0]:
+                        if self.zoomfactor != 1:
+                            zoom = 'Zoom (%.2f x r%.2f x %ix%i) ' % (self.zoomfactor, float(width) / script.AVI.Width, script.AVI.Width, script.AVI.Height)
+                        else:
+                            zoom = 'Zoom (r%.2f x %ix%i) ' % (float(width) / script.AVI.Width, script.AVI.Width, script.AVI.Height)
+                    elif self.zoomfactor != 1:
+                        zoom = 'Zoom (%.2fx) ' % self.zoomfactor
+                    self.SetOverlay(0,0, zoom, 0)
+            """
+
         """
         if self.hideToolbarOnClick.GetValue() and self.vwToolbarSizer.IsShown(self.vwToolbar):
             self.vwToolbarSizer.Show(self.vwToolbar, False)
@@ -21694,17 +21860,36 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     @AsyncCallWrapper
     def OnMouseMotionVideoWindow(self, event=None):
+        if event:
+            event.Skip()
         if event and not event.LeftIsDown():
             mPos = event.GetPosition()
             cSize = self.videoWindow.GetClientSize()
+            zoom = None
             # show the video controls if fullscreen
-            if self.fullScreenWnd.IsFullScreen() and (mPos[1] > cSize[1]-intPPI(8)) \
-                and not self.fullScreenSizer.IsShown(self.videoControls):
+            if self.fullScreenWnd.IsFullScreen():
+                if (mPos[1] > cSize[1]-intPPI(8)) and not self.fullScreenSizer.IsShown(self.videoControls):
                     self.fullScreenSizer.Fit(self.videoControls)
                     self.fullScreenSizer.Show(self.videoControls)
                     self.fullScreenSizer.Layout()
                     self.fullScreenSizer.Show(self.videoControls)
                     return
+                if (mPos[1] <= intPPI(5) and mPos[0] > intPPI(50) and mPos[0] < cSize[0] - intPPI(50)) and not self.cropDialog.IsShown():
+                    script = self.currentScript
+                    if self.previewOK(script):
+                        zoom = self.scriptNotebook.GetPageText(self.scriptNotebook.GetSelection()) + '\n'
+                        if script.resizeFilter[0]:
+                            width, height = script.AVI.DisplayWidth, script.AVI.DisplayHeight
+                            if self.zoomfactor != 1:
+                                zoom += 'Zoom (%.2f x r%.2f x %ix%i) ' % (self.zoomfactor, float(width) / script.AVI.Width, script.AVI.Width, script.AVI.Height)
+                            else:
+                                zoom += 'Zoom (r%.2f x %ix%i) ' % (float(width) / script.AVI.Width, script.AVI.Width, script.AVI.Height)
+                        elif self.zoomfactor != 1:
+                            zoom += 'Zoom (%.2f x %ix%i) ' % (self.zoomfactor, script.AVI.Width, script.AVI.Height)
+                        else:
+                            zoom += 'Zoom (1 x %ix%i)' % (script.AVI.Width, script.AVI.Height)
+                        if not self.overlayData or self.overlayData[2] != zoom:
+                            self.SetOverlay(0, 0, zoom, 0)
 
             # signal mouse action area (left and right)
             int50 = intPPI(50)
@@ -21732,7 +21917,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             else:
                 if self.videoWindow.GetCursor() not in (wx.StockCursor(wx.CURSOR_DEFAULT), wx.StockCursor(wx.CURSOR_WAIT)):
                     self.videoWindow.SetCursor(wx.StockCursor(wx.CURSOR_DEFAULT))
-                if self.overlayData:
+                if self.overlayData and not zoom:
                     self.ResetOverlay()
         else:
             if self.overlayData:
@@ -21884,6 +22069,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             event.Skip()
     """
     def OnMouseLeaveVideoWindow(self, event):
+        if self.overlayData:
+            self.ResetOverlay()
         if self.FindFocus() == self.currentScript:
             self.SetScriptStatusText()
         if self.videoWindow.HasCapture():
@@ -21892,14 +22079,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             except:
                 pass
             self.videoWindow.SetCursor(wx.StockCursor(wx.CURSOR_DEFAULT))
-        if self.overlayData:
-            self.ResetOverlay()
         if event.LeftIsDown() and not self.cropDialog.IsShown() and \
             (self.zoomfactor != 1) and self.options['zoom_antialias']:
                 self.zoom_antialias = True
                 self.videoWindow.Refresh()
                 self.videoWindow.Update()
-
         event.Skip()
 
     def OnLeftUpVideoWindow(self, event):
@@ -22851,7 +23035,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 scriptWindow.group = self.currentScript.group # must be before scriptWindow.SetText (or just call UpdateScriptTabname here)
                 scriptWindow.group_frame = self.currentScript.group_frame
                 scriptWindow.lastFramenum = self.currentScript.lastFramenum
-                scriptWindow.lastLength = self.currentScript.lastLength
+                scriptWindow.lastFramecount = self.currentScript.lastFramecount
                 scriptWindow.bookmarks = self.GetBookmarkDict()
                 scriptWindow.matrix = list(self.currentScript.matrix)
                 scriptWindow.selections.update(self.currentScript.selections)
@@ -22944,7 +23128,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     @AsyncCallWrapper
     def OpenFile(self, filename='', default='', f_encoding=None, eol=-1, workdir=None,
                  scripttext=None, setSavePoint=True, splits=None, framenum=None,
-                 last_length=None, group=-1, group_frame=None, bookmarks=None, snapshots=None,
+                 last_framecount=None, group=-1, group_frame=None, bookmarks=None, snapshots=None,
                  selections=None, matrix=None, audiovolume=0,
                  hidePreview=False, loadBookmarks=True, force_framenum=True):
         r'''OpenFile(filename='', default='')
@@ -23090,8 +23274,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     script.workdir = workdir
                 if framenum is not None:
                     script.lastFramenum = framenum
-                if last_length is not None:
-                    script.lastLength = last_length
+                if last_framecount is not None:
+                    script.lastFramecount = last_framecount
                 if splits is not None:
                     script.lastSplitVideoPos = splits[0]
                     script.lastSplitSliderPos = splits[1]
@@ -24167,7 +24351,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         index = self.OpenFile(filename=scriptname, f_encoding=item['f_encoding'],
                               eol=item.get('eol'), workdir=item['workdir'], scripttext=item['text'],
                               setSavePoint=setSavePoint, splits=item['splits'],
-                              framenum=item['current_frame'], last_length=item.get('last_length'),
+                              framenum=item['current_frame'], last_framecount=item.get('last_framecount'),
                               group=item.get('group', -1), group_frame=item.get('group_frame'),
                               bookmarks=item.get('bookmarks'), snapshots=item.get('snapshots'),
                               selections=item.get('selections'), matrix=item.get('matrix'),
@@ -24295,7 +24479,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         selections = script.selections
         return dict(name=scriptname, selected=boolSelected, text=script.GetText(),
                     hash=hash, splits=splits, current_frame=script.lastFramenum,
-                    last_length=script.lastLength, f_encoding=script.encoding, eol=script.eol,
+                    last_framecount=script.lastFramecount, f_encoding=script.encoding, eol=script.eol,
                     workdir=script.workdir, group=script.group, group_frame=script.group_frame,
                     bookmarks=bookmarks, snapshots=snapshots, selections=selections, matrix=script.matrix, audiovolume=script.audioVolume)
 
@@ -26394,7 +26578,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 framenum = 0
             else: # convert framenum to previous frame time
                 if frameToFrametime and _lastFramerate != script.AVI.Framerate \
-                    and script.lastLength != script.AVI.Framecount and script.lastFramenum == framenum and framenum > 0:
+                    and script.lastFramecount != script.AVI.Framecount and script.lastFramenum == framenum and framenum > 0:
                         try:
                             framenum = int(round((float(script.AVI.Framerate) / _lastFramerate) * framenum))
                             """ # alternative
@@ -26686,7 +26870,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             script.oldAutoSliderInfo = script.autoSliderInfo
             script.oldToggleTags = script.toggleTags
             script.lastFramenum = framenum
-            script.lastLength = script.AVI.Framecount
+            script.lastFramecount = script.AVI.Framecount
             # is only called if preview was not visible on create the new avi
             # but now it is also called on resize filter or display filter changed
             # so check it... TODO
@@ -26808,7 +26992,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                             #vidheight = self.GetSize()[1]
                         #else:
                         vidheight = script.AVI.DisplayHeight
-                    h = int(vidheight * self.zoomfactor)
+                    if self.IsResizeFilterFitFill(script):
+                        h = vidheight
+                    else:
+                        h = int(vidheight * self.zoomfactor)
                 else:
                     h = pos
                 pos = -(h + (2 * self.yo) + 5 + self.mainSplitter.GetSashSize()/2) # GPo, leave it or must change GetFitWindowSize
@@ -26822,7 +27009,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                             #vidwidth = self.GetSize()[0]
                         #else:
                         vidwidth = script.AVI.DisplayWidth
-                    w = int(vidwidth * self.zoomfactor)
+                    if self.IsResizeFilterFitFill(script):
+                        w = vidwidth
+                    else:
+                        w = int(vidwidth * self.zoomfactor)
                 else:
                     w = pos
                 pos = -(w + 2 * self.xo + 5 + self.mainSplitter.GetSashSize()/2 +
@@ -29881,18 +30071,22 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if self.overlayData:
             try:
                 x,y,s,t = self.overlayData
+                int12 = intPPI(12)
                 if force or time.time() >= t:
                     cSize = self.videoWindow.GetClientSize()
                     self.overlayData = None
-                    xx = 18 if x < intPPI(60) else cSize[0] - 200
-                    yy = 18 if y < cSize[1]//2 else cSize[1]-26-intPPI(12)
-                    self.videoWindow.RefreshRect(wx.Rect(xx, yy, 200, yy+intPPI(14)))
+                    dc = wx.ClientDC(self.videoWindow)
+                    dc.SetFont(wx.Font(pointSize=int12, family=wx.FONTFAMILY_DEFAULT, style=wx.FONTSTYLE_NORMAL, weight=wx.FONTWEIGHT_BOLD))
+                    fw,fh = dc.GetTextExtent('+' + s)
+                    xx = 18 if x < intPPI(60) else cSize[0] - fw - 30
+                    yy = 18 if y < cSize[1]//2 else cSize[1]-(int12*2)-int12
+                    self.videoWindow.RefreshRect(wx.Rect(xx, yy, xx+fw+20, yy+fh+10))
                 elif t > 0:
                     wx.CallLater(500, self.ResetOverlay, force=True)
             except:
                 self.overlayData = None
 
-    def SetOverlay(self, x, y, text, timeout=1500):
+    def SetOverlay(self, x, y, text, timeout=1500, static=False):
         if text:
             self.ResetOverlay(force=True)
             self.overlayData = (x, y, text, time.time()+timeout/1000 if timeout > 100 else 0)
@@ -31093,7 +31287,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     def PlayPauseVideo(self, debug_stats=False, refreshFrame=True, forceStop=None, focus=True, reCall=0):
         """Play/pause the preview clip"""
 
-
         def SetSystemTimeResolution(high):
             if high:
                 self._timeBeginPeriod = ctypes.windll.winmm.timeBeginPeriod
@@ -31397,14 +31590,14 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 ################################################################
 
                 self.timeKillEvent = None
-                #WindowsTimer(interval, playback_timer2)
-                SetSystemTimeResolution(True)
+                SetSystemTimeResolution(True) # set the high resolution OS timer
 
                 self.play_timer_resolution = 1
                 factor = max(1, int(round(self.play_timer_resolution / interval)))
                 interval = int(round(interval * factor))
                 evFinish = threading.Event()
                 audioLock = threading.Lock()
+                global audioTime # for sync video/audio (Frame based)
 
                 def FrameError(idx, script, errmsg, framenum):
                     self.PlayPauseVideo(refreshFrame=False, forceStop=True)
@@ -31474,11 +31667,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     updateCtrls(frame, fps)
                     return self.sdlWindow.Render(script.AVI, frame)
 
-
                 # only used if RLock painting (self.PaintAVIFrameLocked) or sdl fast rendering, then update the controls with a separate thread and AsyncCall
                 def th_Update(frame, fps):
                     AsyncCall(updateCtrls, frame, fps).Wait()
 
+                """
                 # fetch the audio buffers in single threads for eache run
                 def th_get_audio_buffer(avsAudio, clip, frame, buffer_count, loops, q, evStop):
                     def _get_buffer(frame):
@@ -31525,7 +31718,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                 frame += buffer_count
                     finally:
                         evFinish.set()
-
+                """
+                """
                 # fetch the audio buffers in one thread, but as thread class. This is used.
                 class GetAudioBuffer(threading.Thread):
                     def __init__(self, app, avsAudio, clip, buffer_count, loops, q, evStop, evGetBuffer, evFinish, func_get_current_audio_frame):
@@ -31535,7 +31729,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         self.avsAudio = avsAudio
                         self.clip = clip
                         self.buffer_count = buffer_count
-                        self.last_audio_frame = -1
+                        self.lastFrame = -1
                         self.loops = loops
                         self.q = q
                         self.evStop = evStop
@@ -31557,33 +31751,43 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                             while not self.evStop.isSet() and self.app.playing_video:
                                 self.evGetBuffer.wait()
                                 self.evGetBuffer.clear()
-                                fr = self.get_current_audio_frame()
+                                fr = get_current_audio_frame()
                                 frame = fr + (self.buffer_count*self.loops) if fr > -1 else self.app.currentframenum
+                                #frame = self.app.currentframenum if self.lastFrame < 0 else self.lastFrame + 1
                                 for i in range(self.loops):
                                     if self.evStop.isSet():
                                         break
                                     buf = _get_buffer(frame)
-                                    self.q.put((frame, buf[:]), False)
+                                    #self.q.put((frame, buf[:]), False)
+                                    self.lastFrame = frame
+                                    self.q._put((frame, buf[:]))
                                     frame += self.buffer_count
                         finally:
                             self.evFinish.set()
+                """
 
                 # Audio Play Thread
                 def _playaudio(avsAudio, q_audio, evStopAudio):
                     error = 0
                     last_fr = -1
+                    global audioTime
                     while not evStopAudio.isSet() and self.playing_video:
                         try:
-                            fr, buf = q_audio.get_nowait()
-                            while fr <= last_fr:
-                                fr, buf = q_audio.get_nowait()
+                            #fr, buf = q_audio.get_nowait()
+                            fr, buf = q_audio._get()
+                            while fr <= last_fr:  # this hapends on playback start
+                                #fr, buf = q_audio.get_nowait()
+                                fr, buf = q_audio._get()
                         except:
                             fr, buf = -1, avsAudio.audio_silent[:]
-                            #wx.Bell() # for test
+
                         last_fr = fr
+                        set_current_audio_frame(fr)
                         try:
                             avsAudio.audio_stream.write(buf)
+                            audioTime = (fr, time.clock())
                         except IOError:
+                            audioTime = None
                             error += 1
                             wx.Bell()
                             if error > 5:
@@ -31598,55 +31802,19 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     re = self.current_audio_frame
                     audioLock.release()
                     return re
+                """
                 def get_set_current_audioframe(val):
                     audioLock.acquire()
                     re = self.current_audio_frame
                     self.current_audio_frame = val
                     audioLock.release()
                     return re
-
-                """
-                def sdlEvent():
-                    #self.sdlWindow.StopPeepEvents()
-                    self.Enable(False)
-                    while self.playing_video:
-
-                        #self.sdlWindow.PeepEvents()
-                        #sdl2.events.SDL_PumpEvents()
-                        #event = sdl2.SDL_Event()
-                        #while sdl2.events.SDL_PollEvent(ctypes.byref(event)) != 0:
-                            #pass
-
-                        if not self.sdlWindow.running:
-                            wx.CallAfter(self.StopPlayback)
-                            break
-                        if self.FrameReady != self.currentframenum:
-                            self.FrameReady = self.currentframenum
-                            if not self.sdlWindow.Render(self.sdlWindow.AVI, self.currentframenum):
-                                self.StopPlayback()
-                                self.waitFrame.set()
-                                break
-                            wx.Yield()
-                        self.waitFrame.set()
-                    self.Enable(True)
-                    #wx.CallAfter(self.sdlWindow.StartPeepEvents)
-                """
-                """ test sdl over event handling, PostEven is slow and ProzessEvent is not in the main thread. So all bad.
-                myEVT_CUSTOM = wx.NewEventType()
-                EVT_CUSTOM = wx.PyEventBinder(myEVT_CUSTOM, 1)
-
-                class MyEvent(wx.PyCommandEvent):
-                    def __init__(self, evtType, id):
-                        wx.PyCommandEvent.__init__(self, evtType, id)
-                self.Bind(EVT_CUSTOM, sdlRenderFrame)
-                self.sdlevent = MyEvent(myEVT_CUSTOM, self.GetId())
-                #self.sdlWindow.StopPeepEvents()
-                #event.SetMyVal('here is some custom data')
-                #self.GetEventHandler().ProcessEvent(self.sdlevent)
                 """
 
                 # video play thread main loop
                 def play(frame, interval, factor):
+                    global audioTime
+                    audioTime = None
                     if script.AVI.downMix_d:
                         clip = script.AVI.display_clip
                         vi = script.AVI.vi_d
@@ -31659,20 +31827,19 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     if sdlWindow:
                         if not renderSafe:
                             self.sdlWindow.CreatePlaybackRenderer(script.AVI)
-                        drawBoth = self.options['sdlplaybackboth']
+                        self.playback_drawBoth = self.options['sdlplaybackboth'] and (self.sdlWindow.IsNormalSize() or not self.sdlWindow.IsSameMonitor())
 
                     play_speed_factor = self.play_speed_factor
                     drop_count = self.drop_count
                     play_initial_frame = frame
-                    play_initial_time = time.clock() - ms_interval
-                    startTime = play_initial_time
                     audioTh = None
                     playAudioTh = None
+                    last_audio_frame = -1
                     updateTh = threading.Thread() # only if PainAVIFrameLocked used else remove it and remove it also on loop end
-                    if self.options['playaudio'] and vi.has_audio():
+                    if self.options['playaudio'] and vi.has_audio() and (play_speed_factor == 1) and (drop_count == 0):
                         use_callback = False
                         avsAudio = AvsAudio(self)
-                        if avsAudio.CreateAudio(vi, 2, False, audio_callback if use_callback else None): # audio samples of 2 video frames per loop and also per q_audio item
+                        if avsAudio.CreateAudio(vi, 1, False, audio_callback if use_callback else None): # audio samples of 2 video frames per loop and also per q_audio item
                             config = 0 # config 0, 3 x 2 frames (config is for test purpose )
                             evStopAudio = threading.Event()
                             evGetBuffer = threading.Event()
@@ -31694,15 +31861,17 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                             evGetBuffer.set() # preload the buffer
                             """
                             # new new, one audio thread for getting the audio buffer, but a thread class
-                            audioTh = GetAudioBuffer(self, avsAudio, clip,  avsAudio.video_frames_buffered, 3 if config == 0 else 6,
-                                                        q_audio, evStopAudio, evGetBuffer, evFinish, get_current_audio_frame)
-                            audioTh.start()
-                            evGetBuffer.set() # preload the buffer
+                            #audioTh = GetAudioBuffer(self, avsAudio, clip,  avsAudio.video_frames_buffered, 6 if config == 0 else 6,
+                                                        #q_audio, evStopAudio, evGetBuffer, evFinish, get_current_audio_frame)
+                            #audioTh.start()
+                            #evGetBuffer.set() # preload the buffer
                         else:
                             avsAudio = None
                     else:
                         avsAudio = None
 
+                    play_initial_time = time.clock() - ms_interval
+                    startTime = play_initial_time
                     try:
                         while self.playing_video:
                             try:
@@ -31721,12 +31890,14 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                 increment = 1
                                 if self.loop_start > -1:  # GPo 2020. play loop, changes not needed if slider offset (selections then None)
                                     if (frame + 1 >= self.loop_end) or (frame + 1 < self.loop_start):
-                                        set_current_audio_frame(-1)
-                                        try:
-                                            while True:
-                                                f,p = q_audio.get_nowait()
-                                        except:
-                                            pass # clear the audio buffer
+                                        if avsAudio:
+                                            set_current_audio_frame(-1)
+                                            try:
+                                                while True:
+                                                    f,p = q_audio.get_nowait()
+                                            except:
+                                                pass # clear the audio buffer
+                                            audioTime = None
                                         # check for next selection
                                         start, stop = self.GetNextSliderSelection(frame+1, True, False)
                                         if start is not None:
@@ -31746,19 +31917,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
                             ### get frame and draw routines
                             if sdlWindow:
-                                """
-                                if self.sdlWindow.YUV and self.sdlWindow.color_format == 100:
-
-                                    try:
-                                        script.AVI.yv12_clip.get_frame(frame)
-                                    except:
-                                        break
-                                    errmsg = script.AVI.yv12_clip.get_error()
-                                    if errmsg is not None:
-                                        wx.CallAfter(FrameError, 1, script, errmsg, frame)
-                                        break
-                                else:
-                                """
                                 script.AVI.clip.get_frame(frame)
                                 errmsg = script.AVI.clip.get_error()
                                 if errmsg is not None:
@@ -31766,10 +31924,18 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                     break
 
                                 if ms_interval > 0:
-                                    wait = (startTime+ms_interval)-time.clock()
+                                    if avsAudio and audioTime: # calc the video/audio sync by 1 frame acurracy
+                                        f,t = audioTime
+                                        if f < frame:
+                                            wait = (startTime+ms_interval + ((time.clock()-t)/10)) - time.clock() # slow down by 1/10
+                                        elif f > frame:
+                                            wait = ((startTime+ms_interval)-time.clock()) - ((time.clock()-t)/10) # speed up by 1/10
+                                        else:
+                                            wait = (startTime+ms_interval)-time.clock()
+                                    else:
+                                        wait = (startTime+ms_interval)-time.clock()
                                     if wait > 0:
                                         time.sleep(wait) # precision depends on OS
-                                    #time.sleep(max((startTime+ms_interval)-time.clock(), 0))
                                 startTime = time.clock()
 
                                 if renderSafe:
@@ -31799,7 +31965,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                         updateTh.daemon = True
                                         updateTh.start()
 
-                                if drawBoth and not self.PaintAVIFrameLocked(wx.ClientDC(self.videoWindow), script, frame):
+                                if self.playback_drawBoth and not self.PaintAVIFrameLocked(wx.ClientDC(self.videoWindow), script, frame):
                                     errmsg = 'Play thread unknown paint frame error'
                                     wx.CallAfter(FrameError, 3, script, errmsg, frame)
                                     break
@@ -31824,13 +31990,21 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                     wx.CallAfter(FrameError, 1, script, errmsg, frame)
                                     break
 
-
                                 if ms_interval > 0:
-                                    wait = (startTime+ms_interval)-time.clock()
+                                    if avsAudio and audioTime: # calc the video/audio sync by 1 frame acurracy
+                                        f,t = audioTime
+                                        if f < frame:
+                                            wait = (startTime+ms_interval + ((time.clock()-t)/10)) - time.clock() # slow down by 1/10
+                                        elif f > frame:
+                                            wait = ((startTime+ms_interval)-time.clock()) - ((time.clock()-t)/10) # speed up by 1/10
+                                        else:
+                                            wait = (startTime+ms_interval)-time.clock()
+                                    else:
+                                        wait = (startTime+ms_interval)-time.clock()
                                     if wait > 0:
                                         time.sleep(wait) # precision depends on OS
-                                    #time.sleep(max((startTime+ms_interval)-time.clock(), 0))
                                 startTime = time.clock()
+
                                 """
                                 # paint frame and update the controls, default painting routine uses AsyncCall
                                 if not AsyncCall(paintFrame, script, frame, sfps).Wait():
@@ -31838,7 +32012,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                     wx.CallAfter(FrameError, 3, script, errmsg, frame)
                                     break
                                 """
-
                                 # Run's without AsyncCall and is also 10 - 40% faster. No Problems so far.
                                 # It uses a Rlock in PaintAVIFrameLocked to avoid collisions between the main and play thread
                                 # The main thread uses also this function if self.playing_video=True.
@@ -31849,30 +32022,36 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
                             ### end get frame and draw routines
 
+                            """
                             if avsAudio and not evStopAudio.isSet():
-                                #fr = get_set_current_audioframe(frame)
-                                #set_current_audio_frame(frame)
-                                qs = q_audio.qsize()
-                                if config == 0:
-                                    if qs < 2: # config 0, 3 x buffercount frames (default 3 x 2)
+                                if get_current_audio_frame() < frame + 3 or q_audio._qsize() < 2:
+                                    #qs = q_audio._qsize()
+                                    if config == 0:
                                         set_current_audio_frame(frame)
                                         evGetBuffer.set()
-                                elif qs < 2:
-                                    set_current_audio_frame(frame)
-                                    evGetBuffer.set()
+                                    elif qs < 3:
+                                        #set_current_audio_frame(frame)
+                                        evGetBuffer.set()
+                            """
+                            ### test without audio thread looks good
+                            if avsAudio and not evStopAudio.isSet():
+                                caf = get_current_audio_frame()
+                                if caf < frame + 3 or q_audio._qsize() < 2:
+                                    fr = last_audio_frame if (last_audio_frame > frame) and caf > -1 else frame -1
+                                    for i in range(6):
+                                        fr += 1
+                                        clip.get_audio(avsAudio.audio_cptr, avsAudio.samples_count*fr, avsAudio.samples_count)
+                                        if clip.get_error():
+                                            q_audio.put((fr, avsAudio.audio_silent[:]), False)
+                                        else:
+                                            q_audio.put((fr, avsAudio.audio_buffer[:]), False)
+                                    last_audio_frame = fr
 
                             # use it only if self.PaintAVIFrameLocked is used !!! else slower
                             if not sdlWindow and not updateTh.isAlive():
                                 updateTh = threading.Thread(target=th_Update, args=(frame, sfps,))
                                 updateTh.daemon = True
                                 updateTh.start()
-
-                            """
-                            errmsg = script.AVI.error_message
-                            if errmsg is not None:
-                                wx.CallAfter(FrameError, 2, script, errmsg, frame)
-                                break
-                            """
 
                             script.lastFramenum = frame
                             if not self.playing_video:
@@ -34411,6 +34590,13 @@ class MainApp(wxp.App):
         return 0
     """
 def main():
+    """ test
+    from multiprocessing.managers import BaseManager
+    global avs_manager
+    multiprocessing.freeze_support()
+    BaseManager.register('AvsAVIClass', AvsAVIClass)
+    avs_manager = BaseManager()
+    """
     try:
         ctypes.CDLL('libX11.so').XInitThreads()
     except:

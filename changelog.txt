@@ -38,6 +38,22 @@ If, for example, there is a '-' in the file name of the dll, AvsPmod will report
 please rename this dll and replace the '-' with a '_'
 
 --------------------------
+Version 2.7.6.2 [2023-12-24] Merry Christmas to everyone.
+--------------------------
+* Audio playback improved. hanfrunz Christmas script (2023) now run without any dropouts ,) https://forum.doom9.org/showthread.php?t=185220
+- audio playback is now disabled if playback not Normal speed (Halfspeed, Maximum etc.).
+* Added Video > Zoom > 'Disable Fullscreen zoom'. Interesting for comparing 4K videos with 100% zoom on smaller monitors (on startup allways disabled).
+- Note: if you change the tab on Fullscreen, the last zoom and position is used if 'Save pos & zoom on tab change' checked. 
+* In full screen mode, the filename and zoom settings are displayed when you move the mouse all the way up (first 5 pix).
+* D3D Window automatically turns off drawing of the normal window when it is in fullscreen or fullsize mode.
+- you can now always set 'Playback both' without losing speed when the D3D display is fullscreen\fullsize.
+* Encoder_gui.py (Tools > Script encoder CLI) now remembers the last desktop position.
+- if the whole archive is not unpacked, the old file encoder_gui.py in the tools folder must be replaced with the new one. 
+* Added ffmpeg x264, x265 and AV1 presets for Script encoder CLI: 
+ - x264 lossless medium, x265 lossless medium, svt-av1 CRF Slower, svt-av1 CRF Slow, svt-av1 CRF Medium, av1_nvenc VBR, av1_nvenc CQP
+- Suggestions for improving default encoder settings are welcome!
+
+--------------------------
 Version 2.7.6.1 [2023-12-01]
 --------------------------
 * Fix: The resample filter sets the wrong size for 'Fullsize' when double-clicking in the zoom action area.

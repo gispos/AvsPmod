@@ -13,6 +13,12 @@ ffmpeg.exe -i "$video_input" -vcodec libx264 -pix_fmt yuv420p10le -crf $video_qu
 [x264 lossless veryslow]
 ffmpeg.exe -i "$video_input" -vcodec libx264 -preset veryslow -qp 0 -vf setsar=sar=$par_x/$par_y -acodec aac -b:a 192k -y "$video_output" 
 
+[x264 lossless slow]
+ffmpeg.exe -i "$video_input" -vcodec libx264 -preset slow -qp 0 -vf setsar=sar=$par_x/$par_y -acodec aac -b:a 192k -y "$video_output"
+
+[x264 lossless medium]
+ffmpeg.exe -i "$video_input" -vcodec libx264 -preset medium -qp 0 -vf setsar=sar=$par_x/$par_y -acodec aac -b:a 192k -y "$video_output"
+
 [x264 lossless ultra fast]
 ffmpeg.exe -i "$video_input" -vcodec libx264 -preset ultrafast -qp 0 -vf setsar=sar=$par_x/$par_y -acodec aac -b:a 192k -y "$video_output"
 
@@ -25,20 +31,38 @@ ffmpeg.exe -i "$video_input" -vcodec libx265 -crf $video_quality -vf setsar=sar=
 [x265 lossless slow]
 ffmpeg.exe -i "$video_input" -vcodec libx265 -preset slow -x265-params lossless=1 -vf setsar=sar=$par_x/$par_y -acodec aac -b:a 192k -y "$video_output"
 
+[x265 lossless medium]
+ffmpeg.exe -i "$video_input" -vcodec libx265 -preset medium -x265-params lossless=1 -vf setsar=sar=$par_x/$par_y -acodec aac -b:a 192k -y "$video_output"
+
 [x265 lossless ultra fast]
 ffmpeg.exe -i "$video_input" -vcodec libx265 -preset ultrafast -x265-params lossless=1 -vf setsar=sar=$par_x/$par_y -acodec aac -b:a 192k -y "$video_output"
 
+[svt-av1 CRF Slower]
+ffmpeg.exe -i "$video_input" -c:v libsvtav1 -crf $video_quality -preset 4 -svtav1-params -g=125 -svtav1-params tune=0 -svtav1-params film-grain-denoise=0 -vf setsar=sar=$par_x/$par_y -c:a aac -b:a 192k -y "$video_output"
+
+[svt-av1 CRF Slow]
+ffmpeg.exe -i "$video_input" -c:v libsvtav1 -crf $video_quality -preset 6 -svtav1-params -g=125 -svtav1-params tune=0 -svtav1-params film-grain-denoise=0 -vf setsar=sar=$par_x/$par_y -c:a aac -b:a 192k -y "$video_output"
+
+[svt-av1 CRF Medium]
+ffmpeg.exe -i "$video_input" -c:v libsvtav1 -crf $video_quality  -preset 8 -svtav1-params -g=100 -svtav1-params tune=0 -svtav1-params film-grain-denoise=0 -vf setsar=sar=$par_x/$par_y -c:a aac -b:a 192k -y "$video_output"
+
 [nv_h264 VBR HQ]
-ffmpeg.exe -i "$video_input" -vcodec h264_nvenc -preset slow -profile:v main -rc vbr_hq -b:v $video_bitrate_k -vf setsar=sar=$par_x/$par_y -acodec aac -b:a 128k -y "$video_output"
+ffmpeg.exe -i "$video_input" -c:v h264_nvenc -preset slow -profile:v main -rc vbr -b:v $video_bitrate_k -vf setsar=sar=$par_x/$par_y -c:a aac -b:a 192k -y "$video_output"
 
 [nv_h264 CQP]
-ffmpeg.exe -i "$video_input" -vcodec h264_nvenc -preset slow -profile:v main -rc constqp -qp $video_quality -vf setsar=sar=$par_x/$par_y -acodec aac -b:a 128k -y "$video_output"  
+ffmpeg.exe -i "$video_input" -c:v h264_nvenc -preset slow -profile:v main -rc constqp -qp $video_quality -vf setsar=sar=$par_x/$par_y -c:a aac -b:a 192k -y "$video_output"  
 
 [nv_h265 VBR HQ]
-ffmpeg.exe -i "$video_input" -vcodec hevc_nvenc -preset slow -profile:v main -rc vbr_hq -b:v $video_bitrate_k -vf setsar=sar=$par_x/$par_y -acodec aac -b:a 128k -y "$video_output"
+ffmpeg.exe -i "$video_input" -c:v hevc_nvenc -preset slow -profile:v main -rc vbr -b:v $video_bitrate_k -vf setsar=sar=$par_x/$par_y -c:a aac -b:a 192k -y "$video_output"
 
 [nv_h265 CQP]
-ffmpeg.exe -i "$video_input" -vcodec hevc_nvenc -preset slow -profile:v main -rc constqp -qp $video_quality -vf setsar=sar=$par_x/$par_y -acodec aac -b:a 128k -y "$video_output"
+ffmpeg.exe -i "$video_input" -c:v hevc_nvenc -preset slow -profile:v main -rc constqp -qp $video_quality -vf setsar=sar=$par_x/$par_y -c:a aac -b:a 192k -y "$video_output"
+
+[av1_nvenc VBR]
+ffmpeg.exe -hwaccel cuda -hwaccel_output_format cuda -i "$video_input" -c:v av1_nvenc -preset slow -b:v $video_bitrate_k -vf setsar=sar=$par_x/$par_y -c:a aac -b:a 192k -y "$video_output"
+
+[av1_nvenc CQP]
+ffmpeg.exe -hwaccel cuda -hwaccel_output_format cuda -i "$video_input" -c:v av1_nvenc -rc constqp -qp $video_quality -g 250 -c:a aac -b:a 192k -y "$video_output"
 
 [DNxHR HQ 8bit]
 ffmpeg.exe -i "$video_input" -c:v dnxhd -profile:v dnxhr_hq -vf "format=yuv422p, setsar=sar=$par_x/$par_y" -c:a pcm_s16le "$video_output".mov

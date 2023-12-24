@@ -46,6 +46,8 @@ class CompressVideoDialog(wx.Dialog):
         self.bitrateDialog = BitrateCalcDialog(self, defaultdir=os.path.dirname(inputname))
         self.SetDefaultValues()
         self.Bind(wx.EVT_CLOSE, self.OnClose)
+        x,y = self.options.get('pos', (None, None))
+        if x and y: self.SetPosition(wx.Point(x, y))
 
     def LoadOptions(self):
         self.options = {}
@@ -66,6 +68,7 @@ class CompressVideoDialog(wx.Dialog):
         self.options['audio_compress'] = self.bitrateDialog.ctrlDict['audio_compress'].GetValue()
         self.options['audio_bitrate'] = self.bitrateDialog.ctrlDict['audio_bitrate'].GetValue()
         self.options['audio_format'] = self.bitrateDialog.ctrlDict['audio_format'].GetStringSelection()
+        self.options['pos'] = self.GetPosition()
         # Delete unused exe options
         deleteList = []
         for exeName, exeDict in self.options['exe_options'].items():

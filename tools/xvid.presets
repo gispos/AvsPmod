@@ -1,8 +1,0 @@
-[Basic]
-xvid_encraw.exe -i "$video_input" -pass1 "xvid.stats" -bitrate $video_bitrate -progress 99
-xvid_encraw.exe -i "$video_input" -pass2 "xvid.stats" -bitrate $video_bitrate -progress 99 -avi "$video_output"
-[HomeTheatre]
-xvid_encraw.exe -i "$video_input" -pass1 "xvid.stats" -progress 99
-xvid_encraw.exe -i "$video_input" -pass2 "xvid.stats" -bitrate $video_bitrate -chigh 30 -clow 15 -vbvmax 4854000 -vbvsize 3145728 -vbvpeak 2359296 -bvhq -lumimasking -par $par_x:$par_y -progress 99 -avi "$video_output"
-[CQ]
-xvid_encraw.exe -i "$video_input" -cq $video_quality -par $par_x:$par_y -progress 99 -avi "$video_output"

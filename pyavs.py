@@ -1300,6 +1300,13 @@ class AvsClipBase:
             return self.env.props_get_picture_type(self.src_frame)
         return ''
 
+    def GetFramePropValue(self, key, nr=None):
+        if self.initialized and self.can_read_avisynth_props:
+            if nr and not self._GetFrame(nr): # it's not threaded !
+                return ''
+            return self.env.props_get_value(self.src_frame, key)
+        return ''
+
     # Only switch readFrameProps on/off here, do not set AVI.readFrameProps = True
     def SetReadFrameProps(self, enabled, callBack=True, readNow=True):
         if not self.initialized or not self.can_read_avisynth_props:

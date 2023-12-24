@@ -1988,6 +1988,24 @@ class AVS_ScriptEnvironment(object):
                         return ffi.string(avs.avs_prop_get_data(self.cdata, avsmap, key_name, 0, r))
         return ''
 
+    def props_get_value(self, frame, key):
+        r = 0
+        avsmap = avs.avs_get_frame_props_ro(self.cdata, frame.cdata)
+        if avsmap:
+            c = avs.avs_prop_num_keys(self.cdata, avsmap)
+            if c > 0:
+                for i in range(c):
+                    key_name = ffi.string(avs.avs_prop_get_key(self.cdata, avsmap, i))
+                    if key_name == key:
+                        typ = avs.avs_prop_get_type(self.cdata, avsmap, key_name)
+                        if typ == 'i':
+                            return int(avs.avs_prop_get_int(self.cdata, avsmap, key_name, 0, r))
+                        elif typ == 's':
+                            return ffi.string(avs.avs_prop_get_data(self.cdata, avsmap, key_name, 0, r))
+                        elif typ == 'f':
+                            return float(avs.avs_prop_get_float(self.cdata, avsmap, key_name, 0, r))
+        return None
+
     def props_get_matrix(self, frame):
         r = 0
         avsmap = avs.avs_get_frame_props_ro(self.cdata, frame.cdata)
