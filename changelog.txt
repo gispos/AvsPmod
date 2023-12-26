@@ -38,6 +38,11 @@ If, for example, there is a '-' in the file name of the dll, AvsPmod will report
 please rename this dll and replace the '-' with a '_'
 
 --------------------------
+Version 2.7.6.3 [2023-12-26] Happy new year to everyone.
+--------------------------
+* Fix: Video\Audio syncronization could run out. 
+
+--------------------------
 Version 2.7.6.2 [2023-12-24] Merry Christmas to everyone.
 --------------------------
 * Audio playback improved. hanfrunz Christmas script (2023) now run without any dropouts ,) https://forum.doom9.org/showthread.php?t=185220

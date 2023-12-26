@@ -31773,10 +31773,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     global audioTime
                     while not evStopAudio.isSet() and self.playing_video:
                         try:
-                            #fr, buf = q_audio.get_nowait()
                             fr, buf = q_audio._get()
                             while fr <= last_fr:  # this hapends on playback start
-                                #fr, buf = q_audio.get_nowait()
                                 fr, buf = q_audio._get()
                         except:
                             fr, buf = -1, avsAudio.audio_silent[:]
@@ -31834,7 +31832,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     play_initial_frame = frame
                     audioTh = None
                     playAudioTh = None
-                    last_audio_frame = -1
+                    last_audio_frame = next_audio_frame = -1
                     updateTh = threading.Thread() # only if PainAVIFrameLocked used else remove it and remove it also on loop end
                     if self.options['playaudio'] and vi.has_audio() and (play_speed_factor == 1) and (drop_count == 0):
                         use_callback = False
@@ -31891,13 +31889,17 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                 if self.loop_start > -1:  # GPo 2020. play loop, changes not needed if slider offset (selections then None)
                                     if (frame + 1 >= self.loop_end) or (frame + 1 < self.loop_start):
                                         if avsAudio:
-                                            set_current_audio_frame(-1)
+                                            audioLock.acquire()
                                             try:
                                                 while True:
-                                                    f,p = q_audio.get_nowait()
+                                                    f,p = q_audio.get_nowait() # clear the audio buffer
                                             except:
-                                                pass # clear the audio buffer
+                                                pass
+                                            self.current_audio_frame = -1
+                                            audioLock.release()
                                             audioTime = None
+                                            next_audio_frame = -1
+                                            last_audio_frame = -1
                                         # check for next selection
                                         start, stop = self.GetNextSliderSelection(frame+1, True, False)
                                         if start is not None:
@@ -31924,14 +31926,35 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                     break
 
                                 if ms_interval > 0:
-                                    if avsAudio and audioTime: # calc the video/audio sync by 1 frame acurracy
+                                    if avsAudio and audioTime: # calc the video/audio sync
                                         f,t = audioTime
-                                        if f < frame:
-                                            wait = (startTime+ms_interval + ((time.clock()-t)/10)) - time.clock() # slow down by 1/10
-                                        elif f > frame:
-                                            wait = ((startTime+ms_interval)-time.clock()) - ((time.clock()-t)/10) # speed up by 1/10
+                                        if f < 0: f = frame
+                                        try:
+                                            sync = (time.clock()-t)/5.0
+                                        except:
+                                            sync = 0
+                                        if f == frame:
+                                            wait = (startTime+ms_interval) - time.clock()
+                                        elif f < frame:
+                                            wait = (startTime+ms_interval+sync) - time.clock()  # slow down by 1/5
+                                            if f < frame - 1:
+                                                wait += sync
                                         else:
-                                            wait = (startTime+ms_interval)-time.clock()
+                                            if f > frame + 1:
+                                                wait = 0                                         # Is sync not enough reload the audio
+                                                audioLock.acquire()                              # block audio play thread
+                                                f = self.current_audio_frame                     # get last played frame
+                                                try:
+                                                    while 1:
+                                                        q_audio.get_nowait()                     # clear the audio buffer
+                                                except:
+                                                    pass
+                                                audioLock.release()
+
+                                                last_audio_frame = -1
+                                                next_audio_frame = frame + (f-frame)                  # wait for the next audio buffer x frames
+                                            else:
+                                                wait = ((startTime+ms_interval)-time.clock()) - sync  # speed up by 1/5
                                     else:
                                         wait = (startTime+ms_interval)-time.clock()
                                     if wait > 0:
@@ -31991,14 +32014,35 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                     break
 
                                 if ms_interval > 0:
-                                    if avsAudio and audioTime: # calc the video/audio sync by 1 frame acurracy
+                                    if avsAudio and audioTime: # calc the video/audio sync
                                         f,t = audioTime
-                                        if f < frame:
-                                            wait = (startTime+ms_interval + ((time.clock()-t)/10)) - time.clock() # slow down by 1/10
-                                        elif f > frame:
-                                            wait = ((startTime+ms_interval)-time.clock()) - ((time.clock()-t)/10) # speed up by 1/10
+                                        if f < 0: f = frame
+                                        try:
+                                            sync = (time.clock()-t)/5.0
+                                        except:
+                                            sync = 0
+                                        if f == frame:
+                                            wait = (startTime+ms_interval) - time.clock()
+                                        elif f < frame:
+                                            wait = (startTime+ms_interval+sync) - time.clock()  # slow down by 1/5
+                                            if f < frame - 1:
+                                                wait += sync
                                         else:
-                                            wait = (startTime+ms_interval)-time.clock()
+                                            if f > frame + 1:
+                                                wait = 0                                         # Is sync not enough reload the audio
+                                                audioLock.acquire()                              # block audio play thread
+                                                f = self.current_audio_frame                     # get last played frame
+                                                try:
+                                                    while 1:
+                                                        q_audio.get_nowait()                     # clear the audio buffer
+                                                except:
+                                                    pass
+                                                audioLock.release()
+
+                                                last_audio_frame = -1
+                                                next_audio_frame = frame + (f-frame)                  # wait for the next audio buffer x frames
+                                            else:
+                                                wait = ((startTime+ms_interval)-time.clock()) - sync  # speed up by 1/5
                                     else:
                                         wait = (startTime+ms_interval)-time.clock()
                                     if wait > 0:
@@ -32034,18 +32078,19 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                         evGetBuffer.set()
                             """
                             ### test without audio thread looks good
-                            if avsAudio and not evStopAudio.isSet():
-                                caf = get_current_audio_frame()
-                                if caf < frame + 3 or q_audio._qsize() < 2:
-                                    fr = last_audio_frame if (last_audio_frame > frame) and caf > -1 else frame -1
-                                    for i in range(6):
-                                        fr += 1
-                                        clip.get_audio(avsAudio.audio_cptr, avsAudio.samples_count*fr, avsAudio.samples_count)
-                                        if clip.get_error():
-                                            q_audio.put((fr, avsAudio.audio_silent[:]), False)
-                                        else:
-                                            q_audio.put((fr, avsAudio.audio_buffer[:]), False)
-                                    last_audio_frame = fr
+                            if avsAudio:# and not evStopAudio.isSet():
+                                if next_audio_frame <= frame:
+                                    caf = get_current_audio_frame()
+                                    if caf < frame + 3 or q_audio._qsize() < 2: # or last_audio_frame < 0:
+                                        fr = last_audio_frame if (last_audio_frame > frame) and caf > -1 else frame -1
+                                        for i in range(6):
+                                            fr += 1
+                                            clip.get_audio(avsAudio.audio_cptr, avsAudio.samples_count*fr, avsAudio.samples_count)
+                                            if clip.get_error():
+                                                q_audio.put((fr, avsAudio.audio_silent[:]), False)
+                                            else:
+                                                q_audio.put((fr, avsAudio.audio_buffer[:]), False)
+                                        last_audio_frame = fr
 
                             # use it only if self.PaintAVIFrameLocked is used !!! else slower
                             if not sdlWindow and not updateTh.isAlive():

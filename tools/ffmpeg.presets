@@ -1,14 +1,8 @@
 [x264 CRF Slow]
 ffmpeg.exe -i "$video_input" -vcodec libx264 -preset slow -tune film -crf $video_quality -vf setsar=sar=$par_x/$par_y -acodec aac -b:a 128k -y "$video_output" 
 
-[x264 CRF Slow 10bit]
-ffmpeg.exe -i "$video_input" -vcodec libx264 -pix_fmt yuv420p10le -preset slow -tune film -crf $video_quality -vf setsar=sar=$par_x/$par_y -acodec aac -b:a 128k -y "$video_output" 
-
 [x264 CRF Medium]
-ffmpeg.exe -i "$video_input" -vcodec libx264 -crf $video_quality -vf setsar=sar=$par_x/$par_y -acodec aac -b:a 128k -y "$video_output" 
-
-[x264 CRF Medium 10bit]
-ffmpeg.exe -i "$video_input" -vcodec libx264 -pix_fmt yuv420p10le -crf $video_quality -vf setsar=sar=$par_x/$par_y -acodec aac -b:a 128k -y "$video_output" 
+ffmpeg.exe -i "$video_input" -vcodec libx264 -preset medium -tune film -crf $video_quality -vf setsar=sar=$par_x/$par_y -acodec aac -b:a 128k -y "$video_output" 
 
 [x264 lossless veryslow]
 ffmpeg.exe -i "$video_input" -vcodec libx264 -preset veryslow -qp 0 -vf setsar=sar=$par_x/$par_y -acodec aac -b:a 192k -y "$video_output" 
