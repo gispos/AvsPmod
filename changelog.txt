@@ -38,6 +38,13 @@ If, for example, there is a '-' in the file name of the dll, AvsPmod will report
 please rename this dll and replace the '-' with a '_'
 
 --------------------------
+Version 2.7.6.4 [2023-12-27] 
+--------------------------
+* Audio playback revised.
+- under Video > Playback > 'Audio buffer count...', the number of buffered frames can be set. 
+- a lower value results in a faster response when playback is jerky. Default 6
+
+--------------------------
 Version 2.7.6.3 [2023-12-26] Happy new year to everyone.
 --------------------------
 * Fix: Video\Audio syncronization could run out. 

@@ -10659,6 +10659,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'downmixaudio': True,
             'audioscrub': False,
             'audioscrubcount': 1,
+            'play_audio_buf': 6,   # playback: how many audio frames should be buffered
             # SDL d3d
             'sdlwindowrect': (ctypes.c_int(200), ctypes.c_int(200), ctypes.c_int(460), ctypes.c_int(270)),
             'sdlwindowrect1': (ctypes.c_int(200), ctypes.c_int(200), ctypes.c_int(460), ctypes.c_int(270)),
@@ -12585,6 +12586,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     (''),
                     (_('Play loop'), '', self.OnMenuVideoPlayLoop, _('Loop playback for trim editor selections or at the end of the clip'), wx.ITEM_CHECK, self.options['playloop']),
                     (_('Play audio'), '', self.OnMenuVideoPlayAudio, _('Play audio at playback. Only if Playback in threads or assign avisynth in threads is enabled.'), wx.ITEM_CHECK, self.options['playaudio']),
+                    (_('Audio buffer count...'), '', self.OnMenuVideoAudioBuffer, _('Audio buffers on playback. Lower value faster response with jerky playback.')),
                     (''),
                     (_('Audio scrubbing'), '', self.OnMenuVideoAudioScrubbing, _('Play audio while scrolling the video. The number can be set in the context menu of the play button'), wx.ITEM_CHECK, self.options['audioscrub']),
                     (_('Play scrub'), '', self.OnMenuVideoPlayScrub, _('Play the current frame audio (duration 36 frames). Use Split View for sync check.')),
@@ -18078,6 +18080,24 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.CheckPlayback()
         self.options['playaudio'] = event.IsChecked()
         self.UpdateMenuItem(_('Play video'), event.IsChecked(), 'video', [_('Play audio')])
+        self.CheckPlayback()
+
+    def OnMenuVideoAudioBuffer(self, event):
+        self.CheckPlayback()
+        ac = self.options['play_audio_buf']
+        dlg = wx.TextEntryDialog(self, _('Audio buffers (3 to 30) default 6:'), _('Audio buffer'), str(ac))
+        ID = dlg.ShowModal()
+        s = dlg.GetValue()
+        dlg.Destroy()
+        if ID == wx.ID_OK:
+            if s.isdigit():
+                i = int(s)
+                if i < 3 or i > 30:
+                    wx.Bell()
+                i = max(min(i, 30), 3)
+                self.options['play_audio_buf'] = i
+            else:
+                wx.Bell()
         self.CheckPlayback()
 
     def OnMenuVideoDownmixAudio(self, event):
@@ -31765,6 +31785,88 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         finally:
                             self.evFinish.set()
                 """
+                class AudioQueue(object):
+                    def __init__(self):
+                        self.q = queue.Queue()
+                        self.count = 0
+                        self.last_frame = -1
+                        self.lock = threading.Lock()
+                    def get(self, block=False):
+                        self.lock.acquire()
+                        try:
+                            try:
+                                re = self.q.get(block)
+                                self.count -= 1
+                                self.last_frame = re[0]
+                                return re
+                            except:
+                                raise
+                        finally:
+                            self.lock.release()
+                    def get_nowait(self):
+                        self.lock.acquire()
+                        try:
+                            try:
+                                re = self.q.get(False)
+                                self.count -= 1
+                                self.last_frame = re[0]
+                                return re
+                            except:
+                                raise
+                        finally:
+                            self.lock.release()
+                    def put(self, data, block=False):
+                        self.lock.acquire()
+                        try:
+                            try:
+                                self.q.put(data, block)
+                                self.count += 1
+                                #self.last_frame = data[0]
+                            except:
+                                raise
+                        finally:
+                            self.lock.release()
+                    def put_nowait(self, data):
+                        self.lock.acquire()
+                        try:
+                            try:
+                                self.q.put(data, False)
+                                self.count += 1
+                                #self.last_frame = data[0]
+                            except:
+                                raise
+                        finally:
+                            self.lock.release()
+                    def clear(self):
+                        while 1:
+                            try:
+                                a,b = self.q.get(False)
+                                a = b = None
+                            except:
+                                raise
+                        self.count = 0
+                    def Count(self):
+                        self.lock.acquire()
+                        re = self.count
+                        self.lock.release()
+                        return re
+                    def _qsize(self):
+                        return self.q._qsize()
+                    def qsize(self):
+                        return self.q.qsize()
+
+
+                def set_current_audio_frame(val):
+                    audioLock.acquire()
+                    self.current_audio_frame = val
+                    #print(val)
+                    audioLock.release()
+
+                def get_current_audio_frame():
+                    audioLock.acquire()
+                    re = self.current_audio_frame
+                    audioLock.release()
+                    return re
 
                 # Audio Play Thread
                 def _playaudio(avsAudio, q_audio, evStopAudio):
@@ -31773,14 +31875,16 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     global audioTime
                     while not evStopAudio.isSet() and self.playing_video:
                         try:
-                            fr, buf = q_audio._get()
+                            fr, buf = q_audio.get(False)
                             while fr <= last_fr:  # this hapends on playback start
-                                fr, buf = q_audio._get()
+                                fr, buf = q_audio.get(False)
                         except:
                             fr, buf = -1, avsAudio.audio_silent[:]
 
                         last_fr = fr
-                        set_current_audio_frame(fr)
+                        if fr > -1:
+                            set_current_audio_frame(fr)
+
                         try:
                             avsAudio.audio_stream.write(buf)
                             audioTime = (fr, time.clock())
@@ -31790,24 +31894,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                             wx.Bell()
                             if error > 5:
                                 evStopAudio.set()
-
-                def set_current_audio_frame(val): # absolute
-                    audioLock.acquire()
-                    self.current_audio_frame = val
-                    audioLock.release()
-                def get_current_audio_frame():
-                    audioLock.acquire()
-                    re = self.current_audio_frame
-                    audioLock.release()
-                    return re
-                """
-                def get_set_current_audioframe(val):
-                    audioLock.acquire()
-                    re = self.current_audio_frame
-                    self.current_audio_frame = val
-                    audioLock.release()
-                    return re
-                """
 
                 # video play thread main loop
                 def play(frame, interval, factor):
@@ -31837,13 +31923,14 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     if self.options['playaudio'] and vi.has_audio() and (play_speed_factor == 1) and (drop_count == 0):
                         use_callback = False
                         avsAudio = AvsAudio(self)
-                        if avsAudio.CreateAudio(vi, 1, False, audio_callback if use_callback else None): # audio samples of 2 video frames per loop and also per q_audio item
+                        if avsAudio.CreateAudio(vi, 1, False, audio_callback if use_callback else None): # audio samples of 1 video frames per loop and also per q_audio item
                             config = 0 # config 0, 3 x 2 frames (config is for test purpose )
                             evStopAudio = threading.Event()
                             evGetBuffer = threading.Event()
-                            q_audio = queue.Queue()
+                            q_audio = AudioQueue() #queue.Queue()
                             evFinish.set()
                             set_current_audio_frame(-1)
+                            play_audio_buf = self.options['play_audio_buf']
                             avsAudio.StartStream()
                             if not use_callback: # create the audio play thread
                                 playAudioTh =  threading.Thread(target=_playaudio, args=(avsAudio, q_audio, evStopAudio,))
@@ -31863,6 +31950,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                                         #q_audio, evStopAudio, evGetBuffer, evFinish, get_current_audio_frame)
                             #audioTh.start()
                             #evGetBuffer.set() # preload the buffer
+                            '''
+                            we get now the audio buffer in the play thread loop, it's not slower (python thread handle allows only one thread at the same time)
+                            it's only slower when the play thread paused with ms_interval, but then it doesn't matter if the audio fetching takes a little longer
+                            '''
                         else:
                             avsAudio = None
                     else:
@@ -31893,6 +31984,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                             try:
                                                 while True:
                                                     f,p = q_audio.get_nowait() # clear the audio buffer
+                                                    p = None
                                             except:
                                                 pass
                                             self.current_audio_frame = -1
@@ -31928,7 +32020,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                 if ms_interval > 0:
                                     if avsAudio and audioTime: # calc the video/audio sync
                                         f,t = audioTime
-                                        if f < 0: f = frame
+                                        if f < 0: f = frame # play the audio buffers empty
                                         try:
                                             sync = (time.clock()-t)/5.0
                                         except:
@@ -31936,25 +32028,27 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                         if f == frame:
                                             wait = (startTime+ms_interval) - time.clock()
                                         elif f < frame:
-                                            wait = (startTime+ms_interval+sync) - time.clock()  # slow down by 1/5
+                                            wait = (startTime+ms_interval+sync) - time.clock()  # slow video down by 1/5
                                             if f < frame - 1:
                                                 wait += sync
                                         else:
-                                            if f > frame + 1:
+                                            if f > frame + int(play_audio_buf/4) and next_audio_frame < frame:
                                                 wait = 0                                         # Is sync not enough reload the audio
                                                 audioLock.acquire()                              # block audio play thread
                                                 f = self.current_audio_frame                     # get last played frame
                                                 try:
                                                     while 1:
-                                                        q_audio.get_nowait()                     # clear the audio buffer
+                                                        a,b = q_audio.get_nowait()               # clear the audio buffer
+                                                        b = None
                                                 except:
                                                     pass
                                                 audioLock.release()
 
                                                 last_audio_frame = -1
-                                                next_audio_frame = frame + (f-frame)                  # wait for the next audio buffer x frames
+                                                next_audio_frame = max(frame + (f-frame) + 1, frame+1)    # wait for the next audio buffer x frames
+                                                #print('next ' + str(next_audio_frame))
                                             else:
-                                                wait = ((startTime+ms_interval)-time.clock()) - sync  # speed up by 1/5
+                                                wait = ((startTime+ms_interval)-time.clock()) - sync  # speed video up by 1/5
                                     else:
                                         wait = (startTime+ms_interval)-time.clock()
                                     if wait > 0:
@@ -32016,7 +32110,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                 if ms_interval > 0:
                                     if avsAudio and audioTime: # calc the video/audio sync
                                         f,t = audioTime
-                                        if f < 0: f = frame
+                                        if f < 0: f = frame # play the audio buffers empty
                                         try:
                                             sync = (time.clock()-t)/5.0
                                         except:
@@ -32024,25 +32118,27 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                         if f == frame:
                                             wait = (startTime+ms_interval) - time.clock()
                                         elif f < frame:
-                                            wait = (startTime+ms_interval+sync) - time.clock()  # slow down by 1/5
+                                            wait = (startTime+ms_interval+sync) - time.clock()  # slow video down by 1/5
                                             if f < frame - 1:
                                                 wait += sync
                                         else:
-                                            if f > frame + 1:
+                                            if f > frame + int(play_audio_buf/4) and next_audio_frame < frame:
                                                 wait = 0                                         # Is sync not enough reload the audio
                                                 audioLock.acquire()                              # block audio play thread
                                                 f = self.current_audio_frame                     # get last played frame
                                                 try:
                                                     while 1:
-                                                        q_audio.get_nowait()                     # clear the audio buffer
+                                                        a,b = q_audio.get_nowait()               # clear the audio buffer
+                                                        b = None
                                                 except:
                                                     pass
                                                 audioLock.release()
 
                                                 last_audio_frame = -1
-                                                next_audio_frame = frame + (f-frame)                  # wait for the next audio buffer x frames
+                                                next_audio_frame = max(frame + (f-frame) + 1, frame+1)    # wait for the next audio buffer x frames
+                                                #print('next ' + str(next_audio_frame))
                                             else:
-                                                wait = ((startTime+ms_interval)-time.clock()) - sync  # speed up by 1/5
+                                                wait = ((startTime+ms_interval)-time.clock()) - sync  # speed video up by 1/5
                                     else:
                                         wait = (startTime+ms_interval)-time.clock()
                                     if wait > 0:
@@ -32066,24 +32162,16 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
                             ### end get frame and draw routines
 
-                            """
+                            #print(q_audio.Count())
+                            ### get audio
+
                             if avsAudio and not evStopAudio.isSet():
-                                if get_current_audio_frame() < frame + 3 or q_audio._qsize() < 2:
-                                    #qs = q_audio._qsize()
-                                    if config == 0:
-                                        set_current_audio_frame(frame)
-                                        evGetBuffer.set()
-                                    elif qs < 3:
-                                        #set_current_audio_frame(frame)
-                                        evGetBuffer.set()
-                            """
-                            ### test without audio thread looks good
-                            if avsAudio:# and not evStopAudio.isSet():
                                 if next_audio_frame <= frame:
-                                    caf = get_current_audio_frame()
-                                    if caf < frame + 3 or q_audio._qsize() < 2: # or last_audio_frame < 0:
-                                        fr = last_audio_frame if (last_audio_frame > frame) and caf > -1 else frame -1
-                                        for i in range(6):
+                                    #caf = get_current_audio_frame()
+                                    ac = play_audio_buf - q_audio.Count() # hold allways 3 to 30 frames in buffer
+                                    if ac > 0:
+                                        fr = last_audio_frame if last_audio_frame > frame else frame -1
+                                        for i in range(ac):
                                             fr += 1
                                             clip.get_audio(avsAudio.audio_cptr, avsAudio.samples_count*fr, avsAudio.samples_count)
                                             if clip.get_error():
@@ -32091,6 +32179,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                             else:
                                                 q_audio.put((fr, avsAudio.audio_buffer[:]), False)
                                         last_audio_frame = fr
+                            ### end get audio
 
                             # use it only if self.PaintAVIFrameLocked is used !!! else slower
                             if not sdlWindow and not updateTh.isAlive():
