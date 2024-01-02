@@ -37,6 +37,22 @@ AvsPmod can only provide a user-friendly editor if he has no problems with the n
 If, for example, there is a '-' in the file name of the dll, AvsPmod will report it at startup, 
 please rename this dll and replace the '-' with a '_'
 
+
+--------------------------
+Version 2.7.6.5 [2024-01-02] GPo, Dire Straits Edition
+--------------------------
+* Playback with audio now runs smoothly even if the video fps is not reached.
+* Added and changed audio options. 
+- 'Audio only when Video setting is normal speed' - 'Audio rate always 100%' - 'Audio speed equals Video speed when Video speed 100% or less'
+** Hint! My audio card works with all sample rates down to 1000 Hz, if problems occur the option must be changed to the first or second option.
+- the settings and the settings for the audio buffer can be found under Video > Play video > 'Audio settings...' and in the Playback butten context menu.
+* The audio buffer setting is now in milliseconds (200 to 2000), default 500 (buffers = ms/1000*framerate) eg. for 25fps round 13 frames.
+* Drop frames 'Auto' (playback butten context menu > Drop frames... > 'Auto'):
+- if drop frames 'Auto' is set, the audio buffer increase automatically up to 200 frames if a audio dropout detected (10 frames step).
+- play back speed cannot higher as 100%, if Maximum speed is set, drop frames 'Auto' is not used.
+- and one more thing, drop frames 'Auto' is a special function and should only be used if the audio should have priority (but then it is a nice function).
+* Added play back butten context menu > Speed x > '0.25x'
+
 --------------------------
 Version 2.7.6.4 [2023-12-27] 
 --------------------------

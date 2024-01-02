@@ -968,21 +968,6 @@ class AvsClipBase:
             self.callBack('displayerror', self.convert_to_rgb_error)
         return True
 
-    # test not used
-    """
-    def GetD3DDisplayClip(self, convertBits=False):
-        if self.vi.Is420():
-            if self.bits_per_component == 8:
-                self.YUV420P8clip = self.clip
-                return self.clip, True
-            if convertBits:
-                self.YUV420P8clip = self.env.invoke("Eval", [self.clip, 'ConvertBits(8)'])
-                if isinstance(self.YUV420P8clip, avisynth.AVS_Clip):
-                    return self.YUV420P8clip, True
-        self.YUV420P8clip = None
-        return self.display_clip, False
-    """
-
     #################
     # Audio scrubbing
     #################
