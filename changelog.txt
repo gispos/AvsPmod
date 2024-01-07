@@ -37,6 +37,17 @@ AvsPmod can only provide a user-friendly editor if he has no problems with the n
 If, for example, there is a '-' in the file name of the dll, AvsPmod will report it at startup, 
 please rename this dll and replace the '-' with a '_'
 
+--------------------------
+Version 2.7.6.6 [2024-01-06] GPo
+-------------------------- 
+* Playback option Drop frames 'Auto' is now set more aggressive.
+- however, i have noticed that with filters that do not like large frame jumps it can take a long time until a new frame is drawn... can't be changed.
+* Added tab context menu > 'Tab list' 
+- 'Tab list' is for those who have many tabs open and don't want to use 'Multiline tab Style' and don't like the 'Script Selector'.
+- 'Tab list' is also available with a middle mouse click on a tab if the option is selected under Program Options > Misc > 'Middle mouse on tab'. Enabled by default.
+- furthermore, the 'Tab list' is available in the video window and the script editor on the right side (25 pix) and on the slider window button with a right mouse click.
+- you can use the mouse forward/backward buttons to jump to the previous tab. 'Tab list' closes automatically when the focus is lost.
+- the settings for the font can be found under Options > Fonts and colors' > Advanced 2 > 'Tab list window'
 
 --------------------------
 Version 2.7.6.5 [2024-01-02] GPo, Dire Straits Edition

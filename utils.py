@@ -14,6 +14,7 @@ import os
 import wx
 import ctypes
 import threading
+import re
 
 # The frequency of the performance counter is fixed at system boot and is consistent across all processors.
 _queryPerformanceFrequency = ctypes.c_int64()
@@ -253,7 +254,13 @@ def micro_delay(delay):
 def GetById(ID):
     return ctypes.cast(id(ID), ctypes.py_object).value
 
-
+# idx = tuple index (xlist.sort(key=sort_alphanumeric(0))
+def sort_alphanumeric(idx=-1):
+    convert = lambda text: int(text) if text.isdigit() else text.lower()
+    if idx >= 0:
+        alphanum_key = lambda key: [convert(c) for c in re.split('([0-9]+)', key[idx])]
+    else: alphanum_key = lambda key: [convert(c) for c in re.split('([0-9]+)', key)]
+    return alphanum_key
 """
 # Python program for A modified Naive Pattern Searching
 # algorithm that is optimized for the cases when all
