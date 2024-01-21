@@ -38,6 +38,13 @@ If, for example, there is a '-' in the file name of the dll, AvsPmod will report
 please rename this dll and replace the '-' with a '_'
 
 --------------------------
+Version 2.7.6.7 [2024-01-21] GPo
+-------------------------- 
+* Added Program Options > Misc 2 > 'Change cursor in zoom action area' 
+* 'Tab list' focus flickering improved.
+* D3DWindow audio playback improved (was bad when the video fps was not reached).
+
+--------------------------
 Version 2.7.6.6 [2024-01-06] GPo
 -------------------------- 
 * Playback option Drop frames 'Auto' is now set more aggressive.

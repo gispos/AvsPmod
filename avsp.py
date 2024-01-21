@@ -10617,6 +10617,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'bookmarkrangedec': True,                # GPo, reduce the end selection by the value 1 on setting the bookmark range
             'autosnapshot': True,                    # GPo, automatically take snapshot 2 on clip refresh
             'paintzoomhint': True,                   # GPo, paint hint on left and right zoom action area (fullsize, fullscreen, rasample zoom)
+            'zoomareachangescursor': True,           # GPo, change the cursor if mause in zoom action area
             'propwinhorzscroll': False,              # GPo, property wnd scrollbar
             'propwinwordwarp': False,                # GPo, property wnd word warp
             'sessionbackupcount': 3,                 # GPo, max session backups at startup
@@ -11654,7 +11655,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 ((_('Show resample zoom menu*'), wxp.OPT_ELEM_LIST, 'showresamplemenu', _("Show resample menu in zoom menu.\n!! Read Help > 'Resample filter readme'"), dict(choices=[(_('As Submenu'),1), (_('Normal'),2)]) ), ),
                 ((_('Fullscreen zoom'), wxp.OPT_ELEM_LIST, 'fullscreenzoom', _('Zoom setting for Fullscreen or (Fullsize on double click in zoom area)'), dict(choices=[(_('None'),0), (_('Normal'),1), (_('Resample'),2)]) ), ),
                 ((_('Fullscreen/Fullsize  progress dialog'), wxp.OPT_ELEM_LIST, 'fullscreendlgxy', _('Position for the static progress information on loading a frame'), dict(choices=[(_(r'top\left'),0), (_(r'top\right'),1), (_(r'top\center'),2), (_(r'bottom\left'),3), (_(r'bottom\right'),4)]) ), ),
-                ((_('Show hint for the zoom action area'), wxp.OPT_ELEM_LIST, 'paintzoomhint', _('Draw a hint when the mouse is in a zoom action area (Fullsize, Fullscreen, Resample'), dict(choices=[(_('Off'),0), (_('On - statical'),1), (_('On - auto hide'),2)]) ), ),
+                ((_('Show hint for the zoom action area'), wxp.OPT_ELEM_LIST, 'paintzoomhint', _('Draw a hint when the mouse is in a zoom action area (Fullsize, Fullscreen, Resample'), dict(choices=[(_('Off'),0), (_('On - statical'),1), (_('On - auto hide'),2)]) ),
+                 (_('Change cursor in zoom action area'), wxp.OPT_ELEM_CHECK, 'zoomareachangescursor', _('Change the cursor if mouse in zoom action area'), dict() ), ),
                 ((_('Show shortcuts in context menus*'), wxp.OPT_ELEM_CHECK, 'contextshowshortcuts', _('Show or hide the context menus shortcuts (video, script)'), dict() ), ),
                 ((_('Show video control buttons tooltips'), wxp.OPT_ELEM_CHECK, 'showbuttontooltip', _('Show or hide the video control buttons tooltips'), dict() ), ),
                 ((_('Display filter enabled on startup'), wxp.OPT_ELEM_CHECK, 'displayfilter_enabled', _('Enable the Display filter on startup'), dict() ), ),
@@ -22088,7 +22090,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             # signal mouse action area (left and right)
             int50 = intPPI(50)
             if (mPos[0] <= int50 or mPos[0] > cSize[0] - int50) and not self.cropDialog.IsShown():
-                self.videoWindow.SetCursor(wx.StockCursor(wx.CURSOR_CLOSED_HAND))
+                if self.options['zoomareachangescursor']:
+                    self.videoWindow.SetCursor(wx.StockCursor(wx.CURSOR_CLOSED_HAND))
                 if self.options['paintzoomhint']:
                     if self.overlayData:
                         s = self.overlayData[2]
@@ -32217,12 +32220,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
                             ### get frame and draw routines
                             if sdlWindow:
-                                script.AVI.clip.get_frame(frame)
-                                errmsg = script.AVI.clip.get_error()
-                                if errmsg is not None:
-                                    wx.CallAfter(FrameError, 1, script, errmsg, frame)
-                                    break
-
                                 '''must be exact the same routine as wihout sdlWindow below'''
                                 if ms_interval > 0 or avsAudio:
                                     if avsAudio and playAudioTh.audioTime: # calc the video/audio sync
@@ -32272,7 +32269,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                 startTime = time.clock()
 
                                 if renderSafe:
-                                    re = AsyncCall(renderFrameSafe, script, frame, sfps).Wait()
+                                    with audioLock: # else audio has no chance to fetch the audio buffer
+                                        re = AsyncCall(renderFrameSafe, script, frame, sfps).Wait()
                                     if not re:
                                         if re is None: # then error
                                             errmsg = script.AVI.clip.get_error()
@@ -32281,7 +32279,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                             wx.CallAfter(FrameError, 1, script, errmsg, frame)
                                         break
                                 else:
-                                    re = self.sdlWindow.Render(script.AVI, frame)
+                                    with audioLock: # else audio has no chance to fetch the audio buffer
+                                        re = self.sdlWindow.Render(script.AVI, frame)
                                     if not re:
                                         if (re is not None) or (not self.sdlWindow.running):
                                             break
@@ -32299,10 +32298,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                         updateTh.start()
 
                                 if self.playback_drawBoth and not self.PaintAVIFrameLocked(wx.ClientDC(self.videoWindow), script, frame):
-                                    errmsg = 'Play thread unknown paint frame error'
-                                    wx.CallAfter(FrameError, 3, script, errmsg, frame)
+                                    errmsg = script.AVI.error_message
+                                    if not errmsg:
+                                        errmsg = script.AVI.display_clip.get_error() or script.AVI.clip.get_error()
+                                    if not errmsg:
+                                        errmsg = 'Play Thread unknown GetFrame error'
+                                    wx.CallAfter(FrameError, 1, script, errmsg, frame)
                                     break
-
                             else:
                                 """
                                 script.AVI.display_clip.get_frame(frame)
@@ -32311,8 +32313,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                     wx.CallAfter(FrameError, 1, script, errmsg, frame)
                                     break
                                 """
-                                # PaintFrame must get the frame from both clips, so we get here threaded from both clips the frame and minimize the main thread time,
-                                # and _GetFrame is really threaded, but I don't know what priority Python threads have. Maybe the main thread is faster?
                                 if not script.AVI._GetFrame(frame):
                                     errmsg = script.AVI.error_message
                                     if not errmsg:
@@ -32380,12 +32380,17 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                 # Run's without AsyncCall and is also 10 - 40% faster. No Problems so far.
                                 # It uses a Rlock in PaintAVIFrameLocked to avoid collisions between the main and play thread
                                 # The main thread uses also this function if self.playing_video=True.
+                                #with audioLock:
                                 if not self.PaintAVIFrameLocked(wx.ClientDC(self.videoWindow), script, frame):
-                                    errmsg = 'Play thread unknown paint frame error'
-                                    wx.CallAfter(FrameError, 3, script, errmsg, frame)
+                                    errmsg = script.AVI.error_message
+                                    if not errmsg:
+                                        errmsg = script.AVI.display_clip.get_error() or script.AVI.clip.get_error()
+                                    if not errmsg:
+                                        errmsg = 'Play Thread unknown GetFrame error'
+                                    wx.CallAfter(FrameError, 1, script, errmsg, frame)
                                     break
-                                ### end get frame and draw routines
 
+                            ### end get frame and draw routines ###
 
                             # on auto_drop thread cannot get audio frames fast eneugh.
                             # play loop makes no pause and the clip access is to high. (cannot access clip at same time)
@@ -34922,10 +34927,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             script, index = self.getScriptAtIndex(None)
             script.AviThread = None
             script.FrameThread = None
-            #if script.AVI:
-                #self.NewTab(copytab=True)
-                #self.scriptNotebook.DeletePage(index)
-
 
     def ParseFontStyle(self, styleInfo):
         # Get the style info (face, size, bold/italic/underline, color, background)
@@ -34993,6 +34994,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         def OnClose(event=None):
             col0w = listCtrl.GetColumnWidth(0)
             self.options['tabdlgoptions'] = {'dimensions':tabDlg.GetRect(),'col0w':listCtrl.GetColumnWidth(0),'force_preview':options['force_preview']}
+            if listCtrl.last_tab > -1:
+                self.options['tabdlgoptions']['last_id'] = id(fileList[listCtrl.last_tab][2])
             tabDlg.Destroy()
             self.tabDlg = None
         tabDlg.Bind(wx.EVT_CLOSE, OnClose)
@@ -35016,12 +35019,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         listCtrl.init_tab = -1
         listCtrl.last_tab = -1
         listCtrl.tmp_tab = -1
+        listCtrl.last_id = None
         listCtrl.popup = False
         listCtrl.last_col = 0
         tabDlg.listCtrl = listCtrl
         tabDlg.wasFullscreen = self.fullScreenWnd_IsShown
         """
-        def OnKeyDown(event):
+        def OnKeyDown(event): # key codes not working with ProcessEvent
             wx.Bell()
             tabDlg.progress = True
             self.currentScript.GetEventHandler().ProcessEvent(event)
@@ -35055,13 +35059,19 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     listCtrl.init_tab = idx
                     listCtrl.last_tab = idx
                     listCtrl.tmp_tab = idx
-                    listCtrl.last_id = None
                     return
             wx.Bell()
         def FindScript(script, select):
             if script:
                 for idx,t in enumerate(fileList):
                     if t[2] is script:
+                        if select: listCtrl.Select(idx)
+                        return idx
+            return -1
+        def FindScriptById(ID, select):
+            if ID:
+                for idx,t in enumerate(fileList):
+                    if id(t[2]) == ID:
                         if select: listCtrl.Select(idx)
                         return idx
             return -1
@@ -35092,17 +35102,16 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if listCtrl.popup:
                 listCtrl.popup = False
             else:
-                #listCtrl.last_tab = listCtrl.GetFirstSelected()
                 event.Skip()
-        listCtrl.Bind(wx.EVT_LEFT_DOWN, OnLeftDown) # bind after shown and Findselected tab
-        def OnLeftDClick(event): # on double click override the tab auto prview
+        listCtrl.Bind(wx.EVT_LEFT_DOWN, OnLeftDown)
+        def OnLeftDClick(event): # on double click override the tab auto preview
             b = self.options['tabautopreview']
             self.options['tabautopreview'] = False
             try:
                 OnSelect(event, True)
             finally:
                 self.options['tabautopreview'] = b
-        listCtrl.Bind(wx.EVT_LEFT_DCLICK, OnLeftDClick) # bind after shown and Findselected tab
+        listCtrl.Bind(wx.EVT_LEFT_DCLICK, OnLeftDClick)
         def OnSelect(event, force=None):
             def _reset():
                 listCtrl.SetFocus()
@@ -35123,14 +35132,19 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     for i in range(nb.GetPageCount()):
                         scr = nb.GetPage(i)
                         if scr is script:
-                            if not self.options['tabautopreview'] and not self.previewOK(scr):# and self.previewWindowVisible:
+                            wasFullscreen = self.fullScreenWnd_IsShown
+                            if not self.options['tabautopreview'] and not self.previewOK(scr) and (self.previewWindowVisible or force):
                                 tabDlg.Show(False)
                                 ishiden = True
-                            wasFullscreen = self.fullScreenWnd_IsShown
-                            nb.SetSelection(i)
+                            else:
+                                self.scriptNotebook.Enable(False) # do not focus the main form
+                            try:
+                                nb.SetSelection(i)
+                            finally:
+                                self.scriptNotebook.Enable(True)
                             if not self.previewWindowVisible:
                                 if force or (options['force_preview'] and self.previewOK(script)):
-                                    self.ShowVideoFrame()
+                                    self.ShowVideoFrame(focus=False)
                             if (wasFullscreen or tabDlg.wasFullscreen)  and self.previewOK() and not self.fullScreenWnd_IsShown:
                                 self.OnLeftDClickVideoWindow(toggleFullscreen=True)
                             else:
@@ -35148,6 +35162,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 tabDlg.Show(True)
                 tabDlg.SetFocus()
                 tabDlg.Update()
+                listCtrl.Refresh()
                 wx.GetApp().ProcessIdle()
                 wx.CallLater(100, _reset)
         def OnContextMenu(event):
@@ -35173,6 +35188,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             popup.Destroy()
         listCtrl.Bind(wx.EVT_LIST_ITEM_RIGHT_CLICK, OnContextMenu)
         FindSelectedTab()
+        listCtrl.last_tab = FindScriptById(options.get('last_id', None), False)
         tabDlg.Show()
         listCtrl.SetFocus()
         listCtrl.Update()
