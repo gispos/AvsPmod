@@ -859,46 +859,10 @@ class AvsClipBase:
             if self.displayFilter:
                 args = self.displayFilter + '\n'
 
-            # Test audio downmix to 2 channels if self.downMix_d
+            # audio downmix to 2 channels if self.downMix_d
             # Downmix is on CreateFilterClip (avsp_filter) disabled (speed up).
             if self.downMix_d and self.vi.has_audio():
-
-                if self.vi.nchannels >= 8:
-                    args += (
-                          'a = ConvertAudioToFloat()\n'
-                          'flr = Getchannel(a, 1, 2, 3, 4)\n'
-                          'blr = Getchannel(a, 5, 6)\n'
-                          'slr = Getchannel(a, 7, 8)\n'
-                          'sur = MixAudio(blr, slr, 1.0, 1.0)\n'
-                          'mc = mergechannels(flr, sur)\n'
-                          'flr = GetChannel(mc, 1, 2)\n'
-                          'fcc = GetChannel(mc, 3, 3)\n'
-                          'lrc = MixAudio(flr, fcc, 0.3694, 0.2612)\n'
-                          'blr = GetChannel(mc, 5, 6)\n'
-                          'MixAudio(lrc, blr, 1.0, 0.3694)\n'
-                          )
-                elif self.vi.nchannels >= 6:
-                    args += (
-                            'flr = GetChannel(1, 2)\n'
-                            'fcc = GetChannel(3, 3)\n'
-                            'lrc = MixAudio(flr, fcc, 0.3694, 0.2612)\n'
-                            'blr = GetChannel(5, 6)\n'
-                            'MixAudio(lrc, blr, 1.0, 0.3694)\n'
-                            )
-                elif self.vi.nchannels >= 4:
-                    args += (
-                            'flr = GetChannel(1, 2)\n'
-                            'blr = GetChannel(3, 4)\n'
-                            'MixAudio(flr, blr, 0.5, 0.5)\n'
-                            )
-                elif self.vi.nchannels == 3:
-                    args += (
-                            'flr = GetChannel(1, 2)\n'
-                            'fcc = GetChannel(3, 3)\n'
-                            'MixAudio(flr, fcc, 0.5858, 0.4142)\n'
-                            )
-                if self.audioVolume != 0:
-                    args += 'AmplifyDB(%i)\n' % (self.audioVolume)
+                args += self.get_audio_downmix_args()
 
             # at last the resize filter if prefetch is used
             if self.resizeFilter:
@@ -1399,6 +1363,49 @@ class AvsClipBase:
             return True
         return False
 
+    def get_audio_downmix_args(self):
+        args = ''
+        if self.vi.nchannels >= 8:
+            args = (
+                  'a = ConvertAudioToFloat()\n'
+                  'flr = Getchannel(a, 1, 2, 3, 4)\n'
+                  'blr = Getchannel(a, 5, 6)\n'
+                  'slr = Getchannel(a, 7, 8)\n'
+                  'sur = MixAudio(blr, slr, 1.0, 1.0)\n'
+                  'mc = mergechannels(flr, sur)\n'
+                  'flr = GetChannel(mc, 1, 2)\n'
+                  'fcc = GetChannel(mc, 3, 3)\n'
+                  'lrc = MixAudio(flr, fcc, 0.3694, 0.2612)\n'
+                  'blr = GetChannel(mc, 5, 6)\n'
+                  'MixAudio(lrc, blr, 1.0, 0.3694)\n'
+                  )
+        elif self.vi.nchannels >= 6:
+            if self.Audiobits < 24:
+                #args += 'ConvertAudioTo24Bit()\n'
+                args = 'ConvertAudioToFloat()\n'
+            args += (
+                    'flr = GetChannel(1, 2)\n'
+                    'fcc = GetChannel(3, 3)\n'
+                    'lrc = MixAudio(flr, fcc, 0.3694, 0.2612)\n'
+                    'blr = GetChannel(5, 6)\n'
+                    'MixAudio(lrc, blr, 1.0, 0.3694)\n'
+                    )
+        elif self.vi.nchannels >= 4:
+            args = (
+                    'flr = GetChannel(1, 2)\n'
+                    'blr = GetChannel(3, 4)\n'
+                    'MixAudio(flr, blr, 0.5, 0.5)\n'
+                    )
+        elif self.vi.nchannels == 3:
+            args = (
+                    'flr = GetChannel(1, 2)\n'
+                    'fcc = GetChannel(3, 3)\n'
+                    'MixAudio(flr, fcc, 0.5858, 0.4142)\n'
+                    )
+        if self.audioVolume != 0:
+            args += 'AmplifyDB(%i)\n' % (self.audioVolume)
+        return args
+
     def CreateYV12Clip(self, force):
         if self.clip and self.yv12_clip_parent is self.clip:
             return True
@@ -1414,6 +1421,10 @@ class AvsClipBase:
                 args += '\nConvertToYV12()'
         elif not self.IsYV12:
             args = '\nConvertToYV12()'
+
+        if self.downMix_d and self.vi.has_audio():
+            args += self.get_audio_downmix_args()
+
         if args:
             try:
                 self.yv12_clip = self.env.invoke('Eval', [self.clip, args])

@@ -38,6 +38,13 @@ If, for example, there is a '-' in the file name of the dll, AvsPmod will report
 please rename this dll and replace the '-' with a '_'
 
 --------------------------
+Version 2.7.6.8 [2024-02-03] GPo
+--------------------------
+* Playback reworked.
+* Added 'Tab list' context menu entries (Free memory, Other free memory, Close), this always refers to the current tab (the yellow one).
+* Fix: Audio playback was stopped when 'Timeline Range' was set.
+
+--------------------------
 Version 2.7.6.7 [2024-01-21] GPo
 -------------------------- 
 * Added Program Options > Misc 2 > 'Change cursor in zoom action area' 
