@@ -31945,6 +31945,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     global next_audio_frame
                     evFinish.clear()
                     wait = max(ms_interval - 0.01, 0.02)
+                    #buffer_count = (buffer_count // 4) + 2
                     try:
                         while not evStopAudio.isSet() and self.playing_video:
                             time.sleep(wait)
@@ -32090,7 +32091,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         global audio_clear
                         global next_audio_frame
                         error = 0
-                        last_fr = -1
+                        #last_fr = -1
                         wait = max(1000.0/script.AVI.Framerate/1000.0/1.5, 0.01)
                         while not self.evStopAudio.isSet() and self.app.playing_video:
                             if self.do_clear:
@@ -32099,6 +32100,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                     self.q_audio.clear()
                                     #next_audio_frame = max(self.frame + (f-self.frame) + 1, self.frame + 1) if not self._clear else -1
                                     next_audio_frame = self.last_frame + 1 if not self._clear else -1
+                                    if self._clear:
+                                        self.last_frame = -1
                                     audio_clear = False
                                     self.do_clear = False
 
@@ -32107,17 +32110,18 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                 #while fr <= last_fr:  # this can be happen on playback start
                                     #fr, buf = self.q_audio.get(False)
                             except:
-                                #fr, buf = -1, self.avsAudio.audio_silent[:]
-                                fr, buf = -1, None
+                                fr, buf = -1, self.avsAudio.audio_silent[:]
+                                #fr, buf = -1, None
 
-                            last_fr = fr
+                            #last_fr = fr
                             if fr >= 0:
                                 self.last_frame = fr
                             else:
-                                self.audioTime = (-1, 0)
-                                time.sleep(wait) # better then play silent buffer (get cpu time for other threads, GIL)
-                                continue
-
+                                if self.last_frame > -1:
+                                    self.audioTime = (self.last_frame + 1, time.clock())
+                                    time.sleep(wait) # better then play silent buffer (get cpu time for other threads, GIL)
+                                    continue
+                                #fr = self.last_frame+1
                             try:
                                 self.audioTime = (fr, time.clock())
                                 self.avsAudio.audio_stream.write(buf)
@@ -32140,6 +32144,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     else:
                         clip = script.AVI.clip
                         vi = script.AVI.vi
+
+                    #clip = script.AVI.audio_clip
+                    #vi = script.AVI.vi_d
 
                     #log = []
 
@@ -32176,8 +32183,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                 play_audio_buf = max(50, int((self.options['playaudiomillibuf']/1000.0)* script.AVI.Framerate))   # will increase automatically
                             else:
                                 play_audio_buf = min(int((self.options['playaudiomillibuf']/1000.0)*script.AVI.Framerate), 200)
-                            avsAudio.StartStream()
 
+                            avsAudio.StartStream()
                             playAudioTh = AudioPlayThread(self, avsAudio, q_audio, evStopAudio, audioLock)
 
                             if auto_drop:
@@ -32279,7 +32286,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                             else:
                                                 q_audio.put((fr, avsAudio.audio_buffer[:]), False)
 
-
                             ### get frame and draw routines
                             if sdlWindow:
                                 '''must be exact the same routine as wihout sdlWindow below'''
@@ -32314,11 +32320,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                                 if ms_interval > 0:
                                                     wait = (startTime+ms_interval) - time.clock()
                                             elif play_speed_factor <= 1:
-                                                if ms_interval > 0:
+                                                if ms_interval > 0: #and next_audio_frame < frame:
                                                     wait = (startTime+ms_interval+(sync*3)) - time.clock()   # slow video down
-                                                    if f < frame - 1:
-                                                        wait += ms_interval
-                                                #print('slow down: %i %i - ' % (f, frame) + str(wait))
+                                                    #if f < frame - 1:
+                                                        #wait += ms_interval
+                                                    #if wait > 0:
+                                                        #print('slow down: %i %i %i - ' % (f, frame, next_audio_frame) + str(wait))
                                             else:
                                                 if ms_interval > 0:
                                                     wait = (startTime+ms_interval) - time.clock()
@@ -32443,11 +32450,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                                 if ms_interval > 0:
                                                     wait = (startTime+ms_interval) - time.clock()
                                             elif play_speed_factor <= 1:
-                                                if ms_interval > 0:
+                                                if ms_interval > 0: #and next_audio_frame < frame:
                                                     wait = (startTime+ms_interval+(sync*3)) - time.clock()   # slow video down
-                                                    if f < frame - 1:
-                                                        wait += ms_interval
-                                                #print('slow down: %i %i - ' % (f, frame) + str(wait))
+                                                    #if f < frame - 1:
+                                                        #wait += ms_interval
+                                                    #if wait > 0:
+                                                        #print('slow down: %i %i %i - ' % (f, frame, next_audio_frame) + str(wait))
                                             else:
                                                 if ms_interval > 0:
                                                     wait = (startTime+ms_interval) - time.clock()
@@ -32488,6 +32496,19 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                     break
 
                             ### end get frame and draw routines ###
+                            """
+                            if avsAudio:
+                                fr = frame
+                                next_audio_frame = fr+2
+                                t = time.time()
+                                clip.get_audio(avsAudio.audio_cptr, avsAudio.samples_count*fr, avsAudio.samples_count)
+                                tt = time.time() -t
+                                print(tt)
+                                if clip.get_error():
+                                    q_audio.put((fr, avsAudio.audio_silent[:]), False)
+                                else:
+                                    q_audio.put((fr, avsAudio.audio_buffer[:]), False)
+                            """
 
                             # use it only if self.PaintAVIFrameLocked is used !!! else slower
                             if not sdlWindow and not updateTh.isAlive():

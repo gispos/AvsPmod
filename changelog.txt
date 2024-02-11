@@ -38,6 +38,11 @@ If, for example, there is a '-' in the file name of the dll, AvsPmod will report
 please rename this dll and replace the '-' with a '_'
 
 --------------------------
+Version 2.7.6.9 [2024-02-10] GPo
+--------------------------
+* Audio playback bugfix: Audio can stop playing. 
+
+--------------------------
 Version 2.7.6.8 [2024-02-03] GPo
 --------------------------
 * Playback reworked.
