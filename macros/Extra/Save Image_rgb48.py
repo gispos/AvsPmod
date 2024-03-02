@@ -1,5 +1,5 @@
-# GPo 2021, Save as Tiff_rgb48.py
-# save current frame as 48bit tiff image file with ffmpeg
+# GPo 2024, Save Image_rgb48.py
+# save current frame as 48bit tiff or png file with ffmpeg
 
 import subprocess
 import os
@@ -10,8 +10,14 @@ self = avsp.GetWindow()
 # path to ffmpeg.exe 
 ffmpeg = os.path.join(self.programdir, 'encoders\\ffmpeg.exe')
 
-# added the output to a new tab ( FFImageSource )
+# added the output to a new tab ( ImageReader or FFImageSource )
 addNewTab = True
+
+# change the ImageReader for the new tab. FFImageSource("%s") or ImageReader("%s", pixel_type="RGB48")
+ImageReader = 'ImageReader("%s", pixel_type="RGB48")'
+
+# append frame number
+addFrameNr = True
 #####
 
 script = self.currentScript
@@ -28,35 +34,59 @@ if not os.path.isfile(ffmpeg):
     
 default = self.options['imagesavedir']
 #default = self.GetProposedPath(type_='image')
+tabTitle = self.scriptNotebook.GetPageText(self.scriptNotebook.GetSelection())
+filterIdx = avsp.Options.get('filteridx', 0)
+
 if not os.path.isdir(default):
     default = ''
 if script.filename:
     base, ext = os.path.splitext(script.filename)
-    default = base + '.tif'
-    
-outfile = avsp.GetSaveFilename(title='Save as', filefilter=_('Tagged Image File') + ' (*.tif)|*.tif', default=default)
+    if addFrameNr:
+        default = '%s_%i' % (base, frame)
+    else:
+        default = base
+elif addFrameNr:
+    if default:
+        path = os.path.join(default, tabTitle)
+        default = '%s_%i' % (path, frame)
+    else:
+        default = '%s_%i' % (tabTitle, frame)
+elif default:
+   default = os.path.join(default, tabTitle)
+else:
+   default = tabTitle
+ 
+filter = 'Tagged Image File (*.tif)|*.tif|Portable Network Graphics (*.png)|*.png' 
+idx, outfile = avsp.GetSaveFilename(title='Save as', filefilter=filter, default=default, getfilteridx=True, setfilteridx=filterIdx)
 if not outfile:
     return
+imageType = 'tiff' if idx == 0 else 'png'
+
 self.options['imagesavedir'] = os.path.dirname(outfile)
-        
+avsp.Options['filteridx'] = idx
+
 infile = os.path.join(os.path.split(outfile)[0], 'encoding.avs')
+print(infile)
 encoding_args = [
     ffmpeg,
     '-i', infile,
     '-an',
     '-pix_fmt', 'rgb48',
-    '-vcodec', 'tiff',
+    '-vcodec', imageType,
     '-y', outfile,
     ]
 
 try:
     with open(infile, 'wb') as f:
-        f.write(scriptTxt)
+        f.write(scriptTxt.encode(sys.getfilesystemencoding()))
         f.close()
 except IOError as err:
     raise
 
 def utf8ify(list):
+  return [item.encode(sys.getfilesystemencoding()) for item in list]
+  
+def _utf8(list):
   return [item.encode(sys.getfilesystemencoding()) for item in list]
   
 def fileSizeToString(fsize, precision=0):
@@ -85,5 +115,6 @@ else:
 if encoding_errors:
     avsp.MsgBox('Last encoding returns error\n' + encoding_errors, 'Error')
 elif addNewTab:
-    self.NewTab(text='#Filesize: %s\nFFImageSource("%s")' % (fileSizeToString(encoding_file_size), outfile))
+    ImageReader = ImageReader % outfile
+    self.NewTab(text='#Filesize: %s\n%s' % (fileSizeToString(encoding_file_size), ImageReader))
     

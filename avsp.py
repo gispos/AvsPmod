@@ -3251,7 +3251,7 @@ class AvsAudio(object):
         self.KillAudio()
         #print('audio killed')
 
-    def CreateAudio(self, vi, buffer_count, start_stream, callback, speed=1.0):
+    def CreateAudio(self, vi, buffer_count, start_stream, callback, speed=1.0, channels=2):
         if not self.KillAudio() or not vi.has_audio():
             return
         sample_type = pyavs.avs_sample_type_dict_pyaudio.get(vi.sample_type, None)
@@ -3276,7 +3276,7 @@ class AvsAudio(object):
                     if self.pyaudio.is_format_supported(
                                 rate=rtmp,
                                 input_device=0,
-                                input_channels=vi.nchannels,
+                                input_channels=channels,
                                 input_format=sample_type,
                                 output_device=None,
                                 output_channels=None,
@@ -3289,11 +3289,11 @@ class AvsAudio(object):
 
             try:
                 self.audio_stream = self.pyaudio.open(format=sample_type,
-                    channels=vi.nchannels, # can only play the available channels, otherwise error
-                    rate=arate, #vi.audio_samples_per_second,
+                    channels=channels,  # can only play the available channels, otherwise error
+                    rate=arate,
                     output=True,
                     output_device_index=None,
-                    frames_per_buffer = self.samples_count * buffer_count,
+                    frames_per_buffer = 1024, #self.samples_count * buffer_count,
                     start=start_stream,
                     stream_callback=callback)
             except:
@@ -3303,15 +3303,14 @@ class AvsAudio(object):
                 self.audio_cptr = None
                 self.samples_count = None
                 self.audio_buffer = None
-                if not self.app.currentScript.previewFilterIdx > 0: # on preview filter audio mixer is not uses (performance)
-                    wx.Bell()
+                wx.Bell()
                 return
             self.video_frames_buffered = buffer_count
             self.buffer_len = len(self.audio_buffer)
             #self.audio_silent = ctypes.create_string_buffer(chr(0), buf_size)
             self.audio_silent = ''
             for i in range(self.buffer_len):
-                self.audio_silent += chr(0)
+                self.audio_silent += chr(0) #TODO wrong for 8bit (but silent buffer is no longer used)
             return True
         wx.Bell()
 
@@ -10585,7 +10584,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'autosliderexclusions': '',
             #'autosliderupdatedirectly': True,       # GPo
             'sliderwindowcustomtheme': True,        # GPo
-            'sliderhidetagmenu': False,             # GPo
             # USER SLIDER, TOGGLE TAGS
             'savetoggletags': False,                # GPo, save toggle tags within the script
             # MISC OPTIONS
@@ -10608,7 +10606,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'hidescrollbars': True,                  # GPo 2021
             'scriptwindowbindmousewheel': 3,         # GPo 2021 # user problem with mouse wheel on editor, on large scripts it is faster if it set
             'playloop': False,                       # GPo 2020 playback loop
-            'playbackthread': True,                  # GPo 2021, if true use separate thread for playback
             'avithread': True,                       # GPo 2021, if true use separate thread for loading and freeing the clip and frame
             'avithreadassignlater': True,            # GPo 2021, if true then thread assign AVI to script after canceling, else freeing the clip
             'usenewframethread': True,               # GPo now default
@@ -10629,7 +10626,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'timelinesplitclipcolor': (100,160,120), # GPo, timeline color if Split Clip enabled
             'bookmarkrangedec': True,                # GPo, reduce the end selection by the value 1 on setting the bookmark range
             'autosnapshot': True,                    # GPo, automatically take snapshot 2 on clip refresh
-            'paintzoomhint': True,                   # GPo, paint hint on left and right zoom action area (fullsize, fullscreen, rasample zoom)
+            'paintzoomhint': 2,                      # GPo, paint hint on left and right zoom action area (fullsize, fullscreen, rasample zoom) 0=off, 1=static, 2=auto hide
             'zoomareachangescursor': True,           # GPo, change the cursor if mause in zoom action area
             'propwinhorzscroll': False,              # GPo, property wnd scrollbar
             'propwinwordwarp': False,                # GPo, property wnd word warp
@@ -10687,11 +10684,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'ppiscalingsliderwindow': 0,
             # Audio # GPo 2023
             'playaudio': True,
-            'playaudiospeed': 2, # 0=audio only if video rate 100%, 1=audio rate always 100%, 2=audio rate is video rate if video rate 100% or less
+            'playaudiospeed': 1, # 0=audio only if video rate 100%, 1=audio rate always 100%, 2=audio rate is video rate if video rate 100% or less
             'downmixaudio': True,
             'audioscrub': False,
             'audioscrubcount': 1,
-            'playaudiomillibuf': 500,   # playback: how many video frames should audio be buffered = int(ms/1000.0*framerate)
+            'playaudio_secbuf': 3,   # playback: how many video frames should audio be buffered = int(sec*framerate)
+            'audiocentermix': 0.70,  # multichannel center speaker mix to stereo
             # SDL d3d
             'sdlwindowrect': (ctypes.c_int(200), ctypes.c_int(200), ctypes.c_int(460), ctypes.c_int(270)),
             'sdlwindowrect1': (ctypes.c_int(200), ctypes.c_int(200), ctypes.c_int(460), ctypes.c_int(270)),
@@ -10721,6 +10719,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.options['version'] = self.version
         self.options['offsetbookmarks'] = False # GPo, disable it as default
         self.options['numberwheelfaster'] = False # on start fixed false, change OnMiddleUpScriptWindow the number wheel performance
+        #self.options['downmixaudio'] = True # TODO
 
         # Fix recentfiles as necessary???
         try:
@@ -11605,7 +11604,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 ((_('undocumented'), wxp.OPT_ELEM_CHECK, 'autoslidermakeunknown', _('Create placeholders for arguments which have no database information'), dict(ident=20) ), ),
                 ((_('Disable refresh as default'), wxp.OPT_ELEM_CHECK, 'sliderdisablerefresh', _('Do not reinitialize the clip every time a slider is changed. Can be changed in the slider window'), dict() ), ),
                 ((_('Button show/hide applies to all tabs'), wxp.OPT_ELEM_CHECK, 'allsliderwindowshideshow', _('Or press Ctrl when you click the button.'), dict() ), ),
-                ((_('Hide slider window toggle tag menus*'), wxp.OPT_ELEM_CHECK, 'sliderhidetagmenu', _('Hide the toggle tag menus in the context menu of the sliders'), dict() ), ),
                 ((_('Enable slider window custom color theme'), wxp.OPT_ELEM_CHECK, 'sliderwindowcustomtheme', _("Custom colors can be set under 'Options->Font and colors->Advanced 2'\nNot visible slider windows needed refresh."), dict() ), ),
                 ((_('Fold startup setting'), wxp.OPT_ELEM_RADIO, 'autosliderstartfold', _('Determines which filters will initially have hidden arguments in the slider window'), dict(dimensions=2, choices=[(_('Fold all'), 0),(_('Fold none'), 1), (_('Fold non-numbers'), 2), (_('Fold or restore last status'), 3) ]) ), ),
                 ((_('Filter exclusion list'), wxp.OPT_ELEM_STRING, 'autosliderexclusions', _('Specify filters never to build automatic sliders for. Use a space as separator.\nYou can toggle it in the slider context menu.'), dict() ), ),
@@ -12624,14 +12622,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     (''),
                     (_('Play loop'), '', self.OnMenuVideoPlayLoop, _('Loop playback for trim editor selections or at the end of the clip'), wx.ITEM_CHECK, self.options['playloop']),
                     (_('Play audio'), '', self.OnMenuVideoPlayAudio, _('Play audio at playback. Only if Playback in threads or assign avisynth in threads is enabled.'), wx.ITEM_CHECK, self.options['playaudio']),
-                    (_('Audio settings...'), '', self.OnMenuVideoPlayAudioSettings, _('Play audio at playback on all speed settings (slower, faster), else only at normal speed.')),
                     (''),
                     (_('Audio scrubbing'), '', self.OnMenuVideoAudioScrubbing, _('Play audio while scrolling the video. The number can be set in the context menu of the play button'), wx.ITEM_CHECK, self.options['audioscrub']),
                     (_('Play scrub'), '', self.OnMenuVideoPlayScrub, _('Play the current frame audio (duration 36 frames). Use Split View for sync check.')),
                     (''),
-                    (_('Downmix audio'), '', self.OnMenuVideoDownmixAudio, _('Downmix the audio to 2 channels (Stereo). Avisynth Mixer is used.'), wx.ITEM_CHECK, self.options['downmixaudio']),
-                    (_('Playback in threads'), '', self.OnMenuVideoSeparateThread, _('Use threads for playback. If assign avisynth in threads is enabled, playback uses also threads'), wx.ITEM_CHECK, self.options['playbackthread']),
-                    (_('Direct3D safe'), '', self.OnMenuVideoSDLRenderSafe, _('Direct3D window safe rendering. Safer but slower.'), wx.ITEM_CHECK, self.options['sdlrendersafe']),
+                    (_('Audio settings...'), '', self.OnMenuVideoPlayAudioSettings, _('Play audio at playback on all speed settings (slower, faster), else only at normal speed.')),
+                    (_('D3D Window safe render'), '', self.OnMenuVideoSDLRenderSafe, _('Direct3D window safe rendering. Safer but slower.'), wx.ITEM_CHECK, self.options['sdlrendersafe']),
                     ),
                 ),
                 (''),
@@ -13426,7 +13422,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         scriptWindow.lastFsZoom = None # GPo, 2021 script last Fullscreen zoom settings
         scriptWindow.refreshAVI = True  # GPo self.refreshAVI isn't optimal, it is Global!
         scriptWindow.disableFastClipOnce = False
-        scriptWindow.audioVolume = 0
+        scriptWindow.audioVolume = 1
         try:
             scriptWindow.contextMenu = self.menuBackups[0] if self.menuBackups else self.GetMenuBar().GetMenu(1)
         except AttributeError:
@@ -18308,30 +18304,34 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     def OnMenuVideoPlayAudioSettings(self, event):
         self.CheckPlayback()
+        if self.sdlWindow.running:
+            self.sdlWindow.Close()
+        downmixaudio = self.options['downmixaudio']
         options = ['Audio only when Video setting is normal speed', 'Audio rate always 100%', 'Audio speed equals Video speed when Video speed 100% or less']
         default = options[self.options['playaudiospeed']]
         options.append(default)
-        defaults = [(self.options['playaudiomillibuf'], 200, 2000, 0, 100), tuple(options)]
-        val = self.MacroGetTextEntry(['Audio buffer in milliseconds (200 to 2000), lower value faster response.\nDefault 500 milliseconds',
-                                     _('Audio playback option')], defaults, _('Audio playback settings'), ['spin','list_read_only'])
+        defaults = [(self.options['downmixaudio']), (self.options['playaudio_secbuf'], 1, 6, 0, 1), (self.options['audiocentermix'], 0, 1.0, 2, .01), tuple(options)]
+        val = self.MacroGetTextEntry(['Downmix to Stereo',
+                                      'Audio buffer in seconds (1 to 6), lower value faster response.\nDefault 3 seconds. Recommended 2 to 4',
+                                      'Multichannel center speaker mix to Stereo. Default 0.7',
+                                      'Audio playback option'], defaults, _('Audio playback settings'), ['check','spin','spin','list_read_only'])
         if val:
-            buf, op = val
-            self.options['playaudiomillibuf'] = max(min(buf, 2000), 200)
+            dmix, buf, cmix, op = val
+            self.options['downmixaudio'] = dmix
+            self.options['playaudio_secbuf'] = max(min(buf, 6), 1)
+            self.options['audiocentermix'] = max(min(round(cmix,2), 1), 0)
             self.options['playaudiospeed'] = options.index(op)
-        self.CheckPlayback()
-
-    def OnMenuVideoDownmixAudio(self, event):
-        self.CheckPlayback()
-        self.options['downmixaudio'] = event.IsChecked()
-        self.UpdateMenuItem(_('Play video'), event.IsChecked(), 'video', [_('Downmix audio')])
-        for i in range(self.scriptNotebook.GetPageCount()):
-            script = self.scriptNotebook.GetPage(i)
-            if script.AVI is not None:
-                script.AVI.ResetAudio(self.options['downmixaudio'])
-        if self.playing_video == '':
-            self.PlayPauseVideo()
-        else:
-            self.ShowVideoFrame()
+            for i in range(self.scriptNotebook.GetPageCount()):
+                script = self.scriptNotebook.GetPage(i)
+                if script.AVI is not None:
+                    script.AVI.audioCenterMix = self.options['audiocentermix']
+                    if downmixaudio != dmix:
+                        script.AVI.ResetAudio(dmix)
+            if self.playing_video != '' and downmixaudio != dmix:
+                if self.previewOK():
+                    self.ShowVideoFrame()
+            else:
+                self.CheckPlayback()
 
     def OnMenuVideoAudioScrubbing(self, event=None):
         self.CheckPlayback()
@@ -18349,6 +18349,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.CheckPlayback()
 
     def OnMenuVideoPlayScrub(self, event=None, frame_count=None):
+        if self.playing_video:
+            return
         AVI = self.currentScript.AVI
         nextAVI = None
         if not AVI:
@@ -18399,12 +18401,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.videoWindow.Update()
         if not audio1:
             AVI.SetAudio(False, self.options['audioscrubcount']) # reset also the default count
-
-    def OnMenuVideoSeparateThread(self, event):
-        self.CheckPlayback()
-        self.options['playbackthread'] = event.IsChecked()
-        self.UpdateMenuItem(_('Play video'), event.IsChecked(), 'video', [_('Playback in threads')])
-        self.CheckPlayback()
 
     def OnMenuVideoSDLRenderSafe(self, event):
         self.CheckPlayback()
@@ -19352,29 +19348,17 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         title.SetFont(font)
         description = wx.StaticText(dlg, wx.ID_ANY, _(global_vars.description))
         dpi.SetFontSize(factor=self.ppi_factor, font=description.GetFont(), size_adj=2)
-        link = wx.StaticText(dlg, wx.ID_ANY, _('AvsP Website'))
+        link = wx.StaticText(dlg, wx.ID_ANY, _("AvsPmod latest releases"))
         font = link.GetFont()
         font.SetUnderlined(True)
         link.SetFont(font)
         link.SetForegroundColour(wx.Colour(0,0,255))
         link.SetCursor(wx.StockCursor(wx.CURSOR_HAND))
-        url = 'http://avisynth.nl/users/qwerpoi/'
+        url = 'https://github.com/gispos/AvsPmod'
         def OnClick(event):
             startfile(url)
         link.SetToolTip(wx.ToolTip(url))
         link.Bind(wx.EVT_LEFT_DOWN, OnClick)
-
-        link0 = wx.StaticText(dlg, wx.ID_ANY, _("AvsPmod Website"))
-        font = link0.GetFont()
-        font.SetUnderlined(True)
-        link0.SetFont(font)
-        link0.SetForegroundColour(wx.Colour(0,0,255))
-        link0.SetCursor(wx.StockCursor(wx.CURSOR_HAND))
-        url0 = global_vars.url
-        def OnClick0(event):
-            startfile(url0)
-        link0.SetToolTip(wx.ToolTip(url0))
-        link0.Bind(wx.EVT_LEFT_DOWN, OnClick0)
 
         link1 = wx.StaticText(dlg, wx.ID_ANY, _("Active thread on Doom9's forum"))
         font = link1.GetFont()
@@ -19387,6 +19371,18 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             startfile(url1)
         link1.SetToolTip(wx.ToolTip(url1))
         link1.Bind(wx.EVT_LEFT_DOWN, OnClick1)
+
+        link_old = wx.StaticText(dlg, wx.ID_ANY, _("AvsPmod Website (old)"))
+        font = link_old.GetFont()
+        font.SetUnderlined(True)
+        link_old.SetFont(font)
+        link_old.SetForegroundColour(wx.Colour(0,0,255))
+        link_old.SetCursor(wx.StockCursor(wx.CURSOR_HAND))
+        url0 = global_vars.url
+        def OnClick0(event):
+            startfile(url0)
+        link_old.SetToolTip(wx.ToolTip(url0))
+        link_old.Bind(wx.EVT_LEFT_DOWN, OnClick0)
 
         staticText = wx.StaticText(dlg, wx.ID_ANY, _('This program is freeware under the GPL license.'))
         url2 = 'http://www.gnu.org/copyleft/gpl.html'
@@ -19408,7 +19404,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(inner, 0, wx.TOP, intPPI(20))
         sizer.Add(description, 0, wx.ALIGN_CENTER|wx.ALL, int10)
-        sizer.Add(link0, 0, wx.ALIGN_CENTER|wx.ALL, int5)
+        sizer.Add(link_old, 0, wx.ALIGN_CENTER|wx.ALL, int5)
         sizer.Add(link1, 0, wx.ALIGN_CENTER|wx.ALL, int5)
         sizer.Add(link, 0, wx.ALIGN_CENTER|wx.ALL, int5)
         sizer.Add((0,int5), 0, wx.EXPAND)
@@ -19533,19 +19529,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.options['audioscrubcount'] = int(nr)
             self.OnMenuVideoAudioScrubbing()
         def OnSelectAudioVolume(event):
-            if self.playing_video:
-                self.StopPlayback()
-                self.playing_video = ''
             script = self.currentScript
             item = audioVolumeMenu.FindItemById(event.GetId())
-            nr = item.GetLabel()
-            script.audioVolume = int(nr)
-            script.display_clip_refresh_needed = True
+            nr = round(float(item.GetLabel()),2)
+            script.audioVolume = nr
             if script.AVI:
-                script.AVI.audioVolume = int(nr)
-            if self.previewOK() and self.previewWindowVisible:
-                self.ShowVideoFrame()
-            else: self.playing_video = False
+                script.AVI.audioVolume = nr
         def AddDropFrameItems(menu):
             nr = 2
             for i in range(5):
@@ -19562,11 +19551,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 menu.Append(id, str(c), kind=wx.ITEM_CHECK)
                 menu.Check(id, self.options['audioscrubcount']==c)
         def AddAudioVolume(menu):
-            for c in ('-15','-10','-5','0','+5','+10','+15'):
+            for c in ('0.25','0.5','0.75','1','1.25','1.5','2.0'):
                 id = wx.NewId()
                 self.Bind(wx.EVT_MENU, OnSelectAudioVolume, id=id)
                 menu.Append(id, c, kind=wx.ITEM_CHECK)
-                menu.Check(id, self.currentScript.audioVolume==int(c))
+                menu.Check(id, round(float(self.currentScript.audioVolume),2) == round(float(c),2))
         def OnVideoPlayHalfSpeed(event):
             self.CheckPlayback()
             self.play_speed_factor = 0.5
@@ -19619,12 +19608,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         popup.AppendSeparator()
         # Speed x
         speedMenu = wx.Menu()
-        """
-        id = wx.NewId()
-        speedMenu.Append(id, '0.10x', kind=wx.ITEM_CHECK)
-        speedMenu.Check(id, self.play_speed_factor == 0.10)
-        self.Bind(wx.EVT_MENU, OnSpeedMenu, id=id)
-        """
         id = wx.NewId()
         speedMenu.Append(id, '0.25x', kind=wx.ITEM_CHECK)
         speedMenu.Check(id, self.play_speed_factor == 0.25)
@@ -22149,7 +22132,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                             zoom += 'Zoom (%.2f x %ix%i) ' % (self.zoomfactor, script.AVI.Width, script.AVI.Height)
                         else:
                             zoom += 'Zoom (1 x %ix%i)' % (script.AVI.Width, script.AVI.Height)
-                        zoom += ' - middl down shows tab list'
                         if not self.overlayData or self.overlayData[2] != zoom:
                             self.SetOverlay(0, 0, zoom, 0)
 
@@ -22294,7 +22276,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     # GPo, use it for IdleCall e.g OnScrollVideoWindow
     def OnAfterScrollVideoWindow(self):
-        self.zoom_antialias = self.options['zoom_antialias'] #True
+        self.zoom_antialias = self.options['zoom_antialias']
         self.videoWindow.Refresh()
 
     # GPo, all scroll bar scroll events, but no videoWindow.Scroll event
@@ -23399,7 +23381,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     def OpenFile(self, filename='', default='', f_encoding=None, eol=-1, workdir=None,
                  scripttext=None, setSavePoint=True, splits=None, framenum=None,
                  last_framecount=None, group=-1, group_frame=None, bookmarks=None, snapshots=None,
-                 selections=None, matrix=None, audiovolume=0,
+                 selections=None, matrix=None, audiovolume=1,
                  hidePreview=False, loadBookmarks=True, force_framenum=True):
         r'''OpenFile(filename='', default='')
 
@@ -24522,7 +24504,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 if not 'selections' in item:
                     item['selections'] = None
                 if not 'audiovolume' in item:
-                    item['audiovolume'] = 0
+                    item['audiovolume'] = 1.0
+                else:
+                    if item['audiovolume'] in (-15,-10,-5,0,5,10,15): # old audio volume was int
+                        item['audiovolume'] = 1.0
                 index = self.LoadTab(item, compat=not mapping, hidePreview=True, loadBookmarks=False) # GPo, hidePreview, loadBookmarks
                 # GPo, set script bookmarks, selections
                 if isinstance(index, int):
@@ -24536,7 +24521,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     if item['selections'] is not None: # only on session or reopen closed tab
                         script.selections.clear()
                         script.selections.update(item['selections'])
-                    script.audioVolume = item.get('audiovolume', 0)
+                    script.audioVolume = item.get('audiovolume', 1)
 
                 # script bookmarks, selections end
                 if mapping:
@@ -24638,7 +24623,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                               group=item.get('group', -1), group_frame=item.get('group_frame'),
                               bookmarks=item.get('bookmarks'), snapshots=item.get('snapshots'),
                               selections=item.get('selections'), matrix=item.get('matrix'),
-                              hidePreview=hidePreview, loadBookmarks=loadBookmarks, audiovolume=item.get('audiovolume', 0))
+                              hidePreview=hidePreview, loadBookmarks=loadBookmarks, audiovolume=item.get('audiovolume', 1))
         if reload and index is not None:
             # index is None -> the script was already loaded, different to this other version
             # but the user chose not to replace it.  If that's the case, don't prompt again
@@ -28876,15 +28861,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             script.sliderSizerNew.Clear(deleteWindows=True)
             script.sliderToggleLabels = []
             if not self.SlidersContextMenu: # GPo, save time
-                menuInfoGeneral = []
-                if not self.options['sliderhidetagmenu']:
-                    menuInfoGeneral = [
-                        (_('Add toggle tag'), '', self.OnSliderAddToggleTag, ''),
-                        (_('Clear all tags and disable the filters'), '', self.OnMenuEditClearToggleTags2, ''),
-                        (_('Clear all tags && disabled filters'), '', self.OnMenuEditClearToggleTags, ''),
-                        (''),
-                        ]
-                menuInfoGeneral += [
+                menuInfoGeneral = [
+                    (_('Add toggle tag'), '', self.OnSliderAddToggleTag, ''),
+                    (_('Clear all tags and disable the filters'), '', self.OnMenuEditClearToggleTags2, ''),
+                    (_('Clear all tags && disabled filters'), '', self.OnMenuEditClearToggleTags, ''),
+                    (''),
                     (_('Edit filter database'), '', self.OnSliderLabelEditDatabase, ''),
                     (''),
                     (_('Toggle all folds'), '', self.OnSliderLabelToggleAllFolds, ''),
@@ -30097,8 +30078,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 checkbox = wx.CheckBox(script.sliderWindow, wx.ID_ANY, _('Toggle "%(label)s" section') % locals(), name=label)
                 checkbox.SetValue(boolCheck)
                 checkbox.Bind(wx.EVT_CHECKBOX, self.OnToggleTagChecked)
-                if not self.options['sliderhidetagmenu']:
-                    checkbox.Bind(wx.EVT_CONTEXT_MENU, OnToogleTagContextMenu)
+                checkbox.Bind(wx.EVT_CONTEXT_MENU, OnToogleTagContextMenu)
                 script.toggleTagSizer.Add(checkbox, 0, wx.BOTTOM, intPPI(12))
                 labels.append(label)
 
@@ -31565,6 +31545,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     # do not set reCall outside !! must be 0
     def PlayPauseVideo(self, debug_stats=False, refreshFrame=True, forceStop=None, focus=True):
         """Play/pause the preview clip"""
+        import cfunc
+        import numpy as np
 
         def SetSystemTimeResolution(high):
             if high:
@@ -31653,7 +31635,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 wx.GetApp().ProcessIdle()
                 wx.MilliSleep(10)
 
-            threaded = self.options['playbackthread'] or self.UseAviThread
+            threaded = True
             # Befor start the playback check the threads
             if self.AviThread_Running(script, prompt=True, checkFrameThread=True) or \
                 self.PlayThread_Running(script, prompt=True):
@@ -31859,13 +31841,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 interval = int(round(interval * factor))
                 evFinish = threading.Event()
                 audioLock = threading.Lock()
-                #global audioTime # for sync video/audio (Frame based)
                 global audio_clear
-                global next_audio_frame
-                audioTime = None
                 audio_clear = False
-                next_audio_frame = -1
-                #lockaudio = False
 
                 def FrameError(idx, script, errmsg, framenum):
                     self.PlayPauseVideo(refreshFrame=False, forceStop=True)
@@ -31930,7 +31907,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         return False
                     return re
 
-                # sdl render frame in main thread, safe but slower ( AsyncCall )
+                # sdl renders the frame in main thread, safe but slower ( AsyncCall )
                 def renderFrameSafe(script, frame, fps):
                     updateCtrls(frame, fps)
                     return self.sdlWindow.Render(script.AVI, frame)
@@ -31940,38 +31917,42 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     AsyncCall(updateCtrls, frame, fps).Wait()
 
                 # fetch the audio buffers in one thread
-                def th_get_audio_buffer(avsAudio, clip, q, evStopAudio, buffer_count, audiothread):
+                def th_get_audio_buffer(avsAudio, clip, q, audioMixer, evStopAudio, buffercount, audiothread, channels, numpydtype, centermix):
                     global audio_clear
-                    global next_audio_frame
                     evFinish.clear()
-                    wait = max(ms_interval - 0.01, 0.02)
-                    #buffer_count = (buffer_count // 4) + 2
+                    wait = max(ms_interval, 0.05)
+                    buffer_count = max(buffercount, 50)
+                    limit = min(max(round(script.AVI.Framerate), 12), buffer_count//3)
+                    maxframe = script.AVI.Framecount-1
                     try:
                         while not evStopAudio.isSet() and self.playing_video:
                             time.sleep(wait)
-                            if audio_clear or next_audio_frame > self.currentframenum: # or lockaudio:
+                            if audio_clear:
                                 continue
 
-                            c = buffer_count - q.Count()
-                            if c > 0:
+                            if q.Count() < limit and self.playing_video:
                                 with audioLock:
                                     fr = q.get_last()   # the normal last buffered frame in the AudioQueue
-                                    if fr < 0:          # buffer is empty while video was to slow or to fast and the AudioQueue buffers are cleared
+                                    if fr < 0:          # buffer is empty loading the audio is to slow or buffer cleared (overspeed or play loop etc.)
                                         fr = audiothread.get_last()
-                                        if fr < 0:     # all was cleared (overspeed or play loop etc.)
+                                        if fr < 0:      # all was cleared (overspeed or play loop etc.)
                                             fr = self.currentframenum-1
 
-                                    for i in range(c):
-                                        if not self.playing_video:
-                                            break
+                                    for i in range(buffer_count):
                                         fr += 1
+                                        if fr > maxframe:
+                                            break
                                         try:
                                             clip.get_audio(avsAudio.audio_cptr, avsAudio.samples_count*fr, avsAudio.samples_count)
                                             if clip.get_error():
                                                 raise
-                                            q.put((fr, avsAudio.audio_buffer[:]), False)
+                                            if audioMixer:
+                                                buf = audioMixer(avsAudio.audio_buffer, channels, numpydtype, centermix, script.audioVolume)
+                                                q.put((fr, buf[:]), False)
+                                            else:
+                                                q.put((fr, avsAudio.audio_buffer[:]), False)
                                         except:
-                                            q.put((-1, avsAudio.audio_silent[:]), False)
+                                            q.put((fr, avsAudio.audio_silent[:]), False)
                     finally:
                         evFinish.set()
 
@@ -32061,72 +32042,73 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 ######################## test end
 
                 class AudioPlayThread(threading.Thread):
-                    def __init__(self, app, avsAudio, q_audio, evStopAudio, audiolock):
+                    def __init__(self, app, avsAudio, q_audio, evStopAudio, audiolock, frame_limit):
                         threading.Thread.__init__(self)
                         self.daemon = True
                         self.q_audio = q_audio
                         self.avsAudio = avsAudio
                         self.evStopAudio = evStopAudio
                         self.audiolock = audiolock
-                        self._clear = False
                         self.do_clear = False
                         self.last_frame = -1
-                        #self.frame = -1
-                        self.audioTime = None
+                        self.audioTime = (-1, time.clock())
                         self.app = app
-                        self.overspeed = False
-                    def clear(self, frame, clear, overspeed=False):
+                        self.frame_limit = frame_limit
+                        self.pause = False
+                        #self.was_cleared = False
+                    def clear(self):
                         self.do_clear = True
-                        #self.frame = frame
-                        self._clear = clear
-                        self.overspeed = overspeed
                     def on_clear(self):
                         return self.do_clear
                     def get_last(self):
-                        if self.overspeed:
-                            self.overspeed = False
-                            return -1
                         return self.last_frame
+                    def _pause(self, pause):
+                        self.pause = pause
                     def run(self):
                         global audio_clear
-                        global next_audio_frame
                         error = 0
-                        #last_fr = -1
-                        wait = max(1000.0/script.AVI.Framerate/1000.0/1.5, 0.01)
+                        wait = max(1000.0/script.AVI.Framerate/1000.0/1.1, 0.02)
                         while not self.evStopAudio.isSet() and self.app.playing_video:
+
+                            if self.last_frame > self.app.currentframenum + self.frame_limit: # audio is ahead of the video frame
+                                self.audioTime = (-1, time.clock())                          # + time else play thread slows down the playing
+                                while not self.do_clear and self.last_frame >= self.app.currentframenum and self.app.playing_video:
+                                    time.sleep(wait)
+                                #if not self.do_clear and self.q_audio.Count() < 12 and self.app.playing_video:
+                                    #time.sleep(wait)
+
                             if self.do_clear:
                                 with audioLock:
-                                    #f = self.last_frame
                                     self.q_audio.clear()
-                                    #next_audio_frame = max(self.frame + (f-self.frame) + 1, self.frame + 1) if not self._clear else -1
-                                    next_audio_frame = self.last_frame + 1 if not self._clear else -1
-                                    if self._clear:
-                                        self.last_frame = -1
+                                    self.last_frame = -1
                                     audio_clear = False
                                     self.do_clear = False
+                                    #self.was_cleared = True
+                                self.audioTime = (-1, time.clock())
+                                time.sleep(wait)
+                                continue
 
                             try:
                                 fr, buf = self.q_audio.get(False)
-                                #while fr <= last_fr:  # this can be happen on playback start
-                                    #fr, buf = self.q_audio.get(False)
+                                while fr <= self.last_frame:
+                                    fr, buf = self.q_audio.get(False)
                             except:
-                                fr, buf = -1, self.avsAudio.audio_silent[:]
-                                #fr, buf = -1, None
+                                self.audioTime = (-2, time.clock()) # buffer empty
+                                time.sleep(wait)
+                                continue
 
-                            #last_fr = fr
                             if fr >= 0:
                                 self.last_frame = fr
-                            else:
-                                if self.last_frame > -1:
-                                    self.audioTime = (self.last_frame + 1, time.clock())
-                                    time.sleep(wait) # better then play silent buffer (get cpu time for other threads, GIL)
-                                    continue
-                                #fr = self.last_frame+1
+                            else: # should never be, but...
+                                self.audioTime = (-2, time.clock())
+                                time.sleep(wait)
+                                continue
+
                             try:
                                 self.audioTime = (fr, time.clock())
                                 self.avsAudio.audio_stream.write(buf)
                             except IOError:
-                                self.audioTime = None
+                                self.audioTime = (-1, time.clock())
                                 error += 1
                                 wx.Bell()
                                 if error > 5:
@@ -32136,19 +32118,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 def play(frame, interval, factor):
                     # TODO test global vs. lockal variable speed
                     global audio_clear
-                    global next_audio_frame
-
-                    if script.AVI.downMix_d:
-                        clip = script.AVI.display_clip
-                        vi = script.AVI.vi_d
-                    else:
-                        clip = script.AVI.clip
-                        vi = script.AVI.vi
-
-                    #clip = script.AVI.audio_clip
-                    #vi = script.AVI.vi_d
-
                     #log = []
+                    clip = script.AVI.display_clip
+                    vi = script.AVI.vi_d
 
                     renderSafe = self.options['sdlrendersafe'] # render in main thread default false, it's mutch slower (we must call AsyncCall)
                     sdlWindow = self.sdlWindow and self.sdlWindow.running
@@ -32156,54 +32128,68 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         if not renderSafe:
                             self.sdlWindow.CreatePlaybackRenderer(script.AVI)
                         self.playback_drawBoth = self.options['sdlplaybackboth'] and (self.sdlWindow.IsNormalSize() or not self.sdlWindow.IsSameMonitor())
-                        ### New test
+                        # if sdlWindow use the yv12_clip
                         if script.AVI.yv12_clip:
                             clip = script.AVI.yv12_clip
-                            vi = script.AVI.vi_d if script.AVI.downMix_d else script.AVI.vi
-                        ### end
                     drop_count = self.drop_count
-                    play_initial_frame = frame
                     audioTh = None
                     playAudioTh = None
-                    next_audio_frame = -1
                     auto_drop = (drop_count == 1) and (self.play_speed_factor != 'max')
                     play_speed_factor = self.play_speed_factor
                     updateTh = threading.Thread() # only if PainAVIFrameLocked used else remove it and remove it also on loop end
                     if self.options['playaudio'] and vi.has_audio() and (play_speed_factor == 1 or self.options['playaudiospeed'] > 0):
-                        use_callback = False
                         avsAudio = AvsAudio(self)
-                        if avsAudio.CreateAudio(vi, 1, False, audio_callback if use_callback else None,
-                                                play_speed_factor if (play_speed_factor <= 1 and ((self.options['playaudiospeed'] == 2) or auto_drop)) else 1.0):
+                        chn = vi.nchannels
+                        numpy_dtype = pyavs.avs_sample_type_to_numpy.get(vi.sample_type, None)
+                        center_mix = self.options['audiocentermix']
+                        if numpy_dtype and avsAudio.CreateAudio(vi, 1, False, None,
+                                                play_speed_factor if (play_speed_factor <= 1 and ((self.options['playaudiospeed'] == 2) or auto_drop)) else 1.0,
+                                                channels=2 if self.options['downmixaudio'] else chn):
                             evStopAudio = threading.Event()
                             q_audio = AudioQueue()
                             evFinish.set()
-                            audio_auto_buff = auto_drop or self.options['playaudiomillibuf'] == 0 # 0 is never used only for test purpose
-                            if audio_auto_buff:
-                                max_audio_buff = min(int(script.AVI.Framerate * 10), 300)
-                                play_audio_buf = max(50, int((self.options['playaudiomillibuf']/1000.0)* script.AVI.Framerate))   # will increase automatically
+                            if auto_drop:
+                                play_audio_buf = max(min(int(self.options['playaudio_secbuf']*script.AVI.Framerate*2), 360), 100)
+                                max_audio_buff = max(min(int(script.AVI.Framerate * 10), 360) , 100)
+                                frame_limit = max_audio_buff
                             else:
-                                play_audio_buf = min(int((self.options['playaudiomillibuf']/1000.0)*script.AVI.Framerate), 200)
+                                play_audio_buf = max(min(int(self.options['playaudio_secbuf']*script.AVI.Framerate), 360), 25)
+                                frame_limit = max(round(play_audio_buf/19.0), 1)
+                            # select the audio mixer
+                            if self.options['downmixaudio']:     # MixAudio2 only for volume needed and returns the buffer if volume 1.0
+                                audioMixer = cfunc.MixAudio8 if chn >= 8 else cfunc.MixAudio6 if chn >= 6 else cfunc.MixAudio4 if chn >= 4 \
+                                             else cfunc.MixAudio3 if chn >= 3 else cfunc.MixAudio2 if chn > 1 else cfunc.MixAudio1
+                            else:
+                                audioMixer = None
 
                             avsAudio.StartStream()
-                            playAudioTh = AudioPlayThread(self, avsAudio, q_audio, evStopAudio, audioLock)
 
-                            if auto_drop:
-                                audioBufTh = None
-                            else: # audio buffer thread
-                                audioBufTh = threading.Thread(target=th_get_audio_buffer, args=(avsAudio, clip, q_audio, evStopAudio, play_audio_buf, playAudioTh,))
-                                audioBufTh.daemon = True
-                                audioBufTh.start()
-                                """
-                                fr = self.currentframenum
-                                for i in range(play_audio_buf):
-                                    fr += 1
+                            def getaudio(start, count):
+                                fr = start
+                                count = min(count, script.AVI.Framecount - 1 - start)
+                                for i in range(count):
                                     clip.get_audio(avsAudio.audio_cptr, avsAudio.samples_count*fr, avsAudio.samples_count)
                                     if clip.get_error():
                                         q_audio.put((fr, avsAudio.audio_silent[:]), False)
                                     else:
-                                        q_audio.put((fr, avsAudio.audio_buffer[:]), False)
+                                        if audioMixer:
+                                            buf = audioMixer(avsAudio.audio_buffer, vi.nchannels, numpy_dtype, center_mix, script.audioVolume)
+                                            q_audio.put((fr, buf[:]), False)
+                                        else:
+                                            q_audio.put((fr, avsAudio.audio_buffer[:]), False)
+                                    fr += 1
+                            getaudio(self.currentframenum+1, play_audio_buf)
+
+                            # frame_limit default 75//19 = 4 frames audio overspeed
+                            playAudioTh = AudioPlayThread(self, avsAudio, q_audio, evStopAudio, audioLock, frame_limit)
+
+                            if auto_drop: # if auto_drop, buffer is fetched in the video thread
+                                audioBufTh = None
+                            else: # audio buffer thread
+                                audioBufTh = threading.Thread(target=th_get_audio_buffer, args=(avsAudio, clip, q_audio, audioMixer, evStopAudio,
+                                                              play_audio_buf, playAudioTh, chn, numpy_dtype, center_mix,))
+                                audioBufTh.daemon = True
                                 audioBufTh.start()
-                                """
 
                             playAudioTh.start()
                         else:
@@ -32211,26 +32197,29 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     else:
                         avsAudio = None
 
-                    play_initial_time = time.clock() #- ms_interval
-                    startTime = play_initial_time
+                    if auto_drop:
+                        play_initial_frame = frame
+                        play_initial_time = time.clock() + ms_interval
+                    else:
+                        play_initial_frame = frame
+                        play_initial_time = time.clock()
+
+                    startTime = time.clock()
                     try:
                         while self.playing_video:
                             try:
                                 fps = float(self.currentframenum - play_initial_frame)  / (time.clock() - play_initial_time)
-                                #rfps = script.AVI.Framerate/((time.clock() - startTime)*1000)
                             except:
                                 fps = 0.00
-                                #rfps = 0.00
                             sfps = 'fps %4.2f ' % fps
-                            #sfps = 'fps %4.2f mspf %0.4f' % (fps, rfps)
-                            #sfps = 'fps %4.2f int %i' % (fps, play_audio_buf)
+                            #sfps = 'fps %4.2f buf %i' % (fps, q_audio.count)
 
                             if auto_drop:
-                                fr = frame
                                 if play_speed_factor > 1:
                                     increment = int(round(1000 * (time.clock() - play_initial_time) / interval)/play_speed_factor) * factor
                                 else:
                                     increment = int(int(1000 * (time.clock() - play_initial_time) / interval)) * factor
+                                    #log.append(str((play_initial_frame + increment) - (frame + 1)))
                                     if play_initial_frame + increment > frame+2: # smoother if playrate 100%
                                         frame = play_initial_frame
                                     else:
@@ -32243,8 +32232,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                         if avsAudio:
                                             audio_clear = True
                                             audioLock.acquire()
-                                            playAudioTh.clear(frame, True, True)
-                                            next_audio_frame = -1
+                                            playAudioTh.clear()
                                             audioLock.release()
 
                                         # check for next selection
@@ -32255,7 +32243,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                                 self.loop_start = min(start, self.loop_end -3)
                                                 frame = self.loop_start -1
                                                 play_initial_frame = frame
-                                                play_initial_time = time.clock()
+                                                play_initial_time = time.clock() + ms_interval if auto_drop else time.clock()
                                             else:
                                                 self.loop_start = self.loop_end = -1
                                         else:
@@ -32265,32 +32253,25 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                             self.currentframenum = frame
                             wait = 0
 
-                            #if avsAudio and not audio_clear and ((next_audio_frame <= frame) or auto_drop):
-                            if avsAudio and auto_drop and not audio_clear:
-                                ac = play_audio_buf - q_audio.Count()
-                                if ac > 0: # so only fetch the audio if buffer thread not fast enough (python GIL thread switching)
-                                    if auto_drop and audio_auto_buff and ac < 25 and play_audio_buf < max_audio_buff: # if drop frames = auto: load more buffers if buffer to low (max frame rate *2)
-                                            play_audio_buf += 20
-                                            ac += 20
+                            if auto_drop and avsAudio and not audio_clear: # if auto_drop, buffer thread is not running
+                                ac = q_audio.Count()
+                                if ac < play_audio_buf//2:
+                                    if auto_drop and ac < 25 and play_audio_buf < max_audio_buff: # if drop frames = auto: load more buffers if buffer to low (max frame rate *2)
+                                        play_audio_buf += 50
+                                    c = play_audio_buf - ac
                                     with audioLock:
                                         fr = q_audio.get_last()   # the normal last buffered frame in the AudioQueue
                                         if fr < 0:          # buffer is empty while video was to slow or to fast and the AudioQueue buffers are cleared
                                             fr = playAudioTh.get_last()
-                                            if fr < 0:     # all was cleared (overspeed or play loop etc.)
-                                                fr = self.currentframenum-1
-                                        for i in range(ac):
-                                            fr += 1
-                                            clip.get_audio(avsAudio.audio_cptr, avsAudio.samples_count*fr, avsAudio.samples_count)
-                                            if clip.get_error():
-                                                q_audio.put((fr, avsAudio.audio_silent[:]), False)
-                                            else:
-                                                q_audio.put((fr, avsAudio.audio_buffer[:]), False)
+                                            if fr < 0:      # all was cleared (overspeed or play loop etc.)
+                                                fr = frame-1
+                                        getaudio(fr+1, c)
 
                             ### get frame and draw routines
                             if sdlWindow:
                                 '''must be exact the same routine as wihout sdlWindow below'''
                                 if ms_interval > 0 or avsAudio:
-                                    if avsAudio and playAudioTh.audioTime: # calc the video/audio sync
+                                    if avsAudio: # calc the video/audio sync
                                         try:
                                             f,t = playAudioTh.audioTime
                                         except:
@@ -32298,6 +32279,20 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                             sync = 0
                                         else:
                                             if f < 0:
+                                                if f == -2:
+                                                    # python shit threads:
+                                                    # audio threads cannot get and play audio if the video play thread fully occupied with getting the frame
+                                                    # we need to sleep to get the GIL switching time for the audio threads (Rare, but can be)
+                                                    # or wait per audioLock or read self the buffer and increase the buffer (25 more)
+                                                    if playAudioTh.last_frame > -1  and q_audio.count < 1 and not audio_clear: # count seems better as Count()
+                                                        with audioLock:
+                                                            #~pass # Not bad, waiting with audioLock until the buffer thread is finished, but reading and increasing seems to be better
+                                                            fr = q_audio.get_last()
+                                                            if fr < 0:
+                                                                fr = playAudioTh.get_last()
+                                                                if fr < 0:
+                                                                    fr = frame-1
+                                                            getaudio(fr+1, max(25, round(script.AVI.Framerate)))
                                                 f = frame
                                                 sync = 0
                                             else:
@@ -32306,39 +32301,30 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                                 except:
                                                     sync = 0
 
-                                        if audio_clear:
-                                            f = frame + play_audio_buf + 1
-                                            next_audio_frame = -1
+                                        if audio_clear: # signal audio buffer must be cleared (range loop)
+                                            if not playAudioTh.on_clear():
+                                                playAudioTh.clear()
+                                            f = frame
+                                            sync = 0
 
                                         if f == frame:
                                             if ms_interval > 0:
-                                                wait = (startTime+ms_interval+sync) - time.clock()  # sync with audio
+                                                wait = (startTime+ms_interval) - time.clock()
                                         elif f < frame:
-                                            if not auto_drop and f < frame - play_audio_buf:  # then overspeed, x speed or max or drop frames
+                                            if not auto_drop and f < frame - (play_audio_buf//5):  # then overspeed, x speed or max or drop frames
                                                 if not playAudioTh.on_clear():
-                                                    playAudioTh.clear(frame, True, True)
+                                                    playAudioTh.clear()
                                                 if ms_interval > 0:
                                                     wait = (startTime+ms_interval) - time.clock()
                                             elif play_speed_factor <= 1:
-                                                if ms_interval > 0: #and next_audio_frame < frame:
+                                                if ms_interval > 0:
                                                     wait = (startTime+ms_interval+(sync*3)) - time.clock()   # slow video down
-                                                    #if f < frame - 1:
-                                                        #wait += ms_interval
-                                                    #if wait > 0:
-                                                        #print('slow down: %i %i %i - ' % (f, frame, next_audio_frame) + str(wait))
                                             else:
                                                 if ms_interval > 0:
                                                     wait = (startTime+ms_interval) - time.clock()
                                         else:
-                                            dif = 4 if not auto_drop else 2
-                                            if (f > frame + (play_audio_buf//dif)) and (next_audio_frame < frame): # Is sync not enough reload the audio
-                                                if not playAudioTh.on_clear():
-                                                    clear = audio_clear
-                                                    audio_clear = True
-                                                    playAudioTh.clear(frame, clear)
-
                                             if ms_interval > 0:
-                                                wait = (startTime+ms_interval) - (time.clock() + sync)  # speed video up
+                                                wait = (startTime+ms_interval) - (time.clock() + (sync*3))  # speed video up
                                     else:
                                         if ms_interval > 0:
                                             wait = (startTime+ms_interval)-time.clock()
@@ -32386,22 +32372,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                             errmsg = 'Play Thread unknown GetFrame error'
                                         wx.CallAfter(FrameError, 1, script, errmsg, frame)
                                         break
-                                # On strong filters and prefetch, getting audio causes problems if the frame not read here
-                                #if avsAudio and not audio_clear:# and q_audio.Count() < 1:
-                                    #clip.get_frame(frame)
-
                             else:
-                                """# get_audio speed test
-                                clip.get_frame(frame)
-                                fr = frame
-                                t = time.time()
-                                for i in range(10):
-                                    clip.get_audio(avsAudio.audio_cptr, avsAudio.samples_count*fr, avsAudio.samples_count)
-                                #    fr += 1
-                                tt = time.time() - t
-                                log.append(str(tt)+'\n')
-                                """
-
                                 """ alternativ get frame
                                 script.AVI.display_clip.get_frame(frame)
                                 errmsg = script.AVI.display_clip.get_error()
@@ -32420,7 +32391,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
                                 '''exact the same routine as with sdlWindow above'''
                                 if ms_interval > 0 or avsAudio:
-                                    if avsAudio and playAudioTh.audioTime: # calc the video/audio sync
+                                    if avsAudio: # calc the video/audio sync
                                         try:
                                             f,t = playAudioTh.audioTime
                                         except:
@@ -32428,6 +32399,20 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                             sync = 0
                                         else:
                                             if f < 0:
+                                                if f == -2:
+                                                    # python shit threads:
+                                                    # audio threads cannot get and play audio if the video play thread fully occupied with getting the frame
+                                                    # we need to sleep to get the GIL switching time for the audio threads (Rare, but can be)
+                                                    # or wait per audioLock or read self the buffer and increase the buffer (25 more)
+                                                    if playAudioTh.last_frame > -1  and q_audio.count < 1 and not audio_clear: # count seems better as Count()
+                                                        with audioLock:
+                                                            #~pass # Not bad, waiting with audioLock until the buffer thread is finished, but reading and increasing seems to be better
+                                                            fr = q_audio.get_last()
+                                                            if fr < 0:
+                                                                fr = playAudioTh.get_last()
+                                                                if fr < 0:
+                                                                    fr = frame-1
+                                                            getaudio(fr+1, max(25, round(script.AVI.Framerate)))
                                                 f = frame
                                                 sync = 0
                                             else:
@@ -32436,39 +32421,30 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                                 except:
                                                     sync = 0
 
-                                        if audio_clear:
-                                            f = frame + play_audio_buf + 1
-                                            next_audio_frame = -1
+                                        if audio_clear: # signal audio buffer must be cleared (range loop)
+                                            if not playAudioTh.on_clear():
+                                                playAudioTh.clear()
+                                            f = frame
+                                            sync = 0
 
                                         if f == frame:
                                             if ms_interval > 0:
-                                                wait = (startTime+ms_interval+sync) - time.clock()  # sync with audio
+                                                wait = (startTime+ms_interval) - time.clock()
                                         elif f < frame:
-                                            if not auto_drop and f < frame - play_audio_buf:  # then overspeed, x speed or max or drop frames
+                                            if not auto_drop and f < frame - (play_audio_buf//5):  # then overspeed, x speed or max or drop frames
                                                 if not playAudioTh.on_clear():
-                                                    playAudioTh.clear(frame, True, True)
+                                                    playAudioTh.clear()
                                                 if ms_interval > 0:
                                                     wait = (startTime+ms_interval) - time.clock()
                                             elif play_speed_factor <= 1:
-                                                if ms_interval > 0: #and next_audio_frame < frame:
+                                                if ms_interval > 0:
                                                     wait = (startTime+ms_interval+(sync*3)) - time.clock()   # slow video down
-                                                    #if f < frame - 1:
-                                                        #wait += ms_interval
-                                                    #if wait > 0:
-                                                        #print('slow down: %i %i %i - ' % (f, frame, next_audio_frame) + str(wait))
                                             else:
                                                 if ms_interval > 0:
                                                     wait = (startTime+ms_interval) - time.clock()
                                         else:
-                                            dif = 4 if not auto_drop else 2
-                                            if (f > frame + (play_audio_buf//dif)) and (next_audio_frame < frame): # Is sync not enough reload the audio
-                                                if not playAudioTh.on_clear():
-                                                    clear = audio_clear
-                                                    audio_clear = True
-                                                    playAudioTh.clear(frame, clear)
-
                                             if ms_interval > 0:
-                                                wait = (startTime+ms_interval) - (time.clock() + sync)  # speed video up
+                                                wait = (startTime+ms_interval) - (time.clock() + (sync*3))  # speed video up
                                     else:
                                         if ms_interval > 0:
                                             wait = (startTime+ms_interval)-time.clock()
@@ -32496,19 +32472,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                     break
 
                             ### end get frame and draw routines ###
-                            """
-                            if avsAudio:
-                                fr = frame
-                                next_audio_frame = fr+2
-                                t = time.time()
-                                clip.get_audio(avsAudio.audio_cptr, avsAudio.samples_count*fr, avsAudio.samples_count)
-                                tt = time.time() -t
-                                print(tt)
-                                if clip.get_error():
-                                    q_audio.put((fr, avsAudio.audio_silent[:]), False)
-                                else:
-                                    q_audio.put((fr, avsAudio.audio_buffer[:]), False)
-                            """
 
                             # use it only if self.PaintAVIFrameLocked is used !!! else slower
                             if not sdlWindow and not updateTh.isAlive():
@@ -32563,6 +32526,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                             avsAudio.KillAudio()
                             avsAudio = None
                             audioBufTh = None
+                            q_audio.clear()
+                            q_audio = None
                         if updateTh and updateTh.isAlive():
                             updateTh.join(6)
                             if updateTh.isAlive():
@@ -33771,8 +33736,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         return filename
 
     @AsyncCallWrapper
-    def MacroGetSaveFilename(self, title=_('Save as'), filefilter = _('All files') + ' (*.*)|*.*', default=''):
-        r'''GetSaveFilename(title='Save as', filefilter=_('All files') + ' (*.*)|*.*', default='')
+    def MacroGetSaveFilename(self, title=_('Save as'), filefilter = _('All files') + ' (*.*)|*.*', default='', getfilteridx=False, setfilteridx=-1):
+        r'''GetSaveFilename(title='Save as', filefilter=_('All files') + ' (*.*)|*.*', default='', getfilteridx=False, setfilteridx=-1)
 
         Displays an save file dialog box, returning the entered filename if the user
         clicked "OK", returning an empty string otherwise.  'default' is the default
@@ -33783,6 +33748,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         initial_dir = default_dir if os.path.isdir(default_dir) else self.GetProposedPath(only='dir')
         dlg = wx.FileDialog(self, title, initial_dir, default_base, filefilter,
                             wx.SAVE|wx.OVERWRITE_PROMPT)
+        if setfilteridx > -1:
+            dlg.SetFilterIndex(setfilteridx)
         ID = dlg.ShowModal()
         if ID == wx.ID_OK:
             filename = dlg.GetPath()
@@ -33791,7 +33758,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.options['recentdir'] = dirname
         else:
             filename = ''
+        idx = dlg.GetFilterIndex()
         dlg.Destroy()
+        if getfilteridx:
+            return idx, filename
         return filename
 
     @AsyncCallWrapper
@@ -35330,15 +35300,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             listCtrl.popup = True
             popup = wx.Menu()
             id = wx.NewId()
-            popup.Append(id, _('Auto preview (dbl-click override)'), kind=wx.ITEM_CHECK)
-            popup.Check(id, self.options['tabautopreview'])
-            self.Bind(wx.EVT_MENU, onpreview, id=id)
-            id = wx.NewId()
-            popup.Append(id, _('Force preview visible'), kind=wx.ITEM_CHECK)
-            popup.Check(id, options['force_preview'])
-            self.Bind(wx.EVT_MENU, onforce, id=id)
-            popup.AppendSeparator()
-            id = wx.NewId()
             popup.Append(id, _('Release video memory'), kind=wx.ITEM_NORMAL)
             popup.Enable(id, self.currentScript.AVI is not None)
             self.Bind(wx.EVT_MENU, onrelease, id=id)
@@ -35348,6 +35309,15 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             id = wx.NewId()
             popup.Append(id, _('Close tab'), kind=wx.ITEM_NORMAL)
             self.Bind(wx.EVT_MENU, onclosetab, id=id)
+            popup.AppendSeparator()
+            id = wx.NewId()
+            popup.Append(id, _('Auto preview (dbl-click override)'), kind=wx.ITEM_CHECK)
+            popup.Check(id, self.options['tabautopreview'])
+            self.Bind(wx.EVT_MENU, onpreview, id=id)
+            id = wx.NewId()
+            popup.Append(id, _('Force preview visible'), kind=wx.ITEM_CHECK)
+            popup.Check(id, options['force_preview'])
+            self.Bind(wx.EVT_MENU, onforce, id=id)
             self.PopupMenu(popup)
             popup.Destroy()
         listCtrl.Bind(wx.EVT_LIST_ITEM_RIGHT_CLICK, OnContextMenu)

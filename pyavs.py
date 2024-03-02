@@ -46,8 +46,8 @@ import struct
 import utils
 import cfunc
 import gc
-
 import pyaudio
+import numpy
 import Queue as queue
 
 x86_64 = sys.maxsize > 2**32
@@ -152,11 +152,20 @@ avs_audio_sample_type_dict = {
 
 # for audio format pyaudio
 avs_sample_type_dict_pyaudio = {
-    avisynth.avs.AVS_SAMPLE_INT8: pyaudio.paInt8,
+    avisynth.avs.AVS_SAMPLE_INT8: pyaudio.paUInt8,
     avisynth.avs.AVS_SAMPLE_INT16: pyaudio.paInt16,
     avisynth.avs.AVS_SAMPLE_INT24: pyaudio.paInt24,
     avisynth.avs.AVS_SAMPLE_INT32: pyaudio.paInt32,
     avisynth.avs.AVS_SAMPLE_FLOAT: pyaudio.paFloat32,
+}
+
+# for audio mixer
+avs_sample_type_to_numpy = {
+    avisynth.avs.AVS_SAMPLE_INT8: numpy.uint8,
+    avisynth.avs.AVS_SAMPLE_INT16: numpy.int16,
+    #avisynth.avs.AVS_SAMPLE_INT24: not available, bad, audio must be converted to 16bit
+    avisynth.avs.AVS_SAMPLE_INT32: numpy.int32,
+    avisynth.avs.AVS_SAMPLE_FLOAT: numpy.float32,
 }
 
 # for testing
@@ -275,7 +284,7 @@ class AvsClipBase:
                  fitWidth=None, oldFramecount=240, display_clip=True, reorder_rgb=False,
                  matrix=['auto', 'tv'], interlaced=False, swapuv=False, bit_depth=None,
                  callBack=None, readmatrix=None, displayFilter=None, readFrameProps=False,
-                 resizeFilter=None, previewFilter=None, useSplitClip=False, audioVolume=0):
+                 resizeFilter=None, previewFilter=None, useSplitClip=False, audioVolume=1.0):
 
         def CheckVersion(env):
             try:
@@ -378,6 +387,7 @@ class AvsClipBase:
         self.PlayAudio = self.app.options['audioscrub']
         self.audio_frames_buffered = self.app.options['audioscrubcount']
         self.downMix_d = self.app.options['downmixaudio'] # downmix the display clip
+        self.audioCenterMix = self.app.options['audiocentermix']
         self.audioVolume = audioVolume
         self.AudioThread = threading.Thread()
         self.lastAudiochannels = None  # store it
@@ -385,6 +395,8 @@ class AvsClipBase:
         self.lastAudiorate = None      # store it
         self.evAudioStop = threading.Event()
         self.evAudioFinished = threading.Event()
+        self.audio_clip = None
+        self.numpy_type = None
 
         # Create the Avisynth script clip
         if env is not None:
@@ -561,6 +573,15 @@ class AvsClipBase:
         if display_clip and not self.CreateDisplayClip(matrix, interlaced, swapuv, bit_depth, readmatrix, killFilterClip=False, killSplitClip=False):
             return
 
+        """ test extra audio clip... prefetch in combination with audio downmix is the problem, video with stereo no problems.
+        if vi.has_audio():
+            args = 'KillVideo()\n'
+            args += self.get_audio_downmix_args()
+            self.audio_clip = self.env.invoke('Eval', [self.clip, args])
+            self.vi_audio = self.audio_clip.get_video_info()
+            self.vi_audio_parent = self.vi
+        """
+
         # It's only for avsp MacroPipe for an external clip
         if self.IsRGB and reorder_rgb and not self.IsSplitClip:
             self.main_clip = self.BGR2RGB(self.main_clip)
@@ -635,6 +656,7 @@ class AvsClipBase:
         self.IsAudioInt = not self.IsAudioFloat
         self.HasAudio = vi.has_audio()
 
+        """
         ## Test audio, last settings are stored  (do not kill and create the audio always)
         if not self.downMix_d: # if not display clip downmix create the audio here else on create display clip
             if not self.PlayAudio or not self.HasAudio:
@@ -643,6 +665,7 @@ class AvsClipBase:
                 if (self.lastAudiochannels != vi.nchannels) or (self.lastSampletype != vi.sample_type) or \
                     (self.lastAudiorate != vi.audio_samples_per_second):
                         self._createAudio(vi)
+        """
 
     # self.KillAudio is here to late... error (some vars deleted)
     # found no event in python that is called before freeing with None
@@ -650,6 +673,7 @@ class AvsClipBase:
     def __del__(self):
         self.preview_filter = None
         if self.initialized or self.env:
+            self.audio_clip = None
             self.display_frame = None
             self.src_frame = None
             self.display_clip = None
@@ -860,7 +884,6 @@ class AvsClipBase:
                 args = self.displayFilter + '\n'
 
             # audio downmix to 2 channels if self.downMix_d
-            # Downmix is on CreateFilterClip (avsp_filter) disabled (speed up).
             if self.downMix_d and self.vi.has_audio():
                 args += self.get_audio_downmix_args()
 
@@ -902,18 +925,19 @@ class AvsClipBase:
         self.vi_d = vi
         self.DisplayWidth = vi.width
         self.DisplayHeight = vi.height
+        self.numpy_type = avs_sample_type_to_numpy.get(vi.sample_type, None) if vi.has_audio() else None
 
         if vi.num_frames != self.Framecount:
             err = "Display filter error: Display-Clip length different"
             return self.CreateErrorClip(err=err, display_clip_error=True)
 
         ## audio, last settings are stored  (so we do not kill and create the audio always)
-        if not self.PlayAudio or not vi.has_audio():
+        if not self.PlayAudio or not vi.has_audio() or (self.downMix_d and not self.numpy_type):
             err = _killaudio()
             if err is not None:
                 return self.CreateErrorClip(err=err, display_clip_error=True)
-        elif self.PlayAudio and vi.has_audio():
-            if (self.lastAudiochannels != vi.nchannels) or (self.lastSampletype != vi.sample_type) or \
+        elif self.PlayAudio and vi.has_audio() and (self.numpy_type or not self.downMix_d):
+            if (not self.downMix_d and (self.lastAudiochannels != vi.nchannels)) or (self.lastSampletype != vi.sample_type) or \
                 (self.lastAudiorate != vi.audio_samples_per_second):
                     err = _killaudio()
                     if err is not None:
@@ -943,19 +967,22 @@ class AvsClipBase:
             return
         if count is None:
             count = self.audio_frames_buffered
-
+        """
         if self.preview_filter:
             if self.audio_stream:
                 self.KillAudio()
             return self.audio_stream is not None
+        """
         if not create_or_kill:
             return self.audio_stream is not None
+
         if self.downMix_d:
             if self.error_message or not isinstance(self.display_clip, avisynth.AVS_Clip):
                 return self.audio_stream is not None
             vi = self.vi_d
         else:
             vi = self.vi
+
         if enable:
             self.audio_frames_buffered = count
             if not self.audio_stream:
@@ -1000,6 +1027,7 @@ class AvsClipBase:
                  self.audio_stream.stop_stream()
 
     # needed after setting the downmix enabled/disabled
+    # 24bit audio must be converted to 16bit, so we must create a new display clip as long I found no other fast convert solution
     def ResetAudio(self, downmix):
         if not self.StopAudioPlay():
             return
@@ -1022,8 +1050,12 @@ class AvsClipBase:
                     clip.get_audio(buf_cptr, samples_count*nextFrame, samples_count*3)
                     if clip.get_error() or self.evAudioStop.isSet():
                         break
-                    buf = audioBuf[:]
-                    q.put_nowait(buf[:])
+                    if self.downMix_d:
+                        buf = cfunc.MixAudioToStereo(audioBuf, self.vi.nchannels, self.numpy_type, cdb=self.audioCenterMix, db=self.audioVolume)
+                        q.put_nowait(buf[:])
+                    else:
+                        q.put_nowait(audioBuf[:])
+
                     if timeout > 0:
                         nextFrame = q2.get(timeout=timeout)
                         if nextFrame < 0 or self.evAudioStop.isSet():
@@ -1046,7 +1078,12 @@ class AvsClipBase:
                         buf_cptr = ctypes.addressof(audioBuf)
                     clip.get_audio(buf_cptr, samples_count*frame, samples_count)
                     if not self.evAudioStop.isSet() and not clip.get_error():
-                        self.audio_stream.write(audioBuf, samples_count)
+                        if self.downMix_d:
+                            buf = cfunc.MixAudioToStereo(audioBuf, vi.nchannels, self.numpy_type, cdb=self.audioCenterMix, db=self.audioVolume)
+                            self.audio_stream.write(buf, samples_count)
+                            del buf
+                        else:
+                            self.audio_stream.write(audioBuf, samples_count)
                     del audioBuf
                 except:
                     pass
@@ -1082,11 +1119,10 @@ class AvsClipBase:
                             buf = q.get_nowait()
                         except:
                             break
-                        if len(buf) == buf_size:
-                            try:
-                                self.audio_stream.write(frames=buf, num_frames=samples_count * 3)
-                            except IOError:
-                                break
+                        try:
+                            self.audio_stream.write(frames=buf, num_frames=samples_count * 3)
+                        except IOError:
+                            break
                         del buf
                         if not self.evAudioStop.isSet() and loops > 2:
                             nextFrame += 3
@@ -1110,12 +1146,16 @@ class AvsClipBase:
                     return
                # audio_frames_buffered must be always mod 3 or only 1 for one frame
                 loops = int(self.audio_frames_buffered/3) if not frame_count else int(frame_count/3)
+                """
                 if self.downMix_d:
                     clip = self.display_clip
                     vi = self.vi_d
                 else:
                     clip = self.clip
                     vi = self.vi
+                """
+                clip = self.display_clip
+                vi = self.vi_d
                 self.evAudioStop.clear()
                 self.evAudioFinished.clear()
                 self.AudioThread = threading.Thread(target=_playaudio, args=(clip, vi, frame, loops, self.evAudioFinished,))
@@ -1129,21 +1169,21 @@ class AvsClipBase:
         self.lastSampletype = None
         self.lastAudiorate = None
         if vi.has_audio():
-            sample_type = avs_sample_type_dict_pyaudio.get(vi.sample_type, None)
+            sample_type = avs_sample_type_dict_pyaudio.get(vi.sample_type, None) # im moment immer 16bit
             if sample_type:
                 self.pyaudio = pyaudio.PyAudio()
                 try:
                     self.audio_stream = self.pyaudio.open(format=sample_type,
-                        channels=vi.nchannels,
+                        channels=2 if self.downMix_d else vi.nchannels,
                         rate=vi.audio_samples_per_second,
-                        frames_per_buffer=1024, #min(max(vi.audio_samples_from_frames(1), 1024), 2048),
+                        frames_per_buffer=1024,
                         output=True)
                 except:
                     self.audio_stream = None
                     self.pyaudio.terminate()
                     self.pyaudio = None
                     return
-                self.lastAudiochannels = vi.nchannels
+                self.lastAudiochannels = 2 if self.downMix_d else vi.nchannels
                 self.lastSampletype = vi.sample_type
                 self.lastAudiorate = vi.audio_samples_per_second
                 return True
@@ -1171,9 +1211,11 @@ class AvsClipBase:
         return cfunc.CreateFastClip(self, scripttxt, useSplitClip, previewFilter, matrix, readmatrix, interlaced, swapuv, bit_depth)
 
     def CreateFilterClip(self, f_args=''):
-        if self.audio_stream:
-            if not self.KillAudio():
-                return
+        #if self.audio_stream:
+            #if not self.KillAudio():
+                #return
+        if not self.StopAudioPlay():
+            return
         #self.fastYUV420toRGB32 = False
         return cfunc.CreateFilterClip(self, f_args)
 
@@ -1365,45 +1407,8 @@ class AvsClipBase:
 
     def get_audio_downmix_args(self):
         args = ''
-        if self.vi.nchannels >= 8:
-            args = (
-                  'a = ConvertAudioToFloat()\n'
-                  'flr = Getchannel(a, 1, 2, 3, 4)\n'
-                  'blr = Getchannel(a, 5, 6)\n'
-                  'slr = Getchannel(a, 7, 8)\n'
-                  'sur = MixAudio(blr, slr, 1.0, 1.0)\n'
-                  'mc = mergechannels(flr, sur)\n'
-                  'flr = GetChannel(mc, 1, 2)\n'
-                  'fcc = GetChannel(mc, 3, 3)\n'
-                  'lrc = MixAudio(flr, fcc, 0.3694, 0.2612)\n'
-                  'blr = GetChannel(mc, 5, 6)\n'
-                  'MixAudio(lrc, blr, 1.0, 0.3694)\n'
-                  )
-        elif self.vi.nchannels >= 6:
-            if self.Audiobits < 24:
-                #args += 'ConvertAudioTo24Bit()\n'
-                args = 'ConvertAudioToFloat()\n'
-            args += (
-                    'flr = GetChannel(1, 2)\n'
-                    'fcc = GetChannel(3, 3)\n'
-                    'lrc = MixAudio(flr, fcc, 0.3694, 0.2612)\n'
-                    'blr = GetChannel(5, 6)\n'
-                    'MixAudio(lrc, blr, 1.0, 0.3694)\n'
-                    )
-        elif self.vi.nchannels >= 4:
-            args = (
-                    'flr = GetChannel(1, 2)\n'
-                    'blr = GetChannel(3, 4)\n'
-                    'MixAudio(flr, blr, 0.5, 0.5)\n'
-                    )
-        elif self.vi.nchannels == 3:
-            args = (
-                    'flr = GetChannel(1, 2)\n'
-                    'fcc = GetChannel(3, 3)\n'
-                    'MixAudio(flr, fcc, 0.5858, 0.4142)\n'
-                    )
-        if self.audioVolume != 0:
-            args += 'AmplifyDB(%i)\n' % (self.audioVolume)
+        if self.vi.sample_type == avisynth.avs.AVS_SAMPLE_INT24: # numpy cannot work with 24bit
+            args = 'ConvertAudioTo16Bit()\n'
         return args
 
     def CreateYV12Clip(self, force):

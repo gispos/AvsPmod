@@ -38,6 +38,19 @@ If, for example, there is a '-' in the file name of the dll, AvsPmod will report
 please rename this dll and replace the '-' with a '_'
 
 --------------------------
+Version 2.7.7.0 [2024-03-02] GPo
+--------------------------
+* Audio downmix is now mixed to stereo using its own mixer (with Avisynth mixer there were problems with prefetch and multichannel).
+- the audio volume values have changed, now 0.25 to 2.0, the value 1 corresponds to 100%, 
+- the value 2.0 is slightly less than twice the volume, approx. 7 decibels (setting per script).
+* The values of the audio buffer have also changed, now 1 to 6 seconds. 3 seconds as default.
+* The mix portion of the center channel can be done under Playback button context menu > 'Audio settings'. Default 0.7 (global for all scripts).
+* The menu Play > 'Downmix audio' has been removed, it is now located under Audio settings.
+* Audio playback is now also possible with the preview filter switched on.
+* The macro 'Save as Tiff_rgb48' has been replaced by 'Save Image_rgb48'. It can now be saved as tiff or png (requires ffmpeg.exe).
+* Some minor corrections and cleanups (e.g. option 'Playback in threads' removed).
+
+--------------------------
 Version 2.7.6.9 [2024-02-10] GPo
 --------------------------
 * Audio playback bugfix: Audio can stop playing. 

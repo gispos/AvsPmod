@@ -82,9 +82,9 @@ Requirements
 - editbin (only for x86-32, optional) (for setting Large Address Aware)
 - UPX (only for x86-32, optional)
 - 7-Zip (optional)
-- Cython, pip install Cython (copy the cfunc.pyd file to the source folder)
-- SDL2, pip install PySDL2
 
+- Additional dependencies: numpy, pyaudio, Cython (when compiling, the corresponding cfunc.pyd must be in the source directory)
+- PySDL2 and SDL2.dll 
 
 Windows x86-64
 --------------
