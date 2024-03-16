@@ -38,6 +38,18 @@ If, for example, there is a '-' in the file name of the dll, AvsPmod will report
 please rename this dll and replace the '-' with a '_'
 
 --------------------------
+Version 2.7.7.1 [2024-03-16]
+--------------------------
+* After an error message (error clip), the previously used zoom is restored (factor, fit, fill, position).
+- however, the 'Resize filter' is not restored.
+* When 'Resize video window' is disabled, the size of the video window is now more stable and will not reset on an error clip.
+* When 'Resize video window' is enabled and no 'Resize filter', zooming with the mouse wheel now also changes the size of the video window.
+* You can now set the script's minimum visible text lines on the fly (Program options > Text > 'Min text lines')
+- with the script context menu Miscellaneous > 'Set min text lines (Ctrl + splitter move)'
+- or press Ctrl and move the video/script splitter (first press Ctrl to unlock then move the splitter and release Ctrl).
+* Bugfix: if 'Resize video window' is disabled and switching between fullsize and normal view, the normal view was set the wrong splitter position.
+
+--------------------------
 Version 2.7.7.0 [2024-03-02] GPo
 --------------------------
 * Audio downmix is now mixed to stereo using its own mixer (with Avisynth mixer there were problems with prefetch and multichannel).

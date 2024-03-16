@@ -26,14 +26,16 @@ if self.UpdateScriptAVI() is None or not self.previewOK(script):
     return
 frame = avsp.GetFrameNumber()
 trim = 'trim(%i, -1)' % frame
-scriptTxt = avsp.GetText(index=None, clean=True).strip() + '\n' + trim
+txt = self.getCleanText(script.GetText())
+txt = self.stripComment_2(txt)
+txt, encoding = self.GetEncodedText(script, txt, forceUtf8=False)
+scriptTxt = txt.strip() + '\n' + trim
 
 if not os.path.isfile(ffmpeg):
     avsp.MsgBox('ffmpeg not found.\nYou must change the "ffmpeg" variable in the macro.\n\n' + ffmpeg, 'Error')
     return
     
 default = self.options['imagesavedir']
-#default = self.GetProposedPath(type_='image')
 tabTitle = self.scriptNotebook.GetPageText(self.scriptNotebook.GetSelection())
 filterIdx = avsp.Options.get('filteridx', 0)
 
@@ -65,28 +67,26 @@ imageType = 'tiff' if idx == 0 else 'png'
 self.options['imagesavedir'] = os.path.dirname(outfile)
 avsp.Options['filteridx'] = idx
 
-infile = os.path.join(os.path.split(outfile)[0], 'encoding.avs')
-print(infile)
+infile = os.path.join(self.toolsfolder, 'encode.avs')
 encoding_args = [
     ffmpeg,
+    '-ss', '00:00:00',
     '-i', infile,
-    '-an',
-    '-pix_fmt', 'rgb48',
+    #'-pix_fmt', 'rgb48',
     '-vcodec', imageType,
+    '-frames:v','1',
+    '-update', '1',
     '-y', outfile,
     ]
-
+    
 try:
     with open(infile, 'wb') as f:
-        f.write(scriptTxt.encode(sys.getfilesystemencoding()))
+        f.write(scriptTxt)
         f.close()
 except IOError as err:
     raise
 
 def utf8ify(list):
-  return [item.encode(sys.getfilesystemencoding()) for item in list]
-  
-def _utf8(list):
   return [item.encode(sys.getfilesystemencoding()) for item in list]
   
 def fileSizeToString(fsize, precision=0):
