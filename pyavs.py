@@ -1169,7 +1169,7 @@ class AvsClipBase:
         self.lastSampletype = None
         self.lastAudiorate = None
         if vi.has_audio():
-            sample_type = avs_sample_type_dict_pyaudio.get(vi.sample_type, None) # im moment immer 16bit
+            sample_type = avs_sample_type_dict_pyaudio.get(vi.sample_type, None)
             if sample_type:
                 self.pyaudio = pyaudio.PyAudio()
                 try:
@@ -1848,13 +1848,14 @@ class AvsClipBase:
             factorHeight = float(dh) / vH
             if fitHeight or factorWidth >= factorHeight:
                 H = int(float(dh)/mod)*mod
-                W = round(float(H)*ratio/mod)*mod
+                W = int(round(float(H)*ratio/mod))*mod
                 if fitHeight and not hidescrollbars and W > dw:
-                    H -= utils.GetScrollbarMetric_X() - 2
-                    H = int(float(H)/mod)*mod
-                    W = round(float(H)*ratio/mod)*mod
+                    H -= utils.GetScrollbarMetric_X()
+                    H = float(H)/mod*mod
+                    W = int(round(H*ratio/mod))*mod
+                    H = int(H)
             else:
-                W = round(float(dw)/mod)*mod
+                W = int(round(float(dw)/mod))*mod
                 H = int(float(W)/ratio/mod)*mod
         else:
             W = round(vW* zoom) //mod*mod

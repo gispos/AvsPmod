@@ -38,6 +38,34 @@ If, for example, there is a '-' in the file name of the dll, AvsPmod will report
 please rename this dll and replace the '-' with a '_'
 
 --------------------------
+Version 2.7.7.2 [2024-04-07]
+--------------------------
+* The script/video window splitter functionality has been revised.
+* There are 3 video window resize modes ( Force, Normal, Static )
+- Force: Resize if video size or normal zoom has changed. With Zoom or Resample fit/fill, the size of the video window does not change when switching tabs.
+- Normal has 3 options, Program Options > Video > 'Video window resize option (only mode Normal)' 
+--- Zoom or Size change: Resize when video size or zoom has changed.
+--- Size change: Resize if video size has changed (Includes also zoom resample).
+--- Zoom change: Resize if zoom has changed.
+--- No for both: No resize, each tab (script) keeps the manually set splitter position.
+--- if not 'No for both' and the video is smaller then the video window, the splitter moves down if not zoom or resample fit/fill set.
+- Static: No resize, the splitter is set by the first initialization or manual script/video window splitter moving for all tabs.
+*** Exceptions for all settings: when groups are assigned, all tabs in that group have the same splitter position when switching tabs.
+*** If something is wrong, report it immediately. In 2 weeks I won't be able to see through it anymore..)
+------
+* Under Program Options > Video > 'Keep video window size if zoom fit/fill (only mode Normal)' 
+- you can select whether the size of the video window should be retained when Zoom or Resample Fit/Fill is set and the tabs are changed (default Off).
+* Under Program Options > Video > 'Double click on MaxView resets to minimum text lines' you can set what position the splitter should take
+- on a double click into the video window when zoom or resample fit/fill is used (not for Static), 
+- either the last position before MaxView (double click at normal size), or the minimum text lines that you have set.
+* A double click on the script/video splitter sets the splitter to original video size (max. minimum text lines). 
+* In the event of an error message, the video window is minimized and the zoom factor is set to 100%, but is restored (not resample zoom) upon reinitialization.
+* The 'Resample zoom' menu entries processes now all scripts by default. If Ctrl is pressed only the current script is processed. 
+** The menu items of the resample zoom, 'Resample fill' and 'Resample fit' have been changed by name. 
+-- you must create new shortcuts (Fit is now Fill and vice versa).
+-- the names were wrong from the beginning and did not match the normal zoom Fit/Fill. Sorry. 
+
+--------------------------
 Version 2.7.7.1 [2024-03-16]
 --------------------------
 * After an error message (error clip), the previously used zoom is restored (factor, fit, fill, position).

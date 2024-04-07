@@ -4548,13 +4548,13 @@ class SplitClipCtrl(wx.Dialog):
         self.Hide()
 
     def CheckResizeNeeded(self, script):
-        value = 0
-        if not self.parent.separatevideowindow and not self.parent.zoomwindow and self.parent.options['resizevideowindow'] and \
-            script.AVI and (self.lastShownVideoSize != (script.AVI.DisplayWidth, script.AVI.DisplayHeight)):
-                value = script.GetSize().height if self.parent.mainSplitter.GetSplitMode() == wx.SPLIT_HORIZONTAL else script.GetSize().width
-        if value > 5:
-            script.lastSplitVideoPos = None
-            self.parent.SetMinimumScriptPaneSize()
+        resize = self.parent.VideoWindowResizeNeeded(checksize=True)
+        if resize and not self.parent.zoomwindow and script.AVI and (self.parent.mintextlines > 0) \
+             and (self.lastShownVideoSize != (script.AVI.DisplayWidth, script.AVI.DisplayHeight)):
+                #script.lastSplitVideoPos = None
+                self.parent.SetMinimumScriptPaneSize()
+                return True
+        return False
 
     def Activate(self, showFrame=False, focus=True):
         def _setSplitClip(script, q):
@@ -4616,7 +4616,9 @@ class SplitClipCtrl(wx.Dialog):
                 if showFrame:
                     self.CheckResizeNeeded(script)
                     self.parent.zoom_antialias = False
-                    self.parent.ShowVideoFrame(forceCursor=True, focus=focus)
+                    self.parent.ShowVideoFrame(forceCursor=True, focus=focus, doLayout=not self.parent.zoomwindow)
+                    if not self.parent.mainSplitter.IsSplit():
+                        self.parent.ShowVideoFrame()
                     self.parent.ResetZoomAntialias()
                     self.parent.CheckPlayback()
                 #super(SplitClipCtrl, self).Show()
@@ -9194,18 +9196,15 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.fullScreenWnd_IsShown = False
         self.overlayData = None  # Data for overlay hint tuple (x, y, text, kill_time)
         self.playback_drawBoth = False # playback sdlWindow and video window (only for playback, disbled is sdlWindow Fullscreen or Fullsize)
+        ### test
         #sys.setcheckinterval(100) # The default is 100, meaning the check is performed every 100 Python virtual instructions. Setting it to a larger value may increase performance for programs using threads.
-        # audio
-        self.pyaudio = None
-        self.audio_stream = None
-        self.audio_buffer = None
         #wx.SystemOptions.SetOptionInt('msw.display.directdraw', 1)
         #self.debug = False
         #
         #self.tb_icon = wx.lib.adv.TaskBarIcon()
         #icon = wx.Icon(sys.executable + ";0", wx.BITMAP_TYPE_ICO)
         #self.tb_icon.SetIcon(icon, "tooltip")
-        #
+        ###
         # GPo, init WndProc
         self.customHandler = 0
         if os.name == 'nt':
@@ -9539,6 +9538,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.oldFramecount = None
         self.startupframe = 0
         self.oldPreviewtxt = None
+        self.staticSplitVideoPos = None
         self.oldLastSplitVideoPos = None
         self.oldLastSplitSliderPos = None
         self.oldSliderWindowShown = None
@@ -9625,6 +9625,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.titleEntry = None
         self.colour_data.FromString(self.options['colourdata'])
         self.OnMenuTabChangeLoadBookmarks(None) # enable/disable 'Clear tab bookmarks' menu
+        # set last used zoom before loading session
+        vidmenu = self.videoWindow.contextMenu
+        menu = vidmenu.FindItemById(vidmenu.FindItem(_('&Zoom'))).GetSubMenu()
+        menuItem = menu.FindItemByPosition(self.options['zoomindex'])
+        if menuItem is not None:
+            self.OnMenuVideoZoom(None, menuItem=menuItem, show=False)
+
         # Events
         self.Bind(wx.EVT_CLOSE, self.OnClose)
         self.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self.OnNotebookPageChanged)
@@ -9749,19 +9756,20 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 if not self.blockEventSize and not self.ClipRefreshPainter:
                     if self.previewWindowVisible:
                         script = self.currentScript
-                        size = script.GetSize()[self.mainSplitter.GetSplitMode() == wx.SPLIT_HORIZONTAL]
-                        self.mainSplitter_SetSashPos = None if size > 4 else 1
-                        if self.zoomwindow or self.zoomfactor != 1:
-                            func = (self.ShowVideoFrame, tuple(), {'focus': False})
+                        #size = script.GetSize()[self.mainSplitter.GetSplitMode() == wx.SPLIT_HORIZONTAL]
+                        #self.mainSplitter_SetSashPos = None if size > 4 else 1
+                        self.mainSplitter_SetSashPos = None if self.mintextlines > 0 else 1
+                        if self.IsResizeFilterFitFill(script):
+                            func = (self.ShowVideoFrame_checkResizeFilter, tuple(), {'script': script})
+                            if not func in self.IdleCall:
+                                self.IdleCall.append(func)
+                        elif self.zoomwindow or self.zoomfactor != 1:
+                            func = (self.ShowVideoFrame, tuple(), {'focus': False, 'forceLayout': True})
                             if not func in self.IdleCall:
                                 if self.options['zoom_antialias']:
                                     self.zoom_antialias = False
                                     # first Reset, IdleCall pops from last to first
                                     self.IdleCall.append((self.ResetZoomAntialias, tuple(), {}))
-                                self.IdleCall.append(func)
-                        elif self.IsResizeFilterFitFill(script):
-                            func = (self.ShowVideoFrame_checkResizeFilter, tuple(), {'script': script})
-                            if not func in self.IdleCall:
                                 self.IdleCall.append(func)
 
                     # set minpanesize again if size changed ( maximaze, restore, fullscreen)
@@ -9778,7 +9786,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     if self.sdlWindow and self.sdlWindow.running and self.sdlWindow.IsNormalSize() and\
                             self.sdlWindow.IsSameMonitor() and self.options['sdlwindowdocking'] > 0:
                         wx.CallAfter(self.sdlWindow.SetWindowPos, snap=self.options['sdlwindowdocking'], calcDockingPos=True)
-                if self.blockEventSize is True:
+                if self.blockEventSize == True:
                     self.blockEventSize = False
                 event.Skip()
             self.Bind(wx.EVT_SIZE, OnSize) # Size is also called on Maximaze and Restore
@@ -9789,7 +9797,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         if not self.videoDialog.IsMaximized() and not self.videoDialog.IsFullScreen():
                             self.options['dimensions2'] = (self.videoDialog.GetRect())
                         script = self.currentScript
-                        if self.zoomwindow or self.zoomfactor != 1:
+                        if self.IsResizeFilterFitFill(script):
+                            func = (self.ShowVideoFrame_checkResizeFilter, tuple(), {'script': script, 'forceLayout': False})
+                            if not func in self.IdleCall:
+                                self.IdleCall.append(func)
+                        elif self.zoomwindow or self.zoomfactor != 1:
                             func = (self.ShowVideoFrame, tuple(), {'focus': False})
                             if not func in self.IdleCall:
                                 if self.options['zoom_antialias']:
@@ -9797,11 +9809,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                     # first Reset, IdleCall pops from last to first
                                     self.IdleCall.append((self.ResetZoomAntialias, tuple(), {}))
                                 self.IdleCall.append(func)
-                        elif self.IsResizeFilterFitFill(script):
-                            func = (self.ShowVideoFrame_checkResizeFilter, tuple(), {'script': script, 'forceLayout': False})
-                            if not func in self.IdleCall:
-                                self.IdleCall.append(func)
-                    if self.blockEventSize is True:
+
+                    if self.blockEventSize == True:
                         self.blockEventSize = False
                 event.Skip()
             self.videoDialog.Bind(wx.EVT_SIZE, OnSize)
@@ -9865,12 +9874,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         # Display the program
         if self.separatevideowindow:
             self.videoStatusBar.SetDoubleBuffered(True) # GPo
-
-        vidmenu = self.videoWindow.contextMenu
-        menu = vidmenu.FindItemById(vidmenu.FindItem(_('&Zoom'))).GetSubMenu()
-        menuItem = menu.FindItemByPosition(self.options['zoomindex'])
-        if menuItem is not None:
-            self.OnMenuVideoZoom(None, menuItem=menuItem, show=False)
 
         if self.options['use_customvideobackground']:
             self.OnMenuVideoBackgroundColor(color=self.options['videobackground'])
@@ -10496,7 +10499,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'alwaysworkdir': False,
             'customplugindir': False,   # GPo
             'plugindirregister': False, # GPo
-            'dllfuncparseerror': True, # GPo, False = no error message on parse plugin and function names
+            'dllfuncparseerror': True,  # GPo, False = no error message on parse plugin and function names
             'externalplayer': '',
             'externalplayerargs': '',
             'externaltool': '',         # GPo 2020
@@ -10540,7 +10543,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'zoom_antialias': False,           # GPo 2020
             'buttonjumpchoice' : 0,            # GPo 0=frame, 1=1 sec, 2=1 minute, 3=custom units
             'externalplayerchoisce': 0,        # GPo 2023, select button external player function
-            'restorefullscreen': False,
+            'restorefullscreen': True,
             'dragupdate': True,
             'focusonrefresh': True,
             'previewunsavedchanges': True,
@@ -10571,8 +10574,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'resetmatrix': False, # for real.finder, reset the matrix if not found
             'displayfilter': utils.resource_str_displayfilter,
             'resizefilter': 'Spline36Resize;Prefetch(1,1)',
-            'frametoframetime': False,         # GPo, recalc on video update last frame time to new framenum
+            'frametoframetime': True,          # GPo, recalc on video update last frame time to new framenum
             'fullsizemode': 3,                 # 0= show tabs always, 1= hide tabs only if row count > 1, 2= hide if fullsize else 0, 3= hide if fullsize else 1,  4= hide tabs always
+            'resizevideowindow': 1,            # 0=force, 1=normal, 2=static
+            'vw_resizeopt': 0,                 # video window resize option if normal resize mode set: 0=Zoom or Size change, 1=Size change, 2=Zoom change, 3=No for both
+            'resettomintextlines': False,      # if MaxView, double click resets to min textlines if zoom fit or fill else to last splitter position
+            'keepzoomfitfill': False,          # Only for Normal mode: if zoom or resample fit/fill ist set, keep also the video window size on tab change
             # AUTOSLIDER OPTIONS
             'keepsliderwindowhidden': True,
             'autoslideron': True,
@@ -10587,7 +10594,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'autoslidermakestringfilename': True,
             'autoslidermakeunknown': True,
             'autosliderexclusions': '',
-            #'autosliderupdatedirectly': True,       # GPo
+            #'autosliderupdatedirectly': True,      # GPo
             'sliderwindowcustomtheme': True,        # GPo
             # USER SLIDER, TOGGLE TAGS
             'savetoggletags': False,                # GPo, save toggle tags within the script
@@ -10624,7 +10631,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'timelineautoscroll': True,              # GPo, scroll the timeline range if needed
             'timelineautoreset': True,               # GPo, reset the range if frame count change
             'timelinefreescrollrange': False,        # GPo, allow free scrolling through the timeline (Statusbar) else Ctrl must be pressed
-            'timelinemoveslidertostart': True,       # GPo, set slider to timeline start
+            #'timelinemoveslidertostart': True,       # GPo, set slider to timeline start
             'timelinestatusbarmovesense': 100,       # GPo, sensevity timeline mouse move
             'timelinehidenumbers': True,             # GPo, automatically hide the numbers if trim dialog shown
             'timelinenumdivisor': 5,                 # GPo, timline number divisor e.g. 10 shows 9 numbers
@@ -10637,7 +10644,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'propwinwordwarp': False,                # GPo, property wnd word warp
             'sessionbackupcount': 3,                 # GPo, max session backups at startup
             'showresamplemenu': 2,                   # GPo, 1= as submenu, 2=normal 0= hidden and disabled
-            'resizevideowindow': True,               # GPo, resize the video window on set zoom and tab change
             'showbuttontooltip': True,               # GPo, show video controls button tooltips
             'propwindowparent': 0,                   # GPo, property window parent (0,1) 0=propertyWnd, 1=sliderWnd
             'propwindowparentsize': intPPI(200),     # GPo, property text height in the slider window
@@ -11581,7 +11587,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 ((_('Enable line-by-line update'), wxp.OPT_ELEM_CHECK, 'autoupdatevideo', _('Enable the line-by-line video update mode (update every time the cursor changes line position)'), dict() ), ),
                 ((_('Focus the video preview upon refresh'), wxp.OPT_ELEM_CHECK, 'focusonrefresh', _('Switch focus to the video preview window when using the refresh command'), dict() ), ),
                 ((_('Refresh preview automatically'), wxp.OPT_ELEM_CHECK, 'refreshpreview', _('Refresh preview when switch focus on video window'), dict() ), ),
-                ((_('Move video slider to timeline start'), wxp.OPT_ELEM_CHECK, 'timelinemoveslidertostart', _('On Timeline moving with Ctrl + Alt + (limited range Left/Right or unlimited range PageUp/PageDown)'), dict() ), ),
+                #((_('Move video slider to timeline start'), wxp.OPT_ELEM_CHECK, 'timelinemoveslidertostart', _('On Timeline moving with Ctrl + Alt + (limited range Left/Right or unlimited range PageUp/PageDown)'), dict() ), ),
                 ((_('Shared timeline'), wxp.OPT_ELEM_CHECK, 'enableframepertab', _('Seeking to a certain frame will seek to that frame on all tabs'), dict() ), ),
                 ((_('Only on tabs of the same characteristics'), wxp.OPT_ELEM_CHECK, 'enableframepertab_same', _('Only share timeline for clips with the same resolution and frame count'), dict(ident=20) ), ),
                 ((_('Mouse wheel function'), wxp.OPT_ELEM_LIST, 'mousewheelfunc', _('Determines which mouse wheel function is used, see below tabs.Tab change also possible under Misc -> Mouse browse buttons'), dict(choices=[(_('Frame step'), 'frame_step'), (_('Tab change'), 'tab_change'), (_('Tab change or scroll'), 'tab_change_or_scroll'),]) ), ),
@@ -11594,6 +11600,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 # 0= show tabs always, 1= hide tabs only if row count > 1, 2= hide if fullscreen else 0, 3= hide if fullscreen else 1,  4= hide always
                 ((_('Tab behave in Fullsize/MaxView mode'), wxp.OPT_ELEM_LIST, 'fullsizemode', _('Show or hide the tabs on Fullsize or MaxView mode\nDouble click on preview is MaxView\nPress Ctrl on double click is Fullsize\nIf multiline tab style then row count can be greater then 1'), \
                     dict(choices=[(_('(1) Show tabs always'), 0), (_('(2) Hide if row count greater 1'), 1), (_('(3) Hide if fullsize else (1)'), 2), (_('(4) Hide if fullsize else (2)'), 3), (_('(5) Hide tabs always'), 4),]) ), ),
+                ((_('Video window resize option (only mode Normal)'), wxp.OPT_ELEM_LIST, 'vw_resizeopt', _('Select the resize option for resize mode normal'), dict(choices=[(_('Size or Zoom change'), 0), (_('Size change'), 1), (_('Zoom change'), 2), (_('No for both'), 3),]) ), ),
+                ((_('Keep window size if zoom fit/fill (only mode Normal)'), wxp.OPT_ELEM_CHECK, 'keepzoomfitfill', _("If not 'No for both' selected and zoom or resample fit/fill used, then keep the video window size on tab change"), dict() ), ),
+                ((_('Double click on MaxView resets to minimum text lines'), wxp.OPT_ELEM_CHECK, 'resettomintextlines', _("If not resize video window 'Static' is set and zoom fit or fill is used, then a double click resets to minimum text lines else to last window size"), dict() ), ),
                 ((_('Customize video status bar...'), wxp.OPT_ELEM_BUTTON, 'videostatusbarinfo', _('Customize the video information shown in the program status bar'), dict(handler=self.OnConfigureVideoStatusBarMessage) ), ),
                 ((_('Error message font...'), wxp.OPT_ELEM_BUTTON, 'errormessagefont', _('Set the font used for displaying the error if evaluating the script fails'), dict(handler=self.OnConfigureErrorFont) ), ),
             ),
@@ -11711,9 +11720,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     def OnMainSplitterPosChanged(self, event=None):
         self.mainSplitter.UpdateSize()
         if event:
-            self.SaveLastSplitVideoPos()
+            self.SaveLastSplitVideoPos(saveglobal=True)
             if wx.GetKeyState(wx.WXK_CONTROL):
                 self.OnMenuSetMinTextLines()
+
         script = self.currentScript
         resize = self.IsResizeFilterFitFill(script)
         if resize:
@@ -11725,15 +11735,15 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     script.AVI.SetResizeFilter(self.GetResizeFilterInfo(script))
         if resize or self.zoomwindow or (self.zoomfactor != 1 and self.zoom_antialias):
             self.zoom_antialias = False
-            if self.IsFullScreen():
-                self.mainSplitter_SetSashPos = self.mainSplitter.GetSashPosition() # else sahspos is set to 1 on SplitVideoWindow
+            if self.IsFullScreen(): # else sahspos is set to 1 on SplitVideoWindow
+                self.mainSplitter_SetSashPos = self.GetMainSplitterSplitPos()
             if resize and script.previewFilterIdx > 0:
                 self.OnMenuPreviewFilter(index=script.previewFilterIdx, updateUserSliders=False)
             else:
                  self.ShowVideoFrame(forceLayout=True, focus=False)
         self.ResetZoomAntialias()
         if self.mainSplitter.GetSplitMode() == wx.SPLIT_VERTICAL and wx.GetKeyState(wx.WXK_CONTROL):
-            self.minscript_width = self.mainSplitter.GetSashPosition()
+            self.minscript_width = self.mainSplitter.GetSashPosition() - self.mainSplitter.GetClientSize()[0]
         if event:
             event.Skip()
 
@@ -11922,7 +11932,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.currentScript.sliderWindowShown = True
             else:
                 self.currentScript.sliderWindowShown = False
-            self.SaveLastSplitVideoPos()
+            if self.mintextlines > 1:
+                self.SaveLastSplitVideoPos()
             script = self.currentScript
             resize = self.IsResizeFilterFitFill(script) and not script.resizeFilter[3]
             if resize:
@@ -12093,16 +12104,20 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.videoSplitter.SetSashGravity(1.0)
 
         def OnProgramSplitterSize(event):
-            if not self.fullScreenWnd_IsShown:
+            if not self.fullScreenWnd_IsShown and self.mintextlines > 0:
                 # programSplitter gravity
                 if wx.VERSION < (2, 9):
                     self.programSplitter.SetSashPosition(-self.toolbarHeight)
                 # mainSplitter gravity
                 # Ooooh, searching for 8 houers to find an error, this on (if self.mainSplitter.IsSplit() is not enough)
-                if self.mainSplitter.IsSplit() and not self.blockEventSize and not self.ClipRefreshPainter and self.currentScript.AVI:
+                if self.mainSplitter.IsSplit() and not self.blockEventSize and not self.ClipRefreshPainter \
+                    and self.currentScript.AVI and not self.fullScreenWnd_IsShown and self.mintextlines > 0:
                     pos = self.GetMainSplitterNegativePosition()
                     self.mainSplitter.SetSashPosition(pos)
-                    self.currentScript.lastSplitVideoPos = pos
+                    self.SaveLastSplitVideoPos() # GPo new
+                    #~self.currentScript.lastSplitVideoPos = self.GetMainSplitterSplitPos()
+
+
             event.Skip()
         self.programSplitter.Bind(wx.EVT_SIZE, OnProgramSplitterSize)
 
@@ -12160,15 +12175,30 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.UpdateMenuItem(_('Display'), True, 'video', [_('YUV -> RGB'), s1])
         self.UpdateMenuItem(_('Display'), True, 'video', [_('YUV -> RGB'), s2])
 
-    def SaveLastSplitVideoPos(self, backup=False):
-        if not self.previewOK() or not self.mainSplitter.IsSplit():
-            return None
-        spos = self.mainSplitter.GetSashPosition() - \
-               self.mainSplitter.GetClientSize()[self.mainSplitter.GetSplitMode() == wx.SPLIT_HORIZONTAL]
+    def GetMainSplitterSplitPos(self, default=None):
+        if self.previewOK() and self.mintextlines > 0:
+            return self.mainSplitter.GetSashPosition() -\
+                self.mainSplitter.GetClientSize()[self.mainSplitter.GetSplitMode() == wx.SPLIT_HORIZONTAL]
+        return default
+
+    def SaveLastSplitVideoPos(self, saveglobal=False):
+        if not self.previewOK() or not self.mainSplitter.IsSplit() or self.mintextlines < 1 or self.fullScreenWnd_IsShown:
+            if self.currentScript.lastSplitVideoPos is not None:
+                return self.currentScript.lastSplitVideoPos
+            elif self.oldLastSplitVideoPos is not None:
+                return self.oldLastSplitVideoPos
+            elif self.currentScript.oldLastSplitVideoPos is not None:
+                return self.currentScript.oldLastSplitVideoPos
+            elif self.staticSplitVideoPos is not None:
+                return self.staticSplitVideoPos
+            else:
+                return None
+        spos = self.mainSplitter.GetSashPosition() -\
+                    self.mainSplitter.GetClientSize()[self.mainSplitter.GetSplitMode() == wx.SPLIT_HORIZONTAL]
         spos = spos if isinstance(spos, int) and spos < 0 else None
         self.currentScript.lastSplitVideoPos = spos
-        if backup:
-            self.currentScript.lastSplitVideoPosShown = spos
+        if saveglobal or (not self.staticSplitVideoPos and self.mintextlines > 0):
+            self.staticSplitVideoPos = spos
         return spos
 
     def SetMinimumScriptPaneSize(self, mlines=-1, onlyReturnValue=False, IsFullScreen=None):
@@ -12801,7 +12831,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 (_('Additional'),
                     (
                     (_('Fullscreen'), '', self.OnMenuToggleFullscreen, _('Enable/disable Fullscreen mode. Shift + double click (Esc chancel)')),
-                    (_('Resize video window'), '', self.OnMenuVideoResizeOnZoom, _('Adjusts the video window height to the output height (zooming with Keyboard)'), wx.ITEM_CHECK, self.options['resizevideowindow']),
+                    (_('Resize video window'),
+                        (
+                        (_('Force'), '', self.OnMenuVideoWindowResizeOption, _('Sizing on initilisation, tab change, zoom change, etc.'), wx.ITEM_RADIO, self.options['resizevideowindow']==0),
+                        (_('Normal'), '', self.OnMenuVideoWindowResizeOption, _('Sizing on initilisation and zoom change'), wx.ITEM_RADIO, self.options['resizevideowindow']==1),
+                        (_('Static'), '', self.OnMenuVideoWindowResizeOption, _('No sizing, only on first initilisation or manual splitter moving'), wx.ITEM_RADIO, self.options['resizevideowindow']==2),
+                        ),
+                    ),
                     (_('Use previous frame time'), '', self.OnMenuFrameToFrameTime, _('On refresh video: Use previous frame time if frame count and frame rate different'), wx.ITEM_CHECK, self.options['frametoframetime']),
                     (_('Restore split clip if enabled'), '', self.OnMenuUseSplitClip, _("On refresh video: Restore the 'Split Clip' if it enabled"), wx.ITEM_CHECK, self.options['usesplitclip']),
                     (''),
@@ -13177,7 +13213,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             (_('Tab change loads bookmarks'), '', self.OnMenuTabChangeLoadBookmarks, '', wx.ITEM_CHECK, self.options['tabsbookmarksfromscript']), # GPo 2019
             (_('Save view pos on tab change'), '', self.OnMenuVideoSaveViewPos, _('Save/Restore last display viewing position on tab change'), wx.ITEM_CHECK, False),
             (_('Save pos && zoom on tab change'), '', self.OnMenuVideoSaveZoom, _('Save/Restore last zoom settings on tab change'), wx.ITEM_CHECK, False),
-            (_('Resize video window'), '', self.OnMenuVideoResizeOnZoom, _('Adjusts the video window height to the output height (zooming with Keyboard)'), wx.ITEM_CHECK, self.options['resizevideowindow']),
+            (_('Resize video window'),
+                (
+                (_('Force'), '', self.OnMenuVideoWindowResizeOption, _('Sizing on initilisation, tab change, zoom change, etc.'), wx.ITEM_RADIO, self.options['resizevideowindow']==0),
+                (_('Normal'), '', self.OnMenuVideoWindowResizeOption, _('Sizing on initilisation and zoom change'), wx.ITEM_RADIO, self.options['resizevideowindow']==1),
+                (_('Static'), '', self.OnMenuVideoWindowResizeOption, _('No sizing, only on first initilisation or manual splitter moving'), wx.ITEM_RADIO, self.options['resizevideowindow']==2),
+                ),
+            ),
             (''),
             (_('Copy to new tab'), '', self.OnMenuEditCopyToNewTab),
             (_('Split View insert tab'), '', self.OnMenuCopyToNewTabNext),
@@ -13400,8 +13442,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         scriptWindow.sliderProperties = []
         scriptWindow.toggleTags = []
         scriptWindow.autoSliderInfo = []
+        scriptWindow.oldDisplayClipSize = (0, 0)
         scriptWindow.lastSplitVideoPos = None
-        scriptWindow.lastSplitVideoPosShown = None
+        scriptWindow.oldLastSplitVideoPos = None
         scriptWindow.lastSplitSliderPos = self.options['sliderwindowwidth']
         scriptWindow.userHidSliders = False
         scriptWindow.lastFramenum = 0
@@ -13426,6 +13469,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'shot2': utils.emptySnapShot   # also used for autosnapshot
             }
         scriptWindow.resizeFilter = (False, self.options['resizefilter'], 1, True) # Enabled, resizer, fixed zoom factor, fitHeight
+        scriptWindow.forceZoom = False
         scriptWindow.lastZoom = None   # GPo, 2021 script last zoom settings
         scriptWindow.lastFsZoom = None # GPo, 2021 script last Fullscreen zoom settings
         scriptWindow.refreshAVI = True  # GPo self.refreshAVI isn't optimal, it is Global!
@@ -14693,10 +14737,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             else:
                 framenum = newStart + curOffsetPos
                 if moveSlider and curVal > framenum:
-                    if self.options['timelinemoveslidertostart']:
+                    #if self.options['timelinemoveslidertostart']:
                         framenum = newStart
-                    else:
-                        framenum = newStart + curRange
+                    #else:
+                        #framenum = newStart + curRange
 
         self.videoSlider.SetOffset(newStart,  self.videoSlider.GetMax() - curRange)
         self.videoSlider.SetValue(framenum) # needed always for refresh
@@ -16386,7 +16430,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         return True
 
     def IsResizeFilterFitFill(self, script):
-        return script.resizeFilter[0] and script.resizeFilter[2] == 1
+        if script is not None:
+            return script.resizeFilter[0] and script.resizeFilter[2] == 1
+        else:
+            return self.resizeFilter[0] and self.resizeFilter[2] == 1
 
     # the resample fixed zoom menus receiver
     def OnMenuVideoZoomResampleZoom(self, event, zoom=1):
@@ -16410,14 +16457,14 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             else:
                 zoom = 1
         # if control pressed only the current script is affected (the case on all resample menus)
-        self.OnMenuVideoZoomResampleFit(zoom=zoom, single= not strg)
+        self.OnMenuVideoZoomResampleFill(zoom=zoom, single=strg)
 
-    def OnMenuVideoZoomResampleFill(self, event):
+    def OnMenuVideoZoomResampleFit(self, event):
         strg = wx.GetKeyState(wx.WXK_CONTROL)
-        self.OnMenuVideoZoomResampleFit(fitHeight=False, single=not strg)
+        self.OnMenuVideoZoomResampleFill(fitHeight=False, single=strg)
 
     # this is the main function for setting the resize filter
-    def OnMenuVideoZoomResampleFit(self, event=None, zoom=1, fitHeight=True, single=True, sameSize=None, doScroll=False, forceEnabled=False,
+    def OnMenuVideoZoomResampleFill(self, event=None, zoom=1, fitHeight=True, single=False, sameSize=None, doScroll=False, forceEnabled=False,
                                     force_Size=None, forceCursor=True):
         def calc_scroll(new_zoom, old_zoom):
             xrel, yrel = self.videoWindow.ScreenToClient(wx.GetMousePosition())
@@ -16428,15 +16475,16 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         if self.cropDialog.IsShown():
             return
+        if event:
+            single = wx.GetKeyState(wx.WXK_CONTROL)
 
         self.CheckPlayback()
         cs = self.videoWindow.GetSize()
         need_update = (cs[0] < 36 or cs[1] < 36) and not force_Size  # video window size not initialized
         script = self.currentScript
-        if event:
-            single = not wx.GetKeyState(wx.WXK_CONTROL)
+
         rf = script.resizeFilter
-        self.OnMenuVideoZoom(zoomfactor=1, show=False, resizeFilterOff=False) # set 100% zoom
+        self.OnMenuVideoZoom(zoomfactor=1, show=False, resizeFilterOff=False, setSplitterPos=False) # set 100% zoom
         if script.AVI.IsErrorClip():
             return
         # abs(zoom): mouse weehl sendet zoom -1 ist zoom = 1, sonst wuerde der zoom nicht gesetzt sonder fill oder fit
@@ -16468,14 +16516,21 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         _script.resizeFilter = resizeFilter
                         _script.display_clip_refresh_needed = True
         else:
-            self.resizeFilter = resizeFilter
+            self.resizeFilter = resizeFilter # global
             for i in xrange(self.scriptNotebook.GetPageCount()):
                 _script = self.scriptNotebook.GetPage(i)
                 _script.resizeFilter = resizeFilter
-                _script.lastZoom = None # GPo new
-                _script.lastFsZoom = None # GPo new
+                _script.lastZoom = None
+                _script.lastFsZoom = None
                 if _script != script:
                     _script.display_clip_refresh_needed = True
+
+        if not resizeFilter[0]:
+            if self.options['resizevideowindow'] == 0:
+                script.lastSplitVideoPos = None
+            elif (self.options['resizevideowindow'] == 1) and (self.options['vw_resizeopt'] < 2):
+                pos = self.GetMainSplitterNegativePosition(forcefit=True, displayclip=False)
+                script.lastSplitVideoPos = pos
 
         if self.splitView:
             if self.splitView_next:
@@ -16497,7 +16552,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 script.display_clip_refresh_needed = True
                 info = self.GetResizeFilterInfo(script, force_Size)
                 self.ShowVideoFrame(forceCursor=forceCursor, resizeFilterInfo=info)
-
+        self.SaveLastSplitVideoPos()
         int10 = intPPI(10) # triangle ist intPPI(8)
         self.videoWindow.RefreshRect(wx.Rect(0,0,int10,int10)) # repaint the triangle
         if scroll:
@@ -17329,17 +17384,29 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     def OnSetBookmarkToTrims(self, event):
         self.options['bookmarktotrim'] = event.IsChecked()
 
-    def OnMenuVideoZoom(self, event=None, menuItem=None, zoomfactor=None, show=True, scroll=None, resizeFilterOff=True, single=False, script=None, resetAntialias=True):
+    def VideoWindowResizeNeeded(self, checkzoom=None, checksize=None):
+        if checkzoom and not self.separatevideowindow:
+            return (self.options['resizevideowindow'] == 0) or \
+                ((self.options['resizevideowindow'] == 1) and (self.options['vw_resizeopt'] in (0,2)))
+        elif checksize:
+            return (self.options['resizevideowindow'] == 0) or \
+                ((self.options['resizevideowindow'] == 1) and (self.options['vw_resizeopt'] < 2))
+        return False
+
+    def OnMenuVideoZoom(self, event=None, menuItem=None, zoomfactor=None, show=True, scroll=None, resizeFilterOff=True, single=False, script=None,
+                        resetAntialias=True, setSplitterPos=True):
 
         def _IsFullSize():
-            return self.mainSplitter.GetSashPosition() <=  self.mainSplitter.GetSashSize() or self.IsFullScreen() or self.fullScreenWnd_IsShown
+            return self.mainSplitter.GetSashPosition() <= self.mainSplitter.GetSashSize() or self.IsFullScreen() or self.fullScreenWnd_IsShown
 
         if show:
-            resize = False
+            #resize = False
             if not self.KeyUpVideoWindow: # GPo, do not allow to fasted key events (key shortcuts fires onKeyPress ! not good for some functions)
                 return
             self.KeyUpVideoWindow = False
             wx.CallLater(200, self.OnKeyUpVideoWindow, None) # reset after 200ms and unblock this function
+
+        script = self.currentScript
         if zoomfactor is None:
             vidmenus = [self.videoWindow.contextMenu, self.GetMenuBar().GetMenu(2)]
             if menuItem is None:
@@ -17391,14 +17458,15 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.zoomwindowfit = False
                 self.zoomwindowfill = True
                 zoomfactor = 1
-                if self.previewWindowVisible:
-                    self.SaveLastSplitVideoPos() #GPo
             elif zoomvalue == 'fit':
                 self.zoomwindow = True
                 self.zoomwindowfit = True
                 self.zoomwindowfill = False
                 zoomfactor = 1
             else:
+                self.zoomwindow = False
+                self.zoomwindowfit = False
+                self.zoomwindowfill = False
                 try:
                     zoompercent = int(zoomvalue)
                 except ValueError:
@@ -17407,21 +17475,17 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     zoomfactor = zoompercent / 100.0
                 else:
                     return
-                self.zoomwindow = False
-                self.zoomwindowfit = False
-                self.zoomwindowfill = False
-                if self.options['resizevideowindow'] and not _IsFullSize(): # then full size
-                    self.currentScript.lastSplitVideoPos = None
-                    resize = True
-
+                if show and not _IsFullSize() and setSplitterPos and self.VideoWindowResizeNeeded(checkzoom=True):
+                    self.zoomfactor = zoomfactor
+                    script.lastSplitVideoPos = self.GetMainSplitterNegativePosition(forcefit=True, displayclip=False)
+                    if self.previewOK(script):
+                        script.oldLastSplitVideoPos = script.lastSplitVideoPos
         elif isinstance(zoomfactor, basestring): #zoomWindow:
             if zoomfactor == 'fill':
                 self.zoomwindow = True
                 self.zoomwindowfit = False
                 self.zoomwindowfill = True
                 self.UpdateMenuItem(_('&Zoom'), True, 'video', [_('Fill window')])
-                if self.previewWindowVisible:
-                    self.SaveLastSplitVideoPos() #GPo
                 zoomfactor = 1
             elif zoomfactor == 'fit':
                 self.zoomwindow = True
@@ -17453,9 +17517,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     self.UpdateMenuItem(_('&Zoom'), True, 'video', [_('100% (normal)')])
                 else:
                     self.UpdateMenuItem(_('&Zoom'), True, 'video', [_('Custom')])
-            if self.options['resizevideowindow'] and not _IsFullSize(): # then full size
-                self.currentScript.lastSplitVideoPos = None
-                resize = True
+            if show and not _IsFullSize() and setSplitterPos and self.VideoWindowResizeNeeded(checkzoom=True):
+                self.zoomfactor = zoomfactor
+                script.lastSplitVideoPos = self.GetMainSplitterNegativePosition(forcefit=True, displayclip=False)
+                if self.previewOK(script):
+                    script.oldLastSplitVideoPos = script.lastSplitVideoPos
+
         self.zoomfactor = zoomfactor
 
         if resizeFilterOff:
@@ -17475,7 +17542,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 return
         if show:
             self.zoom_antialias = False
-            self.ShowVideoFrame(scroll=scroll, forceLayout=True, resize=resize)
+            #self.ShowVideoFrame(scroll=scroll, forceLayout=True, resize=resize)
+            self.ShowVideoFrame(scroll=scroll, forceLayout=True)
             if resetAntialias:
                 self.ResetZoomAntialias()
 
@@ -18077,8 +18145,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 for index in xrange(self.scriptNotebook.GetPageCount()):
                     script = self.scriptNotebook.GetPage(index)
                     if self.previewOK(script):
+                        self.zoom_antialias = False
                         self.SelectTab(index)
                         self.ShowVideoFrame(script=script)
+                        self.ResetZoomAntialias()
                         break
         finally:
             pass
@@ -18440,11 +18510,23 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.saveViewPos = 0
         else: self.saveViewPos = 2
 
-    def OnMenuVideoResizeOnZoom(self, event):
-        self.options['resizevideowindow'] = event.IsChecked()
-        self.UpdateMenuItem(_('Additional'), event.IsChecked(), 'video', [_('Resize video window')])
-        if self.options['resizevideowindow'] and self.previewWindowVisible:
-            self.SplitVideoWindow(forcefit=True)
+    def OnMenuVideoWindowResizeOption(self, event):
+        menu = event.GetEventObject()
+        label = menu.GetLabel(event.GetId())
+        if label == _('Force'):
+            self.options['resizevideowindow'] = 0
+        elif label == _('Normal'):
+            self.options['resizevideowindow'] = 1
+        else:
+            self.options['resizevideowindow'] = 2
+            self.staticSplitVideoPos = self.GetMainSplitterSplitPos(self.staticSplitVideoPos)
+        self.UpdateMenuItem(_('Additional'), True, 'video', [_('Resize video window'), _(label)])
+        if self.previewOK():
+            if self.VideoWindowResizeNeeded() and (self.mintextlines > 0) and not self.zoomwindow and not self.fullScreenWnd_IsShown:
+                self.zoom_antialias = False
+                self.SplitVideoWindow(forcefit=True)
+                self.ResetZoomAntialias()
+            self.SaveLastSplitVideoPos()
 
     def OnMenuAutoHidePreview(self, event):
         self.options['tabautopreview'] = event.IsChecked()
@@ -18944,8 +19026,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     script.display_clip_refresh_needed = True
             if self.currentScript.display_clip_refresh_needed:
                 self.ShowVideoFrame()
-            #if rf[0]:
-                #self.OnMenuVideoZoomResampleFit(zoom=rf[2], fitHeight=rf[3])
 
     def OnMenuOptionsDisablePreview(self, event):
         id = event.GetId()
@@ -20247,8 +20327,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.propWindow.textCtrl.Reparent(script.sliderWindow)
             script.sliderWindow.Freeze()
             script.propertySizer.Layout()
-            #if self.propWindowParent == 1:
-                #script.videoSidebarSizer.Layout()
             script.sliderWindow.FitInside()
             self.TryThaw(script.sliderWindow)
 
@@ -20294,70 +20372,83 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         bmSet = False # bookmarks not set, its nicer to set bookmarks after show frame
         boolNewAvi = False
-        IsErrorClip = False
+        IsErrorClip = not script.AVI or script.AVI.IsErrorClip()
+        resize_need_refresh = False
+        posXY = None
 
         if self.options['tabautopreview']:
             if self.previewWindowVisible and script.AVI is None:
                 self.HidePreviewWindow()
 
-        if self.fullScreenWnd_IsShown or self.IsFullScreen():
-            if self.options['disablefullscreenzoom'] and not self.IsResizeFilterFitFill(script):
-                pass
-            elif self.options['fullscreenzoom'] == 2:
-                rf = script.resizeFilter
-                if not rf[0] or rf[2] != 1 or not rf[3]:
-                    script.resizeFilter = (True, rf[1], 1, True)
-                    script.display_clip_refresh_needed = True
-                    script.lastFsZoom = None
-                    script.lastZoom = ((0,0), 1,False,False,False,script.resizeFilter)
-            elif self.options['fullscreenzoom'] == 1:
-                if not self.zoomwindowfill or script.resizeFilter[0]:
-                    script.lastZoom = None
-                    self.OnMenuVideoZoom(zoomfactor='fill', show=False, resizeFilterOff=True, single=True)
-                    script.lastFsZoom = None
-        else:
-            if self.options['resizevideowindow'] and not self.IsResizeFilterFitFill(script): # and not script.resizeFilter[0]:
-                script.lastSplitVideoPos = None
-            else:
-                if self.oldLastSplitVideoPos is not None: # eg. IsErrorClip()
+        # video window resize (splitter position)
+        if not IsErrorClip:
+            if self.fullScreenWnd_IsShown or self.IsFullScreen():
+                if self.options['disablefullscreenzoom'] and not self.IsResizeFilterFitFill(script):
+                    pass
+                elif self.options['fullscreenzoom'] == 2:
+                    rf = script.resizeFilter
+                    if (not rf[0] or rf[2] != 1 or not rf[3]):
+                        script.resizeFilter = (True, rf[1], 1, True)
+                        script.display_clip_refresh_needed = True
+                        script.lastFsZoom = None
+                        script.lastZoom = ((0,0), 1,False,False,False,script.resizeFilter)
+                elif self.options['fullscreenzoom'] == 1:
+                    if not self.zoomwindowfill or script.resizeFilter[0]:
+                        script.lastZoom = None
+                        self.OnMenuVideoZoom(zoomfactor='fill', show=False, resizeFilterOff=True, single=True, setSplitterPos=False)
+                        script.lastFsZoom = None
+            elif self.mintextlines > 0 and not self.separatevideowindow:
+                if script.lastZoom:
+                    if self.saveViewPos == 1:
+                        posXY = script.lastZoom[:1]
+                    elif self.saveViewPos > 1:
+                        posXY, self.zoomfactor,self.zoomwindow,self.zoomwindowfill,self.zoomwindowfit,resizeFilter = script.lastZoom
+                if self.splitView:
                     script.lastSplitVideoPos = self.oldLastSplitVideoPos
+                elif self.options['resizevideowindow'] == 0: # full resize
+                    if self.IsResizeFilterFitFill(script) or self.zoomwindow:
+                        script.lastSplitVideoPos = self.oldLastSplitVideoPos
+                    else:
+                        script.lastSplitVideoPos =  None
+                elif self.options['resizevideowindow'] == 1: # Normal, semi resize
+                    if self.IsResizeFilterFitFill(script) or self.zoomwindow:
+                        if self.options['keepzoomfitfill'] and self.options['vw_resizeopt'] < 2:
+                            if self.oldLastSplitVideoPos is not None:
+                                script.lastSplitVideoPos = self.oldLastSplitVideoPos
+                    else:
+                        # reduce the video window only if the video smaler
+                        if self.options['vw_resizeopt'] < 2:
+                            pos = self.GetMainSplitterNegativePosition(forcefit=True, displayclip=script.resizeFilter[0]) # OnMenuVideoZoom the same
+                            if pos > script.lastSplitVideoPos:
+                                script.lastSplitVideoPos = pos
+                            if script.lastSplitVideoPos is None and self.mintextlines > 0:
+                                script.lastSplitVideoPos = self.oldLastSplitVideoPos
+                else: # static, no resize
+                    if self.staticSplitVideoPos is not None and self.mintextlines > 0:
+                        script.lastSplitVideoPos = self.staticSplitVideoPos
+                    elif self.oldLastSplitVideoPos is not None: # eg. IsErrorClip()
+                        script.lastSplitVideoPos = self.oldLastSplitVideoPos
 
-            """ not good for the ClipRepainter
-            else: # check if full size, if so then set the splitter
-                ps = self.mainSplitter.GetMinimumPaneSize()
-                if ps == 0:
-                    self.mainSplitter.SetSashPosition(1, redraw=False)
-                    self.SaveLastSplitVideoPos()
-                else:
-                    script.lastSplitVideoPos = None
-            """
-        ### new test 9.12.
-        #if self.options['disablefullscreenzoom']:
-        """
-        if self.fullScreenWnd_IsShown:
-            if script.lastFsZoom:
-                if script.resizeFilter != script.lastFsZoom[5]:
-                    script.resizeFilter = script.lastFsZoom[5]
-                    script.display_clip_refresh_needed = True
-        elif script.lastZoom:
-            if script.resizeFilter != script.lastZoom[5]:
-                script.resizeFilter = script.lastZoom[5]
-                script.display_clip_refresh_needed = True
-        ### end new test
-        """
-
-        resize_need_refresh = False
-        if script.resizeFilter[0]:
-            #~if script.resizeFilter[2] == 1 and script.AVI and script.AVI.resizeFilter and not self.splitView:
-            if script.resizeFilter[2] == 1 and script.AVI and not self.splitView: ### new test 9.12.
+        # resize filter dimensions check
+        if not IsErrorClip and script.resizeFilter[0] and not self.splitView:# and not self.fullScreenWnd_IsShown:
+            if script.resizeFilter[2] == 1 and script.AVI:
                 try:
                     f, dw, dh, aw, ah = self.CalcResizeFilter(script, fitHeight=script.resizeFilter[3])
                 except:
                     pass
                 else:
-                    if (script.AVI.DisplayWidth, script.AVI.DisplayHeight) != (dw,dh):
+                    if (self.mintextlines == 0) or (self.options['resizevideowindow'] > 1) or self.fullScreenWnd_IsShown \
+                        or (script.group is not None and script.group == self.oldGroup) or self.separatevideowindow:
+                      if (script.AVI.DisplayWidth, script.AVI.DisplayHeight) != (dw,dh):
                         script.display_clip_refresh_needed = True
-                        resize_need_refresh = True
+                        #print('resize 1')
+                    else:
+                        if (self.mintextlines > 0) and script.lastSplitVideoPos is not None:
+                            f, dw, dh, aw, ah = self.CalcResizeFilter(script, fitHeight=script.resizeFilter[3], splitpos=script.lastSplitVideoPos)
+                            if (script.AVI.DisplayWidth, script.AVI.DisplayHeight) != (dw, dh):
+                                script.display_clip_refresh_needed = True
+                                #print((script.AVI.DisplayWidth, script.AVI.DisplayHeight))
+                            #print((dw, dh))
 
         # Determine whether to hide the preview or not
         if self.previewWindowVisible:
@@ -20366,7 +20457,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 Error()
                 return False
             if not self.previewOK():
-                self.OnMenuVideoZoom(zoomfactor=1, script=script, show=False, resizeFilterOff=True, single=True)
+                self.OnMenuVideoZoom(zoomfactor=1, script=script, show=False, resizeFilterOff=True, single=True, setSplitterPos=False)
                 IsErrorClip = True
                 resize_need_refresh = False
             if ((script.AVI.DisplayWidth, script.AVI.DisplayHeight) == self.oldDisplayVideoSize):
@@ -20381,7 +20472,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         script.lastFramenum = None
 
             if script.group is not None and script.group == self.oldGroup:
-                script.lastSplitVideoPos = self.oldLastSplitVideoPos
+                if not IsErrorClip:
+                    if self.oldLastSplitVideoPos is None:
+                        self.oldLastSplitVideoPos = self.GetMainSplitterSplitPos()
+                    script.lastSplitVideoPos = self.oldLastSplitVideoPos
                 if self.options['applygroupoffsets'] or (self.splitView and self.splitView_freeze):
                     offset = script.group_frame - self.oldGroupFrame
                     script.lastFramenum = max(0, self.oldLastFramenum + offset)
@@ -20396,13 +20490,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     script.lastFramenum = None
 
             # GPo, reset video zoom and pos
-            videoXY = None
-            self.forceZoom = False
-            if not IsErrorClip and self.saveViewPos > 0:
-                #~if script.lastFramenum is not None: # not in group (changed: group will also restore the last zoom and pos)
-                self.forceZoom = True # ShowVideoFrame read and reset it
-            #else:
-                #script.lastZoom = None
+            #if script.forceZoom != 3: # not ErrorClip
+                #script.forceZoom = not IsErrorClip and self.saveViewPos > 0
+            if not IsErrorClip and not posXY:
+                script.forceZoom = self.saveViewPos > 0
 
             if not bmSet:
                 bmSet = SetBookmarks()
@@ -20412,7 +20503,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             # disableRefreshPainter must only be set if UpdateScriptAvi called bevor ShowVideoFrame is called
             self.videoWindow.Freeze()
             try:
-                self.ShowVideoFrame(script.lastFramenum, forceLayout=True, focus=False, scroll=videoXY, forceCursor=True,
+                self.ShowVideoFrame(script.lastFramenum, forceLayout=True, scroll=posXY, focus=False, forceCursor=True,
                                     forceThread=self.UseAviThread)
             finally:
                 self.TryThaw(self.videoWindow)
@@ -20428,18 +20519,23 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     newSliderWindow.Show()
                     self.ShowSliderWindow(script, vidrefresh=False)
 
+                ### test it if needed !!!!
+                if script.lastSplitVideoPos is None and (self.options['resizevideowindow'] == 1) and (self.mintextlines > 0):
+                    self.SaveLastSplitVideoPos()
+
         else: # Update slider position and frame text control
             # GPo new, same as preview visible
             if script.group is not None and script.group == self.oldGroup:
-                #script.lastSplitVideoPos = self.oldLastSplitVideoPos
+                script.lastSplitVideoPos = self.oldLastSplitVideoPos
                 if self.options['applygroupoffsets'] or (self.splitView and self.splitView_freeze):
                     offset = script.group_frame - self.oldGroupFrame
                     script.lastFramenum = max(0, self.oldLastFramenum + offset)
 
-            if self.saveViewPos > 0 and not self.splitView: #script.lastZoom and not self.splitView:
-                self.forceZoom = True
-            else:
-                self.forceZoom = False
+            if not IsErrorClip and script.forceZoom != 3: # error clip
+                if self.saveViewPos > 0 and not self.splitView: #script.lastZoom and not self.splitView:
+                    script.forceZoom = True
+                else:
+                    script.forceZoom = False
 
             bmSet = SetBookmarks()
             frame = script.lastFramenum
@@ -20490,7 +20586,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     pixelInfo = self.GetPixelInfo(None, string_=True)
                     if pixelInfo[1] != None:
                         self.SetVideoStatusText(addon=pixelInfo)
-
         elif self.findDialog.IsShown():
             self.findDialog.SetFocus()
         elif self.replaceDialog.IsShown():
@@ -20499,34 +20594,30 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             script.SetFocus()
 
         self.oldlinenum = None
-        """
-        if self.fullScreenWnd_IsShown:
-            if self.options['showresamplemenu'] > 0 and self.options['fullscreenzoom'] == 2:
-                rf = script.resizeFilter
-                if self.zoomfactor != 1 or not rf[0] or rf[2] != 1 or not rf[3]:
-                    self.OnMenuVideoZoomResampleFit(zoom=1, fitHeight=True, single=True, forceEnabled=True)
-                    script.lastZoom = ((0,0),1,False,False,False,script.resizeFilter)
-                    script.lastFsZoom = None
-        """
 
-        if script.resizeFilter[0] and not IsErrorClip:
+        # this is the check whether the resize filter has set the correct size for fill or fit
+        if not IsErrorClip and script.resizeFilter[0]:
             if script.resizeFilter[2] == 1 and script.AVI and script.AVI.resizeFilter and not self.splitView:
+                self.mainSplitter.UpdateSize()
                 try:
-                    f, dw, dh, aw, ah = self.CalcResizeFilter(script, fitHeight=script.resizeFilter[3])
+                    f, dw2, dh2, aw, ah = self.CalcResizeFilter(script, fitHeight=script.resizeFilter[3])
                 except:
                     pass
                 else:
-                    if (script.AVI.DisplayWidth, script.AVI.DisplayHeight) != (dw,dh):
-                        #print('calculate 2 resize filter')
-                        dw = dh = 0
+                    if (script.AVI.DisplayWidth, script.AVI.DisplayHeight) != (dw,dh):  # should by default never be
+                        dw2 = dh2 = 0
                         script.display_clip_refresh_needed = True
                         resize_need_refresh = True
 
         UpdateMenus(script)
 
         if self.previewWindowVisible:
-            if resize_need_refresh and (script.AVI.DisplayWidth, script.AVI.DisplayHeight) != (dw,dh):
+            if resize_need_refresh and (script.AVI.DisplayWidth, script.AVI.DisplayHeight) != (dw2,dh2):
                 script.display_clip_refresh_needed = True
+                #print('resize 2')
+                #print((script.AVI.DisplayWidth, script.AVI.DisplayHeight))
+                #print((dw2, dh2))
+                #self.ShowVideoFrame(resizeFilterInfo=self.GetResizeFilterInfo(script))
                 self.ShowVideoFrame()
 
             self.ResetZoomAntialias()
@@ -20538,6 +20629,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 else:
                     self.playing_video = False
         else:
+            if resize_need_refresh and (script.AVI.DisplayWidth, script.AVI.DisplayHeight) != (dw2,dh2):
+                script.display_clip_refresh_needed = True
+
             if self.readFrameProps:
                 if self.previewOK():
                     self.AVICallBack(ident='property', value=script.AVI.properties, framenr=-1)
@@ -20547,11 +20641,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         if script.AVI:
             script.AVI.SetAudio(self.options['audioscrub'], self.options['audioscrubcount'], True)
-            #script.AVI.Start_Stop_AudioStream(True) #audio
 
     def OnNotebookPageChanging(self, event):
         def resetViewPos():
-            self.currentScript.lastZoom = None
+            if self.currentScript.forceZoom != 3: # 3 = ErroClip
+                self.currentScript.lastZoom = None
             self.currentScript.lastFsZoom = None
 
         if self.playing_video:
@@ -20586,32 +20680,32 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if self.tabChangeLoadBookmarks:
                 oldScript.bookmarks = None
                 oldScript.bookmarks = self.GetBookmarkDict()
-                #print('save ' + str(len(oldScript.bookmarks)))
 
         if self.tabChangeLoadBookmarks:
             self.DeleteAllFrameBookmarks(bmtype=0) # GPo new
 
         if self.previewWindowVisible:
             if oldSelectionIndex >= 0:
-                if oldScript.lastSplitVideoPos is not None:
-                    self.oldLastSplitVideoPos = oldScript.lastSplitVideoPos
-                else:
-                    self.oldLastSplitVideoPos = self.SaveLastSplitVideoPos() # GPo 2020
-                oldScript.lastSplitVideoPosShown = self.oldLastSplitVideoPos
+                if oldScript.AVI and not oldScript.AVI.IsErrorClip():
+                    if self.mintextlines > 0 and not self.fullScreenWnd_IsShown:
+                        if oldScript.lastSplitVideoPos is not None:
+                            self.oldLastSplitVideoPos = oldScript.lastSplitVideoPos
+                        else:
+                            self.oldLastSplitVideoPos = self.GetMainSplitterSplitPos()
 
-                self.oldLastSplitSliderPos = oldScript.lastSplitSliderPos
-                self.oldSliderWindowShown = oldScript.sliderWindowShown
-                self.oldBoolSliders = bool(oldScript.sliderTexts or oldScript.sliderProperties or oldScript.toggleTags or oldScript.autoSliderInfo)
-                try:
-                    self.oldDisplayVideoSize = (oldScript.AVI.DisplayWidth, oldScript.AVI.DisplayHeight)
-                except:
-                    self.oldDisplayVideoSize = (None, None)
-                # save zoom
-                if self.fullScreenWnd_IsShown and (self.options['fullscreenzoom'] == 2):
-                    #~oldScript.lastZoom = ((0,0),1,False,False,False,oldScript.resizeFilter)
-                    self.SaveZoom(oldScript) ### new test 9.12.
-                else:
-                    self.SaveZoom(oldScript)
+                    self.oldLastSplitSliderPos = oldScript.lastSplitSliderPos
+                    self.oldSliderWindowShown = oldScript.sliderWindowShown
+                    self.oldBoolSliders = bool(oldScript.sliderTexts or oldScript.sliderProperties or oldScript.toggleTags or oldScript.autoSliderInfo)
+                    try:
+                        self.oldDisplayVideoSize = (oldScript.AVI.DisplayWidth, oldScript.AVI.DisplayHeight)
+                    except:
+                        self.oldDisplayVideoSize = (None, None)
+                    # save zoom
+                    if self.fullScreenWnd_IsShown:
+                        if (self.options['fullscreenzoom'] == 2):
+                            self.SaveZoom(oldScript) ### new test 9.12.
+                    else:
+                        self.SaveZoom(oldScript)
             else:
                 self.oldLastSplitVideoPos = None
                 self.oldSliderWindowShown = None
@@ -20621,21 +20715,14 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 resetViewPos() # GPo new
 
         elif oldSelectionIndex >= 0:
-            # test new 24.11
-            if oldScript.lastSplitVideoPos is not None:
-                self.oldLastSplitVideoPos = oldScript.lastSplitVideoPos
-            else:
-                self.oldLastSplitVideoPos = self.SaveLastSplitVideoPos() # GPo 2020
-            ###
+            if (self.mintextlines > 0) and oldScript.AVI and not oldScript.AVI.IsErrorClip():
+                if oldScript.lastSplitVideoPos is not None:
+                    self.oldLastSplitVideoPos = oldScript.lastSplitVideoPos
+                else:
+                    self.oldLastSplitVideoPos = None
+
             if self.splitView or not oldScript.AVI:
                 resetViewPos()
-            """
-            if oldScript.AVI and not self.splitView:
-                if (self.oldWidth != int(oldScript.AVI.DisplayWidth * self.zoomfactor)) or \
-                   (self.oldHeight != int(oldScript.AVI.DisplayHeight * self.zoomfactor)):
-                    resetViewPos()
-            else: resetViewPos()
-            """
         else:
             resetViewPos()
 
@@ -20728,9 +20815,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 item = menu.FindItemById(menu.FindItem(_('Save pos && zoom on tab change')))
                 if item:
                     item.Check(self.saveViewPos==2)
-                item = menu.FindItemById(menu.FindItem(_('Resize video window')))
+
+                item = menu.FindItemById(menu.FindItem(_('Resize video window'))).GetSubMenu()
                 if item:
-                    item.Check(self.options['resizevideowindow'])
+                    options = [_('Force'), _('Normal'), _('Static')]
+                    id = item.FindItem(options[self.options['resizevideowindow']])
+                    item.Check(id, True)
+
                 item = menu.FindItemById(menu.FindItem(_('Auto preview')))
                 if item:
                     item.Check(self.options['tabautopreview'])
@@ -21030,23 +21121,41 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.NewTab()
         elif self.previewWindowVisible and not self.separatevideowindow:
             # self.mainSplitter is clicked
-            if self.IsResizeFilterFitFill(script): # fit, fill
-                return
             lo = self.mainSplitter.GetSashPosition()
             hi = lo + self.mainSplitter.GetSashSize()
             if lo <= pos <= hi and self.mainSplitter.IsSplit():
                 self.SetMinimumScriptPaneSize()
-                if not self.zoomwindow:
+                if self.IsResizeFilterFitFill(script) or self.zoomwindow: # fit, fill
+                    self.Freeze()
+                    try:
+                        self.LayoutVideoWindows(forcefit=True, forcesize=True)
+                        self.staticSplitVideoPos = self.GetMainSplitterSplitPos()
+                        self.SaveLastSplitVideoPos()
+                        if self.zoomwindow:
+                            self.zoom_antialias = False
+                            fitfill = 'fit' if self.zoomwindowfit else 'fill'
+                            self.OnMenuVideoZoom(zoomfactor=fitfill, show=True, resizeFilterOff=True, single=False, scroll=None, resetAntialias=False)
+                        else:
+                            self.OnMenuVideoZoomResampleFill(forceEnabled=True, fitHeight=script.resizeFilter[3], single=True)
+                    finally:
+                        self.TryThaw(self)
+                        if self.zoomwindow:
+                            self.ResetZoomAntialias()
+                else:
                     self.zoom_antialias = False
                     self.Freeze()
                     try:
-                        self.LayoutVideoWindows(forcefit=True)
+                        self.LayoutVideoWindows(forcefit=True, forcesize=True)
+                        #self.SplitVideoWindow(forcefit=True, forcesize=True)
                     finally:
                         self.TryThaw(self)
-                        self.ResetZoomAntialias(True)
-                else:
-                    self.LayoutVideoWindows(forcefit=True)
-                    self.ShowVideoFrame()
+                        self.ResetZoomAntialias()
+
+                if self.previewOK(script):
+                    script.lastSplitVideoPos = self.GetMainSplitterSplitPos()
+                    script.oldLastSplitVideoPos = script.lastSplitVideoPos
+                    self.staticSplitVideoPos = script.lastSplitVideoPos
+                    self.oldLastSplitVideoPos = script.lastSplitVideoPos
 
     def OnMiddleDownWindow(self, event):
         x, y = event.GetPosition()
@@ -21159,9 +21268,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             wx.GetApp().ProcessIdle()
             self.Freeze()
             try:
-                self.SplitVideoWindow(forcefit=True)
+                self.SplitVideoWindow(forcefit=True, forcesize=resizewnd)
             finally:
                 self.TryThaw(self)
+                self.SaveLastSplitVideoPos()
 
     # GPo 2020, extern for multi use, and result for handling
     def ScrollSimilarTabsOrTabGroups(self, delta):
@@ -21264,7 +21374,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     zoom = -1 # disable resize filter
                 self.videoWindow.Freeze()
                 try:
-                    self.OnMenuVideoZoomResampleFit(zoom=zoom, fitHeight=rf[3], single=single, doScroll=shiftdown)
+                    self.OnMenuVideoZoomResampleFill(zoom=zoom, fitHeight=rf[3], single=single, doScroll=shiftdown)
                 finally:
                     self.TryThaw(self.videoWindow)
                 return
@@ -21290,8 +21400,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.videoWindow.Freeze()
             if not leftdown: # then antialiasing not disabled
                 self.zoom_antialias = False
+            resize = self.VideoWindowResizeNeeded(checkzoom=True)
             try:
-                self.ZoomAndScroll(old_zoomfactor, self.zoomfactor, self.options['resizevideowindow'])
+                self.ZoomAndScroll(old_zoomfactor, self.zoomfactor, resize)
             finally:
                 self.TryThaw(self.videoWindow)
             if leftdown:
@@ -21386,15 +21497,15 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.zoomwindowfit if not self.resizeFilter[0] else False,
                 script.resizeFilter,
                 script,
-                self.mainSplitter.GetSashPosition()
+                self.GetMainSplitterSplitPos()
                 )
-            script.lastZoom = tuple(self.savedFsStartZoom) # new test 9.12.
+            script.lastZoom = self.savedFsStartZoom[:-2] # new test 9.12.
 
         def _setFullscreenZoom(script, display_clip_refresh, isFullscreen):
             global forceCursor
             ### new test 9.12.
             if self.options['disablefullscreenzoom']:# and (((not self.IsResizeFilterFitFill(script) and not script.lastFsZoom)) or script.lastFsZoom): # do not change the zoom
-                self.forceZoom = True
+                script.forceZoom = True
                 #print('run')
                 #~if self.saveViewPos in (1,2) and script.lastFsZoom and script.resizeFilter != script.lastFsZoom[5]: # restore the last resample fullscreen zoom
                 if script.lastFsZoom and script.resizeFilter != script.lastFsZoom[5]:
@@ -21402,9 +21513,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         zoom = script.lastFsZoom[5][2]
                         #print(zoom)
                         display_clip_refresh = False
-                        self.OnMenuVideoZoomResampleFit(zoom=zoom, fitHeight=False, single=True, forceEnabled=True, force_Size=None, forceCursor=False)
+                        self.OnMenuVideoZoomResampleFill(zoom=zoom, fitHeight=False, single=True, forceEnabled=True, force_Size=None, forceCursor=False)
                     else:
-                        self.OnMenuVideoZoom(zoomfactor=script.lastFsZoom[1], show=True, resizeFilterOff=True, single=True, scroll=None, resetAntialias=False)
+                        self.OnMenuVideoZoom(zoomfactor=script.lastFsZoom[1], show=True, resizeFilterOff=True, single=True, scroll=None, resetAntialias=False, setSplitterPos=False)
                         display_clip_refresh = False
                     return display_clip_refresh
                     forceCursor = self.IsResizeFilterFitFill(script)
@@ -21414,7 +21525,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             """
                 if self.saveViewPos in (1,2) and script.lastFsZoom: # restore the last resample fullscreen zoom
                     zoom = script.lastFsZoom[5][2]
-                    self.OnMenuVideoZoomResampleFit(zoom=zoom, fitHeight=False, single=True, forceEnabled=True, force_Size=None, forceCursor=False)
+                    self.OnMenuVideoZoomResampleFill(zoom=zoom, fitHeight=False, single=True, forceEnabled=True, force_Size=None, forceCursor=False)
                     forceCursor = True
             """
                 #return display_clip_refresh
@@ -21428,45 +21539,46 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     rf2 = rf
                 if not rf[0] or rf[2] != 1 or not rf[3] or rf != rf2:
                     if self.saveViewPos in (1,2):
-                        self.forceZoom = True
+                        script.forceZoom = True
                     ### new
                     if self.options['disablefullscreenzoom'] and script.lastFsZoom: # restore the last resample fullscreen zoom
                         zoom = script.lastFsZoom[5][2]
-                        self.OnMenuVideoZoomResampleFit(zoom=zoom, fitHeight=False, single=True, forceEnabled=True, force_Size=None, forceCursor=False)
+                        self.OnMenuVideoZoomResampleFill(zoom=zoom, fitHeight=False, single=True, forceEnabled=True, force_Size=None, forceCursor=False)
                     else: ### new end
                         # Grrrr, doesnt work for fullsize (main splitter is frozen)
                         size = wx.ScreenDC().GetSize() if isFullscreen else None
-                        self.OnMenuVideoZoomResampleFit(zoom=1, fitHeight=True, single=True, forceEnabled=True, force_Size=size, forceCursor=False)
+                        self.OnMenuVideoZoomResampleFill(zoom=1, fitHeight=True, single=True, forceEnabled=True, force_Size=size, forceCursor=False)
                     display_clip_refresh = False
                     forceCursor = True
                 else:
                     if self.saveViewPos in (1,2):
-                        self.forceZoom = True
+                        script.forceZoom = True
                         ### new test 9.12. restore the last resample fullscreen zoom
                         if script.lastFsZoom:
                             zoom = script.lastFsZoom[5][2]
                             if (zoom != rf[2]) or (rf2[2] != zoom):
-                                self.OnMenuVideoZoomResampleFit(zoom=zoom, fitHeight=False, single=True, forceEnabled=True, force_Size=None, forceCursor=False)
+                                self.OnMenuVideoZoomResampleFill(zoom=zoom, fitHeight=False, single=True, forceEnabled=True, force_Size=None, forceCursor=False)
                                 display_clip_refresh = False
                         ### new end
                     else:
                         self.zoomfactor = 1
             elif self.options['fullscreenzoom'] > 0:
                 forceCursor = script.resizeFilter[0]
-                self.forceZoom = True
+                script.forceZoom = True
                 self.OnMenuVideoZoom(zoomfactor='fill', show=True, resizeFilterOff=True, single=True, scroll=None, resetAntialias=False)
                 display_clip_refresh = False
             else:
                 forceCursor = self.IsResizeFilterFitFill(script)
-                self.forceZoom = True
+                script.forceZoom = True
             return display_clip_refresh
 
         def _getScriptSize(script):
             if self.mainSplitter.GetSplitMode() == wx.SPLIT_HORIZONTAL:
                 return script.GetSize().height
             return script.GetSize().width
-        def _setValues(script):
-            if self.IsFullScreen():
+
+        def _setValues(script, checkFullscreen=True, wasMaxView=False):
+            if self.IsFullScreen() and checkFullscreen:
                 if self.mintextlines > 0:
                     self.oldLastSplitVideoPos = script.lastSplitVideoPos
                 self.mainSplitter.SetMinimumPaneSize(1)
@@ -21474,22 +21586,67 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 sash_pos = 1
                 setminpanesize = False
             else:
-                if self.savedFsStartZoom:
-                    if script is self.savedFsStartZoom[6]:
-                        return self.savedFsStartZoom[7], _getScriptSize(script) > int5
-                if self.mintextlines == 0 and _getScriptSize(script) < int5:
-                    return 1, False
+                if checkFullscreen:
+                    if self.savedFsStartZoom:
+                        if script is self.savedFsStartZoom[6]:
+                            return self.savedFsStartZoom[7], _getScriptSize(script) > int5
+                    if self.mintextlines == 0 and _getScriptSize(script) < int5:
+                        return 1, False
 
                 setminpanesize = True
                 self.mintextlines = self.options['mintextlines']
-                if self.options['resizevideowindow']:
-                    script.lastSplitVideoPos = None
-                    sash_pos = self.GetMainSplitterNegativePosition(pos=None, forcefit=True)
+
+                if self.options['resizevideowindow'] == 0:
+                    if self.zoomwindow or self.IsResizeFilterFitFill(script):
+                        if self.options['resettomintextlines'] and wasMaxView:
+                            # min panesize is set, so we can use wrong values to force splitter position to min text lines
+                            # but we must later save the lastSplitVideoPos after setting the splitter position
+                            script.lastSplitVideoPos = 1
+                            sash_pos = 1
+                        else:
+                            sash_pos = self.oldLastSplitVideoPos
+                            if sash_pos is None:
+                                sash_pos = script.oldLastSplitVideoPos
+                            script.lastSplitVideoPos = sash_pos
+                    else:
+                        if script.lastSplitVideoPos is None:
+                            sash_pos = self.GetMainSplitterNegativePosition(forcefit=True)
+                        else:
+                            sash_pos = script.lastSplitVideoPos
+                elif self.options['resizevideowindow'] == 1:
+                    if self.zoomwindow or self.IsResizeFilterFitFill(script):
+                        if self.options['resettomintextlines'] and wasMaxView:
+                            # min panesize is set, so we can use wrong values to force splitter position to min text lines
+                            # but we must later save the lastSplitVideoPos after setting the splitter position
+                            script.lastSplitVideoPos = 1
+                            sash_pos = 1
+                        else:
+                            if self.options['vw_resizeopt'] > 1 or not self.options['keepzoomfitfill']:
+                                sash_pos = script.lastSplitVideoPos
+                                if sash_pos is None:
+                                    sash_pos = script.oldLastSplitVideoPos
+                            else:
+                                sash_pos = self.oldLastSplitVideoPos
+                                if sash_pos is None:
+                                    sash_pos = script.oldLastSplitVideoPos
+                            if sash_pos is None:
+                                sash_pos = self.GetMainSplitterNegativePosition(forcefit=True)
+                            script.lastSplitVideoPos = sash_pos
+                    else:
+                        sash_pos = script.lastSplitVideoPos
+                        if sash_pos is None:
+                            sash_pos = script.oldLastSplitVideoPos
+                            if sash_pos is None:
+                                sash_pos = self.GetMainSplitterNegativePosition(forcefit=True)
+                            script.lastSplitVideoPos = sash_pos
                 else:
-                    if self.oldLastSplitVideoPos is not None:
+                    if self.staticSplitVideoPos is not None:
+                        sash_pos = self.staticSplitVideoPos
+                        script.lastSplitVideoPos = sash_pos
+                    elif self.oldLastSplitVideoPos is not None:
                         sash_pos = self.oldLastSplitVideoPos
                     else:
-                        sash_pos = self.GetMainSplitterNegativePosition(pos=None, forcefit=True)
+                        sash_pos = self.GetMainSplitterNegativePosition(forcefit=True)
             return sash_pos, setminpanesize
         """
         def SetScrollbar(show):
@@ -21500,7 +21657,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.videoWindow.ShowScrollbars(wx.SHOW_SB_NEVER, wx.SHOW_SB_NEVER)
                 self.videoWindow.SetScrollRate(1,1)
         """
-
         def _closeFullscreen(resetZoom=True):
             scroll = needResplit = None
             global forceCursor
@@ -21525,12 +21681,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.videoSplitter.Initialize(self.videoWindow)
                 wnd.Hide()
                 wnd.Destroy()
-
-                #self.videoControls.Reparent(self)
                 self.videoControls.SetPosition((0,wx.ScreenDC().GetSize()[1]))
-
-                #self.videoWindow.Refresh()
-                #self.videoWindow.Update()
 
                 self.fullScreenSizer.Show(self.videoControls)
                 self.fullScreenSizer.Layout()
@@ -21560,7 +21711,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                             forceCursor = True
                             #needResplit = self.options['resizevideowindow'] and not rf[0]
                         zf = 'fit' if self.zoomwindowfit else 'fill' if self.zoomwindowfill else self.zoomfactor
-                        self.OnMenuVideoZoom(zoomfactor=zf, show=False, resizeFilterOff=False)
+                        self.OnMenuVideoZoom(zoomfactor=zf, show=False, resizeFilterOff=False, setSplitterPos=False)
                         if self.splitView and self.splitView_nextScript is not script:
                             self.splitView_nextScript.resizeFilter = rf
                     elif isinstance(script, AvsStyledTextCtrl):
@@ -21582,7 +21733,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                             self.currentScript.display_clip_refresh_needed = True
                         ### end new test
                         else:
-                            self.OnMenuVideoZoom(zoomfactor=1, show=False, resizeFilterOff=False)
+                            self.OnMenuVideoZoom(zoomfactor=1, show=False, resizeFilterOff=False, setSplitterPos=False)
                             if self.IsResizeFilterFitFill(self.currentScript):
                                 self.currentScript.display_clip_refresh_needed = True
                             #self.currentScript.lastZoom = None
@@ -21590,8 +21741,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 if isinstance(script, AvsStyledTextCtrl):
                     if not forceCursor:
                         forceCursor = self.IsResizeFilterFitFill(script)
-                    if script.lastZoom:
-                        self.forceZoom = True
+                    if script.lastZoom and script.forceZoom != 3:
+                        script.forceZoom = True
 
             elif self.IsFullScreen():
                 if resetZoom and self.savedFsStartZoom is not None:
@@ -21606,7 +21757,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                             forceCursor = True
                             #needResplit = self.options['resizevideowindow'] and not rf[0]
                         zf = 'fit' if self.zoomwindowfit else 'fill' if self.zoomwindowfill else self.zoomfactor
-                        self.OnMenuVideoZoom(zoomfactor=zf, show=False, resizeFilterOff=False)
+                        self.OnMenuVideoZoom(zoomfactor=zf, show=False, resizeFilterOff=False, setSplitterPos=False)
                         if self.splitView and self.splitView_nextScript is not script:
                             self.splitView_nextScript.resizeFilter = rf
                     elif isinstance(script, AvsStyledTextCtrl):
@@ -21614,23 +21765,25 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                             script.resizeFilter = rf
                             self.currentScript.resizeFilter = rf
                         if self.options['fullscreenzoom'] == 2 or self.currentScript.resizeFilter[0]:
-                            needResplit = self.options['resizevideowindow'] and not script.resizeFilter[0]
+                            needResplit = self.options['resizevideowindow'] == 0 and not script.resizeFilter[0]
                             self.currentScript.display_clip_refresh_needed = True
                             if self.splitView and self.splitView_nextScript is script:
                                 self.splitView_nextScript.display_clip_refresh_needed = True
-                            self.OnMenuVideoZoom(zoomfactor=1, show=False, resizeFilterOff=False)
+                            self.OnMenuVideoZoom(zoomfactor=1, show=False, resizeFilterOff=False, setSplitterPos=False)
                             self.currentScript.lastZoom = None
                             scroll = None
 
                 if isinstance(script, AvsStyledTextCtrl):
                     if not forceCursor:
                         forceCursor = self.IsResizeFilterFitFill(script)
-                    if script.lastZoom:
-                        self.forceZoom = True
+                    if script.lastZoom and script.forceZoom != 3:
+                        script.forceZoom = True
             return scroll, needResplit
 
         script = self.currentScript
         if event:
+            if not self.previewOK(script):
+                return
             int50 = intPPI(51)
             mousePos = event.GetPosition()
             cRect = self.videoWindow.GetClientRect()
@@ -21639,7 +21792,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             force = False if single else wx.Rect(cRect[2]-int50,cRect[3]-int50,int50,int50).Contains(mousePos)
             #sameSize = False if single or force else wx.Rect(cRect[2]-int50,(cRect[3]/2)-intPPI(25),int50,int50).Inside(event.GetPosition())
             if single or force:
-                self.OnMenuVideoZoomResampleFit(zoom=1, fitHeight=script.resizeFilter[3], single=single, sameSize=False)
+                self.OnMenuVideoZoomResampleFill(zoom=1, fitHeight=script.resizeFilter[3], single=single, sameSize=False)
                 if self.options['paintzoomhint'] > 0:
                     self.IdleCall.append((self.SetOverlay, (mousePos[0], mousePos[1], 'Resize single' if single else 'Resize all', 1500 if self.options['paintzoomhint'] > 1 else -1), {}))
                 return
@@ -21695,13 +21848,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.StopPlayback()
             try:
                 if self.videoDialog.IsFullScreen():
-                    if ctrlKey:
+                    if ctrlKey and self.previewOK(script):
                         self.videoDialog.Maximize(True)
                         self.videoDialog.ShowFullScreen(show=False)
                         self.videoDialog.Maximize(True)
                     else:
                         self.videoDialog.ShowFullScreen(show=False)
-                else:
+                elif self.previewOK(script):
                     if ctrlKey or toggleFullsize:
                         self.videoDialog.ShowFullScreen(show=not self.videoDialog.IsFullScreen())
                     else:
@@ -21721,7 +21874,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if playing_video:
             self.StopPlayback()
 
-        if ((shiftKey or toggleFullscreen) or (ctrlKey or toggleFullsize)) and (not self.previewWindowVisible or not self.UseAviThread):
+        if ((shiftKey or toggleFullscreen) or (ctrlKey or toggleFullsize)) and (not self.previewWindowVisible or not self.UseAviThread or not self.previewOK(script)):
             if self.fullScreenWnd.IsFullScreen():
                 self.CloseFullscreenWND()
                 return
@@ -21729,7 +21882,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 wx.Bell()
                 wx.MessageBox(_("Fullscreen/Fullsize only with 'Accessing AviSynth in threads' enabled"), 'AvsPmod')
                 return
-            if not self.previewWindowVisible:
+            if not self.previewWindowVisible or not self.previewOK(script):
                 return
 
         if script.AVI:
@@ -21751,51 +21904,42 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if ctrlKey or (toggleFullsize and not self.IsFullScreen()):   # set full size, set tabs 1 pixel visible
                 if self.mintextlines > 0:
                     self.oldLastSplitVideoPos = script.lastSplitVideoPos
+                    script.oldLastSplitVideoPos = script.lastSplitVideoPos
                 self.mainSplitter.SetMinimumPaneSize(1)
                 self.mintextlines = 0
                 sash_pos = 1
-            ### test
-
             elif (shiftKey or toggleFullscreen):
                 pass
-                """
-                if not self.fullScreenWnd.IsFullScreen() and not self.IsFullScreen():
-                    if self.mintextlines > 0:
-                        self.oldLastSplitVideoPos = script.lastSplitVideoPos
-                """
-
             # Move the splitter to top (maximized view)
             elif _getScriptSize(script) > int5 and not self.IsFullScreen() and not self.fullScreenWnd.IsFullScreen():
                 if self.mintextlines > 0:
-                    self.oldLastSplitVideoPos = script.lastSplitVideoPos
+                    self.staticSplitVideoPos = self.GetMainSplitterSplitPos()
+                    self.oldLastSplitVideoPos = self.staticSplitVideoPos
+                    script.lastSplitVideoPos = self.staticSplitVideoPos
+                    script.oldLastSplitVideoPos = self.staticSplitVideoPos
+                    self.SaveZoom(script)
                 self.SetMinimumScriptPaneSize(0)
                 sash_pos = 1
+                script.forceZoom = 2
+            # reset maxView or fullsize to normal
             elif not self.fullScreenWnd.IsFullScreen():
-                setminpanesize = True
-                if self.options['resizevideowindow']:
-                    script.lastSplitVideoPos = None
-                    sash_pos = self.GetMainSplitterNegativePosition(pos=None, forcefit=True)
-                else:
-                    if self.oldLastSplitVideoPos is not None:
-                        sash_pos = self.oldLastSplitVideoPos
-                    else:
-                        sash_pos = self.GetMainSplitterNegativePosition(pos=None, forcefit=True)
-                self.mintextlines = self.options['mintextlines']
+                self.SaveZoom(script)
+                sash_pos, setminpanesize = _setValues(script, checkFullscreen=False, wasMaxView=not self.IsFullScreen())
+                script.forceZoom = 2
 
             if toggleFullsize or ctrlKey  or shiftKey or toggleFullscreen:
                 if toggleFullsize or ctrlKey:
                     if not self.fullScreenWnd.IsFullScreen() and not self.IsFullScreen():
+                        self.SaveLastSplitVideoPos(saveglobal=True)
                         _saveLastZoom()
                     _closeFullscreen()
                     self.ShowFullScreen(show=not self.IsFullScreen(), style=wx.FULLSCREEN_NOCAPTION|wx.FULLSCREEN_NOMENUBAR|wx.FULLSCREEN_NOBORDER)
-                    #if self.IsFullScreen() and forceFill: doese not work here
-                        #_setFullscreenZoom
                     _sizeSdlWindow()
                 else:
                     # wxPython splitterWindow cannot be hiden, so we need a Fullscreen frame
                     # listed as a function in 2.93 but not present even in 2.95
                     if not self.fullScreenWnd.IsFullScreen():
-                        self.SaveLastSplitVideoPos(True)
+                        self.SaveLastSplitVideoPos()
                         if not self.IsFullScreen():
                             _saveLastZoom()
                         sash_pos = None
@@ -21861,8 +22005,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.SetMinimumScriptPaneSize()
             if sash_pos is not None:
                 self.mainSplitter.SetSashPosition(sash_pos)
-            self.SaveLastSplitVideoPos()
+                if self.mintextlines > 0 and sash_pos == 1: # must be stored if zoomwindow else getmainsplitternegative value is used
+                    script.lastSplitVideoPos = self.GetMainSplitterSplitPos()
         finally:
+            #self.SaveLastSplitVideoPos()
             self.blockEventSize = False
             if IsFrozen:
                 self.TryThaw(self.mainSplitter)
@@ -21876,6 +22022,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                 forceCursor=forceCursor, display_clip_refresh=display_clip_refresh)
                     if needResplit:
                         self.SplitVideoWindow(pos=None, forcefit=True)
+                    if self.splitView:
+                        self.videoWindow.Refresh()
+                        self.videoWindow.Update()
                     self.ResetZoomAntialias()
                     wx.GetApp().ProcessIdle()
                     if playing_video and not self.playing_video:
@@ -21902,7 +22051,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 if self.currentScript.AVI:
                     #zoom = -1 if self.currentScript.AVI.Width != self.currentScript.AVI.DisplayWidth else 2
                     zoom = 2 if rf[2] != 2 else -1
-                    self.OnMenuVideoZoomResampleFit(zoom=zoom, fitHeight=rf[3], single=single, doScroll=shiftdown)
+                    self.OnMenuVideoZoomResampleFill(zoom=zoom, fitHeight=rf[3], single=single, doScroll=shiftdown)
                 return
 
             if self.zoomwindow:
@@ -21920,8 +22069,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 except:
                     pass
                 self.videoWindow.SetCursor(wx.StockCursor(wx.CURSOR_DEFAULT))
-
-            resize = self.options['resizevideowindow'] and self.mintextlines > 1 and not script.AVI.IsErrorClip()
+            resize = self.VideoWindowResizeNeeded(checkzoom=True) and (self.mintextlines > 0) and not script.AVI.IsErrorClip()
             self.videoWindow.Freeze()
             try:
                 self.ZoomAndScroll(old_zoomfactor, self.zoomfactor, resize)
@@ -22322,7 +22470,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.IdleCallDict['sdlSetWindowPos'] = self.sdlWindow.SetWindowPos(snap=self.options['sdlwindowdocking'], calcDockingPos=True)
         if event:
             event.Skip()
-
 
     """ # zoom_antialias is the block on the leg
     def OnSizeVideoWindow(self, event=None):
@@ -23268,8 +23415,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         self.StopPlayback()
 
-        if self.currentScript.GetClientSize()[self.mainSplitter.GetSplitMode() == wx.SPLIT_HORIZONTAL] < 6:
-            self.SetMinimumScriptPaneSize()
+        #~if self.currentScript.GetClientSize()[self.mainSplitter.GetSplitMode() == wx.SPLIT_HORIZONTAL] < 6:
+            #~self.SetMinimumScriptPaneSize()
 
         # Determine the name of the tab (New File (x))
         index = self.scriptNotebook.GetPageCount()
@@ -23377,7 +23524,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.scriptNotebook.SetSize((w, h-1))
                 self.scriptNotebook.SetSize((w, h))
 
-        self.SetMinimumScriptPaneSize()
+        #~self.SetMinimumScriptPaneSize()
 
         return curIndex
 
@@ -23907,9 +24054,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if self.options['multilinetab']:
             if rows != self.scriptNotebook.GetRowCount():
                 w, h = self.scriptNotebook.GetSize()
+                pos = self.mainSplitter.GetSashPosition()
                 self.scriptNotebook.SetSize((w, h-1))
                 self.scriptNotebook.SetSize((w, h))
                 self.SetMinimumScriptPaneSize() # GPo new
+                if self.previewWindowVisible and self.previewOK() and pos != self.mainSplitter.GetSashPosition():
+                    self.OnMainSplitterPosChanged()
         return True
 
      # GPo 2022, changed
@@ -24536,6 +24686,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 else:
                     if item['audiovolume'] in (-15,-10,-5,0,5,10,15): # old audio volume was int
                         item['audiovolume'] = 1.0
+
                 index = self.LoadTab(item, compat=not mapping, hidePreview=True, loadBookmarks=False) # GPo, hidePreview, loadBookmarks
                 # GPo, set script bookmarks, selections
                 if isinstance(index, int):
@@ -24550,6 +24701,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         script.selections.clear()
                         script.selections.update(item['selections'])
                     script.audioVolume = item.get('audiovolume', 1)
+
+                    if not self.zoomwindow and not self.IsResizeFilterFitFill(None): # reset it if not zoom fit fill
+                        script.lastSplitVideoPos = None
 
                 # script bookmarks, selections end
                 if mapping:
@@ -26466,8 +26620,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             functionArgs=functionArgs,
             CreateDefaultPreset=self.currentScript.CreateDefaultPreset,
             ExportFilterData=self.ExportFilterData,
-
         )
+
         ID = dlg.ShowModal()
         if ID == wx.ID_OK:
             self.options['filteroverrides'] = dlg.GetOverrideDict()
@@ -26482,8 +26636,17 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.scriptNotebook.GetPage(i).Colourise(0, 0) # set script.GetEndStyled() to 0
         dlg.Destroy()
 
+    def ResetAllScriptsSplitPos(self, event=None):
+        for i in range(self.scriptNotebook.GetPageCount()):
+            script = self.scriptNotebook.GetPage(i)
+            script.lastSplitVideoPos = None
+            script.oldLastSplitVideoPos = None
+        self.oldLastSplitVideoPos = None
+        self.staticSplitVideoPos = None
+
     def TogglePreviewPlacement(self):
-        if self.separatevideowindow:
+        if self.separatevideowindow or self.fullScreenWnd_IsShown:
+            wx.Bell()
             return
         if self.previewWindowVisible:
             self.HidePreviewWindow()
@@ -26495,22 +26658,46 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         else:
             self.mainSplitter.SetSplitMode(wx.SPLIT_HORIZONTAL)
         self.SetMinimumScriptPaneSize()
+        self.ResetAllScriptsSplitPos()
         if show_preview:
-            self.ShowVideoFrame()
+            self.zoom_antialias = False
+            try:
+                self.ShowVideoFrame(forceLayout=True)
+                if self.IsResizeFilterFitFill(self.currentScript):
+                    self.ShowVideoFrame_checkResizeFilter(self.currentScript)
+                if self.mintextlines > 0:
+                    self.SaveLastSplitVideoPos(saveglobal=True)
+            finally:
+                self.ResetZoomAntialias()
 
+    # Only for CloseFullscreenWND
     def SetScriptSplitVideoPos(self, script=None, ignorResizeOption=None):
         if script is None:
             script = self.currentScript
-        if not ignorResizeOption and self.options['resizevideowindow']:
-            sash_pos = None
+        if not ignorResizeOption and self.options['resizevideowindow'] == 0:
+            if script.lastZoom and script.lastZoom[2]:
+                pass
+            else:
+                sash_pos = None
+        elif self.options['resizevideowindow'] == 1:
+            if script.lastSplitVideoPos is None:
+                if script.oldLastSplitVideoPos is not None:
+                    sash_pos = script.oldLastSplitVideoPos
+                elif self.oldLastSplitVideoPos is not None:
+                    sash_pos = self.oldLastSplitVideoPos
+                else:
+                    sash_pos = self.GetMainSplitterNegativePosition(pos=None, forcefit=True)
+            else:
+                sash_pos = script.lastSplitVideoPos
         else:
-            if self.oldLastSplitVideoPos is not None:
+            if self.staticSplitVideoPos is not None:
+                sash_pos = self.staticSplitVideoPos
+            elif self.oldLastSplitVideoPos is not None:
                 sash_pos = self.oldLastSplitVideoPos
             else:
                 sash_pos = self.GetMainSplitterNegativePosition(pos=None, forcefit=True)
         self.SetMinimumScriptPaneSize()
         script.lastSplitVideoPos = sash_pos
-        #script.lastSplitVideoPosShown = sash_pos
 
     def CloseFullscreenWND(self, setMinPaneSize=False):
         if self.sdlWindow.IsFullScreen() and self.sdlWindow.IsSameMonitor():
@@ -26626,11 +26813,15 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     def TryThaw(self, obj):
         if obj.IsFrozen():
-            self.blockEventSize = True
+            #~self.blockEventSize = True # the old
+            if self.blockEventSize == False: # GPo new, check it if is it OK !!!
+                self.blockEventSize = 3
             try:
                 obj.Thaw()
             except:
                 pass
+            if self.blockEventSize == 3: # GPo new
+                self.blockEventSize = False
 
     def previewOK(self, script=None):
         if script is None:
@@ -26816,9 +27007,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if self.AviThread_Running(script, prompt=False):
             return
 
-        #if self.playing_video and self.sdlWindow.running and not self.options['sdlrendersafe']:
-            #self.StopPlayback()
-
         if script.AVI is None:
             forceRefresh = True
             forceCursor = True
@@ -26982,19 +27170,29 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 return False
 
             try:
-                if self.forceZoom: # position and zoom for each script (must be set Notebook.OnPageChange)
-                    fz = self.forceZoom
-                    self.forceZoom = False # reset it immediately
-                    lastZoom = script.lastZoom if not self.fullScreenWnd_IsShown else script.lastFsZoom
+                if script.forceZoom and not script.AVI.IsErrorClip():
+                    fz = script.forceZoom
+                    script.forceZoom = False
+                    lastZoom = script.lastZoom if (fz == 3) or not self.fullScreenWnd_IsShown else script.lastFsZoom
                     if lastZoom is not None and not self.splitView:
                         if self.saveViewPos == 2 or fz > 1:
                             scroll, self.zoomfactor, self.zoomwindow, self.zoomwindowfill, self.zoomwindowfit, rf = lastZoom
                         elif self.saveViewPos == 1:
                             scroll = lastZoom[0]
                         zf = 'fit' if self.zoomwindowfit else 'fill' if self.zoomwindowfill else self.zoomfactor
-                        self.OnMenuVideoZoom(zoomfactor=zf, show=False, resizFilterOff=False)
+                        self.OnMenuVideoZoom(zoomfactor=zf, show=False, resizeFilterOff=False, setSplitterPos=False)
+                        if fz == 3 and script.oldLastSplitVideoPos is not None:
+                            script.lastSplitVideoPos = script.oldLastSplitVideoPos
+                        elif self.options['resizevideowindow'] > 0:
+                            if self.options['resizevideowindow'] == 2:
+                                script.lastSplitVideoPos = self.staticSplitVideoPos
+                            elif script.lastSplitVideoPos is None:
+                                if script.oldLastSplitVideoPos is not None:
+                                    script.lastSplitVideoPos = script.oldLastSplitVideoPos
+                                else:
+                                    script.lastSplitVideoPos = self.staticSplitVideoPos
             except:
-                self.forceZoom = None
+                script.forceZoom = False
 
             # Resize the video window as necessary
             oldSize = self.videoWindow.GetVirtualSize()
@@ -27011,7 +27209,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             needLayout = doLayout and (forceLayout or not self.previewWindowVisible or (videoWidth != self.oldWidth) or (videoHeight != self.oldHeight))
             if needLayout:
                 if not self.splitView:
-                    zfa = self.yo #intPPI(3 if self.zoomfactor <= 2 else 4)  # GPo, make the free space larger over 2.0 zoom, must also change OnEraseBackground()
+                    zfa = self.yo
                     if self.extended_move and not self.zoomwindow and not self.separatevideowindow:
                         wA, hA = self.videoWindow.GetClientSize()
                         self.videoWindow.SetVirtualSize((w + self.xo + zfa + int(wA/2), h + self.yo + zfa))
@@ -27022,8 +27220,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 if self.zoomwindow:
                     oldSize = (-1,-1) # force calculate zoom and erase background
                 if script.AVI.IsErrorClip():
-                    if self.options['resizevideowindow']:
-                        script.lastSplitVideoPos = None
+                    script.lastSplitVideoPos = None
                     self.CloseFullscreenWND()
 
                 # freeze always if forceLayout (eliminate flickering)
@@ -27036,40 +27233,24 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         self.videoWindow.Freeze()
                         videoW_frozen = True
 
-                """ moved down
-                self.LayoutVideoWindows(w, h, forceRefresh=forceRefresh or display_clip_refresh_needed)
-                self.toggleButton.SetBitmapLabel(self.bmpVidDown)
-                self.toggleButton.Refresh()
-                """
             newSize = self.videoWindow.GetVirtualSize()
             # Force a refresh when resizing the preview window
             oldVideoSize = (self.oldWidth, self.oldHeight)
             newVideoSize = (videoWidth, videoHeight)
             self.bmpVideo = None
-            if newSize != oldSize or newVideoSize != oldVideoSize or not self.previewWindowVisible:
+            if (newSize != oldSize) or (newVideoSize != oldVideoSize) or not self.previewWindowVisible:
+                #self.previewWindowVisible = self.mainSplitter.IsSplit()
                 self.previewWindowVisible = True
                 needCalcZoom = self.zoomwindow
                 # use IdleCall otherwise separate video window flickers on showing (TODO: Layout is moved test it again)
                 self.IdleCall.append((self.UpdateScriptTabname, tuple(), {'script': script}))
 
-                # GPo 2020, if zoomwindow zoom must calc new, if preview wasn't visible or layout or size changed
-                # also must new set the video size values (self.zoomfactor is changed)
-                """ moved after LayoutVideoWindows
-                if self.zoomwindow:
-                    self.CalculateZoomFitFill(script)
-                    videoWidth = w = int(script.AVI.DisplayWidth * self.zoomfactor)
-                    videoHeight = h = int(script.AVI.DisplayHeight * self.zoomfactor)
-                    newVideoSize = (videoWidth, videoHeight)
-                    # end new set
-                    if self.zoomwindowfill and not self.splitView:
-                        zfa = 3 if self.zoomfactor <= 2 else 4
-                        self.videoWindow.SetVirtualSize((w + self.xo + zfa, 0))
-                """
                 if self.customHandler > 0:
                     self.PostMessage(self.customHandler, self.AVSP_VID_SIZE, videoWidth, videoHeight)
 
-                self.OnEraseBackground() # leave it before paint (better for zooming with the mouse wheel)
-                self.PaintAVIFrame(wx.ClientDC(self.videoWindow), script, self.currentframenum)
+                if not needCalcZoom: # GPo new, paint frame after setting the zoomfactor
+                    self.OnEraseBackground() # leave it before paint (better for zooming with the mouse wheel)
+                    self.PaintAVIFrame(wx.ClientDC(self.videoWindow), script, self.currentframenum)
             else:
                 needCalcZoom = False
                 self.PaintAVIFrame(wx.ClientDC(self.videoWindow), script, self.currentframenum)
@@ -27090,7 +27271,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             """ !!! UpdateSliders must be before Layout, sets also needLayout=True if sliders changed !!! """
             doFocusScript = UpdateSliders()
             if needLayout:
-                self.LayoutVideoWindows(w, h, forceRefresh=forceRefresh or display_clip_refresh_needed)
+                if self.IsResizeFilterFitFill(script): # do not change the splitter on zoom settings if resize filter
+                    w = script.AVI.DisplayWidth
+                    h = script.AVI.DisplayHeight
+                self.LayoutVideoWindows(w, h, forcefit=resize, forceRefresh=forceRefresh or display_clip_refresh_needed)
                 self.toggleButton.SetBitmapLabel(self.bmpVidDown)
                 self.toggleButton.Refresh()
                 if not self.fullScreenWnd_IsShown:
@@ -27110,6 +27294,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 newVideoSize = (videoWidth, videoHeight)
                 if self.zoomwindowfill and not self.splitView:
                     self.videoWindow.SetVirtualSize((w + self.xo*2, 0))
+                self.OnEraseBackground() # leave it before paint (better for zooming with the mouse wheel)
+                self.PaintAVIFrame(wx.ClientDC(self.videoWindow), script, self.currentframenum)
 
             # If error clip, highlight the line with the error
             errmsg = script.AVI.error_message
@@ -27189,12 +27375,19 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         return True
 
-    def LayoutVideoWindows(self, w=None, h=None, forcefit=False, forceRefresh=False):
+    def LayoutVideoWindows(self, w=None, h=None, forcefit=False, forceRefresh=False, forcesize=False):
         script = self.currentScript
-        if w is None:
-            w = int(script.AVI.DisplayWidth * self.zoomfactor)
-        if h is None:
-            h = int(script.AVI.DisplayHeight * self.zoomfactor)
+        if forcesize:
+            if w is None:
+                w = script.AVI.Width
+            if h is None:
+                h = script.AVI.Height
+        else:
+            if w is None:
+                w = int(script.AVI.DisplayWidth * self.zoomfactor) if not self.IsResizeFilterFitFill(script) else script.AVI.DisplayWidth
+            if h is None:
+                h = int(script.AVI.DisplayHeight * self.zoomfactor) if not self.IsResizeFilterFitFill(script) else script.AVI.DisplayHeight
+
         # Show or hide slider window
         if True:
             if self.propWindowParent > 0:
@@ -27240,40 +27433,61 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         # Set the splitter positions
         if self.mainSplitter.GetSplitMode() == wx.SPLIT_HORIZONTAL:
-            self.SplitVideoWindow(h, forcefit=forcefit)
+            self.SplitVideoWindow(h, forcefit=forcefit, forcesize=forcesize)
         else:
-            self.SplitVideoWindow(w, forcefit=forcefit)
+            self.SplitVideoWindow(w, forcefit=forcefit, forcesize=forcesize)
 
-    def SplitVideoWindow(self, pos=None, forcefit=False, forceSplitVideoPos=True):
-        if self.fullScreenWnd_IsShown:
+    def SplitVideoWindow(self, pos=None, forcefit=False, forcesize=False):
+        if self.fullScreenWnd_IsShown or not self.currentScript.AVI:
             return
+        script = self.currentScript
+        error = script.AVI.IsErrorClip()
         if not self.mainSplitter_SetSashPos:
-            if self.IsFullScreen() and self.options['resizevideowindow']:
+            if (self.IsFullScreen() or self.mintextlines == 0) and not error:
                 sash_pos = 1
             else:
-                sash_pos = self.GetMainSplitterNegativePosition(pos=pos, forcefit=forcefit)
+                sash_pos = savepos = None
+                if error:
+                    pass
+                elif (self.options['resizevideowindow'] == 0) or forcesize:
+                    sash_pos = self.GetMainSplitterNegativePosition(pos=pos, forcefit=forcefit)
+                elif self.options['resizevideowindow'] == 1:
+                    # this allows for eatch script different resize filter display clip dimensions
+                    if (self.options['vw_resizeopt'] < 2) and not self.zoomwindow and \
+                        (script.oldDisplayClipSize != (script.AVI.DisplayWidth, script.AVI.DisplayHeight)):
+                            script.oldDisplayClipSize = (script.AVI.DisplayWidth, script.AVI.DisplayHeight)
+                            if script.group is None or script.group != self.oldGroup: # no forcefit on same groups
+                                forcefit = True
+                                savepos = True
+
+                    #script.oldDisplayClipSize = (script.AVI.DisplayWidth, script.AVI.DisplayHeight)
+                    sash_pos = self.GetMainSplitterNegativePosition(pos=pos, forcefit=forcefit)
+                else:
+                    sash_pos = self.staticSplitVideoPos
+                if sash_pos is None:
+                    sash_pos = self.GetMainSplitterNegativePosition(pos=pos, forcefit=forcefit)
         else:
             sash_pos = self.mainSplitter_SetSashPos
             self.mainSplitter_SetSashPos = None
         if not isinstance(sash_pos, int):
             return
+
         if self.mainSplitter.IsSplit():
             self.mainSplitter.SetSashPosition(sash_pos)
-            #if self.zoomwindow:(
-                #self.currentScript.lastSplitVideoPos = sash_pos #GPo moved to OnFocusVideoWindow
         else:
             if self.mainSplitter.GetSplitMode() == wx.SPLIT_HORIZONTAL:
                 self.mainSplitter.SplitHorizontally(self.scriptNotebook, self.videoPane, sash_pos)
             else:
                 self.mainSplitter.SplitVertically(self.scriptNotebook, self.videoPane, sash_pos)
-        if self.previewOK():
-            if not self.IsFullScreen() and forceSplitVideoPos:
-                self.currentScript.lastSplitVideoPos = sash_pos # GPo new
+
+        if not self.IsFullScreen() and (self.mintextlines > 0) and not error:
+            if savepos or script.lastSplitVideoPos is None: # GPo new
+                self.SaveLastSplitVideoPos()
 
         if self.options['sdlwindowdocking'] > 0:
             self.OnVideoWindowSize()
 
-    def GetMainSplitterNegativePosition(self, pos=None, forcefit=False):
+    def GetMainSplitterNegativePosition(self, pos=None, forcefit=False, displayclip=True):
         if not forcefit and isinstance(self.currentScript.lastSplitVideoPos, int):
             pos = self.currentScript.lastSplitVideoPos
         else:
@@ -27281,42 +27495,33 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if self.mainSplitter.GetSplitMode() == wx.SPLIT_HORIZONTAL:
                 if pos is None:
                     if script.AVI is None:
-                        vidheight = 0 #? return -17 makes this sense ?
-                        #return -self.GetClientSize()[1] # equal to None makes more sense ?
+                        vidheight = 0
                     else:
-                        #if forfill and self.zoomwindowfill or (script.resizeFilter[0] and script.resizeFilter[3]):
-                            #vidheight = self.GetSize()[1]
-                        #else:
-                        vidheight = script.AVI.DisplayHeight
+                        vidheight = script.AVI.DisplayHeight if displayclip else script.AVI.Height
                     if self.IsResizeFilterFitFill(script):
                         h = vidheight
                     else:
                         h = int(vidheight * self.zoomfactor)
                 else:
                     h = pos
-                pos = -(h + (2 * self.yo) + 5 + self.mainSplitter.GetSashSize()/2) # GPo, leave it or must change GetFitWindowSize
+                pos = -(h + (2 * self.yo) + 5 + self.mainSplitter.GetSashSize()//2) # GPo, leave it or must change GetFitWindowSize
             else:
                 if pos is None:
                     if script.AVI is None:
                         vidwidth = 0
-                        #return -self.GetClientSize()[0] # equal to None
                     else:
-                        #if forfill and self.zoomwindowfit or (script.resizeFilter[0] and script.resizeFilter[2]==1 and not script.resizeFilter[3]):
-                            #vidwidth = self.GetSize()[0]
-                        #else:
-                        vidwidth = script.AVI.DisplayWidth
+                        vidwidth = script.AVI.DisplayWidth if displayclip else script.AVI.Width
                     if self.IsResizeFilterFitFill(script):
                         w = vidwidth
                     else:
                         w = int(vidwidth * self.zoomfactor)
                 else:
                     w = pos
-                pos = -(w + 2 * self.xo + 5 + self.mainSplitter.GetSashSize()/2 +
+                pos = -(w + 2 * self.xo + 5 + self.mainSplitter.GetSashSize()//2 +
                         self.toggleSliderWindowButton.GetSize()[0])
         return pos
 
     def ToggleSliderWindow(self, vidrefresh=False):
-        #self.videoPaneSizer.Layout()
         # TODO...
         if True: #button.IsEnabled():
             if self.currentScript.sliderWindowShown:
@@ -27349,8 +27554,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         else:
             if self.propWindowParent > 0:
                 script.propertySizer.Layout()
-                #if self.propWindowParent == 1:
-                    #script.videoSidebarSizer.Layout()
             self.videoSplitter.SplitVertically(self.videoWindow, script.sliderWindow, script.lastSplitSliderPos)
 
         self.TryThaw(self.videoSplitter)
@@ -27484,7 +27687,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 if fitWidth == None:
                     return
                 if self.splitView and self.zoomwindowfit:
-                    zoomfactorWidth = float(fitWidth) / script.AVI.DisplayWidth / 2
+                    zoomfactorWidth = float(fitWidth) / script.AVI.DisplayWidth / 2.0
                     zoomfactorHeight = float(fitHeight) / script.AVI.DisplayHeight
                 else:
                     zoomfactorWidth = float(fitWidth) / script.AVI.DisplayWidth
@@ -27518,12 +27721,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         elif ident == 'error':
             wx.CallAfter(_showMessage, str(framenr), str(value))
         elif ident == 'errorclip':
-            return True
-            """ # moved to UpdateScriptAvi
-            # on error clip set 100% zoom and disable the resizeFilter only for currentScript leaf show=False!
-            wx.CallAfter(self.OnMenuVideoZoom, zoomfactor=1, show=False,
-                resizeFilterOff=True, script=self.currentScript)
-            """
+            return True # moved to UpdateScriptAvi
         elif ident == 'displayerror':
             wx.CallAfter(_showMessage,'Convert RGB32 error', value)
         elif ident == 'audioerror':
@@ -27615,19 +27813,36 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         #gc.collect()
         return True
 
+    def SplitPosToSize(self, splitpos):
+        spos = self.mainSplitter.GetSashPosition()
+        self.mainSplitter.SetSashPosition(splitpos, redraw=False)
+        pos = self.mainSplitter.GetSashPosition() -\
+            self.mainSplitter.GetClientSize()[self.mainSplitter.GetSplitMode() == wx.SPLIT_HORIZONTAL]
+        self.mainSplitter.SetSashPosition(spos, redraw=False)
+        return abs(pos) - (5 + self.mainSplitter.GetSashSize()//2)
+
     # calculate the resize values, only for spezial cases
     # normaly pyavs AVI clip calculates the values
     # if you change it you must change pyavs CalcResizeFilter
-    def CalcResizeFilter(self, script, zoom=1, fitHeight=True):
+    def CalcResizeFilter(self, script, zoom=1, fitHeight=True, splitpos=None):
         if not script.AVI:
             return
+        vi = script.AVI.main_clip_vi if not script.AVI.IsSplitClip else script.AVI.split_clip_vi
+        #vi = script.AVI.vi
+        mod = 2 if not vi.is_yv411() else 4
+
         if self.fullScreenWnd_IsShown:
             cSize = wx.ScreenDC().GetSize()
-        else: cSize = utils.GetSizeWithoutBorder(self.videoWindow)
+        else:
+            cSize = utils.GetSizeWithoutBorder(self.videoWindow)
+            if splitpos is not None and not self.splitView and not self.separatevideowindow:
+                if self.mainSplitter.GetSplitMode() == wx.SPLIT_HORIZONTAL:
+                    cSize[1] = self.SplitPosToSize(splitpos)
+                else:
+                    cSize[0] = self.SplitPosToSize(splitpos)
+
         if cSize[0] < 12 or cSize[1] < 12:
             return
-        vi = script.AVI.main_clip_vi if not script.AVI.IsSplitClip else script.AVI.split_clip_vi
-        mod = 2 if not vi.is_yv411() else 4
         #if you change it you must change GetResizeFilterInfo
         if not self.fullScreenWnd_IsShown:
             cSize[1] -= (self.xo*2)
@@ -27639,13 +27854,14 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             factorHeight = float(cSize[1]) / vH
             if fitHeight or factorWidth >= factorHeight:
                 H = int(float(cSize[1])/mod)*mod
-                W = round(float(H)*ratio/mod)*mod
+                W = int(round(float(H)*ratio/mod))*mod
                 if fitHeight and not self.options['hidescrollbars'] and W > cSize[0]:
-                    H -= utils.GetScrollbarMetric_X() - 2
-                    H = int(float(H)/mod)*mod
-                    W = round(float(H)*ratio/mod)*mod
+                    H -= utils.GetScrollbarMetric_X()
+                    H = float(H)/mod*mod
+                    W = int(round(H*ratio/mod))*mod
+                    H = int(H)
             else:
-                W = round(float(cSize[0])/mod)*mod
+                W = int(round(float(cSize[0])/mod))*mod
                 H = int(float(W)/ratio/mod)*mod
         else:
             W = round(vW* zoom) //mod*mod
@@ -27665,16 +27881,21 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     # create the resize info for the AVI clip,
     # this info must be send to the AVI before a displayClip is new created
     # e.g. AVI.SetResizeFilter(GetResizeFilterInfo(script))
-    def GetResizeFilterInfo(self, script, fixed_Size=None):
+    def GetResizeFilterInfo(self, script, fixed_Size=None, splitpos=None):
         if script.resizeFilter[0]: # then enabled
             if fixed_Size is None:
                 if self.fullScreenWnd_IsShown:
                     cSize = wx.ScreenDC().GetSize()
                 else:
                     cSize = utils.GetSizeWithoutBorder(self.videoWindow)
+                    if splitpos is not None and not self.splitView and not self.separatevideowindow:
+                        if self.mainSplitter.GetSplitMode() == wx.SPLIT_HORIZONTAL:
+                            cSize[1] = self.SplitPosToSize(splitpos)
+                        else:
+                            cSize[0] = self.SplitPosToSize(splitpos)
                     #if you change it you must change CalcResizeFilter
-                    cSize[1] -= (self.xo*2)# + self.mainSplitter.GetSashSize()/2
-                    cSize[0] -= (self.yo*2)# + self.mainSplitter.GetSashSize()/2
+                    cSize[1] -= (self.xo*2)
+                    cSize[0] -= (self.yo*2)
                 scrollbarhiden = self.options['hidescrollbars']
             else:
                 cSize = fixed_Size
@@ -27686,7 +27907,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             except:
                 return
             return (f, cSize[0], cSize[1], zoom, fit, scrollbarhiden)
-        return
+        return None
 
     def UpdateScriptAVI(self, script=None, forceRefresh=False, keep_env=None,
                         prompt=True, showCursor=True, resizeFilterInfo=None, disableFastClip=False):
@@ -27920,7 +28141,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 return
 
             disabler = wx.WindowDisabler()
-            sash = self.mainSplitter.GetSashPosition()
+            sash = self.GetMainSplitterSplitPos()
             progress = None
             wx.GetApp().ProcessIdle() # New
 
@@ -28106,7 +28327,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if script.AVI is None: # or script.AVI.IsErrorClip():
                 forceRefresh = True
 
-            boolNewAVI = newRefreshed = resetZoom = False
+            boolNewAVI = newRefreshed = wasErrorClip = False
             if forceRefresh or ((self.refreshAVI or script.refreshAVI) and self.options['refreshpreview']):
                 if not script.previewtxt:
                     script.Colourise(0, script.GetTextLength())
@@ -28134,12 +28355,22 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     filename = os.path.join(sDirname, sBasename)
                     lastmatrix = script.matrix[:] # store for checkMatrix
                     previewFilter = None
+                    splitterpos = None
                     previewFilterIdx = script.previewFilterIdx
                     if script.AVI is None:
+                        script.forceZoom = None
+                        script.lastZoom = None
                         oldFramecount = 240
                         boolOldAVI = False
+                        script.oldDisplayClipSize = (0, 0)
                         env = None
-                        script.lastSplitVideoPos = None
+                        if self.IsResizeFilterFitFill(script):
+                            script.lastSplitVideoPos = None
+                        elif self.options['resizevideowindow'] == 2:
+                            script.lastSplitVideoPos = self.staticSplitVideoPos
+                        elif script.lastSplitVideoPos is None and self.zoomwindow:
+                            script.lastSplitVideoPos = self.oldLastSplitVideoPos
+
                         self.bmpVideo = None
                     else:
                         # Audio Play must be killed
@@ -28167,7 +28398,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         boolOldAVI = True
                         newRefreshed = True
                         env = script.AVI.env if keep_env else None
-                        resetZoom = script.AVI.IsErrorClip() and script.lastZoom # reset the zoom after error clip
+                        wasErrorClip = script.AVI.IsErrorClip()
+                        script.oldDisplayClipSize = (script.AVI.DisplayWidth, script.AVI.DisplayHeight)
 
                     workdir_exp = self.ExpandVars(self.options['workdir'])
                     if (self.options['useworkdir'] and self.options['alwaysworkdir']
@@ -28179,7 +28411,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     if os.name == 'nt' and filename.endswith('.vpy'):
                         self.SaveScript(filename)
 
-                    self.ClipRefreshPainter = self.GetVideoWindowBitmap()
+                    if not wasErrorClip:
+                        self.ClipRefreshPainter = self.GetVideoWindowBitmap()
                     useFastClip = self.options['usefastclip'] and script.AVI is not None and not disableFastClip and not script.disableFastClipOnce
 
                     # freeing the AVI
@@ -28196,7 +28429,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
                     # get values
                     displayFilter = getDisplayFilter()
-                    resizeFilter = self.GetResizeFilterInfo(script) if not resizeFilterInfo else resizeFilterInfo
+                    resizeFilter = self.GetResizeFilterInfo(script, splitpos=None) if not resizeFilterInfo else resizeFilterInfo
                     useSplitClip = self.SplitClipCtrl.IsActive and boolOldAVI and self.options['usesplitclip']
                     script.disableFastClipOnce = False # reset fast clip
 
@@ -28256,6 +28489,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         else: script.AVI = None
                         return None
 
+                    if not boolOldAVI:
+                        script.oldDisplayClipSize = (script.AVI.DisplayWidth, script.AVI.DisplayHeight)
                     boolNewAVI = True
                     checkMatrix(script, True)
                     # Update the script tag properties
@@ -28280,11 +28515,19 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 boolOldAVI = True
                 if showCursor and not wx.IsBusy():
                     wx.BeginBusyCursor()
+                script.oldDisplayClipSize = (script.AVI.DisplayWidth, script.AVI.DisplayHeight)
                 # display filter
                 script.AVI.displayFilter = getDisplayFilter()
-                # resizeFilter
-                resizeFilter = self.GetResizeFilterInfo(script) if not resizeFilterInfo else resizeFilterInfo
+                # resizeFilter check the needed size
+                if self.IsResizeFilterFitFill(script) and not resizeFilterInfo and (self.options['resizevideowindow'] != 2) \
+                    and (self.mintextlines > 0) and not self.fullScreenWnd_IsShown and not script.AVI.IsErrorClip():
+                        splitterpos = script.lastSplitVideoPos
+                else:
+                    splitterpos = None
+
+                resizeFilter = self.GetResizeFilterInfo(script, splitpos=splitterpos) if not resizeFilterInfo else resizeFilterInfo
                 script.AVI.SetResizeFilter(resizeFilter)
+
                 lastmatrix = script.matrix[:] # store for checkMatrix, if boolNewAVI the matrix has stored there
                 # normaly without risk, but resizeFilter and displayFilter can get problems so we run it now threaded
                 if self.UseAviThread:
@@ -28304,30 +28547,28 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         if boolNewAVI:
             if script.AVI.IsErrorClip():
-                if self.options['resizevideowindow']:
-                    script.lastSplitVideoPos = None
+                if not script.forceZoom == 3 and not wasErrorClip:
+                    script.oldLastSplitVideoPos = self.SaveLastSplitVideoPos()
+                    self.SaveZoom(script, True) # save the last zoom
+                    script.forceZoom = 3
+                script.lastSplitVideoPos = None
                 self.playing_video = False
                 if self.cropDialog.IsShown():
                     self.cropDialog.Hide()
                 if self.SplitClipCtrl.IsActive:
                     self.SplitClipCtrl.Close()
-                self.SaveZoom(script, True) # save the last zoom
                 self.CloseFullscreenWND()
-                self.OnMenuVideoZoom(zoomfactor=1,show=False,resizeFilterOff=True,single=True,script=script)
-                #self.SplitVideoWindow(forcefit=True, forceSplitVideoPos=False) # alternativ to lastPlitVideoPos = None
+                self.OnMenuVideoZoom(zoomfactor=1,show=False,resizeFilterOff=True,single=True,script=script,setSplitterPos=False)
             elif script is self.currentScript:
                 if self.SplitClipCtrl.IsActive and not script.AVI.IsSplitClip:
                     self.SplitClipCtrl.Close()
                 elif script.AVI.IsSplitClip and not self.SplitClipCtrl.IsActive:
                     self.SplitClipCtrl.Activate()
 
-                if newRefreshed and not self.zoomwindow and not self.IsResizeFilterFitFill(script) \
-                    and ((oldWidth, oldHeight) != (script.AVI.Width, script.AVI.Height)):
-                        if self.options['resizevideowindow']:
-                            script.lastSplitVideoPos = None
+                if newRefreshed and ((oldWidth, oldHeight) != (script.AVI.Width, script.AVI.Height) and \
+                    not self.zoomwindow and not self.IsResizeFilterFitFill(script) and self.VideoWindowResizeNeeded(checksize=True)):
+                        script.lastSplitVideoPos = None
 
-                if resetZoom: # so an error clip was before new init the script
-                    self.forceZoom = 2 # flag for force reset pos and zoom on showvideoframe
                 script.autocrop_values = None
                 if self.cropDialog.IsShown():
                     if self.resizeFilter[0]:
@@ -30306,7 +30547,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     if self.zoomwindowfill: # try do elemenate the gap if scrollbar bottom not visible
                         if self.mainSplitter.GetSplitMode() == wx.SPLIT_HORIZONTAL:
                             splitpos = (self.mainSplitter.GetSashPosition() - self.mainSplitter.GetClientSize()[1])
-                            h = abs(splitpos) - (2 * self.yo  + 5 + self.mainSplitter.GetSashSize()/2)
+                            h = abs(splitpos) - (2 * self.yo  + 5 + self.mainSplitter.GetSashSize()//2)
                             if not self.options['hidescrollbars']:
                                 if not self.splitView and self.currentScript.AVI:
                                     factor = float(float(self.currentScript.AVI.DisplayHeight) / h)
@@ -30320,9 +30561,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         if h < 4: h = None
                         if w < 4: w = None
                         return (w, h)
+                    elif self.zoomwindowfit:
+                        splitpos = self.mainSplitter.GetSashPosition() -\
+                                        self.mainSplitter.GetClientSize()[self.mainSplitter.GetSplitMode() == wx.SPLIT_HORIZONTAL]
                     else:
-                        splitpos = self.mainSplitter.GetSashPosition() - self.mainSplitter.GetClientSize() \
-                                   [self.mainSplitter.GetSplitMode() == wx.SPLIT_HORIZONTAL]
+                        splitpos = self.GetMainSplitterSplitPos()
 
                 # can be wrong if not preview visible
                 elif self.currentScript.lastSplitVideoPos is not None:
@@ -30333,9 +30576,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     splitpos = self.GetMainSplitterNegativePosition()
 
                 if self.mainSplitter.GetSplitMode() == wx.SPLIT_HORIZONTAL:
-                    h = abs(splitpos) - (2 * self.yo + 5 + self.mainSplitter.GetSashSize()/2)
+                    h = abs(splitpos) - (2 * self.yo + 5 + self.mainSplitter.GetSashSize()//2)
                 else:
-                    w = abs(splitpos) - (2 * self.xo + 5 + self.mainSplitter.GetSashSize()/2 +
+                    w = abs(splitpos) - (2 * self.xo + 5 + self.mainSplitter.GetSashSize()//2 +
                                          self.toggleSliderWindowButton.GetSize()[0])
 
         elif self.zoomwindowfill: # seperate video window
@@ -30369,8 +30612,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 x,y,s,t = self.overlayData
                 int12 = intPPI(12)
                 if force or time.time() >= t:
-                    cSize = self.videoWindow.GetClientSize()
                     self.overlayData = None
+                    cSize = self.videoWindow.GetClientSize()
                     dc = wx.ClientDC(self.videoWindow)
                     dc.SetFont(wx.Font(pointSize=int12, family=wx.FONTFAMILY_DEFAULT, style=wx.FONTSTYLE_NORMAL, weight=wx.FONTWEIGHT_BOLD))
                     fw,fh = dc.GetTextExtent('+' + s)
@@ -31201,7 +31444,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 #ea = wx.EventLoopActivator(evtloop)
                 self.videoWindow.SetDoubleBuffered(True)
                 if self.IsIconized():
-                    sash = self.mainSplitter.GetSashPosition()
+                    sash = self.GetMainSplitterSplitPos()
                     self.Iconize(False)
                     self.mainSplitter.SetSashPosition(sash)
                     try:
@@ -31382,7 +31625,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 #ea = wx.EventLoopActivator(evtloop)
                 self.videoWindow.SetDoubleBuffered(True)
                 if self.IsIconized():
-                    sash = self.mainSplitter.GetSashPosition()
+                    sash = self.GetMainSplitterSplitPos()
                     self.Iconize(False)
                     self.mainSplitter.SetSashPosition(sash)
                     try:
@@ -35249,7 +35492,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                 self.scriptNotebook.Enable(True)
                             if not self.previewWindowVisible:
                                 if force or (options['force_preview'] and self.previewOK(script)):
-                                    self.ShowVideoFrame(focus=False)
+                                    self.zoom_antialias = False
+                                    try:
+                                        self.ShowVideoFrame(focus=False)
+                                    finally:
+                                        self.ResetZoomAntialias()
                             if (wasFullscreen or tabDlg.wasFullscreen)  and self.previewOK() and not self.fullScreenWnd_IsShown:
                                 self.OnLeftDClickVideoWindow(toggleFullscreen=True)
                             else:
