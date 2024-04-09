@@ -2,6 +2,7 @@ import string
 import re
 import os
 import os.path
+import shutil
 import stat
 import sys
 import subprocess
@@ -84,12 +85,17 @@ class CompressVideoDialog(wx.Dialog):
     def LoadPresets(self):
         self.presets = {}
         self.presetKeys = []  # keep separate list to preserve order
-        filenames = os.listdir(self.GetParent().toolsfolder)
+        toolsfolder = self.GetParent().toolsfolder
+        filenames = os.listdir(toolsfolder)
         filenames.sort()
         for filename in filenames:
             base, ext = os.path.splitext(filename)
+            if ext.lower() == '.default' and base not in filenames:
+                shutil.copy2(os.path.join(toolsfolder, filename),os.path.join(toolsfolder, base))
+                filename = base
+                base, ext = os.path.splitext(filename)
             if ext.lower() == '.presets':
-                f = open(os.path.join(self.GetParent().toolsfolder, filename), 'r')
+                f = open(os.path.join(toolsfolder, filename), 'r')
                 lines = f.readlines()
                 f.close()
                 encoderName = os.path.basename(base)
