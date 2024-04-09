@@ -476,7 +476,10 @@ class CompressVideoDialog(wx.Dialog):
         return commandline
 
     def SetValidControls(self):
-        raw_commandline = self.presets[self.ctrlDict['preset'].GetStringSelection()]
+        try:
+            raw_commandline = self.presets[self.ctrlDict['preset'].GetStringSelection()]
+        except KeyError:
+            raw_commandline = self.presets[self.ctrlDict['preset'].GetString(0)]
         for key in ('video_bitrate', 'video_bitrate_k','video_quality', 'credits_frame', 'par_x', 'par_y', 'video_input', 'video_output'):
             if key == 'video_bitrate_k':  # GPo, fix for ffmpeg
                 key = 'video_bitrate'
