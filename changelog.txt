@@ -38,6 +38,15 @@ If, for example, there is a '-' in the file name of the dll, AvsPmod will report
 please rename this dll and replace the '-' with a '_'
 
 --------------------------
+Version 2.7.7.3 [2024-04-20]
+--------------------------
+* Audio mixer values for mix of left/right and center lowered (clipping minimized).
+* Switching the 'Preview Filter' on/off is now faster if no change was made.
+* Bugfix: tab context menu 'Close... > 'All unopened', either Error or tabs were no longer visible.
+* Fix: Resize video window > 'Force' no resize if 'Split Clip' was used and the video dimensions changed.
+* Fix: RGBPS/RGBPSA values -1, -1, -1, -1 were treated as errors.
+
+--------------------------
 Version 2.7.7.2 [2024-04-07]
 --------------------------
 * The script/video window splitter functionality has been revised.

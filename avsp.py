@@ -4089,7 +4089,7 @@ class SDLWindow(object):
         #event = sdl2.SDL_Event()
         events = sdl2.ext.get_events()
 
-        b = False
+        #b = False
         try:
             #while sdl2.events.SDL_PollEvent(ctypes.byref(event)) != 0:
             for event in events:
@@ -4551,6 +4551,7 @@ class SplitClipCtrl(wx.Dialog):
         resize = self.parent.VideoWindowResizeNeeded(checksize=True)
         if resize and not self.parent.zoomwindow and script.AVI and (self.parent.mintextlines > 0) \
              and (self.lastShownVideoSize != (script.AVI.DisplayWidth, script.AVI.DisplayHeight)):
+                #if self.parent.options['resizevideowindow'] == 0:
                 #script.lastSplitVideoPos = None
                 self.parent.SetMinimumScriptPaneSize()
                 return True
@@ -10631,7 +10632,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'timelineautoscroll': True,              # GPo, scroll the timeline range if needed
             'timelineautoreset': True,               # GPo, reset the range if frame count change
             'timelinefreescrollrange': False,        # GPo, allow free scrolling through the timeline (Statusbar) else Ctrl must be pressed
-            #'timelinemoveslidertostart': True,       # GPo, set slider to timeline start
+            #'timelinemoveslidertostart': True,      # GPo, set slider to timeline start
             'timelinestatusbarmovesense': 100,       # GPo, sensevity timeline mouse move
             'timelinehidenumbers': True,             # GPo, automatically hide the numbers if trim dialog shown
             'timelinenumdivisor': 5,                 # GPo, timline number divisor e.g. 10 shows 9 numbers
@@ -10662,7 +10663,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'fullscreendlgxy': 4,                    # GPo, position for static progress dlg on Fullsize/Fullscreen
             'prefetchrgb32': True,                   # GPo, AVI uses Prefetch(1,1) after ConvertToRGB32(), 10 to 30% speedup
             'yuv420torgb32fast': False,              # GPo, Use DecodeYUVtoRGB, only for CPU with AVX2
-            'fastyuvautoreset': False,
+            'fastyuvautoreset': False,               # GPo, reset on initialisation
+            'fastpreviewfilter': True,               # GPo, use fast preview filter ( more memory required ) affects only the switching on/off not the filter change itself
             'eol': 'auto',
             'loadstartupbookmarks': True,
             'nrecentfiles': 5,
@@ -10700,7 +10702,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'audioscrub': False,
             'audioscrubcount': 1,
             'playaudio_secbuf': 3,   # playback: how many video frames should audio be buffered = int(sec*framerate)
-            'audiocentermix': 0.70,  # multichannel center speaker mix to stereo
+            'audiocentermix': 0.70,  # multichannel center speaker mix to stereo eg. 6ch to 2ch ( left=0.7, center=0.7*0.7,left back=0.3 )
             # SDL d3d
             'sdlwindowrect': (ctypes.c_int(200), ctypes.c_int(200), ctypes.c_int(460), ctypes.c_int(270)),
             'sdlwindowrect1': (ctypes.c_int(200), ctypes.c_int(200), ctypes.c_int(460), ctypes.c_int(270)),
@@ -13212,11 +13214,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             (''),
             (_('Tab change loads bookmarks'), '', self.OnMenuTabChangeLoadBookmarks, '', wx.ITEM_CHECK, self.options['tabsbookmarksfromscript']), # GPo 2019
             (_('Save view pos on tab change'), '', self.OnMenuVideoSaveViewPos, _('Save/Restore last display viewing position on tab change'), wx.ITEM_CHECK, False),
-            (_('Save pos && zoom on tab change'), '', self.OnMenuVideoSaveZoom, _('Save/Restore last zoom settings on tab change'), wx.ITEM_CHECK, False),
+            (_('Save pos && zoom on tab change'), '', self.OnMenuVideoSaveZoom, _('Save/Restore last viewing position and normal zoom settings on tab change'), wx.ITEM_CHECK, False),
             (_('Resize video window'),
                 (
                 (_('Force'), '', self.OnMenuVideoWindowResizeOption, _('Sizing on initilisation, tab change, zoom change, etc.'), wx.ITEM_RADIO, self.options['resizevideowindow']==0),
-                (_('Normal'), '', self.OnMenuVideoWindowResizeOption, _('Sizing on initilisation and zoom change'), wx.ITEM_RADIO, self.options['resizevideowindow']==1),
+                (_('Normal'), '', self.OnMenuVideoWindowResizeOption, _('Sizing on initilisation and zoom or size change (see progam options > Video)'), wx.ITEM_RADIO, self.options['resizevideowindow']==1),
                 (_('Static'), '', self.OnMenuVideoWindowResizeOption, _('No sizing, only on first initilisation or manual splitter moving'), wx.ITEM_RADIO, self.options['resizevideowindow']==2),
                 ),
             ),
@@ -14342,11 +14344,33 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.CloseTab(index, prompt=True)
 
     def OnMenuFilesCloseNotOpened(self, event):
+        # wath an shit, tabs not visible after deleting and not multiline
+        multi = self.options['multilinetab']
+        if not multi:
+            self.scriptNotebook.SetWindowStyleFlag(wx.NO_BORDER|wx.NB_MULTILINE)
+            self.options['multilinetab'] = True
+        curr_script = self.scriptNotebook.GetPage(self.scriptNotebook.GetSelection())
+        visible = self.previewWindowVisible
         count = self.scriptNotebook.GetPageCount()-1
+        self.scriptNotebook.SetSelection(count)
         for index in xrange(count,-1,-1):
             script = self.scriptNotebook.GetPage(index)
             if script.AVI is None:
+                #self.scriptNotebook.SetSelection(index)
                 self.CloseTab(index, prompt=True)
+        for i in range(self.scriptNotebook.GetPageCount()):
+            if self.scriptNotebook.GetPage(i) is curr_script:
+                self.scriptNotebook.SetSelection(i)
+        wx.GetApp().SafeYieldFor(self.scriptNotebook, wx.wxEVT_ANY) # important, delete the message query
+        self.options['multilinetab'] = multi
+        style = wx.NO_BORDER
+        if self.options['multilinetab']:
+            style |= wx.NB_MULTILINE
+        if self.options['fixedwidthtab']:
+            style |= wx.NB_FIXEDWIDTH
+        self.scriptNotebook.SetWindowStyleFlag(style)
+        if visible and self.previewOK():
+            self.ShowVideoFrame()
 
     def OnMenuFileCloseAllTabs(self, event):
         self.CloseAllTabs()
@@ -20315,7 +20339,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         if self.scriptNotebook.LockPage:
             self.currentScript = self.scriptNotebook.GetPage(currIndex)
-            #SetBookmarks()
+            event.Skip()
             return
 
         # Get the newly selected script
@@ -24048,6 +24072,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             script.FrameThread.Exit()
 
         self.scriptNotebook.DeletePage(index)
+        wx.GetApp().SafeYieldFor(self.scriptNotebook, wx.wxEVT_ANY)
 
         self.currentScript = self.scriptNotebook.GetPage(self.scriptNotebook.GetSelection())
         self.UpdateTabImages()
@@ -26484,7 +26509,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 try:
                     if script.AVI.IsYUV:
                         avsYUV = script.AVI.GetPixelYUV(x, y)
-                        if avsYUV != (-1,-1,-1):
+                        if avsYUV != (None,None,None):
                             Y,U,V = avsYUV
                             cY = cH = ''
                             if script.AVI.component_size == 1: # 8bit
@@ -26496,7 +26521,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
                     elif script.AVI.IsYUVA:
                         avsYUVA = script.AVI.GetPixelYUVA(x, y)
-                        if avsYUVA != (-1,-1,-1,-1):
+                        if avsYUVA != (None,None,None,None):
                             Y,U,V,yA = avsYUVA
                             cY = cH = ''
                             if script.AVI.component_size == 1:
@@ -26508,7 +26533,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
                     elif script.AVI.IsRGBA: # RGB32, RGB64, PlanarRGBA
                         avsRGBA = script.AVI.GetPixelRGBA(x, y)
-                        if avsRGBA != (-1,-1,-1,-1):
+                        if avsRGBA != (None,None,None,None):
                             R,G,B,A = avsRGBA
                             cR = cH = ''
                             if script.AVI.component_size == 1:
@@ -26520,7 +26545,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
                     elif script.AVI.IsRGB:
                         avsRGB = script.AVI.GetPixelRGB(x, y)
-                        if avsRGB != (-1,-1,-1):
+                        if avsRGB != (None,None,None):
                             R,G,B = avsRGB
                             cR = cH = ''
                             if script.AVI.component_size == 1: # 8bit
@@ -27450,17 +27475,22 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 if error:
                     pass
                 elif (self.options['resizevideowindow'] == 0) or forcesize:
+                    ### GPo new
+                    if (script.oldDisplayClipSize != (script.AVI.DisplayWidth, script.AVI.DisplayHeight)):
+                        script.oldDisplayClipSize = (script.AVI.DisplayWidth, script.AVI.DisplayHeight)
+                        if not self.zoomwindow and (script.group is None or script.group != self.oldGroup):
+                            forcefit = True
+                            savepos = True
+                    ###
                     sash_pos = self.GetMainSplitterNegativePosition(pos=pos, forcefit=forcefit)
                 elif self.options['resizevideowindow'] == 1:
                     # this allows for eatch script different resize filter display clip dimensions
-                    if (self.options['vw_resizeopt'] < 2) and not self.zoomwindow and \
-                        (script.oldDisplayClipSize != (script.AVI.DisplayWidth, script.AVI.DisplayHeight)):
-                            script.oldDisplayClipSize = (script.AVI.DisplayWidth, script.AVI.DisplayHeight)
-                            if script.group is None or script.group != self.oldGroup: # no forcefit on same groups
+                    if (script.oldDisplayClipSize != (script.AVI.DisplayWidth, script.AVI.DisplayHeight)):
+                        script.oldDisplayClipSize = (script.AVI.DisplayWidth, script.AVI.DisplayHeight)
+                        if (self.options['vw_resizeopt'] < 2) and not self.zoomwindow \
+                            and (script.group is None or script.group != self.oldGroup):
                                 forcefit = True
                                 savepos = True
-
-                    #script.oldDisplayClipSize = (script.AVI.DisplayWidth, script.AVI.DisplayHeight)
                     sash_pos = self.GetMainSplitterNegativePosition(pos=pos, forcefit=forcefit)
                 else:
                     sash_pos = self.staticSplitVideoPos
