@@ -20,6 +20,7 @@ lib/
 tools/*
 !tools/*.py
 !tools/*.presets
+!tools/*.default
 macros/*.*
 !macros/*.py
 macros/**/*.*
