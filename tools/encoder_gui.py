@@ -97,6 +97,7 @@ class CompressVideoDialog(wx.Dialog):
                 filename = base
                 base, ext = os.path.splitext(filename)
             if ext.lower() == '.presets':
+                f = open(os.path.join(self.GetParent().toolsfolder, filename), 'r')
                 f = open(os.path.join(toolsfolder, filename), 'r')
                 lines = f.readlines()
                 f.close()
