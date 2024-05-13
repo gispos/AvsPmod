@@ -135,7 +135,7 @@ if self.UpdateScriptAVI() is None or not self.previewOK(script):
     return
 AVS = script.AVI
 """
-AVS = pyavs.AvsClip(avsp.GetText(clean=True), filename=avsp.GetScriptFilename(), 
+AVS = pyavs.AvsClip(self, avsp.GetText(clean=True), filename=avsp.GetScriptFilename(), 
                     workdir=workdir, matrix=script.matrix, interlaced=self.interlaced, 
                     swapuv=self.swapuv)
 if AVS.IsErrorClip():
