@@ -4942,6 +4942,7 @@ class TabList(wx.Dialog):
                 opt['tbl_last_id'] = id(self.fileList[self.last_tab][2])
             if self.bookmarks:
                 opt['tbl_colBw'] = self.listCtrl.GetColumnWidth(1)
+            self.app.tabDlg = None
             self.Destroy()
     @AsyncCallWrapper
     def OnKillFocus(self, event):
@@ -4978,7 +4979,7 @@ class TabList(wx.Dialog):
         self.listCtrl.SetItemCount(len(self.fileList))
     @AsyncCallWrapper
     def UpdateTabs(self):
-        if not self.blockUpdate:
+        if not self.blockUpdate and not self.progress:
             last = self.fileList[self.last_tab][2] if self.last_tab >= 0 else None
             init = self.fileList[self.init_tab][2] if self.init_tab >= 0 else None
             self.ReloadTabs()
@@ -4990,34 +4991,35 @@ class TabList(wx.Dialog):
             self.SetCaption()
     @AsyncCallWrapper
     def UpdateAviState(self, script=None):
-        if script is not None:
-            idx = self.FindScript(script, True)
-            if idx > -1:
-                s = '' if script.AVI else '>'
-                s += '* ' if script.GetModify() else ''
-                self.fileList[idx][3] = s
+        if not self.blockUpdate and not self.progress:
+            if script is not None:
+                idx = self.FindScript(script, True)
+                if idx > -1:
+                    s = '' if script.AVI else '>'
+                    s += '* ' if script.GetModify() else ''
+                    self.fileList[idx][3] = s
+                else:
+                    self.UpdateTabs()
             else:
-                self.UpdateTabs()
-        else:
-            for idx,item in enumerate(self.fileList):
-                s = '' if item[2].AVI else '>'
-                s += '* ' if item[2].GetModify() else ''
-                item[3] = s
-            script, index = self.app.getScriptAtIndex(None)
-            self.FindScript(script, True)
-        self.listCtrl.Refresh()
+                for idx,item in enumerate(self.fileList):
+                    s = '' if item[2].AVI else '>'
+                    s += '* ' if item[2].GetModify() else ''
+                    item[3] = s
+                script, index = self.app.getScriptAtIndex(None)
+                self.FindScript(script, True)
+            self.listCtrl.Refresh()
     @AsyncCallWrapper
     def SelectItem(self, script):
-        if self.progress:
-            return
-        idx = self.FindScript(script)
-        if idx > -1:
-            self.popup = 2
-            if idx != self.tmp_tab:
-                self.last_tab = self.tmp_tab
-            self.tmp_tab = idx
-            self.listCtrl.Select(idx)
-            self.listCtrl.Refresh()
+        if not self.blockUpdate and not self.progress:
+            idx = self.FindScript(script)
+            if idx > -1:
+                self.popup = 2
+                if idx != self.tmp_tab:
+                    self.last_tab = self.tmp_tab
+                self.tmp_tab = idx
+                self.fileList[idx][4] = str(len(self.app.videoSlider.bookmarks))
+                self.listCtrl.Select(idx)
+                self.listCtrl.Refresh()
     def ShowDlg(self):
         self.init_tab = -1
         self.last_tab = -1
@@ -9976,8 +9978,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     else:
                         self.win.NewTab(text=text)
                 else:
+                    self.win.TabList_BlockUpdate(True)
                     for filename in self.filedata.GetFilenames():
                         self.win.OpenFile(filename=filename, hidePreview=True)
+                    self.win.TabList_BlockUpdate(False, True)
                 return False
 
         class ScriptDropTarget(wx.DropTarget):
@@ -10048,9 +10052,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         self.app.InsertSource(filenames[0])
                     else:
                         # Open each filename as a script
+                        self.app.TabList_BlockUpdate(True)
                         hidePreview = len(filenames) > 1
                         for filename in self.filedata.GetFilenames():
                             self.app.OpenFile(filename=filename, hidePreview=hidePreview)
+                        self.app.TabList_BlockUpdate(False, True)
                 return True
 
         self.SetDropTarget(MainFrameDropTarget(self))
@@ -10670,6 +10676,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if args:
             first = True
             self.HidePreviewWindow()
+            self.TabList_BlockUpdate(True)
             for arg in args:
                 arg = arg.decode(sys.stdin.encoding or encoding)
                 if os.path.isfile(arg):
@@ -10698,6 +10705,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         self.startupframe = int(arg[3:].strip())
                         wx.CallAfter(self.Update)
                         wx.CallAfter(self.ShowVideoFrame, self.startupframe)
+            self.TabList_BlockUpdate(False, True)
 ### GPo end ###
 
     def getOptionsDict(self):
@@ -24215,6 +24223,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             and leads to errors, then the preview must be hidden.
         '''
         self.StopPlayback()
+
         # Get filename via dialog box if not specified
         if not filename:
             default_dir, default_base = (default, '') if os.path.isdir(default) else os.path.split(default)
@@ -24237,9 +24246,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 if len(filenames) == 1:
                     filename = filenames[0]
                 else:
+                    self.TabList_BlockUpdate(True)
                     for filename in filenames:
                         if filename:
                             self.OpenFile(filename, hidePreview=True)
+                    self.TabList_BlockUpdate(False, True)
                     return
             else:
                 dlg.Destroy()
@@ -25330,6 +25341,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             loadList = []
             tbc = self.tabChangeLoadBookmarks
             self.tabChangeLoadBookmarks = False
+            self.TabList_BlockUpdate(True)
 
             mapping = session['scripts'] and isinstance(session['scripts'][0], collections.Mapping)
             for item in session['scripts']:
@@ -25381,6 +25393,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
             bCount = -1
             script = self.currentScript
+            self.TabList_BlockUpdate(False, True)
 
             if self.options['bookmarksfromscript']:
                 bCount = self.OnMenuBookmarksFromScript()
@@ -34027,6 +34040,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     def TabList_Close(self):
         if isinstance(self.tabDlg, TabList):
             self.tabDlg.Destroy()
+            self.tabDlg = None
     def TabList_BlockUpdate(self, block, update=False):
         if isinstance(self.tabDlg, TabList):
             self.tabDlg.blockUpdate = block
