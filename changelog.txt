@@ -38,6 +38,35 @@ If, for example, there is a '-' in the file name of the dll, AvsPmod will report
 please rename this dll and replace the '-' with a '_'
 
 --------------------------
+Version 2.7.7.4 [2024-06-15]
+--------------------------
+* 'Resample filter' is restored after an error clip.
+* Closing a tab using the 'Tab list' will no longer force an adjacent uninitialized tab to open.
+** Added to 'Tab list' new functions:
+- context menu 'Show Bookmarks'
+- context menu 'Auto close' closes the 'Tab list' if the Focus is losen (except see below 'MediaInfo').
+- if you have AvsPThumb, a double-click on the bookmarks column row will run AvsPThumb and displays or reads the bookmarks stored in the script.
+- if you click a line in the first 15 pixels, a tooltip appears and if you hold Ctrl a window appears with the result of MediaInfo.dll.
+- font and color is the same as for the 'Scrap Window' or German 'Ablage Fenster' and the font should be Mono Space (Options > Font & colors).
+-- Prerequisite: MediaInfo.dll must be found in the system (system directories or the AvsPmod directory). The source file must be findable in the script (see below).
+-- Info: Multiple MediaInfo windows can be opened (context menu 'Single instance'), and as long as a MediaInfo window is open the 'Tab list' does not close automatically.
+-- MediaInfo.dll: https://mediaarea.net/de/MediaInfo/Download/Windows ( Choose DLL without installer: 7z, zip )
+* Added default encoder_gui presets (your own presets will no longer be overwritten by a new version, thanks to @silverbacknet on github)
+* Fixed video slider flickering when there are a large number of bookmarks.
+* When saving a new script, the source file extension is now included as the suggested name ( Test.mkv.avs ). 
+* When saving a new script the source file name is now also found with the script syntax below (SourceFile and : or = must also exist):
+-- SourceFile = ScriptDir() + "Test.mkv"  (no drive no path, this is also not found)
+-- SourceFile = Exist(SourceFile) ? SourceFile : "E:\Video\Test.mkv"  (this is found and valid if the file exists)
+-- video=LWLibavVideoSource(SourceFile)
+- if the source name was not found, then a search is made for: Drive + Path\Filename + Extension enclosed in " "
+- extensions are '.avi','.mkv','.mp4','.mpg','.mpeg','.ts','.mts','.m2ts','.vob','.webm','.wmf','.mov','.mxf'
+* Bugfix macro 'Save Image Sequence.py', also thanks to @silverbacknet.
+* Bugfix and update macros 'PreviewEncode.py' (and 'PreviewEncodeThread.py' on Google drive).
+* Bugfix macro 'DeleteEncodings.py'
+* When AvsPmod is closed, it searches for open dialogs and destroys them (prevents AvsPmod from running a background process after closing).
+*** Reminder: Tab list is also accessible with a right click in the right area (20 pixels) of AvsPmod's Display, Editor and Slider-Sidebar (except D3DWindow).
+
+--------------------------
 Version 2.7.7.3 [2024-04-20]
 --------------------------
 * Audio mixer values for mix of left/right and center lowered (clipping minimized).

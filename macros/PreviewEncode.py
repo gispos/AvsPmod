@@ -10,13 +10,15 @@
 #
 #              Use the Trim Editor to create selections. Select 'Copy to clipboard' and hit OK
 #              Or select a line with trims and run the macro.
-#              Coded files are always overwritten without any sorting order! (if the script name the same)
+#              Encoded file names contains the trim numbers e.g. enc100_800 
+#              There is also an option do not encode the existing file new (Skip same trims)
 #
-#              Save this file (text) as PreviewEncode.py in the AvsPmod macro or a macro subfolder
+#              Save this file (text) as PreviewEncodeThreadEx.py in the AvsPmod macro or a macro subfolder
+#              Note: With the macro DeleteEncodings.py you can delete the created files by selecting the inserted text and running the macro
 #
 # Author:      GPo
 #
-# Created:     24.05.2021,
+# Created:     24.05.2021, last change 25.05.2024
 #              update 09.06.2021
 #                   showDialog, save and read options, encode selected trims (see encodeSelectedTrims)
 #                       and notice video slider context menu 'Create trim' (the trims are sorted before encoding)
@@ -28,7 +30,15 @@
 #              update 14.06.2021
 #                   search for "return" in the script
 #              update 03.09.2022
+#                   Added ffmpeg -hide_banner and x265 templates
 #                   Added wx.GetApp().ProcessIdle() after updating the script so that the progress dialog can be closed.
+#                   New variante PreviewEncodeThread.py:
+#                        The whole macro runs in one thread, AvsPmod is not blocked, only the processed script is blocked
+#                        if I messed up run PreviewEncode.py
+#              update fix: 22.05.2024, GetEncodedText() fatal error since new AvsPmod utf8 options
+#              update 25.05.2024:
+#                   Encoded file names contains the trim numbers. A check for __end__ in the script. Dialog appears if ffmpeg not found.
+#                   Added AV1 templates. Added option 'Skip same trims'
 #
 # Copyright:   (c) GPo 2021
 # Licence:     <free>
@@ -41,6 +51,7 @@ import threading
 import time
 import ctypes
 import wx
+import re
 self = avsp.GetWindow()
 locals_ignor = [k for k, v in locals().items()]
 locals_ignor += ['v', 'k', 'locals_ignor']
@@ -54,22 +65,26 @@ locals_ignor += ['v', 'k', 'locals_ignor']
 # and the templates must be adapted (see dnxhd profile) For my videos it works with 'copy'
 # If you don't want all templates to be displayed in the dialog, put a # at the beginning
 # You can add or rename the templates (names without spaces)
-dnxhr_hq = '-c:v dnxhd -profile:v dnxhr_hq -vf format=yuv422p -c:a pcm_s16le .mov'
-dnxhr_hqx = '-c:v dnxhd -profile:v dnxhr_hqx -vf format=yuv422p10le -c:a pcm_s16le .mov'
-dnxhr_444 = '-c:v dnxhd -profile:v dnxhr_444 -vf format=yuv444p10le -c:a pcm_s16le .mov'
-x264_lossless_8 = '-c:v libx264 -preset ultrafast -qp 0 -vf format=yuv420p -c:a copy .mkv'
-x264_lossless_422 = '-c:v libx264 -preset ultrafast -qp 0 -vf format=yuv422p10le -c:a copy .mkv'
-x264_lossless_422_sar43 = '-c:v libx264 -preset ultrafast -qp 0 -vf format=yuv422p10le -vf setsar=sar=1.0667/1 -c:a copy .mkv'
-x264_lossless_444 = '-c:v libx264 -preset ultrafast -qp 0 -vf format=yuv444p10le -c:a copy .mkv'
-x264_nvenc_vbr_8 = '-c:v h264_nvenc -preset p7 -profile:v main -rc vbr -b:v 8000k -c:a aac -b:a 256k .mkv'
-x264_nvenc_vbr_422 = '-c:v h264_nvenc -preset P7 -profile:v main -rc vbr -b:v 18000k -c:a aac -b:a 256k .mkv'
-x264_nvenc_lossless = '-c:v hevc_nvenc -preset lossless -c:a copy .mkv'
-huffyuv_8 = '-c:v huffyuv -vf format=yuv422p -c:a copy .mkv'
-ffvhuff = '-c:v ffvhuff -c:a copy .mkv'
-FFV1 = '-c:v ffv1 -level 3 -threads 4 -g 1 -coder 1 -context 1 -slices 24 -slicecrc 1 -c:a copy .mkv'
+dnxhr_hq = '-hide_banner -c:v dnxhd -profile:v dnxhr_hq -vf format=yuv422p -c:a pcm_s16le .mov'
+dnxhr_hqx = '-hide_banner -c:v dnxhd -profile:v dnxhr_hqx -vf format=yuv422p10le -c:a pcm_s16le .mov'
+dnxhr_444 = '-hide_banner -c:v dnxhd -profile:v dnxhr_444 -vf format=yuv444p10le -c:a pcm_s16le .mov'
+x264_lossless_8 = '-hide_banner -c:v libx264 -preset ultrafast -qp 0 -vf format=yuv420p -c:a copy .mkv'
+x264_lossless_422 = '-hide_banner -c:v libx264 -preset ultrafast -qp 0 -vf format=yuv422p10le -c:a copy .mkv'
+x264_lossless_422_sar43 = '-hide_banner -c:v libx264 -preset ultrafast -qp 0 -vf format=yuv422p10le -vf setsar=sar=1.0667/1 -c:a copy .mkv'
+x264_lossless_444 = '-hide_banner -c:v libx264 -preset ultrafast -qp 0 -vf format=yuv444p10le -c:a copy .mkv'
+x264_nvenc_vbr_8 = '-hide_banner -c:v h264_nvenc -preset p7 -profile:v main -rc vbr -b:v 8000k -c:a aac -b:a 256k .mkv'
+x264_nvenc_vbr_422 = '-hide_banner -c:v h264_nvenc -preset P7 -profile:v main -rc vbr -b:v 18000k -c:a aac -b:a 256k .mkv'
+x264_nvenc_lossless = '-hide_banner -c:v hevc_nvenc -preset lossless -c:a copy .mkv'
+huffyuv_8 = '-hide_banner -c:v huffyuv -vf format=yuv422p -c:a copy .mkv'
+ffvhuff = '-hide_banner -c:v ffvhuff -c:a copy .mkv'
+FFV1 = '-hide_banner -c:v ffv1 -level 3 -threads 4 -g 1 -coder 1 -context 1 -slices 24 -slicecrc 1 -c:a copy .mkv'
 # encoder profile for low file size
-x264_8_crf16_aac = '-c:v libx264 -preset fast -tune film -crf 16 -vf format=yuv420p -c:a aac -b:a 256k .mkv'
-x264_422_crf16_aac = '-c:v libx264 -preset fast -tune film -crf 16 -vf format=yuv422p10le -c:a aac -b:a 256k .mkv'
+x264_8_crf16_aac = '-hide_banner -c:v libx264 -preset fast -tune film -crf 16 -vf format=yuv420p -c:a aac -b:a 256k .mkv'
+x264_422_crf16_aac = '-hide_banner -c:v libx264 -preset fast -tune film -crf 16 -vf format=yuv422p10le -c:a aac -b:a 256k .mkv'
+x265_8_crf16_aac = '-hide_banner -c:v libx265 -preset fast -crf 16 -vf format=yuv420p -c:a aac -b:a 256k .mkv'
+x265_422_crf16_aac = '-hide_banner -c:v libx265 -preset fast -crf 16 -vf format=yuv422p10le -c:a aac -b:a 256k .mkv'
+AV1_8_crf20_medium_aac = '-hide_banner -c:v libsvtav1 -crf 20 -preset 8 -svtav1-params -g=100 -svtav1-params tune=0 -svtav1-params film-grain-denoise=0 -vf format=yuv420p -c:a aac -b:a 192k .mkv' # preset=8 is medium
+AV1_8_crf16_slow_aac = '-hide_banner -c:v libsvtav1 -crf 16 -preset 6 -svtav1-params -g=125 -svtav1-params tune=0 -svtav1-params film-grain-denoise=0 -vf format=yuv420p -c:a aac -b:a 192k .mkv' # preset=6 is slow
 
 ##### Convert templates
 # converts the script clip to encoder profile, some audio conversions still missing e.g. channels
@@ -86,9 +101,13 @@ conv_x264_nvenc_lossless = ''
 conv_huffyuv_8 = 'ConvertBits(bits=8).ConvertToYUV422(matrix="Rec709")'
 conv_ffvhuff = ''
 conv_FFV1 = ''
-# profile for low file size
+# convert templates for lower file size encoder profile
 conv_x264_8_crf16_aac = conv_x264_lossless_8
 conv_x264_422_crf16_aac = conv_x264_lossless_422
+conv_x265_8_crf16_aac = conv_x264_lossless_8
+conv_x265_422_crf16_aac = conv_x264_lossless_422
+conv_AV1_8_crf20_medium_aac = conv_x264_lossless_8
+conv_AV1_8_crf16_slow_aac = conv_x264_lossless_8
 
 # Do not change! Convert the templates var names to string. Best place is after the tamplates
 local_names = [k for k, v in locals().items()]
@@ -114,24 +133,27 @@ convert_txt = conv_ffvhuff
 codecAutoSelect = True
 
 # change the save path for the encoded files or use the script dir if it exists (script saved)
-# if useScriptDir, savePath is ignored
+# if useScriptDir, savePath is ignored. If showDialog you can change it in the dialog
 savePath = 'C:\\Temp'
 useScriptDir = False
 
 # if True and showDialog = False, a path selection dialog is displayed
-promptForDir = False
+promptForDir = True
 
 # if true, a options dialog is shown and promptForDir and codecAutoSelect is ignored
 showDialog = True
 
-# change the ffmpeg.exe path e.g. 'D:\\tools\\ffmpeg\\ffmpeg.exe', default ..AvsPmod\\encoders\\ffmpeg.exe
-ffmpeg = os.path.join(self.programdir, 'encoders\\ffmpeg.exe')
+# the default ffmpeg.exe path e.g. ..AvsPmod\\encoders\\ffmpeg.exe
+ffmpeg = avsp.Options.get('ffmpeg', os.path.join(self.programdir, 'encoders\\ffmpeg.exe'))
 
 # limit the encodings count to max_files, -1 disabled
 max_files = -1
 
 # if True and a line with trims e.g. trim(0, 50)++trim(100, 200) is selected in the script, only this trims will be encode
 encodeSelectedTrims = True
+
+# skip the selection or trim if the file with the same selection/trim (name) exists. In the dialog changeable.
+skipSameTrim = True
 
 # if disabled, no text will insert in the script, only avs files created and encoding runs
 insertTrims = True
@@ -150,6 +172,9 @@ useThreads = True
 # good value should between 2-4, if it's not working set it to 1 or disable useThreads
 max_encoding_threads = 2
 
+# delete the new created avs files after passing it to ffmpeg
+delAvsFile = False
+
 ################################################################################
 ## end user settings
 ################################################################################
@@ -157,9 +182,12 @@ max_encoding_threads = 2
 selectedText = avsp.GetSelectedText()
 
 if not os.path.isfile(ffmpeg):
-    avsp.MsgBox('ffmpeg not found.\nYou must change the "ffmpeg" variable in the macro.\n\n' + ffmpeg)
-    return
-
+    s = avsp.GetTextEntry(message='Path to ffmpeg.exe', title='Search for ffmpeg',types='file_open') 
+    if not s or not s.endswith('.exe'):
+        return
+    ffmpeg = s
+    avsp.Options['ffmpeg'] = ffmpeg
+    
 # dialog
 if showDialog:
     last_enc = 'ffvhuff' # on the first run of the dialog (options are empty)
@@ -176,13 +204,13 @@ if showDialog:
     enc_templates_names.append((last_enc)) # default or last used
 
     # create the dialog
-    labels = [[_('Template:'), _('Encode threads:')] ,[_('Convert to script color space'), _('Insert trims into script')], [_('Use script dir')], [_('Select save path:')]]
-    defaults = [[enc_templates_names, (max_encoding_threads, 1,10)], [convertToScriptColorSpace, insertTrims], [useScriptDir], [savePath]]
-    types = [['list_read_only', 'spin'], ['check', 'check'], ['check'], ['dir']]
+    labels = [[_('Template:'), _('Encode threads:')] ,[_('Convert to script color space'), _('Insert trims into script')], [_('Use script dir'), _("Skip same trim's")], [_('Selected save path:')]]
+    defaults = [[enc_templates_names, (max_encoding_threads, 1,10)], [convertToScriptColorSpace, insertTrims], [useScriptDir, skipSameTrim], [savePath]]
+    types = [['list_read_only', 'spin'], ['check', 'check'], ['check', 'check'], ['dir']]
     entries = avsp.GetTextEntry(labels, defaults, _('Encode options'), types)
     if not entries:
         return
-    enc_template_name, max_encoding_threads, convertToScriptColorSpace, insertTrims, useScriptDir, savePath = entries
+    enc_template_name, max_encoding_threads, convertToScriptColorSpace, insertTrims, useScriptDir, skipSameTrim, savePath = entries
 
     # search for the convert template
     conv_temp = ''
@@ -205,21 +233,27 @@ if showDialog:
     avsp.Options['inserttrims'] = insertTrims
     avsp.Options['usescriptdir'] = useScriptDir
     avsp.Options['convertscriptcolorspace'] = convertToScriptColorSpace
+    avsp.Options['skipsametrim'] = skipSameTrim
     avsp.Options['savepath'] = savePath
-    prompForDir = False
+    promptForDir = False
     codecAutoSelect = False
 
 script = self.currentScript
 script_idx = self.scriptNotebook.GetSelection()
-saveScriptTxt = script.GetText().strip()
+savedScriptTxt = script.GetText().strip()
 global encoding_errors
 global encoding_file_size
 
 # if "return" is found in the script (that happens to me every now and then)
-pos = saveScriptTxt.lower().find('return ')
-if pos > 1 and saveScriptTxt[pos-2:pos].find('#') == -1:
+pos = savedScriptTxt.lower().find('return ')
+if pos > 1 and savedScriptTxt[pos-2:pos].find('#') == -1:
     if not avsp.MsgBox('Found "return" in the script.\nThis can make the selected areas invalid. Keep going?', cancel=True):
         return
+# if __end__ found in the script
+pos = savedScriptTxt.lower().find('__end__')
+if pos > 1 and savedScriptTxt[pos-2:pos].find('#') == -1:
+    avsp.MsgBox('Found "__end__" in the script. Cannot process.', cancel=False)
+    return 
 
 if self.UpdateScriptAVI() is None or not self.previewOK(script):
     avsp.MsgBox('Script not initialized.')
@@ -238,7 +272,7 @@ if promptForDir:
         return
 
 if not os.path.isdir(savePath):
-    if not avsp.MsgBox('Path not exists:\n%s\n\nTrying to create the path?' % savePath, cancel=True):
+    if not avsp.MsgBox('Path not exists:\n%s\n\nCreate directory?' % savePath, cancel=True):
         return
     try:
         os.mkdir(savePath)
@@ -351,7 +385,7 @@ if encodeSelectedTrims and selectedText:
 if not selections:
     selections = self.GetSliderSelections()
     if not selections:
-        avsp.MsgBox(_('You must first create selections'))
+        avsp.MsgBox(_('You must first create selections or must select trims in the script'))
         return
 
 # We must release the encoded video files or ffmpeg cannot create the new files
@@ -382,14 +416,16 @@ if stop < frameCount-1:
     encodings.append((0, 'Trim(%d, %d)' % (stop+1, 0)))
 
 # start the encoding loop
-i = 0
+found = 0
 trimList = []
 threadList = []
+avsFileList = []
 selTrims = ''
 selClips = ''
 encoding_errors = ''
 encoding_file_size = 0
-scriptTxt = self.getCleanText(saveScriptTxt)
+scriptTxt, encoding = self.GetEncodedText(script, savedScriptTxt)
+scriptTxt = self.getCleanText(scriptTxt)
 scriptTxt = self.stripComment_2(scriptTxt)  + '\n'
 if allEncodingsAtOnce:
     useThreads = False
@@ -404,12 +440,13 @@ try:
             trimList.append((line, '', ''))
             continue
         txt = scriptTxt + line
-        txt = self.GetEncodedText(txt, bom=True)
-        clip = 'enc%d' % (i)
+        tr = re.split('[(,)]', line)
+        clip = 'enc%s_%s' % (tr[1].strip(), tr[2].strip())
         selTrims += line + '++'
         selClips += clip + '++'
         videoFile = os.path.join(savePath, '%s_%s%s' % (GetScriptFileName('tab_%i' % script_idx), clip, encoding_args[-1]))
         avsFile = videoFile + '.avs'
+        trimList.append(('', clip, 'video = %s\naudio = %s\n%s = audioDub(video, audio)\n' % (vSourceFilter % videoFile, aSourceFilter % videoFile, clip)))
         try:
             with open(avsFile, 'wb') as f:
                 f.write(txt)
@@ -418,22 +455,30 @@ try:
             raise
         time.sleep(0.1) # let the drive finished
         trimList.append(('', clip, 'video = %s\naudio = %s\n%s = audioDub(video, audio)\n' % (vSourceFilter % videoFile, aSourceFilter % videoFile, clip)))
-        if useThreads:
-            # check every two seconds if a thread finished and force the next loop,
-            # so max_encoding_threads always should be running
-            while len(threadList) >= max_encoding_threads and not encoding_errors:
-                for x in xrange(len(threadList)):
-                    threadList[x].join(2)
-                    if not threadList[x].isAlive() or encoding_errors:
-                        del threadList[x]
-                        break
-            if not encoding_errors:
-                threadList.append(RunnThread(avsFile, videoFile))
-        elif not encoding_errors:
-            encodeAvs(avsFile, videoFile, not allEncodingsAtOnce)
-        if encoding_errors:
-            break
-        i += 1
+        if os.path.isfile(videoFile) and skipSameTrim:
+            needEncode = False
+        else: 
+            needEncode = True   
+        if needEncode:
+            if useThreads:
+                # check every two seconds if a thread finished and force the next loop,
+                # so max_encoding_threads always should be running
+                while len(threadList) >= max_encoding_threads and not encoding_errors:
+                    for x in xrange(len(threadList)):
+                        threadList[x].join(2)
+                        if not threadList[x].isAlive() or encoding_errors:
+                            del threadList[x]
+                            break
+                if not encoding_errors:
+                    threadList.append(RunnThread(avsFile, videoFile))
+                    avsFileList.append(avsFile)
+            elif not encoding_errors:
+                encodeAvs(avsFile, videoFile, not allEncodingsAtOnce)
+                avsFileList.append(avsFile)
+            if encoding_errors:
+                break
+        else:
+            found += 1
 finally:
     del disabler
 
@@ -450,6 +495,14 @@ if threadList:
 if encoding_errors:
     avsp.MsgBox(_('Last encoding returns error. Process is canceled\n') + encoding_errors)
     return
+    
+if delAvsFile and avsFileList:
+    for f in avsFileList:
+        if os.path.isfile(f):
+            try:
+                os.remove(f)
+            except:
+                pass
 
 # insert the trims
 if insertTrims and trimList:
@@ -486,7 +539,7 @@ if insertTrims and trimList:
     except:
         avsp.MsgBox(_('Error, cannot insert the encode preview text\nTrying to create new tab')) # Should never be
         try:
-            self.NewTab(text=saveScriptTxt + '\n' + sourceTxt[:-2])
+            self.NewTab(text=savedScriptTxt + '\n' + sourceTxt[:-2])
         except:
             pass
 
@@ -495,5 +548,8 @@ if not allEncodingsAtOnce:
     fSize = 'Total file size: %s' % fileSizeToString(encoding_file_size)
     freeSpace = getFreeSpace(savePath[0:2]+'\\')
     diskFree = '\nDisk free space: %s' % fileSizeToString(freeSpace) if freeSpace > 0 else ''
+    notEncoded = '\n\nSkipped encodings: %i' % found
     self.Raise()
-    avsp.MsgBox(_('Encoding finished\n\nElapsed time: %s\n%s%s') % (t, fSize, diskFree))
+    avsp.MsgBox(_('Encoding finished\n\nElapsed time: %s\n%s%s%s') % (t, fSize, diskFree, notEncoded))
+    
+    

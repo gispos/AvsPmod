@@ -4700,10 +4700,566 @@ class SplitClipCtrl(wx.Dialog):
         else:
             self.Activate(showFrame=True, focus=focus)
 
+# Displays the MediaInfo.dll readings: ShowMediaInfo(filename)
+class MediaInfoDlg(wx.Dialog):
+    def __init__(self, app, filename, title=''):
+        self.app = app
+        self.filename = filename
+        title = 'MediaInfo: ' + title if title else 'MediaInfo'
+        x,y,w,h = self.app.options['mediainfo_rect']
+        style = wx.DEFAULT_DIALOG_STYLE|wx.FRAME_FLOAT_ON_PARENT|wx.RESIZE_BORDER
+        wx.Dialog.__init__(self, app, wx.ID_ANY, title, pos=(x,y), size=(w,h), style=style, name='mediainfo')
+        SetFontPPI(self)
+        self.SetDoubleBuffered(True)
+        self.textCtrl = stc.StyledTextCtrl(self, wx.ID_ANY, style=wx.NO_BORDER)
+        self.textCtrl.SetMarginWidth(1, 0)
+        self.textCtrl.SetScrollWidth(50)
+        self.textCtrl.SetScrollWidthTracking(True)
+        self.textCtrl.UsePopUp(0)
+        self.textCtrl.SetEOLMode(stc.STC_EOL_LF)
+        self.textCtrl.SetCaretStyle(stc.STC_CARETSTYLE_INVISIBLE)
+        self.textCtrl.Bind(wx.EVT_CONTEXT_MENU, self.OnContextMenu)
+        self.Style()
+        self.Bind(wx.EVT_CLOSE, self.OnClose)
+    def OnClose(self, event):
+        x,y,w,h = self.GetRect()
+        self.app.options['mediainfo_rect'] = (x,y,w,h)
+        wnd = self.app.tabDlg
+        if isinstance(wnd, TabList) and wnd.IsShown():
+            wnd.autoClose = False # do not close Tablist on Tablist.KillFocus
+            self.Destroy() # python sets the focus after destroying a wnd to the parent wnd
+            wx.CallLater(60, wnd.SetAutoClose, True) # Focus tablist and reset autoClose
+        else:
+            self.Destroy()
+    def Style(self):
+        textstyle = self.app.options['textstyles']['scrapwindow']
+        self.textCtrl.StyleSetSpec(stc.STC_STYLE_DEFAULT, textstyle)
+        self.textCtrl.StyleClearAll()
+        for elem in textstyle.split(','):
+            if elem.startswith('fore:'):
+                self.textCtrl.SetSelForeground(True, elem.split(':')[1].strip())
+            elif elem.startswith('back:'):
+                self.textCtrl.SetSelBackground(True, elem.split(':')[1].strip())
+    def OpenPath(self):
+        if os.path.isfile(self.filename):
+            try:
+                subprocess.Popen(r'explorer /select, ' + self.filename)
+            except UnicodeEncodeError:
+                startfile(os.path.split(self.filename)[0])
+                wx.Bell()
+        else:
+            wx.Bell()
+    def SetText(self, txt, filename, title):
+        self.textCtrl.SetReadOnly(False)
+        self.textCtrl.SetScrollWidth(50)
+        self.textCtrl.SetText(txt)
+        self.textCtrl.SetReadOnly(True)
+        title = 'MediaInfo: ' + title if title else 'MediaInfo'
+        self.SetTitle(title)
+        self.filename = filename
+        self.Raise()
+    def OnContextMenu(self, event):
+        def _onsingle(event):
+            self.app.options['mediainfo_singlewnd'] = not self.app.options['mediainfo_singlewnd']
+        popup = wx.Menu()
+        id = wx.NewId()
+        popup.Append(id, _('Copy'))
+        self.Bind(wx.EVT_MENU, lambda f: self.textCtrl.CopyText(self.textCtrl.GetTextLength(), self.textCtrl.GetText()), id=id)
+        id = wx.NewId()
+        popup.Append(id, _('Open path'))
+        self.Bind(wx.EVT_MENU, lambda f: self.OpenPath(), id=id)
+        popup.AppendSeparator()
+        id = wx.NewId()
+        popup.Append(id, _('Sinle instance'), kind=wx.ITEM_CHECK)
+        popup.Check(id, self.app.options['mediainfo_singlewnd'])
+        self.Bind(wx.EVT_MENU, _onsingle, id=id)
+        self.PopupMenu(popup)
+        popup.Destroy()
+    def ShowDlg(self, txt):
+        self.textCtrl.SetReadOnly(False)
+        self.textCtrl.SetText(txt)
+        self.textCtrl.SetReadOnly(True)
+        self.Show()
+
+#############################
+### Tab List
+#############################
+from wx.lib.agw import ultimatelistctrl as ULCtrl
+class TabList(wx.Dialog):
+    def __init__(self, app):
+        self.app = app
+        self.nb = self.app.scriptNotebook
+        self.fileList = []
+        self.blockUpdate = False
+        self.options = app.options
+        self.bookmarks = self.options['tbl_showbookmarks']
+        x,y,w,h = self.options['tbl_dimensions']
+        style = wx.DEFAULT_DIALOG_STYLE|wx.STAY_ON_TOP|wx.RESIZE_BORDER
+        wx.Dialog.__init__(self, app, wx.ID_ANY, 'Tablist', pos=(x,y), size=(w,h), style=style, name='tablist')
+        if x < 0: self.Center()
+        (fontSize, fontStyle, fontWeight, fontUnderline, fontFace, fontFore, fontBack) = self.app.ParseFontStyle(self.app.options['textstyles']['tablist'].split(','))
+        if fontFace is not None:
+            self.SetFont(wx.Font(fontSize, wx.FONTFAMILY_DEFAULT, fontStyle, fontWeight, fontUnderline, faceName=fontFace))
+        else:
+            fontFore = wx.Colour(230,230,230)
+            fontBack = wx.Colour(62,63,62)
+        dpi.SetFontPPI(self)
+        self.autoClose = False
+        self.progress = False
+        class CustomListCtrl(wxp.UListCtrl):
+            def __init__(self, parent, fontcolor):
+                self.parent = parent
+                self.fontcolor = fontcolor
+                style = wx.LC_REPORT|wx.LC_VIRTUAL|wx.LC_VRULES|ULCtrl.ULC_NO_HIGHLIGHT|ULCtrl.ULC_SINGLE_SEL
+                wxp.UListCtrl.__init__(self, parent, wx.ID_ANY, agwStyle=style)
+                def OnListCtrlColClick(event):
+                    fileList = self.parent.fileList
+                    col = event.m_col
+                    idx = self.GetFirstSelected()
+                    script = fileList[idx][2] if idx >= 0 else None
+                    script2 = fileList[self.parent.last_tab][2] if self.parent.last_tab >= 0 else None
+                    script3 = fileList[self.parent.init_tab][2] if self.parent.init_tab >= 0 else None
+                    if col == 0: fileList.sort(key=utils.sort_alphanumeric(0))
+                    elif col == 1 and self.parent.bookmarks:
+                        fileList.sort(key=utils.sort_alphanumeric(4))
+                    else:
+                        fileList.sort(key=utils.sort_alphanumeric(1))
+                    self.parent.last_col = col
+                    self.parent.FindScript(script, True)
+                    idx = self.parent.FindScript(script2)
+                    if idx > -1: self.parent.last_tab = idx
+                    idx = self.parent.FindScript(script3)
+                    if idx > -1: self.parent.init_tab = idx
+                    self.Refresh()
+                    self.parent.SetCaption()
+                self.Bind(wx.EVT_LIST_COL_CLICK, OnListCtrlColClick)
+                def OnMouse(event):
+                    evtype = event.GetEventType()
+                    x = event.GetX()
+                    if evtype == wx.wxEVT_MOTION:
+                        self._mainWin.SetToolTipString('')
+                        if x < intPPI(15):
+                            self.SetCursor(wx.StockCursor(wx.CURSOR_HAND))
+                        else:
+                            self.SetCursor(wx.StockCursor(wx.CURSOR_DEFAULT))
+                    elif evtype == wx.wxEVT_LEFT_DOWN:
+                        self.parent.progress = False
+                        if self.parent.popup:
+                            self.parent.popup = False
+                        if x < intPPI(15):
+                            ctrl = wx.GetKeyState(wx.WXK_CONTROL)
+                            y = event.GetY()
+                            re = self._mainWin.HitTest(x,y)
+                            if re[0] != wx.NOT_FOUND:
+                                s = self.parent.app.GetSourcePath(self.parent.fileList[re[0]][2])
+                                if s:
+                                    if ctrl or self.parent.options['tbl_mediainfodefault']:
+                                        self.parent.autoClose = False
+                                        re = self.parent.app.ShowMediaInfo(s)
+                                        self.parent.autoClose = True
+                                        if re == -2: self.parent.options['tbl_mediainfodefault'] = False
+                                    else:
+                                        size = utils.FileSizeToString(s)
+                                        path, name = os.path.split(s)
+                                        s = 'Path:\n%s\n\nName:\n%s\n\nSize: %s - MediaInfo press Ctrl' % (path, name, size)
+                                        self._mainWin.SetToolTipString(s)
+                                else:
+                                    s = 'Source file not found or cannot extract from script\nMediaInfo press Ctrl'
+                                    self._mainWin.SetToolTipString(s)
+                                return # Block's selecting the item
+                    elif evtype == wx.wxEVT_LEFT_DCLICK:
+                        if x < intPPI(15): # Block's selecting the item and initialize the script
+                            return
+                        event.Skip() # process first the class event
+                        idx = self.GetFirstSelected()
+                        if idx < 0:
+                            return
+                        if self.parent.bookmarks:
+                            cw = self.GetColumnWidth(0)
+                            if x > cw and x < cw + self.GetColumnWidth(1):
+                                self.parent.FindBookmarksBkFile(idx) # run AvsPThumb
+                                return
+                        b = self.parent.options['tabautopreview']
+                        self.parent.options['tabautopreview'] = False
+                        self.parent.popup = False
+                        try:
+                            self.parent.OnSelect(None, True)
+                        finally:
+                            self.parent.options['tabautopreview'] = b
+                        return
+                    event.Skip() # process the intern class event
+                self.Bind(wx.EVT_MOUSE_EVENTS, OnMouse)
+                def OnMouseAux(event):
+                    idx = self.parent.last_tab
+                    if idx > -1:
+                        self.SelectItem(idx)
+                self.Bind(wx.EVT_MOUSE_AUX1_DOWN, OnMouseAux)
+                self.Bind( wx.EVT_MOUSE_AUX2_DOWN, OnMouseAux)
+            ### end init
+            def OnGetItemText(self, line, col):
+                fileList = self.parent.fileList
+                if fileList:
+                    if self.parent.bookmarks:
+                        if col == 0:
+                            return fileList[line][3]+fileList[line][0]
+                        elif col == 1:
+                            return fileList[line][4]
+                        else:
+                            return fileList[line][1]
+                    return fileList[line][3]+fileList[line][0] if col == 0 else fileList[line][1]
+                return ''
+            def OnGetItemToolTip(self, line, col): # only if style flag with tooltip
+                return ''
+            def OnGetItemTextColour(self, line, col): # else somtimes wrong textcolor
+                state = self.GetItemState(line, ULCtrl.ULC_STATE_SELECTED)
+                selected = state & ULCtrl.ULC_STATE_SELECTED == ULCtrl.ULC_STATE_SELECTED
+                return wx.YELLOW if selected else wx.Colour(50, 150, 255) if line == self.parent.init_tab else \
+                        wx.Colour(30, 210, 120) if line == self.parent.last_tab else self.fontcolor
+            def GetItemIdxFromCursor(self):
+                x,y = self._mainWin.ScreenToClient(wx.GetMousePosition())
+                re = self._mainWin.HitTest(x,y)
+                if re[0] != wx.NOT_FOUND:
+                    return re[0]
+                return -1
+
+        self.listCtrl = CustomListCtrl(self, fontFore)
+        self.listCtrl.SetBackgroundColour(fontBack)
+        self.CreateListCtrlColumns()
+        self.listCtrl.Bind(wx.EVT_RIGHT_DOWN, self.OnContextMenu) # fires on ListCtrl itself, we must also check if a item is selected
+        self.listCtrl.Bind(wx.EVT_LIST_ITEM_SELECTED, self.OnSelect)
+        self.listCtrl.Bind(wx.EVT_KILL_FOCUS, self.OnKillFocus)
+        self.Bind(wx.EVT_CLOSE, self.OnClose)
+    ## init end
+
+    def OnClose(self, event=None):
+        if isinstance(self, TabList) and self.autoClose:
+            colPath = 2 if self.bookmarks else 1
+            opt = self.options
+            opt['tbl_dimensions'] = self.GetRect()
+            opt['tbl_col0w'] = self.listCtrl.GetColumnWidth(0)
+            opt['tbl_col1w'] = self.listCtrl.GetColumnWidth(colPath)
+            if self.last_tab > -1 and len(self.fileList) <= self.last_tab:
+                opt['tbl_last_id'] = id(self.fileList[self.last_tab][2])
+            if self.bookmarks:
+                opt['tbl_colBw'] = self.listCtrl.GetColumnWidth(1)
+            self.Destroy()
+    @AsyncCallWrapper
+    def OnKillFocus(self, event):
+        event.Skip()
+        if self.autoClose and not self.progress and self.options['tbl_autoclose']:
+            if not wx.FindWindowByName('mediainfo'):
+                self.OnClose()
+    def CreateListCtrlColumns(self):
+        self.listCtrl.InsertColumn(0, 'Name')
+        self.listCtrl.SetColumnWidth(0, self.options['tbl_col0w'])
+        if self.bookmarks:
+            self.listCtrl.InsertColumn(1, 'Bookmarks')
+            self.listCtrl.InsertColumn(2, 'Path')
+            self.listCtrl.SetColumnWidth(1, self.options['tbl_colBw'])
+            self.listCtrl.SetColumnWidth(2, self.options['tbl_col1w'])
+        else:
+            self.listCtrl.InsertColumn(1, 'Path')
+            self.listCtrl.SetColumnWidth(1, self.options['tbl_col1w'])
+    def ReloadTabs(self):
+        self.listCtrl.SetItemCount(0)
+        self.fileList = []
+        for i in range(self.nb.GetPageCount()):
+            script = self.nb.GetPage(i)
+            state = '' if script.AVI else '>'
+            state += '* ' if script.GetModify() else ''
+            #bookmarks = str(self.app.OnMenuBookmarksFromScript(getOnlyCount=True, script=script, difWarn=False, getOnlyDict=False)) # get from script
+            bookmarks = str(len(self.app.videoSlider.bookmarks)) if script is self.app.currentScript else str(len(script.bookmarks))
+            if script.filename:
+                path, name = os.path.split(script.filename)
+            else:
+                path, name = '', self.nb.GetPageText(i)
+            self.fileList.append([name, path, script, state, bookmarks])
+        self.fileList.sort(key=utils.sort_alphanumeric(self.last_col))
+        self.listCtrl.SetItemCount(len(self.fileList))
+    @AsyncCallWrapper
+    def UpdateTabs(self):
+        if not self.blockUpdate:
+            last = self.fileList[self.last_tab][2] if self.last_tab >= 0 else None
+            init = self.fileList[self.init_tab][2] if self.init_tab >= 0 else None
+            self.ReloadTabs()
+            script, index = self.app.getScriptAtIndex(None)
+            self.FindScript(script, True)
+            self.last_tab = self.FindScript(last)
+            self.init_tab = self.FindScript(init)
+            self.listCtrl.Refresh()
+            self.SetCaption()
+    @AsyncCallWrapper
+    def UpdateAviState(self, script=None):
+        if script is not None:
+            idx = self.FindScript(script, True)
+            if idx > -1:
+                s = '' if script.AVI else '>'
+                s += '* ' if script.GetModify() else ''
+                self.fileList[idx][3] = s
+            else:
+                self.UpdateTabs()
+        else:
+            for idx,item in enumerate(self.fileList):
+                s = '' if item[2].AVI else '>'
+                s += '* ' if item[2].GetModify() else ''
+                item[3] = s
+            script, index = self.app.getScriptAtIndex(None)
+            self.FindScript(script, True)
+        self.listCtrl.Refresh()
+    @AsyncCallWrapper
+    def SelectItem(self, script):
+        if self.progress:
+            return
+        idx = self.FindScript(script)
+        if idx > -1:
+            self.popup = 2
+            if idx != self.tmp_tab:
+                self.last_tab = self.tmp_tab
+            self.tmp_tab = idx
+            self.listCtrl.Select(idx)
+            self.listCtrl.Refresh()
+    def ShowDlg(self):
+        self.init_tab = -1
+        self.last_tab = -1
+        self.tmp_tab = -1
+        self.last_id = None
+        self.popup = 2 # block's also forcing ShowVideoFrame on startup: FindSelectedTab > OnSelect
+        self.last_col = 0 # sort column 0 = name
+        self.wasFullscreen = self.app.fullScreenWnd_IsShown
+        self.ReloadTabs()
+        self.FindSelectedTab()
+        self.last_tab = self.FindScriptById(self.options.get('tbl_last_id', None))
+        self.SetCaption()
+        self.autoClose = False
+        self.Show()
+        self.listCtrl.SetFocus()
+        self.listCtrl.Update()
+        self.autoClose = True
+    def SetCaption(self):
+        s = 'On' if self.app.options['tabautopreview'] else 'Off'
+        if self.last_col == 0: ident = 'name'
+        elif self.bookmarks and self.last_col == 1: ident = 'bookmarks'
+        else: ident = 'path'
+        self.SetTitle('Tabs: %i (sort by %s) - Tabs auto preview: %s' % (len(self.fileList), ident, s))
+    def FindSelectedTab(self):
+        script, index = self.app.getScriptAtIndex(None)
+        idx = self.FindScript(script)
+        if idx < 0:
+            self.ReloadTabs()
+            idx = self.FindScript(script)
+        if idx > -1:
+            self.listCtrl.SelectItem(idx)
+            self.init_tab = idx
+            self.last_tab = idx
+            self.tmp_tab = idx
+            return
+        wx.Bell()
+    def FindScript(self, script, select=False):
+        if script is not None:
+            for idx, item in enumerate(self.fileList):
+                if item[2] is script:
+                    if select: self.listCtrl.Select(idx)
+                    return idx
+        return -1
+    def FindScriptById(self, ID, select=False):
+        if ID:
+            for idx, item in enumerate(self.fileList):
+                if id(item[2]) == ID:
+                    if select: self.listCtrl.Select(idx)
+                    return idx
+        return -1
+    def SetAutoClose(self, val): # MediaInfoDlg call's this on closing
+        self.SetFocus()
+        self.Raise()
+        self.autoClose = val
+    def OnSelect(self, event, force=None):
+        def _reset():
+            self.listCtrl.SetFocus()
+            self.progress = False
+        if self.popup:
+            if self.popup != True: # on startup 2
+                if event:
+                    event.Veto()
+            self.popup = False
+            return
+        if not self.fileList:
+            if event:
+                event.Veto()
+            return
+        if event:
+            event.Skip()
+        self.progress = True
+        ishiden = False
+        try:
+            idx = self.listCtrl.GetFirstSelected()
+            if idx > -1:
+                if idx != self.tmp_tab:
+                    self.last_tab = self.tmp_tab
+                self.tmp_tab = idx
+                name, path, script, state, bookmarks  = self.fileList[idx]
+                for i in range(self.nb.GetPageCount()):
+                    scr = self.nb.GetPage(i)
+                    if scr is script:
+                        wasFullscreen = self.app.fullScreenWnd_IsShown
+                        if not self.options['tabautopreview'] and not self.app.previewOK(scr) and (self.app.previewWindowVisible or force):
+                            self.Show(False)
+                            ishiden = True
+                        else:
+                            self.nb.Enable(False) # do not focus the main form
+                        try:
+                            self.nb.SetSelection(i)
+                        finally:
+                            self.nb.Enable(True)
+                        if not self.app.previewWindowVisible:
+                            if force or (self.options['tbl_forcepreview'] and self.app.previewOK(script)):
+                                self.app.zoom_antialias = False
+                                try:
+                                    self.app.ShowVideoFrame(focus=False)
+                                finally:
+                                    self.app.ResetZoomAntialias()
+                        if (wasFullscreen or self.wasFullscreen)  and self.app.previewOK() and not self.app.fullScreenWnd_IsShown:
+                            self.app.OnLeftDClickVideoWindow(toggleFullscreen=True)
+                        else:
+                            if self.app.previewOK():
+                                self.wasFullscreen = wasFullscreen
+                        return
+            wx.Bell()
+        finally:
+            if ishiden:
+                if wx.GetApp().GetTopWindow() != self.app and self.autoClose:
+                    self.OnClose()
+                    return
+                if idx > -1:
+                    s = '' if script.AVI else '>'
+                    s += '* ' if script.GetModify() else ''
+                    self.fileList[idx][3] = s
+            self.Show(True)
+            self.SetFocus()
+            self.Update()
+            self.listCtrl.Refresh()
+            wx.GetApp().ProcessIdle()
+            wx.CallLater(100, _reset)
+    def OnContextMenu(self, event):
+        def onforce(event):
+            self.popup = False
+            self.options['tbl_forcepreview'] = not self.options['tbl_forcepreview']
+        def onpreview(event):
+            self.popup = False
+            self.app.OnMenuAutoHidePreview(event)
+            self.SetCaption()
+        def onrelease(event):
+            script = self.app.currentScript
+            idx = self.FindScript(script)
+            self.autoClose = False
+            self.nb.Enable(False)
+            try:
+                self.app.OnMenuScriptReleaseMemory()
+            finally:
+                self.nb.Enable(True)
+                self.listCtrl.SetFocus()
+                self.FindSelectedTab()
+                self.popup = False
+                self.autoClose = True
+        def onrelease_allother(event):
+            self.autoClose = False
+            self.nb.Enable(False)
+            try:
+                self.app.OnMenuOtherScriptReleaseMemory()
+            finally:
+                self.nb.Enable(True)
+                self.listCtrl.SetFocus()
+                self.popup = False
+                self.autoClose = True
+        def onclosetab(event):
+            last = self.fileList[self.last_tab][2] if self.last_tab >= 0 else None
+            init = self.fileList[self.init_tab][2] if self.init_tab >= 0 else None
+            self.autoClose = False
+            self.nb.Enable(False)
+            try:
+                self.app.OnMenuFileClose()
+            finally:
+                self.nb.Enable(True)
+                self.listCtrl.SetFocus()
+                self.popup = False
+                self.autoClose = True
+        def onshowbookmarks(event):
+            self.bookmarks = not self.bookmarks
+            self.listCtrl.DeleteAllColumns()
+            self.CreateListCtrlColumns()
+            self.popup = False
+        def onautoclose(event):
+            self.options['tbl_autoclose'] = not self.options['tbl_autoclose']
+        def onmediainfodefault(event):
+            self.options['tbl_mediainfodefault'] = not self.options['tbl_mediainfodefault']
+        popup_idx = self.listCtrl.GetItemIdxFromCursor()
+        if popup_idx > -1:
+            autopreview = self.options['tabautopreview']
+            self.options['tabautopreview'] = True  # do not init scripts with right click
+            self.popup = False
+            self.autoClose = False
+            self.listCtrl.Select(popup_idx)
+            self.popup = True
+            self.autoClose = True
+            self.options['tabautopreview'] = autopreview
+        popup = wx.Menu()
+        def AddItem(txt, handler, kind, enabled=True, checked=True):
+            id = wx.NewId()
+            popup.Append(id, _(txt), kind=kind)
+            popup.Enable(id, enabled)
+            if kind == wx.ITEM_CHECK:
+                popup.Check(id, checked)
+            self.Bind(wx.EVT_MENU, handler, id=id)
+        if popup_idx > -1:
+            AddItem('Release video memory', onrelease, wx.ITEM_NORMAL, self.app.currentScript.AVI is not None)
+            AddItem('Release all other video memory', onrelease_allother, wx.ITEM_NORMAL, self.app.currentScript.AVI is not None)
+            AddItem('Close tab', onclosetab, wx.ITEM_NORMAL)
+            popup.AppendSeparator()
+        AddItem('Auto preview (dbl-click override)', onpreview, wx.ITEM_CHECK, True, self.options['tabautopreview'])
+        AddItem('Force preview visible', onforce, wx.ITEM_CHECK, True, self.options['tbl_forcepreview'])
+        AddItem('Default MediaInfo', onmediainfodefault, wx.ITEM_CHECK, True, self.options['tbl_mediainfodefault'])
+        AddItem('Show bookmarks', onshowbookmarks, wx.ITEM_CHECK, True, self.bookmarks)
+        AddItem('Auto close', onautoclose, wx.ITEM_CHECK, True, self.options['tbl_autoclose'])
+        self.PopupMenu(popup)
+        popup.Destroy()
+
+    # private, AvsPThumb
+    def FindBookmarksBkFile(self, idx):
+        if sys.maxsize > 2**32:
+            suffix = '.bk6'
+        else:
+            suffix = '.bk3'
+        runfile = self.options.get('tbl_avspthumb', '')
+        if not os.path.isfile(runfile):
+            self.autoClose = False
+            dlg = wx.FileDialog(None, defaultDir=self.app.programdir,defaultFile='AvsPThumb.exe')
+            ID = dlg.ShowModal()
+            runfile = dlg.GetPath()
+            dlg.Destroy()
+            if ID != wx.ID_OK:
+                self.autoClose = True
+                return
+        if os.path.split(runfile)[1].lower() == 'avspthumb.exe':
+            self.options['tbl_avspthumb'] = runfile
+        item = self.fileList[idx]
+        scriptFile = os.path.join(item[1], item[0])
+        self.autoClose = True
+        bkf = os.path.splitext(scriptFile)[0]
+        if not bkf:
+            wx.Bell()
+            return
+        bkf += suffix
+        if not os.path.isfile(bkf):
+            bkf = scriptFile # open AvsPthumb and read the bookmarks from script
+
+        param = '"%s" "%s"' % (runfile, bkf)
+        param = param.encode(sys.getfilesystemencoding())
+        subprocess.Popen(param, shell=True)
+## end Tablist
+
 #############################
 ### Script Selector
 #############################
-from wx.lib.agw import ultimatelistctrl as ULCtrl
+#from wx.lib.agw import ultimatelistctrl as ULCtrl
 class ScriptSelector(wx.Dialog):
     def __init__(self, parent, title=_('Script selector'), pos=(0, 340), size=tuplePPI(340,600)):
         style = wx.DEFAULT_DIALOG_STYLE | wx.STAY_ON_TOP | wx.RESIZE_BORDER | wx.FRAME_FLOAT_ON_PARENT|wx.BORDER_SIMPLE|wx.MINIMIZE_BOX # | wx.NO_FULL_REPAINT_ON_RESIZE | wx.CLIP_CHILDREN
@@ -7198,7 +7754,7 @@ class AvsFunctionDialog(wx.Dialog): # PPI set
 
     def CreateFilterInfoDialog(self, resetargsbutton=True):
         int5 = intPPI(5)
-        int10 = intPPI(10)                                               # GPo new, style
+        int10 = intPPI(10)
         dlg = wx.Dialog(self, wx.ID_ANY, _('Edit function information'), style=wx.DEFAULT_DIALOG_STYLE|wx.RESIZE_BORDER)
         dlg.SetMinSize(tuplePPI(380,380))
         SetFontPPI(dlg)
@@ -8274,6 +8830,7 @@ class SliderPlus(wx.Panel):
         self.dpiScale = dpiScale
         _size = size[0], int(size[1]*dpiScale)
         wx.Panel.__init__(self, parent, id, size=_size, style=wx.WANTS_CHARS)
+        self.SetDoubleBuffered(True) # flicker free with a large number of bookmarks ( Update() after _Refresh() needed )
         self.titleDict = titleDict # GPo TODO, remove it and store the titles in the bookmarks
         self.selectionsDict = {}
         self.childSelectionsDict = None  # Update this dict on create selections
@@ -8525,10 +9082,11 @@ class SliderPlus(wx.Panel):
         self._Refresh(False)
 
     def _OnPaint(self, event):
-        #dc = wx.PaintDC(self)
-        dc = wx.BufferedPaintDC(self)
+        dc = wx.PaintDC(self)
+        #dc = wx.BufferedPaintDC(self)
         self._PaintSlider(dc)
 
+    """ test, not used
     # repaint only the slider button (it's faster for button color changes)
     def PaintSliderHandle(self, dc=None):
         if not dc:
@@ -8566,6 +9124,7 @@ class SliderPlus(wx.Panel):
         dc.SetPen(self.penShadow)
         dc.DrawLine(pixelpos0+wH-1, yH+1, pixelpos0+wH-1, yH+hH)
         dc.DrawLine(pixelpos0+1, yH+hH-1, pixelpos0+wH, yH+hH-1)
+    """
 
     # GPo 2020, changed, I want do handle the selections seperataly (not in bookmarks stored)
     def _PaintSlider(self, dc):
@@ -8880,10 +9439,13 @@ class SliderPlus(wx.Panel):
 
         if self.IsDoubleBuffered():
             dc = wx.ClientDC(self)
+            dc.Clear()
+            self._PaintSlider(dc)
+            self.Update()
         else:
             dc = wx.BufferedDC(wx.ClientDC(self))
-        dc.Clear()
-        self._PaintSlider(dc)
+            dc.Clear()
+            self._PaintSlider(dc)
 
     def SetBookmarkHilighting(self, enabled=False):  # GPo
         if self.hilightBookmarks != enabled:
@@ -8925,7 +9487,6 @@ class SliderPlus(wx.Panel):
             self._Refresh(False)
         return True
 
-    # GPo new
     def SetBookmark(self, value, bmtype=0, title='', refresh=True):
         # Type=0: bookmark
         if bmtype == 0:
@@ -9060,7 +9621,6 @@ class SliderPlus(wx.Panel):
         rectHandle.Inflate(self.wH + self.intPPI(2), 0) # GPo 2020, Inflate extends both sides (left, right) so 1x + 2 pixel is enough.
         return rectHandle.Inside(mousepos)
 
-    # GPo new
     def HitTestSelection(self, mousepos):
         if not self.selections:
             return None
@@ -9273,6 +9833,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.SplitClipCtrl = SplitClipCtrl(self)
         self.sdlWindow = SDLWindow(self)
         self.ScriptSelector = None # create on first use
+        self.tabDlg = None
 
         if os.path.isfile(self.macrosfilename):
             try:
@@ -9511,8 +10072,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.titleDict = {}
         self.recentframes = []
         self.bmpVideo = None
-        self.UseNewFrameThread = self.options['usenewframethread']  # GPo new, test with one background frame thread for each script
-        self.progressDelayTime = self.options['progressdelaytime']  # GPo, waiting before showing the thread progress dialog
+        self.UseNewFrameThread = self.options['usenewframethread']  # one background frame thread for each script
+        self.progressDelayTime = self.options['progressdelaytime']  # waiting before showing the thread progress dialog
         self.splitView = False                             # GPo
         self.splitView_next = True                         # GPo
         self.splitView_freeze = False                      # GPo, freeze frame number
@@ -10595,7 +11156,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'autoslidermakestringfilename': True,
             'autoslidermakeunknown': True,
             'autosliderexclusions': '',
-            #'autosliderupdatedirectly': True,      # GPo
             'sliderwindowcustomtheme': True,        # GPo
             # USER SLIDER, TOGGLE TAGS
             'savetoggletags': False,                # GPo, save toggle tags within the script
@@ -10615,7 +11175,18 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'tabmiddlemouse': 0,                     # GPo 2024
             'mouseauxdown': 'tab change',            # GPo 2020
             'tabautopreview': False,                 # GPo 2021
-            'tabdlgoptions': {'dimensions':(-1,-1,intPPI(640),intPPI(560)),'col0w':intPPI(560),'force_preview':True},
+            # TabList options
+            'tbl_dimensions': (-1,-1,intPPI(640),intPPI(560)),
+            'tbl_col0w': intPPI(560),
+            'tbl_col1w': intPPI(200),
+            'tbl_colBw': intPPI(50),
+            'tbl_forcepreview': True,
+            'tbl_mediainfodefault': False,
+            'tbl_showbookmarks': True,
+            'tbl_autoclose': True,
+            'tbl_avspthumb': '',
+            'mediainfo_rect': (100,100,intPPI(400),intPPI(600)),  # MediaInfo Dlg dimensions
+            'mediainfo_singlewnd': True,             # show multible dialogs or not
             'hidescrollbars': True,                  # GPo 2021
             'scriptwindowbindmousewheel': 3,         # GPo 2021 # user problem with mouse wheel on editor, on large scripts it is faster if it set
             'playloop': False,                       # GPo 2020 playback loop
@@ -10732,8 +11303,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.options['version'] = self.version
         self.options['offsetbookmarks'] = False # GPo, disable it as default
         self.options['numberwheelfaster'] = False # on start fixed false, change OnMiddleUpScriptWindow the number wheel performance
-        #self.options['downmixaudio'] = True # TODO
-
         # Fix recentfiles as necessary???
         try:
             for i, s in enumerate(self.options['recentfiles']):
@@ -12116,11 +12685,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     and self.currentScript.AVI and not self.fullScreenWnd_IsShown and self.mintextlines > 0:
                     pos = self.GetMainSplitterNegativePosition()
                     self.mainSplitter.SetSashPosition(pos)
-                    self.SaveLastSplitVideoPos() # GPo new
-                    #~self.currentScript.lastSplitVideoPos = self.GetMainSplitterSplitPos()
-
-
+                    self.SaveLastSplitVideoPos()
             event.Skip()
+
         self.programSplitter.Bind(wx.EVT_SIZE, OnProgramSplitterSize)
 
         if not self.separatevideowindow:
@@ -12168,7 +12735,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         scriptWindow.SetFocus()
         self.SetMinSize(tuplePPI(320, 240))
 
-        # GPo new, update the matrix menu items
+        # update the matrix menu items
         script = self.currentScript
         if script.matrix[0] == 'auto':
             s1 = _('Resolution-based')
@@ -12835,8 +13402,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     (_('Fullscreen'), '', self.OnMenuToggleFullscreen, _('Enable/disable Fullscreen mode. Shift + double click (Esc chancel)')),
                     (_('Resize video window'),
                         (
-                        (_('Force'), '', self.OnMenuVideoWindowResizeOption, _('Sizing on initilisation, tab change, zoom change, etc.'), wx.ITEM_RADIO, self.options['resizevideowindow']==0),
-                        (_('Normal'), '', self.OnMenuVideoWindowResizeOption, _('Sizing on initilisation and zoom change'), wx.ITEM_RADIO, self.options['resizevideowindow']==1),
+                        (_('Force'), '', self.OnMenuVideoWindowResizeOption, _('Sizing on initilisation, tab change, zoom or size change, etc.'), wx.ITEM_RADIO, self.options['resizevideowindow']==0),
+                        (_('Normal'), '', self.OnMenuVideoWindowResizeOption, _('Sizing on initilisation and optional on zoom or size change (Program Options > Video)'), wx.ITEM_RADIO, self.options['resizevideowindow']==1),
                         (_('Static'), '', self.OnMenuVideoWindowResizeOption, _('No sizing, only on first initilisation or manual splitter moving'), wx.ITEM_RADIO, self.options['resizevideowindow']==2),
                         ),
                     ),
@@ -12852,7 +13419,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 ),
                 (_('Tools'),
                     (
-                    (_('Run analysis pass'), '', self.OnMenuVideoRunAnalysisPass, _('Request every video frame once (analysis pass for two-pass filters)')),
+                    (_('Run analysis pass'), '', self.OnMenuVideoRunAnalysisPass, _('Request every video frame once (analysis pass for two-pass or Scene change filters)')),
                     (_('Run FPS analysis'), '', self.OnMenuVideoRunFPSAnalysis, _('Analysis pass for frame per second measurement (Average)')),
                     (_('Locate frame'), '', self.OnMenuLocateFrame, _("Reade the LocateFrame readme")),
                     (''),
@@ -13562,7 +14129,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             scriptWindow.sliderSizerNew.AddGrowableCol(3)
         scriptWindow.sliderSizerNew.SetEmptyCellSize((0,0))
         scriptWindow.toggleTagSizer = wx.BoxSizer(wx.VERTICAL)
-        ### GPo new, disable slider refresh and preview filter checkbox
+        ### disable slider refresh and preview filter checkbox
         toolBoxSizer = wx.BoxSizer(wx.HORIZONTAL)
         # preview filter box
         scriptWindow.chkPreviewFilter = wx.CheckBox(scriptWindow.sliderWindow, wx.ID_ANY, label=_('Preview filter '))
@@ -13578,7 +14145,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         scriptWindow.videoSidebarSizer = wx.BoxSizer(wx.VERTICAL)
         scriptWindow.videoSidebarSizer.Add(scriptWindow.toggleTagSizer, 0, wx.TOP|wx.LEFT, int5)
         scriptWindow.videoSidebarSizer.Add(toolBoxSizer, 0, wx.RIGHT|wx.ALIGN_RIGHT, int5)
-        ### GPo new, frame properties parent textCtrl
+        ### frame properties parent textCtrl
         scriptWindow.propertySizer = wx.BoxSizer(wx.VERTICAL)
         if self.propWindowParent > 0:
             scriptWindow.propertySizer.Add(self.propWindow.textCtrl, 0, wx.EXPAND|wx.TOP|wx.RIGHT, int5)
@@ -13640,6 +14207,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         videoWindow.Bind(wx.EVT_LEFT_DOWN, self.OnLeftDownVideoWindow)
         videoWindow.Bind(wx.EVT_MOTION, self.OnMouseMotionVideoWindow)
         videoWindow.Bind(wx.EVT_LEAVE_WINDOW, self.OnMouseLeaveVideoWindow) # get some times lost
+        videoWindow.Bind(wx.EVT_ENTER_WINDOW, self.OnMouseEnterVideoWindow) # test for EVT_LEAVE_WINDOW, not better!
         #videoWindow.Bind(wx.EVT_KILL_FOCUS, self.OnMouseLeaveVideoWindow)
         videoWindow.Bind(wx.EVT_LEFT_UP, self.OnLeftUpVideoWindow)
         videoWindow.Bind(wx.EVT_LEFT_DCLICK, self.OnLeftDClickVideoWindow)    # GPo 2018
@@ -14306,7 +14874,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     def OnMenuFileUndoCloseTab(self, event):
         self.UndoCloseTab()
 
-    def OnMenuFileClose(self, event):
+    def OnMenuFileClose(self, event=None):
         if self.previewWindowVisible:
             index = self.scriptNotebook.GetSelection()
             script = None
@@ -14321,27 +14889,33 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     def OnMenuFilesOthersClose(self, event):
         idx = self.scriptNotebook.GetSelection()
         count = self.scriptNotebook.GetPageCount()-1
+        self.TabList_BlockUpdate(True)
         for index in xrange(count,-1,-1):
             if index != idx:
                 self.CloseTab(index, prompt=True)
+        self.TabList_BlockUpdate(False, True)
 
     def OnMenuFilesCloseLeft(self, event):
         if self.scriptNotebook.GetRowCount() > 1:
             wx.MessageBox(_('Cannot close tabs in groups if rows count greater 1\nYou must disable Options -> Multiline tab style'),'AvsPmod')
             return
+        self.TabList_BlockUpdate(True)
         idx = self.scriptNotebook.GetSelection()
         count = self.scriptNotebook.GetPageCount()-1
         for index in xrange(idx-1,-1,-1):
             self.CloseTab(index, prompt=True)
+        self.TabList_BlockUpdate(False, True)
 
     def OnMenuFilesCloseRight(self, event):
         if self.scriptNotebook.GetRowCount() > 1:
             wx.MessageBox(_('Cannot close tabs in groups if rows count greater 1\nYou must disable Options -> Multiline tab style'),'AvsPmod')
             return
+        self.TabList_BlockUpdate(True)
         idx = self.scriptNotebook.GetSelection()
         count = self.scriptNotebook.GetPageCount()-1
         for index in xrange(count,idx,-1):
             self.CloseTab(index, prompt=True)
+        self.TabList_BlockUpdate(False, True)
 
     def OnMenuFilesCloseNotOpened(self, event):
         # wath an shit, tabs not visible after deleting and not multiline
@@ -14352,6 +14926,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         curr_script = self.scriptNotebook.GetPage(self.scriptNotebook.GetSelection())
         visible = self.previewWindowVisible
         count = self.scriptNotebook.GetPageCount()-1
+        self.TabList_BlockUpdate(True)
         self.scriptNotebook.SetSelection(count)
         for index in xrange(count,-1,-1):
             script = self.scriptNotebook.GetPage(index)
@@ -14362,6 +14937,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if self.scriptNotebook.GetPage(i) is curr_script:
                 self.scriptNotebook.SetSelection(i)
         wx.GetApp().SafeYieldFor(self.scriptNotebook, wx.wxEVT_ANY) # important, delete the message query
+        self.TabList_BlockUpdate(False, True)
         self.options['multilinetab'] = multi
         style = wx.NO_BORDER
         if self.options['multilinetab']:
@@ -15145,7 +15721,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             lastfirstpos = script.PositionFromLine(endline)
             extraB = extraC = ''
             extraAA = extraBB = ''
-            if label.startswith('#>'): # GPo new
+            if label.startswith('#>'):
                 label = label[2:].lstrip()
                 extraC = '#>'
             if startpos == firstpos and (endpos == lastpos or endpos == lastfirstpos):
@@ -15154,7 +15730,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     extraB = '\n'
                 if endpos == lastfirstpos:
                     extraBB = '\n'
-            elif startpos == endpos: # GPo, nothing selected also the current line
+            elif startpos == endpos: # nothing selected also the current line
                 startpos = firstpos
                 endpos = lastpos
                 extraAA = extraB = '\n'
@@ -15393,7 +15969,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     def OnMenuVideoTogglePropWindow(self, event):
         self.propWindow.Toggle()
 
-    # GPo new, PropWindow show/hide calls this function and enable or disable read frame props
+    # PropWindow show/hide calls this function and enable or disable read frame props
     def SetReadFrameProps(self, enabled):
         self.CheckPlayback()
         self.readFrameProps = enabled
@@ -16084,18 +16660,15 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.UpdateVideoSubMenuByPosition(_('Preview filter'), state, True)
                 script.previewFilterIdx = state
                 script.lastpreviewFilterIdx = state
-                #if self.ShowPFilterTime:
-                    #script.sliderWindow.previewFilterTime = t
+
                 script.chkPreviewFilter.SetValue(True)
             else: # preview filter failed, disable it
                 self.UpdateVideoSubMenuByPosition(_('Preview filter'), 0, True)
                 script.lastpreviewFilterIdx = script.previewFilterIdx
                 script.previewFilterIdx = 0
                 script.chkPreviewFilter.SetValue(False)
-            #script.sliderWindow.PaintPFilterTime()
 
         script = self.currentScript
-        #script.sliderWindow.previewFilterTime = 0
         self.CheckPlayback()
 
         if event is not None:
@@ -16119,7 +16692,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             return
 
         ret = None
-        self.previewFilterDict.clear() # GPo new
+        self.previewFilterDict.clear()
         needStatus = True
 
         # if preview not OK force show video frame, or we cannot put the preview
@@ -16139,16 +16712,15 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 ident,arg,pos = self.previewFilterDict[lKey]
                 if arg:
                     wx.BeginBusyCursor()
-                    #t = time.time()
                     ret, err = script.AVI.CreateFilterClip(arg)
-                    updateState(lKey) #~updateState(lKey, time.time() - t)
+                    updateState(lKey)
                     wx.EndBusyCursor()
                     if err:
                         wx.MessageBox(err, "Preview filter")
                         script.display_clip_refresh_needed = True
                         self.refreshAVI = True #updateUserSliders
                     else:
-                        script.display_clip_refresh_needed = False # GPo new resizeFilter
+                        script.display_clip_refresh_needed = False
                     needStatus = not self.ShowVideoFrame(userScrolling=not updateUserSliders, scroll=scroll, focus=focus, forceCursor=forceCursor)
                 else:
                     updateState(0)
@@ -16532,8 +17104,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             vW, vH = script.AVI.Width, script.AVI.Height
             for i in xrange(self.scriptNotebook.GetPageCount()):
                 _script = self.scriptNotebook.GetPage(i)
-                _script.lastZoom = None # GPo new
-                _script.lastFsZoom = None # GPo new
+                _script.lastZoom = None
+                _script.lastFsZoom = None
                 if _script != script and _script.AVI is not None:
                     vw, vh = _script.AVI.Width, _script.AVI.Height
                     if (vw,vh) == (vW,vH):
@@ -16562,7 +17134,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             else:
                 _script, index = self.getScriptAtIndex(self.scriptNotebook.GetSelection() - 1)
             _script.display_clip_refresh_needed = True
-            _script.resizeFilter = script.resizeFilter # GPo new
+            _script.resizeFilter = script.resizeFilter
             info = self.GetResizeFilterInfo(_script, force_Size) if force_Size else None
             self.UpdateScriptAVI(_script, resizeFilterInfo=info)
 
@@ -16592,7 +17164,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if script.AVI is None:
             if not self.ShowVideoFrame():
                 return
-            self.SaveCallYield()
+            self.SafeCallYield()
         if not self.previewOK(script) or self.AviThread_Running(script) or wx.IsBusy():
             wx.Bell()
             return
@@ -16668,7 +17240,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     if nr > start + maxLoop:
                         break
                     statusbar.SetStatusText('Press Esc - Frames: %i/%i - Frame: %i, type %s' % (nr-start,maxLoop-(nr-start),nr,s))
-                self.SaveCallYield()
+                self.SafeCallYield()
         finally:
             del disabler
             del blocker
@@ -16857,7 +17429,44 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
              self.ScriptSelector = ScriptSelector(self)
         self.ScriptSelector.Toggle()
 
+    def ShowMediaInfo(self, filename):
+        try:
+            import MediaInfoDLL
+            MI = MediaInfoDLL.MediaInfo()
+        except:
+            wx.MessageBox('MediaInfo.dll not found\nMediaInfo.dll can be downloaded from mediaarea.net\nOnly the DLL is required', 'Error')
+            return -2
+        try:
+            Version=MI.Option_Static("Info_Version", "0.7.7.0;MediaInfoDLL;0.7.7.0")
+            if Version == "":
+                wx.MessageBox("MediaInfo.DLL: version of the DLL is not compatible\nTested with Version 24.5.0.0")
+                return -2
+            self.SetCursor(wx.StockCursor(wx.CURSOR_WAIT))
+            re = None
+            try:
+                re = MI.Open(filename)
+            finally:
+                self.SetCursor(wx.StockCursor(wx.CURSOR_DEFAULT))
+            if not re:
+                if os.path.isfile(filename):
+                    wx.MessageBox('Cannot open the file:\n' + filename, 'MediaInfo.DLL')
+                else:
+                    wx.MessageBox('File not found:\n' + filename, 'MediaInfo.DLL')
+                return False
 
+            MI.Option_Static("Complete")
+            if self.options['mediainfo_singlewnd']:
+                wnd = wx.FindWindowByName('mediainfo')
+                if wnd:
+                    wnd.SetText(MI.Inform(), filename, os.path.split(filename)[1])
+                    wnd.SetFocus()
+                    return True
+            dlg = MediaInfoDlg(self, filename, os.path.split(filename)[1])
+            dlg.ShowDlg(MI.Inform())
+            return True
+        finally:
+            MI.Close()
+            del MI
 
     def OnMenuTest(self, event):
         return
@@ -17466,17 +18075,16 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         menuItem.Check()
 
             if zoomvalue == 'custom': # mouse wheel
-                show = False
-                zoomfactor = self.zoomfactor
                 if self.zoomwindow:
                     if self.zoomwindowfit:
                         self.UpdateMenuItem(_('&Zoom'), True, 'video', [_('Fit inside window')])
                     elif self.zoomwindowfill:
                         self.UpdateMenuItem(_('&Zoom'), True, 'video', [_('Fill window')])
-                elif zoomfactor == 1:
+                elif self.zoomfactor == 1:
                     self.UpdateMenuItem(_('&Zoom'), True, 'video', [_('100% (normal)')])
-                elif zoomfactor in [0.25, 0.5, 2, 3, 4]:
-                    self.UpdateMenuItem(_('&Zoom'), True, 'video', [_(str(int(zoomfactor*100))+'%')])
+                elif self.zoomfactor in [0.25, 0.5, 2, 3, 4]:
+                    self.UpdateMenuItem(_('&Zoom'), True, 'video', [_(str(int(self.zoomfactor*100))+'%')])
+                return
             elif zoomvalue == 'fill':
                 self.zoomwindow = True
                 self.zoomwindowfit = False
@@ -17518,18 +18126,17 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.UpdateMenuItem(_('&Zoom'), True, 'video', [_('Fit inside window')])
                 zoomfactor = 1
             elif zoomvalue == 'custom': # if mouse wheel zoom
-                show = False
                 self.zoomwindow = False
                 self.zoomwindowfit = False
                 self.zoomwindowfill = False
-                zoomfactor = self.zoomfactor
-                if zoomfactor in [0.25, 0.5, 2, 3, 4]:
-                    self.UpdateMenuItem(_('&Zoom'), True, 'video', [_(str(int(zoomfactor*100))+'%')])
+                if self.zoomfactor in [0.25, 0.5, 2, 3, 4]:
+                    self.UpdateMenuItem(_('&Zoom'), True, 'video', [_(str(int(self.zoomfactor*100))+'%')])
                 else: # set 100 on unknown zoom
-                    if zoomfactor == 1:
+                    if self.zoomfactor == 1:
                         self.UpdateMenuItem(_('&Zoom'), True, 'video', [_('100% (normal)')])
                     else:
                         self.UpdateMenuItem(_('&Zoom'), True, 'video', [_('Custom')])
+                return
         else:
             self.zoomwindow = False
             self.zoomwindowfit = False
@@ -18167,19 +18774,19 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if shown:
                 # now pick the first script that is initialized
                 for index in xrange(self.scriptNotebook.GetPageCount()):
-                    script = self.scriptNotebook.GetPage(index)
-                    if self.previewOK(script):
+                    sel_script = self.scriptNotebook.GetPage(index)
+                    if self.previewOK(sel_script):
                         self.zoom_antialias = False
                         self.SelectTab(index)
-                        self.ShowVideoFrame(script=script)
+                        self.ShowVideoFrame(script=sel_script)
                         self.ResetZoomAntialias()
                         break
         finally:
-            pass
+            self.TabList_UpdateAviState(script)
         if event is None:
             return True
 
-    def OnMenuOtherScriptReleaseMemory(self, event): # GPo
+    def OnMenuOtherScriptReleaseMemory(self, event=None): # GPo
         self.splitView = False
         idx = self.scriptNotebook.GetSelection()
         for index in xrange(self.scriptNotebook.GetPageCount()):
@@ -18193,6 +18800,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 script.lastpreviewFilterIdx = 0
                 script.chkPreviewFilter.SetValue(False)
                 self.AviFree(script, updateTabname=True)
+        self.TabList_UpdateAviState()
 
     def OnMenuVideoToggle(self, event):
         if self.previewWindowVisible:
@@ -18261,7 +18869,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if not self.OnMenuScriptReleaseMemory(event=None, show=False):
                 wx.MessageBox('Cannot close the current script', 'Analysis pass error')
                 return
-            self.SaveCallYield()
+            self.SafeCallYield()
         filename = workdir = script.filename
         if not filename:
             workdir = tempfile.gettempdir()
@@ -18801,9 +19409,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             ),
             (_('Advanced 2'),
                 (
-                    (_('Scrap window:'), 'scrapwindow'),
-                    (_('Properties window:'), 'propwindow'),
                     (_('Tab list window:'), 'tablist'),
+                    (_('Frame properties window:'), 'propwindow'),
+                    (_('Scrap window && MediaInfo:'), 'scrapwindow'),
                     (_('Slider window:'), 'sliderwindow'),
                     (_('Slider window text field:'), 'sliderwindowtextctrl'),
                     (_('Slider window default value:'), 'sliderwindowdefvalue'),
@@ -18814,7 +19422,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     #((_('Status bar color:'), 'statusbarcolor', _('Colorize the status bar')), 'statusbar'),
                     (_('Slider window extras (Snapshot):'), 'sliderwindowextrabtn1'),
                     ((_('Video controls frame text field bold'), 'frametxtctrlbold',  _('Use bold font for video controls frame text field')), 'frametextctrl'),
-
                 ),
             )
         )
@@ -19873,7 +20480,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 if self.playing_video == '':
                     wx.CallAfter(self.PlayPauseVideo)
 
-        def OnContextMenuHilight(event):  # GPo
+        def OnContextMenuHilight(event):
             for slider in self.GetVideoSliderList():
                 slider.SetBookmarkHilighting(not slider.hilightBookmarks)
             if self.videoSlider.hilightBookmarks and self.bellAtBookmark:
@@ -19883,7 +20490,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 slider.SetValue(self.videoSlider.GetValue())
                 slider.Refresh()
 
-        def OnContextMenuBell(event):  # GPo
+        def OnContextMenuBell(event):
             self.bellAtBookmark = not self.bellAtBookmark
             if self.bellAtBookmark and self.videoSlider.hilightBookmarks:
                 for slider in self.GetVideoSliderList():
@@ -19967,7 +20574,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         videoSlider = event.GetEventObject()
         frame = videoSlider.GetValue()
-        re = None # GPo new
+        re = None
         if self.options['dragupdate']:
             if not self.separatevideowindow:
                 re = self.ShowVideoFrame(frame, adjust_handle=True)
@@ -19978,7 +20585,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 else:
                     re = self.ShowVideoFrame(frame, adjust_handle=True)
 
-        if not re: # GPo new, ShowVideoFrame set this values so we not need do set it again
+        if not re: # ShowVideoFrame set this values so we not need do set it again
             bms = self.GetBookmarkFrameList()
             if frame in bms:
                 color = wx.RED
@@ -20334,6 +20941,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if self.readFrameProps:
                 self.AVICallBack(ident='property', value='Error',
                     framenr=script.lastFramenum if script.lastFramenum else -1)
+            self.TabList_SelectItem(script)
 
         currIndex = event.GetSelection()
 
@@ -20481,7 +21089,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 Error()
                 return False
             if not self.previewOK():
-                self.OnMenuVideoZoom(zoomfactor=1, script=script, show=False, resizeFilterOff=True, single=True, setSplitterPos=False)
+                if not script.forceZoom == 3: # if 3 then UpdateScriptAVI have set else we set it here (3 = restore the zoom and resample filter after error)
+                    script.oldLastSplitVideoPos = self.SaveLastSplitVideoPos()
+                    self.SaveZoom(script, True)
+                    script.forceZoom = 3
+                    script.lastSplitVideoPos = None
+                    self.OnMenuVideoZoom(zoomfactor=1, script=script, show=False, resizeFilterOff=False, single=True, setSplitterPos=False)
                 IsErrorClip = True
                 resize_need_refresh = False
             if ((script.AVI.DisplayWidth, script.AVI.DisplayHeight) == self.oldDisplayVideoSize):
@@ -20503,7 +21116,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 if self.options['applygroupoffsets'] or (self.splitView and self.splitView_freeze):
                     offset = script.group_frame - self.oldGroupFrame
                     script.lastFramenum = max(0, self.oldLastFramenum + offset)
-                    # GPo new 'self.tabChangeLoadBookmarks' do not offset bookmarks if autoload bookmarks enabled
+                    # 'self.tabChangeLoadBookmarks' do not offset bookmarks if autoload bookmarks enabled
                     if self.options['offsetbookmarks'] and not self.tabChangeLoadBookmarks:
                         bmSet = SetBookmarks() # set bookmarks befor offset
                         self.OffsetBookmarks(offset)
@@ -20513,9 +21126,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 if script.group == self.oldGroup is None and self.options['enableframepertab'] and not self.options['enableframepertab_same']:
                     script.lastFramenum = None
 
-            # GPo, reset video zoom and pos
-            #if script.forceZoom != 3: # not ErrorClip
-                #script.forceZoom = not IsErrorClip and self.saveViewPos > 0
             if not IsErrorClip and not posXY:
                 script.forceZoom = self.saveViewPos > 0
 
@@ -20544,11 +21154,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     self.ShowSliderWindow(script, vidrefresh=False)
 
                 ### test it if needed !!!!
-                if script.lastSplitVideoPos is None and (self.options['resizevideowindow'] == 1) and (self.mintextlines > 0):
+                if not IsErrorClip and (script.lastSplitVideoPos is None) and (self.options['resizevideowindow'] == 1) and (self.mintextlines > 0):
                     self.SaveLastSplitVideoPos()
 
         else: # Update slider position and frame text control
-            # GPo new, same as preview visible
+            # same as preview visible
             if script.group is not None and script.group == self.oldGroup:
                 script.lastSplitVideoPos = self.oldLastSplitVideoPos
                 if self.options['applygroupoffsets'] or (self.splitView and self.splitView_freeze):
@@ -20665,6 +21275,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         if script.AVI:
             script.AVI.SetAudio(self.options['audioscrub'], self.options['audioscrubcount'], True)
+        self.TabList_SelectItem(script)
 
     def OnNotebookPageChanging(self, event):
         def resetViewPos():
@@ -20706,7 +21317,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 oldScript.bookmarks = self.GetBookmarkDict()
 
         if self.tabChangeLoadBookmarks:
-            self.DeleteAllFrameBookmarks(bmtype=0) # GPo new
+            self.DeleteAllFrameBookmarks(bmtype=0)
 
         if self.previewWindowVisible:
             if oldSelectionIndex >= 0:
@@ -20727,7 +21338,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     # save zoom
                     if self.fullScreenWnd_IsShown:
                         if (self.options['fullscreenzoom'] == 2):
-                            self.SaveZoom(oldScript) ### new test 9.12.
+                            self.SaveZoom(oldScript)
                     else:
                         self.SaveZoom(oldScript)
             else:
@@ -20736,7 +21347,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.oldLastSplitSliderPos = None
                 self.oldBoolSliders = None
                 self.oldDisplayVideoSize = (None, None)
-                resetViewPos() # GPo new
+                resetViewPos()
 
         elif oldSelectionIndex >= 0:
             if (self.mintextlines > 0) and oldScript.AVI and not oldScript.AVI.IsErrorClip():
@@ -20943,18 +21554,15 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             index = self.scriptNotebook.GetSelection()
         script = self.scriptNotebook.GetPage(index)
         script.group = group
-        # old
-        #~script.group_frame = script.lastFramenum
-
-        # GPo new, pre-calc the offset if group is old group
+        # pre-calc the offset if group is old group
         # so we can set the group to None and change the frame number and assign the group new
         if (group == self.oldGroup is not None) and isinstance(script.lastFramenum, int):
             offset = self.oldLastFramenum - script.lastFramenum
             script.group_frame = self.oldGroupFrame - offset
-            script.group_offset = offset # GPo new test
+            script.group_offset = offset
         else:
             script.group_frame = script.lastFramenum
-            script.group_offset = 0 # GPo new test
+            script.group_offset = 0
         self.UpdateScriptTabname(index=index)
 
     def OnNotebookContextMenu(self, event):
@@ -21296,6 +21904,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             finally:
                 self.TryThaw(self)
                 self.SaveLastSplitVideoPos()
+                # GPo new test: if on max view (mintextlines==0) zoom set to 1, resize after double click (normal view) the video window
+                if (self.mintextlines < 1) and (self.zoomfactor == 1) and self.VideoWindowResizeNeeded(checkzoom=True) \
+                    and not self.IsResizeFilterFitFill(self.currentScript):
+                        self.currentScript.lastSplitVideoPos = self.GetMainSplitterNegativePosition(forcefit=True)
+
 
     # GPo 2020, extern for multi use, and result for handling
     def ScrollSimilarTabsOrTabGroups(self, delta):
@@ -22073,7 +22686,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if single or force:
                 rf = script.resizeFilter
                 if self.currentScript.AVI:
-                    #zoom = -1 if self.currentScript.AVI.Width != self.currentScript.AVI.DisplayWidth else 2
                     zoom = 2 if rf[2] != 2 else -1
                     self.OnMenuVideoZoomResampleFill(zoom=zoom, fitHeight=rf[3], single=single, doScroll=shiftdown)
                 return
@@ -22096,7 +22708,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             resize = self.VideoWindowResizeNeeded(checkzoom=True) and (self.mintextlines > 0) and not script.AVI.IsErrorClip()
             self.videoWindow.Freeze()
             try:
-                self.ZoomAndScroll(old_zoomfactor, self.zoomfactor, resize)
+                self.ZoomAndScroll(old_zoomfactor, self.zoomfactor, resize) # switch between zoom 1.0 or 2.0
                 if event.LeftIsDown() and not script.AVI.IsErrorClip():
                     videoWindow = self.videoWindow
                     videoWindow.CaptureMouse()
@@ -22109,14 +22721,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         else:
                             self.pixelInfo = self.GetPixelInfo(event)
                         self.getPixelInfo = False
-                """
-                # GPo new test
-                if self.options['resizevideowindow'] and not self.separatevideowindow: #and not self.IsFullSize():
-                    #if self.mainSplitter.GetMinimumPaneSize() > 1:
-                    self.currentScript.lastSplitVideoPos = None
-                    sash_pos = self.GetMainSplitterNegativePosition(pos=None, forcefit=True)
-                    self.mainSplitter.SetSashPosition(sash_pos)
-                """
+                # GPo new test: if on max view (mintextlines==0) zoom set to 1, resize after double click (normal view) the video window
+                if (self.mintextlines < 1) and (self.zoomfactor == 1) and self.VideoWindowResizeNeeded(checkzoom=True) \
+                    and not self.IsResizeFilterFitFill(script):
+                        self.currentScript.lastSplitVideoPos = self.GetMainSplitterNegativePosition(forcefit=True)
             finally:
                 self.TryThaw(self.videoWindow)
         else:
@@ -22513,6 +23121,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if event:
             event.Skip()
     """
+    # required, or LeaveVideoWindow will lose its functionality after a certain period of time
+    def OnMouseEnterVideoWindow(self, event):
+        event.Skip()
     def OnMouseLeaveVideoWindow(self, event):
         if self.overlayData:
             self.ResetOverlay()
@@ -22626,7 +23237,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     button.SetLabel(_('Auto-crop'))
                     return
                 crop_values.append(crop_values_frame)
-                self.SaveCallYield()
+                self.SafeCallYield()
                 if not button.running:
                     button.SetLabel(_('Auto-crop'))
                     return
@@ -22975,7 +23586,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.ShowTabList()
                 return
 
-        if not hasattr(win,'contextMenu'): # GPo new, script tooltip
+        if not hasattr(win,'contextMenu'): # script tooltip
             return
         self.lastContextMenuWin = win
 
@@ -23239,6 +23850,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.sdlWindow.Close()
         if self.ScriptSelector and self.ScriptSelector.IsShown():
             self.ScriptSelector.Close() # saves also the options and opened tabs
+        if isinstance(self.tabDlg, TabList):
+            self.tabDlg.Destroy()
+        if wx.FindWindowByName('mediainfo', self):
+            for wnd in wx.GetTopLevelWindows():
+                if isinstance(wnd, MediaInfoDlg):
+                    wnd.Destroy()
 
         # Check if macros are still running
         macroShown = clipShown = False
@@ -23267,8 +23884,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                         _('Warning'), wx.OK|wx.CANCEL|wx.ICON_EXCLAMATION)
                 if ID == wx.ID_CANCEL:
                     return
-
-        #terminateStart = time.time()
 
         # Must be before self.options['promptexitsave'] loop
         self.HidePreviewWindow()
@@ -23396,14 +24011,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if th.isAlive():
                 sys.exit()  # we must force termination or program doesn't close
                 #os._exit(0)
-        """
-        if time.time() - terminateStart > 3:
-            close = wx.Dialog(self,title='AvsPmod - Freeing memory', size=tuplePPI(200,80), style=wx.DIALOG_NO_PARENT)
-            close.SetBackgroundColour(wx.Colour(40,40,40))
-            close.CenterOnScreen(True)
-            close.ShowWithoutActivating()
-            self.Hide()
-        """
+
+        for wnd in wx.GetTopLevelWindows():
+            if not isinstance(wnd, MainFrame):
+                try:
+                    wnd.Destroy()
+                except:
+                    sys.exit()
 
         self.Destroy()
         if restart:
@@ -23540,6 +24154,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             scriptWindow.EnsureCaretVisible()
 
         self.UpdateTabImages()
+        self.TabList_Update()
 
         # a workaroud for multiline notebook issue
         if self.options['multilinetab']:
@@ -23549,18 +24164,19 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.scriptNotebook.SetSize((w, h))
 
         #~self.SetMinimumScriptPaneSize()
-
         return curIndex
 
-    # GPo
     def FindTabByName(self, fname, select=True):
-        for index in xrange(self.scriptNotebook.GetPageCount()):
-            title = self.scriptNotebook.GetPageText(index)
-            if title.lower().startswith(fname.lower()) and (len(title)+4 >= len(fname)):
-                if select:
-                    self.StopPlayback()
-                    self.SelectTab(index)
-                return index
+        try:
+            for index in xrange(self.scriptNotebook.GetPageCount()):
+                title = self.scriptNotebook.GetPageText(index)
+                if title.lower().startswith(fname.lower()) and (len(title)+4 >= len(fname)):
+                    if select:
+                        self.StopPlayback()
+                        self.SelectTab(index)
+                    return index
+        except:
+            pass
         return -1
 
     def StopPlayback(self):
@@ -24053,8 +24669,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
         script.lastFramenum = None # GPo, disable OnPageChanged
         if self.tabChangeLoadBookmarks and script is self.currentScript:
-            self.DeleteAllFrameBookmarks(bmtype=0, refreshVideo=False) # GPo new
-            #self.DeleteFrameBookmark(None, refreshVideo=False, refreshProgram=False)
+            self.DeleteAllFrameBookmarks(bmtype=0, refreshVideo=False)
 
         # If only 1 tab, make another
         if self.scriptNotebook.GetPageCount() == 1:
@@ -24072,17 +24687,18 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             script.FrameThread.Exit()
 
         self.scriptNotebook.DeletePage(index)
-        wx.GetApp().SafeYieldFor(self.scriptNotebook, wx.wxEVT_ANY)
+        wx.GetApp().SafeYieldFor(self, wx.wxEVT_ANY)
 
         self.currentScript = self.scriptNotebook.GetPage(self.scriptNotebook.GetSelection())
         self.UpdateTabImages()
+        self.TabList_Update()
         if self.options['multilinetab']:
             if rows != self.scriptNotebook.GetRowCount():
                 w, h = self.scriptNotebook.GetSize()
                 pos = self.mainSplitter.GetSashPosition()
                 self.scriptNotebook.SetSize((w, h-1))
                 self.scriptNotebook.SetSize((w, h))
-                self.SetMinimumScriptPaneSize() # GPo new
+                self.SetMinimumScriptPaneSize()
                 if self.previewWindowVisible and self.previewOK() and pos != self.mainSplitter.GetSashPosition():
                     self.OnMainSplitterPosChanged()
         return True
@@ -24106,6 +24722,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         # otherwise on each tab closing PageChanging and PageChange is called.
         # and finally we must delete the message query bevore we delete the last tab (Bug?)
         self.HidePreviewWindow()
+        self.TabList_Close()
         count = self.scriptNotebook.GetPageCount()-1
         self.scriptNotebook.SetSelection(count)
         idx = self.scriptNotebook.GetSelection()
@@ -24114,6 +24731,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if index != idx:
                 cl += int(self.CloseTab(index, discard=discard))
         wx.GetApp().SafeYieldFor(self.scriptNotebook, wx.wxEVT_ANY) # important, delete the message query
+
         cl += int(self.CloseTab(0, discard=discard))
         self.scriptNotebook.SendPageChangedEvent(self.scriptNotebook.GetSelection())
         return count == cl
@@ -24227,6 +24845,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.options['recentdir'] = dirname
 
             self.UpdateRecentFilesList(filename)
+            self.TabList_Update()
         else:
             return None
         return filename
@@ -24254,7 +24873,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if cleanToggleTags:
             text = self.cleanToggleTags(text)
         return text
-    """
+    """ old
     def GetEncodedText(self, txt, bom=False, forceUtf8=True):
         '''Prepare a script's text for saving it to file
 
@@ -24328,9 +24947,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     """
 
     def GetEncodedText(self, script, txt, forceUtf8=False):
-        '''Prepare a text for saving it to file or for Run External Player
-        Prefer system's encoding to utf-8, for my privat purpose
-        '''
+        '''Prepare a text for saving it to file or for Run External Player. Prefer system's encoding'''
+
+        if script is None:
+            script = self.currentScript
+
         # convert line endings to CRLF if necessary
         if self.options['eol'] == 'force crlf' or self.options['eol'] == 'auto' and (
                 script.eol == 'crlf' or script.eol is None and os.name == 'nt'):
@@ -24406,7 +25027,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if not dirname and not only == 'base' or not basename and not only == 'dir':
             dir_source, base_source = os.path.split(self.GetSourcePath(script))
             if not basename:
-                basename = os.path.splitext(base_source)[0]
+                basename = base_source #~os.path.splitext(base_source)[0] # GPo, save with source ext (.mpg.avs)
             if not dirname:
                 dirname = dir_source
 
@@ -24456,6 +25077,17 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         sourceFilter = script.GetTextRange(wordstartpos, openpos)
                         if sourceFilter.strip().lower() in sourceFilterList:
                             return s
+        # GPo, find my favorite: SourceFile : "E:\Video\Test.mkv" > LWLibavVideoSource(SourceFile)
+        for match in re.finditer(r'sourcefile\s*(=|:)\s*".:\\(.+?)"', script.GetText(), re.I):
+            s = re.split('"', match.group())[1]
+            if os.path.splitext(s)[1].lower() not in noMediaExtList and os.path.isfile(s):
+                return s
+        # GPo, at last find video source enclosed in ",drive,path+name,ext,"
+        videoext = ('.avi','.mkv','.mp4','.mpg','.mpeg','.ts','.mts','.m2ts','.vob','.webm','.wmf','.mov','.mxf')
+        for match in re.finditer(r'".:\\(.+?)"', script.GetText(), re.I):
+            s = re.split('"', match.group())[1]
+            if os.path.splitext(s)[1].lower() in videoext and os.path.isfile(s):
+                return s
         return ''
 
     @AsyncCallWrapper
@@ -24484,6 +25116,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             except OSError:
                 return False
         self.SetScriptTabname(new_title, index=index)
+        self.TabList_Update()
         return True
 
     def RepositionTab(self, newIndex):
@@ -25374,7 +26007,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             strsource = strsource.replace(u'[***]', u'"%s"' % os.path.basename(filename))
             strsource = strsource.replace(u'***', u'"%s"' % filename)
 
-            ### GPo new, find matched filename e.g. d2v mp2 audio
+            ### find matched filename e.g. d2v mp2 audio
             # > Tc*.mp2< or [> Tc*.mp2<] for basename
             pos = strsource.find('>')
             if pos > -1:
@@ -25860,7 +26493,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     self.frameTextCtrl2.Refresh()
             self.UpdateBookmarkMenu()
     """
-    # GPo new
     def DeleteAllFrameBookmarks(self, bmtype=None, start=None, end=None, refreshVideo=True):
         toggle_color = False
         if bmtype is None:
@@ -25896,7 +26528,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     self.frameTextCtrl2.Refresh()
             self.UpdateBookmarkMenu()
 
-    # GPo new
     def AddFrameBookmark(self, value, bmtype=0, toggle=True, refreshVideo=True, refreshProgram=True):
         sliderList = self.GetVideoSliderList()
         if not toggle:
@@ -26902,7 +27533,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.videoSlider2.SetValue(framenum)
             self.frameTextCtrl2.Replace(0, -1, str(framenum))
 
-        # GPo new, get frame threaded
         if threaded:
             if not self.UseNewFrameThread:
                 th = threading.Thread(target=GetFrame, args=(script, framenum,))
@@ -26994,6 +27624,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if self.SplitClipCtrl.IsActive:
                 self.SplitClipCtrl.Close()
             self.splitView = False
+            self.TabList_UpdateAviState(script)
 
         def UpdateSliders():
             doFocusScript = False
@@ -27273,7 +27904,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 if self.customHandler > 0:
                     self.PostMessage(self.customHandler, self.AVSP_VID_SIZE, videoWidth, videoHeight)
 
-                if not needCalcZoom: # GPo new, paint frame after setting the zoomfactor
+                if not needCalcZoom: # paint frame after setting the zoomfactor
                     self.OnEraseBackground() # leave it before paint (better for zooming with the mouse wheel)
                     self.PaintAVIFrame(wx.ClientDC(self.videoWindow), script, self.currentframenum)
             else:
@@ -27698,7 +28329,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.ShowVideoFrame(new_frame, forceCursor=forceCursor, focus=focus)
         if self.options['zoom_antialias']:
             if self.zoomfactor != 1 or self.zoomwindow:
-                if not v: self.SaveCallYield()
+                if not v: self.SafeCallYield()
                 self.zoom_antialias = True
                 self.videoWindow.Refresh()
             else:
@@ -27851,7 +28482,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.mainSplitter.SetSashPosition(spos, redraw=False)
         return abs(pos) - (5 + self.mainSplitter.GetSashSize()//2)
 
-    # calculate the resize values, only for spezial cases
+    # calculate the resize values, only for spezial cases (fullscreen, splitter pos, mintextlines)
     # normaly pyavs AVI clip calculates the values
     # if you change it you must change pyavs CalcResizeFilter
     def CalcResizeFilter(self, script, zoom=1, fitHeight=True, splitpos=None):
@@ -27864,6 +28495,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if self.fullScreenWnd_IsShown:
             cSize = wx.ScreenDC().GetSize()
         else:
+            # after error clip and closing the tab, the next tab calcs the size wrong (size from error clip) if mintextlines 0 (MaxView)
+            # so we calculate SplitPosToSize with 1 (max splitter pos on top)
+            if self.mintextlines == 0 and splitpos is None:
+                splitpos = 1
+
             cSize = utils.GetSizeWithoutBorder(self.videoWindow)
             if splitpos is not None and not self.splitView and not self.separatevideowindow:
                 if self.mainSplitter.GetSplitMode() == wx.SPLIT_HORIZONTAL:
@@ -28457,9 +29093,14 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     if readmatrix and self.options['resetmatrix']:
                         script.matrix = list(self.options['selectedmatrix'])
 
-                    # get values
+                    # test, restore resize filter after error clip
+                    if wasErrorClip and script.forceZoom == 3 and not resizeFilterInfo:
+                        splitpos = script.oldLastSplitVideoPos if self.mintextlines > 0 else 1
+                    else:
+                        splitpos = None
+
                     displayFilter = getDisplayFilter()
-                    resizeFilter = self.GetResizeFilterInfo(script, splitpos=None) if not resizeFilterInfo else resizeFilterInfo
+                    resizeFilter = self.GetResizeFilterInfo(script, splitpos=splitpos) if not resizeFilterInfo else resizeFilterInfo
                     useSplitClip = self.SplitClipCtrl.IsActive and boolOldAVI and self.options['usesplitclip']
                     script.disableFastClipOnce = False # reset fast clip
 
@@ -28527,6 +29168,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     self.UpdateScriptTagProperties(script, scripttxt)
                     self.GetAutoSliderInfo(script, scripttxt)
                     script.previewtxt = self.ScriptChanged(script, return_styledtext=True)[1]
+                    self.TabList_UpdateAviState(script)
 
                     if previewFilterIdx > 0:
                         if script.AVI.preview_filter:
@@ -28588,7 +29230,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 if self.SplitClipCtrl.IsActive:
                     self.SplitClipCtrl.Close()
                 self.CloseFullscreenWND()
-                self.OnMenuVideoZoom(zoomfactor=1,show=False,resizeFilterOff=True,single=True,script=script,setSplitterPos=False)
+                self.OnMenuVideoZoom(zoomfactor=1,show=False,resizeFilterOff=False,single=True,script=script,setSplitterPos=False)
             elif script is self.currentScript:
                 if self.SplitClipCtrl.IsActive and not script.AVI.IsSplitClip:
                     self.SplitClipCtrl.Close()
@@ -28606,6 +29248,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     else:
                         self.PaintCropWarnings()
                 self.SetVideoStatusText()
+                self.TabList_UpdateAviState(script)
                 if self.playing_video == '':
                     wx.CallAfter(self.PlayPauseVideo)
 
@@ -28681,7 +29324,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         # Update the script
         newText = re.sub(r'\[%s(\s*=.*?)*?\]' % label, '[%s=%i]' % (label, value), script.GetText())
 
-        ## GPo new, check if check-radio
+        ## check if check-radio
         label = label.split('>')
         if len(label) == 2:
             for item in script.toggleTagSizer.GetChildren():
@@ -29151,8 +29794,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 state = bool(script.SliderFoldsBackup[label])
                 if state: # count the refreshes and do not refresh if count > 10 (refresh is slow, but restores without flicker)
                     i += 1
-                #~self.ToggleSliderFold(item, fold=not state, refresh=(state and i < 11) or (x == count), scroll=False) # refresh on last item reduce flicker. Strange.
-                # GPo new
                 self.ToggleSliderFold(item, fold=not state, refresh=False, scroll=False) # Win10 no refresh needed, Win7 ?
             else:
                 self.ToggleSliderFold(item, fold=True, refresh=False, scroll=False)
@@ -29205,8 +29846,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     self.addAvsSnapshotPanel(script, separator, row)
                     row += 1
             """
-            #for filterName, filterInfo in script.autoSliderInfo:
-            for filterName, filterInfo, extraInfo in script.autoSliderInfo: #GPo new extraInfo if previewFilter
+            for filterName, filterInfo, extraInfo in script.autoSliderInfo: # extraInfo if previewFilter
                 filterN = filterName.lower().split(' (')[0]
                 if filterN in exclusionList:
                     continue
@@ -29465,7 +30105,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 slider.SetValue(slider.lastValue)
                 return
             if slider.lastValue != slider.GetValue():
-                #if self.options['autosliderupdatedirectly'] and ((self.currentScript.previewFilterIdx == slider.prevFilterIdx) and not wx.GetKeyState(wx.WXK_CONTROL)):
                 if (self.currentScript.previewFilterIdx == slider.prevFilterIdx) and not wx.GetKeyState(wx.WXK_CONTROL):
                     UserSliderVideoUpdateNew(slider)
                 elif not slider.leftDown:
@@ -29514,7 +30153,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         leftCtrl.SetBezelWidth(intPPI(1))
         leftCtrl.SetUseFocusIndicator(False)
         def OnLeftTimer(event):
-            directly = (self.currentScript.previewFilterIdx == slider.prevFilterIdx) # and self.options['autosliderupdatedirectly']
+            directly = self.currentScript.previewFilterIdx == slider.prevFilterIdx
             newvalue = slider.Decrement()
             valTxtCtrl.SetLabel(strTemplate % newvalue)
             if directly:
@@ -29545,7 +30184,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         rightCtrl.SetBezelWidth(1)
         rightCtrl.SetUseFocusIndicator(False)
         def OnRightTimer(event):
-            directly = (self.currentScript.previewFilterIdx == slider.prevFilterIdx)# and self.options['autosliderupdatedirectly']
+            directly = self.currentScript.previewFilterIdx == slider.prevFilterIdx
             newvalue = slider.Increment()
             valTxtCtrl.SetLabel(strTemplate % newvalue)
             if directly:
@@ -29995,7 +30634,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             except ValueError:
                 return (None, None, None)
         else:
-            splitFilterName = slider.filterName.split(' - P', 1) # GPo new
+            splitFilterName = slider.filterName.split(' - P', 1)
             if len(splitFilterName) == 2:
                 filterName = splitFilterName[0].strip()
             else: filterName = slider.filterName
@@ -30222,9 +30861,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     def OnSliderWindowsSaveWidth(self, event):
         self.options['sliderwindowwidth'] = self.videoSplitter.GetSashPosition() - self.videoSplitter.GetClientSize()[0]
 
-    #def OnSliderToggleUpdateMode(self, event):
-        #self.options['autosliderupdatedirectly'] = not self.options['autosliderupdatedirectly']
-
     def OnSliderToggleExclusionsFilters(self, event):
         self.slidersShowExclusionFilters = not self.slidersShowExclusionFilters
         self.UpdateUserSliders(forceUpdate=True)
@@ -30277,19 +30913,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         label = separator.GetLabel().strip(' -+')
         parent.Freeze()
         done = False
-        """
-        if fold and separator.IsControlsVisible:
-            for item in separator.controls:
-                sizer.Hide(item)
-            separator.SetLabel('+ '+ label)
-            separator.IsControlsVisible = False
-        elif not separator.IsControlsVisible: # GPo new, 'not fold' and var done
-            for item in separator.controls:
-                sizer.Show(item)
-            separator.SetLabel(' - '+ label)
-            separator.IsControlsVisible = True
-        """
-        # GPo new
         if fold:
             if separator.IsControlsVisible:
                 for item in separator.controls:
@@ -30297,7 +30920,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 separator.SetLabel('+ '+ label)
                 separator.IsControlsVisible = False
                 done = True
-        elif not separator.IsControlsVisible: # GPo new, 'not fold' and var done
+        elif not separator.IsControlsVisible: # 'not fold' and var done
             for item in separator.controls:
                 sizer.Show(item)
             separator.SetLabel(' - '+ label)
@@ -30316,7 +30939,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     pos = parent.CalcUnscrolledPosition(separator.GetPosition())
                     parent.Scroll(-1, (pos[1]-10)/yscrollpixels)
         self.TryThaw(parent)
-
 
     # GPo 2021 changed, add context menu
     def createToggleTagCheckboxes(self, script):
@@ -30453,8 +31075,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         while posB < lastpos:
             posB = script.WordEndPosition(posA, 1)
             word = script.GetTextRange(posA, posB)
-            #~ if word.lower() in script.keywords:
-            # GPo new
             if prevFilterIdx < 5:
                 if prevFilter and script.GetLine(script.LineFromPosition(posA)).lstrip().startswith('**/'):
                     prevFilter = ''
@@ -30843,6 +31463,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     # and playthread is blocking (waits) when main thread is drawing a frame
     # AsyncCall 102 fps, RLock 148 fps (FHD with display prefetch), AsyncCall 80 fps, RLock 100 fps (without display prefetch)
     # No problems with play thread, wx.MessageBox is thread safe, also same drawing routine but with RLock
+    # If you change PaintAVIFrame, you should change it here too
     def PaintAVIFrameLocked(self, inputdc, script, frame, shift=True, isPaintEvent=False, display_clip=False):
         with self.framePaintLock:
             if script.AVI is None:
@@ -31846,7 +32467,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     self.isRunning = False
                     self.Lock.release()
 
-    def SaveCallYield(self):
+    def SafeCallYield(self):
         self.Lock.acquire()
         #wx.GetApp().Yield()
         wx.Yield()
@@ -31856,7 +32477,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     def PlayPauseVideo(self, debug_stats=False, refreshFrame=True, forceStop=None, focus=True):
         """Play/pause the preview clip"""
         import cfunc
-        import numpy as np
+        #import numpy as np
 
         def SetSystemTimeResolution(high):
             if high:
@@ -31973,7 +32594,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     or script.AVI.IsErrorClip():
                     return
 
-            #wx.GetApp().ProcessIdle()
             if script.AVI.readFrameProps:
                 script.AVI.SetReadFrameProps(False)
             self.playing_video = True
@@ -31987,16 +32607,14 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.play_button2.Refresh()
                 self.frameTextCtrl2.SetForegroundColour(wx.BLACK) # GPo, for fast func
 
-            #GPo testing, seems good.
             if self.play_speed_factor == 'max':
                 interval = 1.0
                 ms_interval = 0
             else:
                 interval = 1000.0 / (script.AVI.Framerate * self.play_speed_factor)
-                #ms_interval = interval
                 ms_interval = interval/1000.0
 
-            # GPo new, set the drop count out of the play routine make a int, it's faster
+            # set the drop count outside of the playback routine make a int, it's faster
             if self.play_drop == True:
                 self.drop_count = 1
             elif self.play_drop > 1:
@@ -32091,7 +32709,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                             return
                                 self.PlayPauseVideo(forceStop=True) # stop playback
                                 return
-                    self.SaveCallYield()
+                    self.SafeCallYield()
 
 
                 def WindowsTimer(interval, callback, periodic=True):
@@ -32996,7 +33614,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if isClean:
                 previewname = script.filename
                 boolTemp = False
-            else: # GPo new, enable/disable the filters
+            else: # enable/disable the filters
                 previewname = self.MakePreviewScriptFile(script)
                 boolTemp = True
             ##
@@ -33396,6 +34014,24 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 w, h = self.scriptNotebook.GetSize()
                 self.scriptNotebook.SetSize((w, h-1))
                 self.scriptNotebook.SetSize((w, h))
+
+    def TabList_Update(self):
+        if isinstance(self.tabDlg, TabList):
+            self.tabDlg.UpdateTabs()
+    def TabList_SelectItem(self, script):
+        if isinstance(self.tabDlg, TabList):
+            self.tabDlg.SelectItem(script)
+    def TabList_UpdateAviState(self, script=None):
+        if isinstance(self.tabDlg, TabList):
+            self.tabDlg.UpdateAviState(script)
+    def TabList_Close(self):
+        if isinstance(self.tabDlg, TabList):
+            self.tabDlg.Destroy()
+    def TabList_BlockUpdate(self, block, update=False):
+        if isinstance(self.tabDlg, TabList):
+            self.tabDlg.blockUpdate = block
+            if update:
+                self.tabDlg.UpdateTabs()
 
     def ShowWarningOnBadNaming(self, baddllnameList, isFunc=False):
         int10 = intPPI(10)
@@ -34589,7 +35225,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     if time.time() - start >= waitTimeout:
                         break
                     #wx.Yield()
-                    self.SaveCallYield()
+                    self.SafeCallYield()
                 else:
                     if self.getPixelInfo is None:
                         break
@@ -34640,7 +35276,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 if time.time() - start >= waitTimeout:
                     break
                 #wx.Yield()
-                self.SaveCallYield()
+                self.SafeCallYield()
             else:
                 if i:
                     return self.pixelInfo[0], self.pixelInfo[i]
@@ -35337,311 +35973,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         return (fontSize, fontStyle, fontWeight, fontUnderline, fontFace, fontFore, fontBack)
 
     def ShowTabList(self, event=None):
-        if hasattr(self, 'tabDlg') and isinstance(self.tabDlg, wx.Dialog) and hasattr(self.tabDlg, 'ident_tabdlg'):
-            self.tabDlg.Destroy()
-            self.tabDlg = None
-        nb = self.scriptNotebook
-        def ReloadTabs():
-            fileList = []
-            for i in range(nb.GetPageCount()):
-                script = nb.GetPage(i)
-                ok = '' if script.AVI else '>'
-                if script.filename:
-                    path, name = os.path.split(script.filename)
-                else:
-                    path, name = '', nb.GetPageText(i)
-                fileList.append([name, path, script, ok])
-            fileList.sort(key=utils.sort_alphanumeric(0))
-            return fileList
-        fileList = ReloadTabs()
-        style = wx.DEFAULT_DIALOG_STYLE|wx.STAY_ON_TOP|wx.RESIZE_BORDER
-        s = 'on' if self.options['tabautopreview'] else 'off'
-        options = self.options['tabdlgoptions']
-        x,y,w,h = options['dimensions']
-        tabDlg = wx.Dialog(self, wx.ID_ANY, 'Tabs: %i  (sort by %s) - tabs auto preview: %s' % (len(fileList), 'name', s), pos=(x,y), size=(w,h), style=style)
-        if x < 0: tabDlg.Center()
-        tabDlg.progress = False
-        tabDlg.ident_tabdlg = None
-        (fontSize, fontStyle, fontWeight, fontUnderline, fontFace, fontFore, fontBack) = self.ParseFontStyle(self.options['textstyles']['tablist'].split(','))
-        if fontFace is not None:
-            tabDlg.SetFont(wx.Font(fontSize, wx.FONTFAMILY_DEFAULT, fontStyle, fontWeight, fontUnderline, faceName=fontFace))
-        else:
-            fontFore = tabDlg.text_color = wx.Colour(230,230,230)
-            fontBack = wx.Colour(62,63,62)
-            fontSize = 10
-        dpi.SetFontPPI(tabDlg)
-        tabDlg.font_color = fontFore
-        self.tabDlg = tabDlg
-        self.tabDlg.fileList = fileList
-        def OnClose(event=None):
-            col0w = listCtrl.GetColumnWidth(0)
-            self.options['tabdlgoptions'] = {'dimensions':tabDlg.GetRect(),'col0w':listCtrl.GetColumnWidth(0),'force_preview':options['force_preview']}
-            if listCtrl.last_tab > -1:
-                self.options['tabdlgoptions']['last_id'] = id(self.tabDlg.fileList[listCtrl.last_tab][2])
-            tabDlg.Destroy()
-            self.tabDlg = None
-        tabDlg.Bind(wx.EVT_CLOSE, OnClose)
-        class CustomListCtrl(wxp.UListCtrl):
-            def OnGetItemText(self, line, col):
-                fileList = tabDlg.fileList
-                return fileList[line][3]+fileList[line][0] if col == 0 else fileList[line][1]
-            def OnGetItemToolTip(self, line, col): # only if style flag with tooltip
-                return ''
-            def OnGetItemTextColour(self, line, col): # else somtimes wrong textcolor
-                state = self.GetItemState(line, ULCtrl.ULC_STATE_SELECTED)
-                selected = state & ULCtrl.ULC_STATE_SELECTED == ULCtrl.ULC_STATE_SELECTED
-                return wx.YELLOW if selected else wx.Colour(50, 150, 255) if line == tabDlg.listCtrl.init_tab else \
-                        wx.Colour(30, 210, 120) if line == tabDlg.listCtrl.last_tab else tabDlg.font_color
-        listCtrl = CustomListCtrl(tabDlg, wx.ID_ANY, agwStyle=wx.LC_REPORT|wx.LC_VIRTUAL|wx.LC_VRULES|ULCtrl.ULC_NO_HIGHLIGHT|ULCtrl.ULC_SINGLE_SEL)
-        listCtrl.SetBackgroundColour(fontBack)
-        listCtrl.InsertColumn(0, 'Name')
-        listCtrl.InsertColumn(1, 'Path')
-        listCtrl.SetColumnWidth(0, options['col0w'])
-        listCtrl.SetColumnWidth(1, wx.LIST_AUTOSIZE_USEHEADER)
-        listCtrl.SetItemCount(len(self.tabDlg.fileList))
-        listCtrl.init_tab = -1
-        listCtrl.last_tab = -1
-        listCtrl.tmp_tab = -1
-        listCtrl.last_id = None
-        listCtrl.popup = False
-        listCtrl.last_col = 0
-        listCtrl.tabDlg = tabDlg
-        tabDlg.listCtrl = listCtrl
-        tabDlg.wasFullscreen = self.fullScreenWnd_IsShown
-        """
-        def OnKeyDown(event): # key codes not working with ProcessEvent
-            wx.Bell()
-            tabDlg.progress = True
-            self.currentScript.GetEventHandler().ProcessEvent(event)
-            event.Skip(True)
-        listCtrl.Bind(wx.EVT_KEY_DOWN, OnKeyDown)
-        """
-        def OnMouseAux(event):
-            idx = listCtrl.last_tab
-            if idx > -1:
-                #listCtrl.last_tab = listCtrl.GetFirstSelected()
-                listCtrl.SelectItem(idx)
-            #else: listCtrl.last_tab = listCtrl.GetFirstSelected()
-        listCtrl.Bind( wx.EVT_MOUSE_AUX1_DOWN , OnMouseAux)
-        listCtrl.Bind( wx.EVT_MOUSE_AUX2_DOWN , OnMouseAux)
-        def SetCaption():
-            s = 'on' if self.options['tabautopreview'] else 'off'
-            tabDlg.SetTitle('Tabs: %i  (sort by %s) - tabs auto preview: %s' % (len(tabDlg.fileList), 'name' if listCtrl.last_col == 0 else 'path', s))
-        def FindSelectedTab():
-            script, idx = self.getScriptAtIndex(None)
-            s = os.path.split(script.filename)[1] if script.filename else nb.GetPageText(idx)
-            for idx,t in enumerate(tabDlg.fileList):
-                if t[0] == s:
-                    listCtrl.SelectItem(idx)
-                    listCtrl.init_tab = idx
-                    listCtrl.last_tab = idx
-                    listCtrl.tmp_tab = idx
-                    return
-            wx.Bell()
-        def FindScript(script, select):
-            if script:
-                for idx,t in enumerate(tabDlg.fileList):
-                    if t[2] is script:
-                        if select: listCtrl.Select(idx)
-                        return idx
-            return -1
-        def FindScriptById(ID, select):
-            if ID:
-                for idx,t in enumerate(tabDlg.fileList):
-                    if id(t[2]) == ID:
-                        if select: listCtrl.Select(idx)
-                        return idx
-            return -1
-        def OnListCtrlColClick(event):
-            fileList = tabDlg.fileList
-            col = event.m_col
-            idx = listCtrl.GetFirstSelected()
-            script = fileList[idx][2] if idx >= 0 else None
-            script2 = fileList[listCtrl.last_tab][2] if listCtrl.last_tab >= 0 else None
-            script3 = fileList[listCtrl.init_tab][2] if listCtrl.init_tab >= 0 else None
-            if col == 0: fileList.sort(key=utils.sort_alphanumeric(0))
-            else: fileList.sort(key=utils.sort_alphanumeric(1))
-            listCtrl.last_col = col
-            FindScript(script, True)
-            idx = FindScript(script2, False)
-            if idx > -1: listCtrl.last_tab = idx
-            idx = FindScript(script3, False)
-            if idx > -1: listCtrl.init_tab = idx
-            listCtrl.Refresh()
-            SetCaption()
-        listCtrl.Bind(wx.EVT_LIST_COL_CLICK, OnListCtrlColClick)
-        def OnKillFocus(event):
-            event.Skip()
-            if not tabDlg.progress:
-                if wx.GetApp().GetTopWindow() != tabDlg:
-                    OnClose()
-        def OnLeftDown(event):
-            tabDlg.progress = False
-            if listCtrl.popup:
-                listCtrl.popup = False
-            else:
-                event.Skip()
-        listCtrl.Bind(wx.EVT_LEFT_DOWN, OnLeftDown)
-        def OnLeftDClick(event): # on double click override the tab auto preview
-            b = self.options['tabautopreview']
-            self.options['tabautopreview'] = False
-            try:
-                OnSelect(event, True)
-            finally:
-                self.options['tabautopreview'] = b
-        listCtrl.Bind(wx.EVT_LEFT_DCLICK, OnLeftDClick)
-        def OnSelect(event, force=None):
-            def _reset():
-                listCtrl.SetFocus()
-                tabDlg.progress = False
-            if listCtrl.popup:
-                listCtrl.popup = False
-                event.Veto()
-                return
-            event.Skip()
-            tabDlg.progress = True
-            listCtrl.last_tab = listCtrl.tmp_tab
-            ishiden = False
-            try:
-                idx = listCtrl.GetFirstSelected()
-                if idx > -1:
-                    listCtrl.tmp_tab = idx
-                    name, path, script, ok  = tabDlg.fileList[idx]
-                    for i in range(nb.GetPageCount()):
-                        scr = nb.GetPage(i)
-                        if scr is script:
-                            wasFullscreen = self.fullScreenWnd_IsShown
-                            if not self.options['tabautopreview'] and not self.previewOK(scr) and (self.previewWindowVisible or force):
-                                tabDlg.Show(False)
-                                ishiden = True
-                            else:
-                                self.scriptNotebook.Enable(False) # do not focus the main form
-                            try:
-                                nb.SetSelection(i)
-                            finally:
-                                self.scriptNotebook.Enable(True)
-                            if not self.previewWindowVisible:
-                                if force or (options['force_preview'] and self.previewOK(script)):
-                                    self.zoom_antialias = False
-                                    try:
-                                        self.ShowVideoFrame(focus=False)
-                                    finally:
-                                        self.ResetZoomAntialias()
-                            if (wasFullscreen or tabDlg.wasFullscreen)  and self.previewOK() and not self.fullScreenWnd_IsShown:
-                                self.OnLeftDClickVideoWindow(toggleFullscreen=True)
-                            else:
-                                if self.previewOK():
-                                    tabDlg.wasFullscreen = wasFullscreen
-                            return
-                wx.Bell()
-            finally:
-                if ishiden:
-                    if wx.GetApp().GetTopWindow() != self:
-                        OnClose()
-                        return
-                    if idx > -1:
-                        tabDlg.fileList[idx][3] = '' if script.AVI else '>'
-                tabDlg.Show(True)
-                tabDlg.SetFocus()
-                tabDlg.Update()
-                listCtrl.Refresh()
-                wx.GetApp().ProcessIdle()
-                wx.CallLater(100, _reset)
-        def OnContextMenu(event):
-            def onforce(event):
-                listCtrl.popup = False
-                options['force_preview'] = not options['force_preview']
-            def onpreview(event):
-                listCtrl.popup = False
-                self.OnMenuAutoHidePreview(event)
-                SetCaption()
-            def onrelease(event):
-                script = self.currentScript
-                idx = FindScript(script, False)
-                self.scriptNotebook.Enable(False)
-                try:
-                    self.OnMenuScriptReleaseMemory()
-                finally:
-                    self.scriptNotebook.Enable(True)
-                    wx.GetApp().ProcessIdle()
-                    listCtrl.popup = False
-                    if self.tabDlg:
-                        try:
-                            tabDlg.fileList[idx][3] = '' if script.AVI else '>'
-                            listCtrl.Refresh()
-                            listCtrl.SetFocus()
-                        except:
-                            pass
-            def onrelease_allother(event):
-                self.scriptNotebook.Enable(False)
-                try:
-                    self.OnMenuOtherScriptReleaseMemory(None)
-                finally:
-                    self.scriptNotebook.Enable(True)
-                    wx.GetApp().ProcessIdle()
-                    listCtrl.popup = False
-                    if self.tabDlg:
-                        try:
-                            for idx,item in enumerate(tabDlg.fileList):
-                                item[3] = '' if item[2].AVI else '>'
-                            listCtrl.Refresh()
-                        except:
-                            pass
-            def onclosetab(event):
-                last = tabDlg.fileList[listCtrl.last_tab][2] if listCtrl.last_tab >= 0 else None
-                init = tabDlg.fileList[listCtrl.init_tab][2] if listCtrl.init_tab >= 0 else None
-                self.scriptNotebook.Enable(False)
-                try:
-                    self.CloseTab()
-                finally:
-                    self.scriptNotebook.Enable(True)
-                    wx.GetApp().ProcessIdle()
-                    listCtrl.popup = False
-                    if self.tabDlg:
-                        try:
-                            tabDlg.fileList = ReloadTabs()
-                            listCtrl.SetItemCount(len(tabDlg.fileList))
-                            FindSelectedTab()
-                            idx = FindScript(last, False)
-                            if idx > -1: listCtrl.last_tab = idx
-                            idx = FindScript(init, False)
-                            if idx > -1: listCtrl.init_tab = idx
-                            listCtrl.Refresh()
-                            SetCaption()
-                        except:
-                            pass
-            event.Veto()
-            listCtrl.popup = True
-            popup = wx.Menu()
-            id = wx.NewId()
-            popup.Append(id, _('Release video memory'), kind=wx.ITEM_NORMAL)
-            popup.Enable(id, self.currentScript.AVI is not None)
-            self.Bind(wx.EVT_MENU, onrelease, id=id)
-            id = wx.NewId()
-            popup.Append(id, _('Release all other video memory'), kind=wx.ITEM_NORMAL)
-            self.Bind(wx.EVT_MENU, onrelease_allother, id=id)
-            id = wx.NewId()
-            popup.Append(id, _('Close tab'), kind=wx.ITEM_NORMAL)
-            self.Bind(wx.EVT_MENU, onclosetab, id=id)
-            popup.AppendSeparator()
-            id = wx.NewId()
-            popup.Append(id, _('Auto preview (dbl-click override)'), kind=wx.ITEM_CHECK)
-            popup.Check(id, self.options['tabautopreview'])
-            self.Bind(wx.EVT_MENU, onpreview, id=id)
-            id = wx.NewId()
-            popup.Append(id, _('Force preview visible'), kind=wx.ITEM_CHECK)
-            popup.Check(id, options['force_preview'])
-            self.Bind(wx.EVT_MENU, onforce, id=id)
-            self.PopupMenu(popup)
-            popup.Destroy()
-        listCtrl.Bind(wx.EVT_LIST_ITEM_RIGHT_CLICK, OnContextMenu)
-        FindSelectedTab()
-        listCtrl.last_tab = FindScriptById(options.get('last_id', None), False)
-        tabDlg.Show()
-        listCtrl.SetFocus()
-        listCtrl.Update()
-        listCtrl.Bind(wx.EVT_LIST_ITEM_SELECTED, OnSelect) # bind after shown and Findselected tab
-        listCtrl.Bind(wx.EVT_KILL_FOCUS, OnKillFocus) # focus for tabDlg not working with UltimateListCtrl
+        if not isinstance(self.tabDlg, TabList):
+            self.tabDlg = TabList(self)
+        self.tabDlg.ShowDlg()
+
 
 
 class MainApp(wxp.App):

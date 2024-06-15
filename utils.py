@@ -261,6 +261,19 @@ def sort_alphanumeric(idx=-1):
         alphanum_key = lambda key: [convert(c) for c in re.split('([0-9]+)', key[idx])]
     else: alphanum_key = lambda key: [convert(c) for c in re.split('([0-9]+)', key)]
     return alphanum_key
+
+def FileSizeToString(filename, precision=0, maxsuffix='TB'):
+    fsize = os.path.getsize(filename)
+    if fsize < 1:
+        return '0 B'
+    suffixes = ['B','KB','MB','GB','TB']
+    suffixIndex = 0
+    while (fsize > 1024) and (suffixIndex < 4) and (maxsuffix != suffixes[suffixIndex]):
+        suffixIndex += 1
+        fsize = fsize/1024.0
+    if suffixIndex > 2 and precision == 0:
+        precision = 2
+    return '%.*f %s' % (precision, fsize, suffixes[suffixIndex])
 """
 # Python program for A modified Naive Pattern Searching
 # algorithm that is optimized for the cases when all

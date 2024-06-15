@@ -8,9 +8,10 @@
 #
 # Author:      GPo
 #
-# Created:     11.06.2021
+# Created:     11.06.2021, last change 25.05.2024
 #              update 12.0.6.2021
-#                  dpi, addFile, fileSize, fix return wrong result, freeing the files before delet
+#                  dpi, addFile, fileSize, fix return wrong result, freeing the files before deleting
+#              bugfix: 25.05.2024
 # Copyright:   (c) GPo 2021
 # Licence:     <free>
 #-------------------------------------------------------------------------------
@@ -63,24 +64,27 @@ def fileSizeToString(fsize, precision=0):
 
 def showDlg(files, fSize, showWarn):
     dlg = wx.Dialog(None, wx.ID_ANY, _('Delete') + fSize, style=wx.DEFAULT_DIALOG_STYLE|wx.RESIZE_BORDER)
-    # PPI settings, but don't know if it needed for wx.Dialog
-    #~dpi.SetFontPPI(dlg)
-    okay  = wx.Button(dlg, wx.ID_OK, _('OK'))
-    cancel  = wx.Button(dlg, wx.ID_CANCEL, _('Cancel'))
-    btns = wx.StdDialogButtonSizer()
-    btns.AddButton(okay)
-    btns.AddButton(cancel)
-    btns.Realize()
-    textCtrl = wx.TextCtrl(dlg, wx.ID_ANY, size=dpi.tuplePPI(600,200), style=wx.TE_MULTILINE|wx.TE_READONLY|wx.TE_DONTWRAP)
-    textCtrl.AppendText('\n'.join(files))
-    dlgSizer = wx.BoxSizer(wx.VERTICAL)
-    dlgSizer.Add(textCtrl, 1, wx.EXPAND)
-    dlgSizer.Add(btns , 0, wx.EXPAND|wx.ALL, dpi.intPPI(10))
-    dlg.SetSizer(dlgSizer)
-    dlgSizer.Layout()
-    dlg.Fit()
-    if dlg.ShowModal() != wx.ID_OK:
-        return
+    try:
+        # PPI settings, but don't know if it needed for wx.Dialog
+        #~dpi.SetFontPPI(dlg)
+        okay  = wx.Button(dlg, wx.ID_OK, _('OK'))
+        cancel  = wx.Button(dlg, wx.ID_CANCEL, _('Cancel'))
+        btns = wx.StdDialogButtonSizer()
+        btns.AddButton(okay)
+        btns.AddButton(cancel)
+        btns.Realize()
+        textCtrl = wx.TextCtrl(dlg, wx.ID_ANY, size=dpi.tuplePPI(600,200), style=wx.TE_MULTILINE|wx.TE_READONLY|wx.TE_DONTWRAP)
+        textCtrl.AppendText('\n'.join(files))
+        dlgSizer = wx.BoxSizer(wx.VERTICAL)
+        dlgSizer.Add(textCtrl, 1, wx.EXPAND)
+        dlgSizer.Add(btns , 0, wx.EXPAND|wx.ALL, dpi.intPPI(10))
+        dlg.SetSizer(dlgSizer)
+        dlgSizer.Layout()
+        dlg.Fit()
+        if dlg.ShowModal() != wx.ID_OK:
+            return
+    finally:
+        dlg.Destroy()
     if showWarn and not avsp.MsgBox('Delete files from disk?', cancel=True):
         return
     # freeing the files if in use
