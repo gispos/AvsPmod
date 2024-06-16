@@ -37,14 +37,9 @@ AvsPmod can only provide a user-friendly editor if he has no problems with the n
 If, for example, there is a '-' in the file name of the dll, AvsPmod will report it at startup, 
 please rename this dll and replace the '-' with a '_'
 
---------------------------
-Version 2.7.7.5 [2024-06-16]
---------------------------
-* Discovered a bug that has probably always existed. 
-- When closing a tab, a serious error occurs when the Crop or Trim dialog is open. Has been fixed in this version.
 
 --------------------------
-Version 2.7.7.4 [2024-06-15]
+Version 2.7.7.4, 2.7.7.5 [2024-06-16]
 --------------------------
 * 'Resample filter' is restored after an error clip.
 * Closing a tab using the 'Tab list' will no longer force an adjacent uninitialized tab to open.
@@ -71,6 +66,8 @@ Version 2.7.7.4 [2024-06-15]
 * Bugfix macro 'DeleteEncodings.py'
 * When AvsPmod is closed, it searches for open dialogs and destroys them (prevents AvsPmod from running a background process after closing).
 *** Reminder: Tab list is also accessible with a right click in the right area (20 pixels) of AvsPmod's Display, Editor and Slider-Sidebar (except D3DWindow).
+* Version 2.7.7.5: Discovered a bug that has probably always existed. 
+- When closing a tab, a serious error occurs when the Crop or Trim dialog is open. Has been fixed in this version.
 
 --------------------------
 Version 2.7.7.3 [2024-04-20]
