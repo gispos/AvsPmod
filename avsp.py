@@ -4942,7 +4942,7 @@ class TabList(wx.Dialog):
             opt['tbl_dimensions'] = self.GetRect()
             opt['tbl_col0w'] = self.listCtrl.GetColumnWidth(0)
             opt['tbl_col1w'] = self.listCtrl.GetColumnWidth(colPath)
-            if self.last_tab > -1 and len(self.fileList) <= self.last_tab:
+            if self.last_tab > -1 and self.last_tab < len(self.fileList):
                 opt['tbl_last_id'] = id(self.fileList[self.last_tab][2])
             if self.bookmarks:
                 opt['tbl_colBw'] = self.listCtrl.GetColumnWidth(1)
