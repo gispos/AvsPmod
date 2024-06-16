@@ -4770,7 +4770,7 @@ class MediaInfoDlg(wx.Dialog):
         self.Bind(wx.EVT_MENU, lambda f: self.OpenPath(), id=id)
         popup.AppendSeparator()
         id = wx.NewId()
-        popup.Append(id, _('Sinle instance'), kind=wx.ITEM_CHECK)
+        popup.Append(id, _('Single instance'), kind=wx.ITEM_CHECK)
         popup.Check(id, self.app.options['mediainfo_singlewnd'])
         self.Bind(wx.EVT_MENU, _onsingle, id=id)
         self.PopupMenu(popup)
@@ -4810,6 +4810,7 @@ class TabList(wx.Dialog):
             def __init__(self, parent, fontcolor):
                 self.parent = parent
                 self.fontcolor = fontcolor
+                self.oldIdx = -1
                 style = wx.LC_REPORT|wx.LC_VIRTUAL|wx.LC_VRULES|ULCtrl.ULC_NO_HIGHLIGHT|ULCtrl.ULC_SINGLE_SEL
                 wxp.UListCtrl.__init__(self, parent, wx.ID_ANY, agwStyle=style)
                 def OnListCtrlColClick(event):
@@ -4833,6 +4834,9 @@ class TabList(wx.Dialog):
                     self.Refresh()
                     self.parent.SetCaption()
                 self.Bind(wx.EVT_LIST_COL_CLICK, OnListCtrlColClick)
+                def OnDeselectItem(event):
+                    pass
+                self.Bind(wx.EVT_LIST_ITEM_DESELECTED, OnDeselectItem)
                 def OnMouse(event):
                     evtype = event.GetEventType()
                     x = event.GetX()
@@ -4942,8 +4946,8 @@ class TabList(wx.Dialog):
                 opt['tbl_last_id'] = id(self.fileList[self.last_tab][2])
             if self.bookmarks:
                 opt['tbl_colBw'] = self.listCtrl.GetColumnWidth(1)
-            self.app.tabDlg = None
             self.Destroy()
+            self.app.tabDlg = None
     @AsyncCallWrapper
     def OnKillFocus(self, event):
         event.Skip()
@@ -5029,7 +5033,8 @@ class TabList(wx.Dialog):
         self.last_col = 0 # sort column 0 = name
         self.wasFullscreen = self.app.fullScreenWnd_IsShown
         self.ReloadTabs()
-        self.FindSelectedTab()
+        idx = self.FindSelectedTab()
+        self.listCtrl.oldIdx = idx
         self.last_tab = self.FindScriptById(self.options.get('tbl_last_id', None))
         self.SetCaption()
         self.autoClose = False
@@ -5054,7 +5059,7 @@ class TabList(wx.Dialog):
             self.init_tab = idx
             self.last_tab = idx
             self.tmp_tab = idx
-            return
+            return idx
         wx.Bell()
     def FindScript(self, script, select=False):
         if script is not None:
@@ -5078,15 +5083,20 @@ class TabList(wx.Dialog):
         def _reset():
             self.listCtrl.SetFocus()
             self.progress = False
+        def _resetindex():
+            if self.listCtrl.oldIdx > -1:
+                self.popup = True
+                self.listCtrl.Select(self.listCtrl.oldIdx)
         if self.popup:
             if self.popup != True: # on startup 2
                 if event:
                     event.Veto()
             self.popup = False
             return
-        if not self.fileList:
+        if not self.fileList or not self.app.CheckTabsCanChange():
             if event:
                 event.Veto()
+            _resetindex()
             return
         if event:
             event.Skip()
@@ -5112,6 +5122,12 @@ class TabList(wx.Dialog):
                             self.nb.SetSelection(i)
                         finally:
                             self.nb.Enable(True)
+                            re = self.nb.GetSelection()
+                            if re != i and self.listCtrl.oldIdx > -1:
+                                _resetindex()
+                                idx = self.listCtrl.oldIdx
+                                return
+
                         if not self.app.previewWindowVisible:
                             if force or (self.options['tbl_forcepreview'] and self.app.previewOK(script)):
                                 self.app.zoom_antialias = False
@@ -5127,6 +5143,7 @@ class TabList(wx.Dialog):
                         return
             wx.Bell()
         finally:
+            self.listCtrl.oldIdx = idx
             if ishiden:
                 if wx.GetApp().GetTopWindow() != self.app and self.autoClose:
                     self.OnClose()
@@ -5212,6 +5229,8 @@ class TabList(wx.Dialog):
                 popup.Check(id, checked)
             self.Bind(wx.EVT_MENU, handler, id=id)
         if popup_idx > -1:
+            if not self.app.CheckTabsCanChange(False):
+                return
             AddItem('Release video memory', onrelease, wx.ITEM_NORMAL, self.app.currentScript.AVI is not None)
             AddItem('Release all other video memory', onrelease_allother, wx.ITEM_NORMAL, self.app.currentScript.AVI is not None)
             AddItem('Close tab', onclosetab, wx.ITEM_NORMAL)
@@ -13439,7 +13458,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     ),
                 ),
                 (_('Frame properties'), '', self.OnMenuVideoTogglePropWindow, _('Show/Hide the properties window')),
-                (_('Video information'), '', self.OnMenuVideoInfo, _('Show information about the video in a dialog box')),
+                (_('Video information'), '', self.OnMenuVideoInfo, _('Show information about the avisynth video in a dialog box')),
+                #(_('MediaInfo'), '', lambda f: self.ShowMediaInfo(self.GetSourcePath()), _('Show information about the source file in a dialog box')),
             ),
             (_('&Options'),
                 (_('Always on top'), '', self.OnMenuOptionsAlwaysOnTop, _('Keep this window always on top of others'), wx.ITEM_CHECK, self.options['alwaysontop']),
@@ -14883,6 +14903,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.UndoCloseTab()
 
     def OnMenuFileClose(self, event=None):
+        if not self.CheckTabsCanChange():
+            return
         if self.previewWindowVisible:
             index = self.scriptNotebook.GetSelection()
             script = None
@@ -14895,6 +14917,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.CloseTab(prompt=True)
 
     def OnMenuFilesOthersClose(self, event):
+        if not self.CheckTabsCanChange():
+            return
         idx = self.scriptNotebook.GetSelection()
         count = self.scriptNotebook.GetPageCount()-1
         self.TabList_BlockUpdate(True)
@@ -14904,6 +14928,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.TabList_BlockUpdate(False, True)
 
     def OnMenuFilesCloseLeft(self, event):
+        if not self.CheckTabsCanChange():
+            return
         if self.scriptNotebook.GetRowCount() > 1:
             wx.MessageBox(_('Cannot close tabs in groups if rows count greater 1\nYou must disable Options -> Multiline tab style'),'AvsPmod')
             return
@@ -14915,6 +14941,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.TabList_BlockUpdate(False, True)
 
     def OnMenuFilesCloseRight(self, event):
+        if not self.CheckTabsCanChange():
+            return
         if self.scriptNotebook.GetRowCount() > 1:
             wx.MessageBox(_('Cannot close tabs in groups if rows count greater 1\nYou must disable Options -> Multiline tab style'),'AvsPmod')
             return
@@ -14926,6 +14954,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.TabList_BlockUpdate(False, True)
 
     def OnMenuFilesCloseNotOpened(self, event):
+        if not self.CheckTabsCanChange():
+            return
         # wath an shit, tabs not visible after deleting and not multiline
         multi = self.options['multilinetab']
         if not multi:
@@ -17465,7 +17495,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             MI.Option_Static("Complete")
             if self.options['mediainfo_singlewnd']:
                 wnd = wx.FindWindowByName('mediainfo')
-                if wnd:
+                if wnd and isinstance(wnd, MediaInfoDlg):
                     wnd.SetText(MI.Inform(), filename, os.path.split(filename)[1])
                     wnd.SetFocus()
                     return True
@@ -21295,18 +21325,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.StopPlayback()
             self.playing_video = ''
 
-        if not self.KillScriptAVIAudio(showErr=False):
-            wx.MessageBox(_('Cannot switch tabs: Audio play cannot be closed.\nDisable audio scrubbing or try again.'), _('Error'), style=wx.OK|wx.ICON_ERROR)
+        if not self.CheckTabsCanChange():
             event.Veto()
-            return
-
-        if self.cropDialog.IsShown():
-            wx.MessageBox(_('Cannot switch tabs while crop editor is open!'), _('Error'), style=wx.OK|wx.ICON_ERROR)
-            event.Veto()
-            return
-        if self.trimDialog.IsShown():
-            wx.MessageBox(_('Cannot switch tabs while trim editor is open!'), _('Error'), style=wx.OK|wx.ICON_ERROR)
-            event.Veto() # Not enough, we have to return or bookmarks and other things go wrong
             return
 
         if self.FindFocus() == self.videoWindow:
@@ -21373,6 +21393,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if self.options['tabmiddlemouse'] == 1:
             ipage = self.scriptNotebook.HitTest(event.GetPosition())[0]
             if ipage != wx.NOT_FOUND:
+                if not self.CheckTabsCanChange():
+                    return
                 self.CloseTab(ipage, prompt=True)
             else: # for wxGTK
                 self.UndoCloseTab()
@@ -23860,7 +23882,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.ScriptSelector.Close() # saves also the options and opened tabs
         if isinstance(self.tabDlg, TabList):
             self.tabDlg.Destroy()
-        if wx.FindWindowByName('mediainfo', self):
+        if wx.FindWindowByName('mediainfo'):
             for wnd in wx.GetTopLevelWindows():
                 if isinstance(wnd, MediaInfoDlg):
                     wnd.Destroy()
@@ -24057,6 +24079,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if self.trimDialog.IsShown():
             wx.MessageBox(_('Cannot create a new tab while trim editor is open!'),
                           _('Error'), style=wx.OK|wx.ICON_ERROR)
+            return False
+        if not self.KillScriptAVIAudio(None, False):
+            wx.MessageBox(_('Cannot create a new tab: Audio play cannot be closed.\nDisable audio scrubbing or try again.'),
+                            _('Error'), style=wx.OK|wx.ICON_ERROR)
             return False
 
         self.StopPlayback()
@@ -24638,9 +24664,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         changes on scripts that already exist on the filesytem.
 
         '''
+        if self.cropDialog.IsShown() or self.trimDialog.IsShown():
+            return
+        self.StopPlayback()
         # Get the script and corresponding index
-        self.StopPlayback() # GPo 2020
-
         script, index = self.getScriptAtIndex(index)
         if script is None:
             return False
@@ -24714,9 +24741,27 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     self.OnMainSplitterPosChanged()
         return True
 
+    def CheckTabsCanChange(self, showWarn=True):
+        audio = self.KillScriptAVIAudio(showErr=False)
+        if self.cropDialog.IsShown() or self.trimDialog.IsShown() or not audio:
+            if showWarn:
+                if self.cropDialog.IsShown():
+                    wx.MessageBox(_('Cannot switch tabs while crop editor is open!'), _('Error'), style=wx.OK|wx.ICON_ERROR)
+                    return False
+                if self.trimDialog.IsShown():
+                    wx.MessageBox(_('Cannot switch tabs while trim editor is open!'), _('Error'), style=wx.OK|wx.ICON_ERROR)
+                    return False
+                if not audio:
+                    wx.MessageBox(_('Cannot switch tabs: Audio play cannot be closed.\nDisable audio scrubbing or try again.'), _('Error'), style=wx.OK|wx.ICON_ERROR)
+                    return False
+            return False
+        return True
+
      # GPo 2022, changed
     def CloseAllTabs(self, discard=False, showSaveDlg=True):
         self.StopPlayback()
+        if not self.CheckTabsCanChange():
+            return
         needDlg = True
         if self.scriptNotebook.GetPageCount() == 1:
             needDlg = self.scriptNotebook.GetPage(0).GetText() != ''
@@ -25060,7 +25105,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if script is None:
             script = self.currentScript
         if os.name == 'nt':
-            sourceFilterList = set(('directshowsource',))
+            sourceFilterList = set(('directshowsource','lwlibavvideosource','lsmashvideosource','ffms2','ffmpegsource2',))
         else:
             sourceFilterList = set(('ffvideosource', 'ffaudiosource'))
         noMediaFileList = ('import', 'loadplugin', 'loadcplugin', 'load_stdcall_plugin',
@@ -25087,6 +25132,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     if wordstartpos != -1:
                         sourceFilter = script.GetTextRange(wordstartpos, openpos)
                         if sourceFilter.strip().lower() in sourceFilterList:
+                            print ('found')
                             return s
         # GPo, find my favorite: SourceFile : "E:\Video\Test.mkv" > LWLibavVideoSource(SourceFile)
         for match in re.finditer(r'sourcefile\s*(=|:)\s*".:\\(.+?)"', script.GetText(), re.I):
@@ -34037,6 +34083,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     def TabList_UpdateAviState(self, script=None):
         if isinstance(self.tabDlg, TabList):
             self.tabDlg.UpdateAviState(script)
+    @AsyncCallWrapper
     def TabList_Close(self):
         if isinstance(self.tabDlg, TabList):
             self.tabDlg.Destroy()

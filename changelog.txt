@@ -38,6 +38,12 @@ If, for example, there is a '-' in the file name of the dll, AvsPmod will report
 please rename this dll and replace the '-' with a '_'
 
 --------------------------
+Version 2.7.7.5 [2024-06-16]
+--------------------------
+* Discovered a bug that has probably always existed. 
+- When closing a tab, a serious error occurs when the Crop or Trim dialog is open. Has been fixed in this version.
+
+--------------------------
 Version 2.7.7.4 [2024-06-15]
 --------------------------
 * 'Resample filter' is restored after an error clip.
