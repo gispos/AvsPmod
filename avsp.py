@@ -4718,19 +4718,47 @@ class MediaInfoDlg(wx.Dialog):
         self.textCtrl.UsePopUp(0)
         self.textCtrl.SetEOLMode(stc.STC_EOL_LF)
         self.textCtrl.SetCaretStyle(stc.STC_CARETSTYLE_INVISIBLE)
-        self.textCtrl.Bind(wx.EVT_CONTEXT_MENU, self.OnContextMenu)
         self.Style()
-        self.Bind(wx.EVT_CLOSE, self.OnClose)
-    def OnClose(self, event):
-        x,y,w,h = self.GetRect()
-        self.app.options['mediainfo_rect'] = (x,y,w,h)
-        wnd = self.app.tabDlg
-        if isinstance(wnd, TabList) and wnd.IsShown():
-            wnd.autoClose = False # do not close Tablist on Tablist.KillFocus
-            self.Destroy() # python sets the focus after destroying a wnd to the parent wnd
-            wx.CallLater(60, wnd.SetAutoClose, True) # Focus tablist and reset autoClose
-        else:
-            self.Destroy()
+        def OnClose(event):
+            x,y,w,h = self.GetRect()
+            self.app.options['mediainfo_rect'] = (x,y,w,h)
+            wnd = self.app.tabDlg
+            if isinstance(wnd, TabList) and wnd.IsShown():
+                wnd.autoClose = False # do not close Tablist on Tablist.KillFocus
+                self.Destroy() # python sets the focus after destroying a wnd to the parent wnd
+                wx.CallLater(60, wnd.SetAutoClose, True) # Focus tablist and reset autoClose
+            else:
+                self.Destroy()
+        self.Bind(wx.EVT_CLOSE, OnClose)
+        """
+        def OnKillFocus(event):
+            wnd = self.app.tabDlg
+            event.Skip()
+            if self.app.options['mediainfo_autoclose']:
+                if isinstance(wnd, TabList) and self.FindFocus().GetTopLevelParent() == wnd:
+                    pass
+                else:
+                    OnClose(None)
+        self.textCtrl.Bind(wx.EVT_KILL_FOCUS, OnKillFocus)
+        """
+        def OnContextMenu(event):
+            def _onsingle(event):
+                self.app.options['mediainfo_singlewnd'] = not self.app.options['mediainfo_singlewnd']
+            popup = wx.Menu()
+            id = wx.NewId()
+            popup.Append(id, _('Copy'))
+            self.Bind(wx.EVT_MENU, lambda f: self.textCtrl.CopyText(self.textCtrl.GetTextLength(), self.textCtrl.GetText()), id=id)
+            id = wx.NewId()
+            popup.Append(id, _('Open path'))
+            self.Bind(wx.EVT_MENU, lambda f: self.OpenPath(), id=id)
+            popup.AppendSeparator()
+            id = wx.NewId()
+            popup.Append(id, _('Single instance'), kind=wx.ITEM_CHECK)
+            popup.Check(id, self.app.options['mediainfo_singlewnd'])
+            self.Bind(wx.EVT_MENU, _onsingle, id=id)
+            self.PopupMenu(popup)
+            popup.Destroy()
+        self.textCtrl.Bind(wx.EVT_CONTEXT_MENU, OnContextMenu)
     def Style(self):
         textstyle = self.app.options['textstyles']['scrapwindow']
         self.textCtrl.StyleSetSpec(stc.STC_STYLE_DEFAULT, textstyle)
@@ -4758,23 +4786,6 @@ class MediaInfoDlg(wx.Dialog):
         self.SetTitle(title)
         self.filename = filename
         self.Raise()
-    def OnContextMenu(self, event):
-        def _onsingle(event):
-            self.app.options['mediainfo_singlewnd'] = not self.app.options['mediainfo_singlewnd']
-        popup = wx.Menu()
-        id = wx.NewId()
-        popup.Append(id, _('Copy'))
-        self.Bind(wx.EVT_MENU, lambda f: self.textCtrl.CopyText(self.textCtrl.GetTextLength(), self.textCtrl.GetText()), id=id)
-        id = wx.NewId()
-        popup.Append(id, _('Open path'))
-        self.Bind(wx.EVT_MENU, lambda f: self.OpenPath(), id=id)
-        popup.AppendSeparator()
-        id = wx.NewId()
-        popup.Append(id, _('Single instance'), kind=wx.ITEM_CHECK)
-        popup.Check(id, self.app.options['mediainfo_singlewnd'])
-        self.Bind(wx.EVT_MENU, _onsingle, id=id)
-        self.PopupMenu(popup)
-        popup.Destroy()
     def ShowDlg(self, txt):
         self.textCtrl.SetReadOnly(False)
         self.textCtrl.SetText(txt)
@@ -4859,8 +4870,10 @@ class TabList(wx.Dialog):
                                 if s:
                                     if ctrl or self.parent.options['tbl_mediainfodefault']:
                                         self.parent.autoClose = False
+                                        #self.parent.app.options['mediainfo_autoclose'] = False
                                         re = self.parent.app.ShowMediaInfo(s)
                                         self.parent.autoClose = True
+                                        #self.parent.app.options['mediainfo_autoclose'] = True
                                         if re == -2: self.parent.options['tbl_mediainfodefault'] = False
                                     else:
                                         size = utils.FileSizeToString(s)
@@ -11214,6 +11227,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'tbl_avspthumb': '',
             'mediainfo_rect': (100,100,intPPI(400),intPPI(600)),  # MediaInfo Dlg dimensions
             'mediainfo_singlewnd': True,             # show multible dialogs or not
+            #'mediainfo_autoclose': True,
             'hidescrollbars': True,                  # GPo 2021
             'scriptwindowbindmousewheel': 3,         # GPo 2021 # user problem with mouse wheel on editor, on large scripts it is faster if it set
             'playloop': False,                       # GPo 2020 playback loop
@@ -25105,7 +25119,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if script is None:
             script = self.currentScript
         if os.name == 'nt':
-            sourceFilterList = set(('directshowsource','lwlibavvideosource','lsmashvideosource','ffms2','ffmpegsource2',))
+            sourceFilterList = set(('directshowsource','lwlibavvideosource','lsmashvideosource','ffms2','ffvideosource','ffmpegsource2','bestsource2'))
         else:
             sourceFilterList = set(('ffvideosource', 'ffaudiosource'))
         noMediaFileList = ('import', 'loadplugin', 'loadcplugin', 'load_stdcall_plugin',
@@ -25132,7 +25146,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     if wordstartpos != -1:
                         sourceFilter = script.GetTextRange(wordstartpos, openpos)
                         if sourceFilter.strip().lower() in sourceFilterList:
-                            print ('found')
                             return s
         # GPo, find my favorite: SourceFile : "E:\Video\Test.mkv" > LWLibavVideoSource(SourceFile)
         for match in re.finditer(r'sourcefile\s*(=|:)\s*".:\\(.+?)"', script.GetText(), re.I):

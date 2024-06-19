@@ -37,6 +37,10 @@ AvsPmod can only provide a user-friendly editor if he has no problems with the n
 If, for example, there is a '-' in the file name of the dll, AvsPmod will report it at startup, 
 please rename this dll and replace the '-' with a '_'
 
+--------------------------
+Version 2.7.7.6 [2024-06-19]
+--------------------------
+* Forgot to delete entries from the tests in the code. When saving the script a message 'found' could be displayed. Sorry.
 
 --------------------------
 Version 2.7.7.4, 2.7.7.5 [2024-06-16]
