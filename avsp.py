@@ -9791,6 +9791,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.fullScreenWnd_IsShown = False
         self.overlayData = None  # Data for overlay hint tuple (x, y, text, kill_time)
         self.playback_drawBoth = False # playback sdlWindow and video window (only for playback, disbled is sdlWindow Fullscreen or Fullsize)
+        self.oldSize = None # needed for def OnSize
         ### test
         #sys.setcheckinterval(100) # The default is 100, meaning the check is performed every 100 Python virtual instructions. Setting it to a larger value may increase performance for programs using threads.
         #wx.SystemOptions.SetOptionInt('msw.display.directdraw', 1)
@@ -10291,7 +10292,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
          #leave it, if thread progress is shown LayoutVideoWindows doesn't work if self Iconized and no event skip called
         def OnIconize(event):
-            self.blockEventSize = True
+            if self.blockEventSize == False:
+                self.blockEventSize = True
             if self.IsIconized():
                 self.StopPlayback()
                 if self.propWindow.IsShown():
@@ -10352,12 +10354,17 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 if event.GetEventType() != wx.EVT_CLOSE.typeId:
                     if self.titleEntry:
                         self.scriptNotebook.SetFocus()
+                ''' I don't know (why, where) the event is called even without a resize, so a check is needed '''
+                if self.oldSize == self.GetSize() or self.blockEventSize == 6:
+                    if self.blockEventSize == True:
+                        self.blockEventSize = False
+                    event.Skip()
+                    return
+                self.oldSize = self.GetSize()
                 # It's bad for switchin fullsize mode on playback
                 if not self.blockEventSize and not self.ClipRefreshPainter:
                     if self.previewWindowVisible:
                         script = self.currentScript
-                        #size = script.GetSize()[self.mainSplitter.GetSplitMode() == wx.SPLIT_HORIZONTAL]
-                        #self.mainSplitter_SetSashPos = None if size > 4 else 1
                         self.mainSplitter_SetSashPos = None if self.mintextlines > 0 else 1
                         if self.IsResizeFilterFitFill(script):
                             func = (self.ShowVideoFrame_checkResizeFilter, tuple(), {'script': script})
@@ -10393,6 +10400,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         else:
             def OnSize(event): # after size
                 if self.previewWindowVisible and event.GetEventType() != wx.EVT_CLOSE.typeId:
+                    if self.oldSize == self.videoDialog.GetSize() or self.blockEventSize == 6: # 6 = app termination
+                        if self.blockEventSize == True:
+                            self.blockEventSize = False
+                        event.Skip()
+                        return
+                    self.oldSize = self.videoDialog.GetSize()
                     if not self.blockEventSize and not self.ClipRefreshPainter:
                         if not self.videoDialog.IsMaximized() and not self.videoDialog.IsFullScreen():
                             self.options['dimensions2'] = (self.videoDialog.GetRect())
@@ -10409,7 +10422,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                                     # first Reset, IdleCall pops from last to first
                                     self.IdleCall.append((self.ResetZoomAntialias, tuple(), {}))
                                 self.IdleCall.append(func)
-
                     if self.blockEventSize == True:
                         self.blockEventSize = False
                 event.Skip()
@@ -24004,7 +24016,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 break
 
         # Save the program position
-        self.blockEventSize = 2  # disable event OnSize
+        self.blockEventSize = 6  # disable event OnSize
         if self.IsMaximized():
             self.options['maximized'] = True
             self.Maximize(False)

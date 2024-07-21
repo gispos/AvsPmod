@@ -39,6 +39,13 @@ please rename this dll and replace the '-' with a '_'
 
 
 --------------------------
+Version 2.7.7.7 [2024-07-20]
+--------------------------
+* Bugfix: 
+Resample Filter could under certain circumstances, depending on the video source and filters used, get into a resize loop and block everything.
+For me, this was only the case with a corrupted 4K video and with MCTemporalDenoise with settings 'High' and 'Very High'. 
+
+--------------------------
 Version 2.7.7.4, 2.7.7.5, 2.7.7.6 [2024-06-19]
 --------------------------
 * 'Resample filter' is restored after an error clip.

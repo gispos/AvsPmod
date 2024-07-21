@@ -196,6 +196,8 @@ class UListCtrl(ULC.UltimateListCtrl, listmix.ListCtrlAutoWidthMixin):
     def SelectItem(self, item):
         self.SetItemState(item, ULC.ULC_STATE_SELECTED|ULC.ULC_STATE_FOCUSED, ULC.ULC_STATE_SELECTED|ULC.ULC_STATE_FOCUSED)
         self.EnsureVisible(item)
+        self.Refresh()
+        self.Update()
 
     def GetSelectedItem(self):
         return self.GetNextItem(-1, ULC.ULC_NEXT_ALL, ULC.ULC_STATE_SELECTED)
