@@ -183,6 +183,7 @@ data_files = [
             'readme_D3D_Window.txt',
             'readme_Audio.txt',
 	    'readme_ScriptSelector.txt',
+	    'readme_Tablist.txt',
             'license_cpuid',
 	    'DecodeYUVtoRGB.dll',
             'SDL2.dll'
@@ -271,7 +272,8 @@ dirs = (
     ('help', None, None),
     ('translations', None, None),
     ('macros', ('.py', '.txt'), None),
-    ('tools', ('.py', '.default'), ('session_info.pyo', 'avs2avi.exe', 'avs2avi_src.zip'))
+    ('tools', ('.py', '.default'), ('session_info.pyo', 'avs2avi.exe', 'avs2avi_src.zip')),
+    ('sound', ('.mp3'), None)
        )
 for dir, ext_filter, include in dirs:
     if not os.path.isdir(dir):

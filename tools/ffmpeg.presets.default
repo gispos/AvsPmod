@@ -1,35 +1,35 @@
 [x264 CRF Slow]
-ffmpeg.exe -i "$video_input" -vcodec libx264 -preset slow -tune film -crf $video_quality -vf setsar=sar=$par_x/$par_y -acodec aac -b:a 128k -y "$video_output" 
+ffmpeg.exe -i "$video_input" -vcodec libx264 -preset slow -tune film -crf $video_quality -vf setsar=sar=$par_x/$par_y -acodec aac -b:a 192k -y "$video_output" 
 
 [x264 CRF Medium]
-ffmpeg.exe -i "$video_input" -vcodec libx264 -preset medium -tune film -crf $video_quality -vf setsar=sar=$par_x/$par_y -acodec aac -b:a 128k -y "$video_output" 
+ffmpeg.exe -i "$video_input" -vcodec libx264 -preset medium -tune film -crf $video_quality -vf setsar=sar=$par_x/$par_y -acodec aac -b:a 192k -y "$video_output" 
 
 [x264 lossless veryslow]
-ffmpeg.exe -i "$video_input" -vcodec libx264 -preset veryslow -qp 0 -vf setsar=sar=$par_x/$par_y -acodec aac -b:a 192k -y "$video_output" 
+ffmpeg.exe -i "$video_input" -vcodec libx264 -preset veryslow -qp 0 -vf setsar=sar=$par_x/$par_y -acodec aac -b:a 320k -y "$video_output" 
 
 [x264 lossless slow]
-ffmpeg.exe -i "$video_input" -vcodec libx264 -preset slow -qp 0 -vf setsar=sar=$par_x/$par_y -acodec aac -b:a 192k -y "$video_output"
+ffmpeg.exe -i "$video_input" -vcodec libx264 -preset slow -qp 0 -vf setsar=sar=$par_x/$par_y -acodec aac -b:a 320k -y "$video_output"
 
 [x264 lossless medium]
-ffmpeg.exe -i "$video_input" -vcodec libx264 -preset medium -qp 0 -vf setsar=sar=$par_x/$par_y -acodec aac -b:a 192k -y "$video_output"
+ffmpeg.exe -i "$video_input" -vcodec libx264 -preset medium -qp 0 -vf setsar=sar=$par_x/$par_y -acodec aac -b:a 320k -y "$video_output"
 
 [x264 lossless ultra fast]
-ffmpeg.exe -i "$video_input" -vcodec libx264 -preset ultrafast -qp 0 -vf setsar=sar=$par_x/$par_y -acodec aac -b:a 192k -y "$video_output"
+ffmpeg.exe -i "$video_input" -vcodec libx264 -preset ultrafast -qp 0 -vf setsar=sar=$par_x/$par_y -acodec aac -b:a 320k -y "$video_output"
 
 [x265 CRF Slow]
-ffmpeg.exe -i "$video_input" -vcodec libx265 -preset slow -crf $video_quality -vf setsar=sar=$par_x/$par_y -acodec aac -b:a 128k -y "$video_output" 
+ffmpeg.exe -i "$video_input" -vcodec libx265 -preset slow -crf $video_quality -vf setsar=sar=$par_x/$par_y -acodec aac -b:a 192k -y "$video_output" 
 
 [x265 CRF Medium]
-ffmpeg.exe -i "$video_input" -vcodec libx265 -crf $video_quality -vf setsar=sar=$par_x/$par_y -acodec aac -b:a 128k -y "$video_output"
+ffmpeg.exe -i "$video_input" -vcodec libx265 -crf $video_quality -vf setsar=sar=$par_x/$par_y -acodec aac -b:a 192k -y "$video_output"
 
 [x265 lossless slow]
-ffmpeg.exe -i "$video_input" -vcodec libx265 -preset slow -x265-params lossless=1 -vf setsar=sar=$par_x/$par_y -acodec aac -b:a 192k -y "$video_output"
+ffmpeg.exe -i "$video_input" -vcodec libx265 -preset slow -x265-params lossless=1 -vf setsar=sar=$par_x/$par_y -acodec aac -b:a 320k -y "$video_output"
 
 [x265 lossless medium]
-ffmpeg.exe -i "$video_input" -vcodec libx265 -preset medium -x265-params lossless=1 -vf setsar=sar=$par_x/$par_y -acodec aac -b:a 192k -y "$video_output"
+ffmpeg.exe -i "$video_input" -vcodec libx265 -preset medium -x265-params lossless=1 -vf setsar=sar=$par_x/$par_y -acodec aac -b:a 320k -y "$video_output"
 
 [x265 lossless ultra fast]
-ffmpeg.exe -i "$video_input" -vcodec libx265 -preset ultrafast -x265-params lossless=1 -vf setsar=sar=$par_x/$par_y -acodec aac -b:a 192k -y "$video_output"
+ffmpeg.exe -i "$video_input" -vcodec libx265 -preset ultrafast -x265-params lossless=1 -vf setsar=sar=$par_x/$par_y -acodec aac -b:a 320k -y "$video_output"
 
 [svt-av1 CRF Slower]
 ffmpeg.exe -i "$video_input" -c:v libsvtav1 -crf $video_quality -preset 4 -svtav1-params -g=125 -svtav1-params tune=0 -svtav1-params film-grain-denoise=0 -vf setsar=sar=$par_x/$par_y -c:a aac -b:a 192k -y "$video_output"
@@ -41,13 +41,16 @@ ffmpeg.exe -i "$video_input" -c:v libsvtav1 -crf $video_quality -preset 6 -svtav
 ffmpeg.exe -i "$video_input" -c:v libsvtav1 -crf $video_quality  -preset 8 -svtav1-params -g=100 -svtav1-params tune=0 -svtav1-params film-grain-denoise=0 -vf setsar=sar=$par_x/$par_y -c:a aac -b:a 192k -y "$video_output"
 
 [nv_h264 VBR HQ]
-ffmpeg.exe -i "$video_input" -c:v h264_nvenc -preset slow -profile:v main -rc vbr -b:v $video_bitrate_k -vf setsar=sar=$par_x/$par_y -c:a aac -b:a 192k -y "$video_output"
+ffmpeg.exe -i "$video_input" -c:v h264_nvenc -preset slow -profile:v main -rc vbr_hq -b:v $video_bitrate_k -vf setsar=sar=$par_x/$par_y -c:a aac -b:a 192k -y "$video_output"
 
 [nv_h264 CQP]
-ffmpeg.exe -i "$video_input" -c:v h264_nvenc -preset slow -profile:v main -rc constqp -qp $video_quality -vf setsar=sar=$par_x/$par_y -c:a aac -b:a 192k -y "$video_output"  
+ffmpeg.exe -i "$video_input" -c:v h264_nvenc -preset slow -profile:v main -rc constqp -qp $video_quality -vf setsar=sar=$par_x/$par_y -c:a aac -b:a 192k -y "$video_output" 
+
+[nv_h264 lossless]
+ffmpeg.exe -i "$video_input" -c:v h264_nvenc -preset slow -profile:v main -tune lossless -vf setsar=sar=$par_x/$par_y -c:a aac -b:a 320k -y "$video_output" 
 
 [nv_h265 VBR HQ]
-ffmpeg.exe -i "$video_input" -c:v hevc_nvenc -preset slow -profile:v main -rc vbr -b:v $video_bitrate_k -vf setsar=sar=$par_x/$par_y -c:a aac -b:a 192k -y "$video_output"
+ffmpeg.exe -i "$video_input" -c:v hevc_nvenc -preset slow -profile:v main -rc vbr_hq -b:v $video_bitrate_k -vf setsar=sar=$par_x/$par_y -c:a aac -b:a 192k -y "$video_output"
 
 [nv_h265 CQP]
 ffmpeg.exe -i "$video_input" -c:v hevc_nvenc -preset slow -profile:v main -rc constqp -qp $video_quality -vf setsar=sar=$par_x/$par_y -c:a aac -b:a 192k -y "$video_output"

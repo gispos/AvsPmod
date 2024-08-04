@@ -37,6 +37,21 @@ AvsPmod can only provide a user-friendly editor if he has no problems with the n
 If, for example, there is a '-' in the file name of the dll, AvsPmod will report it at startup, 
 please rename this dll and replace the '-' with a '_'
 
+--------------------------
+Version 2.7.7.8 [2024-08-03]
+--------------------------
+* Added directory 'sound' in the program folder. Please unzip it into the AvsPmod folder if you do not unzip everything.
+* In the Tablist context menu there is an entry 'Execute menu'. You have to configure this entry yourself, read Help > 'Tablist readme'.
+* Script Selector has been updated. There is now a simple search function and the tabs got a context menu.
+- the search function finds scripts by name (wildcards * and ?) and displays found scripts in a new tab.
+- these tabs are write protected, you cannot add elements or update these tabs.
+- to reduce the amount of data, you should delete these tabs when they are no longer needed (tab name starts with @).
+* Changed: The window state from maximized to normal now restores the script height or (video height when zoom fit/fill).
+* Bugfix: An error could occur when changing the window state from maximized to normal.
+* Bugfix audio playback: Unknown error float/int fixed.
+* Bugfix: If the program was closed and a script was saved, an error could occur if the 'Tablist' was open.
+* Bugfix: Resize filter was not removed from all scripts when setting a manual zoom value.
+* Some other small corrections.
 
 --------------------------
 Version 2.7.7.7 [2024-07-20]

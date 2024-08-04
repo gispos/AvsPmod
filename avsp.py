@@ -4946,6 +4946,38 @@ class TabList(wx.Dialog):
         self.listCtrl.Bind(wx.EVT_LIST_ITEM_SELECTED, self.OnSelect)
         self.listCtrl.Bind(wx.EVT_KILL_FOCUS, self.OnKillFocus)
         self.Bind(wx.EVT_CLOSE, self.OnClose)
+
+        def OnKeyDown(event):
+            def find(start, c, count):
+                c = c.upper()
+                for i in range(start, count):
+                    s = self.fileList[i][3]+self.fileList[i][0]
+                    s = s.replace('>','').replace('*','').upper()
+                    if s.lstrip().startswith(c):
+                        return i
+                return -1
+            keycode = event.GetKeyCode()
+            if keycode in range(65,90) or keycode in range(48, 57):
+                key = chr(keycode)
+                start = max(self.listCtrl.GetFirstSelected(),0)
+                count = len(self.fileList)
+                idx = find(start, key, count)
+                if idx == -1:
+                    idx = find(0, key, count)
+                if idx == start:
+                    cdx = find(min(idx+1,count-1), key, count)
+                    if cdx > -1:
+                        self.listCtrl.Select(idx, False)
+                        idx = cdx
+                    else:
+                        idx = find(0, key, count)
+                if idx > -1:
+                    self.listCtrl.Select(idx)
+                    self.listCtrl.Refresh()
+                    self.listCtrl.Update()
+            event.Skip()
+        self.listCtrl.Bind(wx.EVT_KEY_DOWN, OnKeyDown)
+        self.Bind(wx.EVT_KEY_DOWN, OnKeyDown)
     ## init end
 
     def OnClose(self, event=None):
@@ -5093,9 +5125,6 @@ class TabList(wx.Dialog):
         self.Raise()
         self.autoClose = val
     def OnSelect(self, event, force=None):
-        def _reset():
-            self.listCtrl.SetFocus()
-            self.progress = False
         def _resetindex():
             if self.listCtrl.oldIdx > -1:
                 self.popup = True
@@ -5169,8 +5198,9 @@ class TabList(wx.Dialog):
             self.SetFocus()
             self.Update()
             self.listCtrl.Refresh()
-            wx.GetApp().ProcessIdle()
-            wx.CallLater(100, _reset)
+            self.listCtrl.SetFocus()
+            self.progress = False
+
     def OnContextMenu(self, event):
         def onforce(event):
             self.popup = False
@@ -5214,6 +5244,18 @@ class TabList(wx.Dialog):
                 self.listCtrl.SetFocus()
                 self.popup = False
                 self.autoClose = True
+        def onexecutemenu(event):
+            commant = event.GetEventObject().GetHelpString(event.GetId()).strip()
+            if not commant:
+                sound = os.path.join(self.app.programdir, 'sound', 'tbl_execute_menu.mp3')
+                err = self.app.playSoundWin(sound, msg=False)
+                if err:
+                    wx.MessageBox('You must first configure this menu. Program Options > Misc 2 > Tablist execute menu\nRead Help > readme Tablist', 'Information')
+                wx.CallLater(300, self.app.OnMenuHelpTablist)
+                self.app.ShowOptions(7)
+                return
+            if not self.app.MacroExecuteMenuCommand(commant):
+                wx.MessageBox('Commant not found:\n' + commant, 'Error')
         def onshowbookmarks(event):
             self.bookmarks = not self.bookmarks
             self.listCtrl.DeleteAllColumns()
@@ -5234,19 +5276,30 @@ class TabList(wx.Dialog):
             self.autoClose = True
             self.options['tabautopreview'] = autopreview
         popup = wx.Menu()
-        def AddItem(txt, handler, kind, enabled=True, checked=True):
+        def AddItem(txt, handler, kind, enabled=True, checked=True, _help=''):
             id = wx.NewId()
             popup.Append(id, _(txt), kind=kind)
             popup.Enable(id, enabled)
             if kind == wx.ITEM_CHECK:
                 popup.Check(id, checked)
+            popup.SetHelpString(id, _help)
             self.Bind(wx.EVT_MENU, handler, id=id)
         if popup_idx > -1:
             if not self.app.CheckTabsCanChange(False):
                 return
-            AddItem('Release video memory', onrelease, wx.ITEM_NORMAL, self.app.currentScript.AVI is not None)
-            AddItem('Release all other video memory', onrelease_allother, wx.ITEM_NORMAL, self.app.currentScript.AVI is not None)
-            AddItem('Close tab', onclosetab, wx.ITEM_NORMAL)
+            AddItem(_('Release video memory'), onrelease, wx.ITEM_NORMAL, self.app.currentScript.AVI is not None)
+            AddItem(_('Release all other video memory'), onrelease_allother, wx.ITEM_NORMAL, self.app.currentScript.AVI is not None)
+            AddItem(_('Close tab'), onclosetab, wx.ITEM_NORMAL)
+            popup.AppendSeparator()
+            cList = self.options['tbl_executemenu'].split(',')
+            if not cList or not cList[0]:
+                cList = ['Execute menu']
+            for i, item in enumerate(cList):
+                if item.strip():
+                    commant = item.split('|')
+                    name = commant[0].strip() if len(commant) == 2 and commant[0].strip() else 'Execute menu'
+                    AddItem(name, onexecutemenu, wx.ITEM_NORMAL, _help=commant[1] if len(commant) == 2 else '')
+                    if i > 9: break
             popup.AppendSeparator()
         AddItem('Auto preview (dbl-click override)', onpreview, wx.ITEM_CHECK, True, self.options['tabautopreview'])
         AddItem('Force preview visible', onforce, wx.ITEM_CHECK, True, self.options['tbl_forcepreview'])
@@ -5258,10 +5311,7 @@ class TabList(wx.Dialog):
 
     # private, AvsPThumb
     def FindBookmarksBkFile(self, idx):
-        if sys.maxsize > 2**32:
-            suffix = '.bk6'
-        else:
-            suffix = '.bk3'
+        suffix = '.bk6' if sys.maxsize > 2**32 else '.bk3'
         runfile = self.options.get('tbl_avspthumb', '')
         if not os.path.isfile(runfile):
             self.autoClose = False
@@ -5322,6 +5372,7 @@ class ScriptSelector(wx.Dialog):
         self.Notebook = nb
         nb.parent = self
         self.Hide()
+        self.foundDlg = None
         self._selItemId = None
         self._start_drag = None
         self._running = None
@@ -5406,10 +5457,11 @@ class ScriptSelector(wx.Dialog):
                     return bmc
                 elif col == 2:
                     return path
-            def OnGetItemToolTip(self, line, col): # only if style flag with tooltip
+            def OnGetItemToolTip(self, line, col): # only if style flag with tooltip, but its very bugy so I remove it
                 if col == 0:
-                    note = self.app.GetScriptNote(self.app.tabName, line)
-                    return note
+                    if self._mainWin.ScreenToClient(wx.GetMousePosition())[0] < 20:
+                        note = self.app.GetScriptNote(self.app.tabName, line)
+                        return note
                 return ''
             def OnGetItemTextColour(self, line, col): # else somtimes wrong textcolor
                 state = self.GetItemState(line, ULCtrl.ULC_STATE_SELECTED)
@@ -5527,6 +5579,41 @@ class ScriptSelector(wx.Dialog):
             event.Skip()
         self.Notebook.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGING, OnPageChanging)
 
+        def OnRightClickNotebook(event):
+            def AddItem(menu, label, handler, enabled=True, check=False, checked=False):
+                id = wx.NewId()
+                menu.Append(id, _(label), kind=wx.ITEM_CHECK if check else wx.ITEM_NORMAL)
+                if check: menu.Check(id, checked)
+                if not enabled: menu.Enable(id, bool(False))
+                if handler is not None:
+                    self.Notebook.Bind(wx.EVT_MENU, handler, id=id)
+            if event:
+                pos = event.GetPosition()
+                ipage = self.Notebook.HitTest(pos)[0]
+            else:
+                ipage = wx.NOT_FOUND
+            popup = wx.Menu()
+            AddItem(popup, 'New  (middl down)', lambda f: self.AddTab())
+            if ipage != wx.NOT_FOUND:
+                self.Notebook.SetSelection(ipage)
+                AddItem(popup, 'Rename  (dblclick)', lambda f: self.RenameTab())
+                popup.AppendSeparator()
+                AddItem(popup, 'Clear', lambda f: self.OnClearTab())
+                AddItem(popup, 'Close', lambda f: self.OnRemoveTab())
+                popup.AppendSeparator()
+                AddItem(popup, 'Close all', lambda f: self.OnRemoveAllTabs())
+            else:
+                popup.AppendSeparator()
+            AddItem(popup, 'Disaster! reopen last data', lambda f: self.DisasterReopen())
+            self.Notebook.PopupMenu(popup)
+            popup.Destroy()
+        self.Notebook.Bind(wx.EVT_RIGHT_DOWN, OnRightClickNotebook)
+
+        def OnRightClickSelf(event):
+            if event.GetPosition()[1] <= intPPI(23):
+                OnRightClickNotebook(None)
+        self.Bind(wx.EVT_RIGHT_DOWN, OnRightClickSelf)
+
         def OnClose(event):
             if self._checkRunning():
                 self._stop = True
@@ -5618,13 +5705,24 @@ class ScriptSelector(wx.Dialog):
         while tabName in self.scriptDict.keys():
             i += 1
             tabName = '%s %i' % (label, i)
-        self.scriptDict[tabName] = {'scripts': [], 'idx': -1, 'lastdir': '', 'sortname': None, 'locked': set()}
+        try:
+            self.scriptDict[tabName] = {'scripts': [], 'idx': -1, 'lastdir': '', 'sortname': None, 'locked': set()}
+            if not tabName in self.scriptDict.keys():
+                raise
+        except:
+            wx.MessageBox(_('Key Error: Please report this issue on Doom9 in the AvsPmod thread.'), 'Key Error', parent=self)
+            tabName = 'Tab'
+            i = 1
+            while tabName in self.scriptDict.keys():
+                i += 1
+                tabName = '%s %i' % (tabName, i)
+            self.scriptDict[tabName] = {'scripts': [], 'idx': -1, 'lastdir': '', 'sortname': None, 'locked': set()}
         self.listCtrl.Clear()
         self.Notebook.AddPage(self.listCtrl, tabName)
         self.Notebook.SetSelection(self.Notebook.GetPageCount()-1)
         return tabName
 
-    def OnClearTab(self, event):
+    def OnClearTab(self, event=None):
         if not self.CanTabRead(self.tabName):
             self.OnRemoveTab()
             return
@@ -5650,17 +5748,19 @@ class ScriptSelector(wx.Dialog):
         else:
             self.Notebook.SetSelection(min(idx, self.Notebook.GetPageCount()-1))
 
-    def OnRemoveAllTabs(self, event):
-        dlg = wx.MessageDialog(self, _('Remove all tabs?'),'Selector',wx.YES_NO|wx.CENTER_FRAME)
+    def OnRemoveAllTabs(self, event=None):
+        dlg = wx.MessageDialog(self, _('Remove all tabs?'), 'Selector', wx.YES_NO|wx.CENTER_FRAME)
         ok = dlg.ShowModal()
         dlg.Destroy()
         if ok != wx.ID_YES:
             return
         count = self.Notebook.GetPageCount()
-        for i in xrange(count):
+        for i in range(count):
             self.OnRemoveTab(idx=i)
 
     def RenameTab(self):
+        if not self.CanTabWriteAndRead(self.tabName):
+            return
         dlg = wx.TextEntryDialog(self.Notebook, 'New name:', 'Rename tab', defaultValue=self.tabName)
         ID = dlg.ShowModal()
         s = dlg.GetValue().strip()
@@ -5672,7 +5772,15 @@ class ScriptSelector(wx.Dialog):
         if self.scriptDict.get(newName) is not None:
             wx.MessageBox(_('Tab name already exists'), _('Error'), parent=self)
             return
-        self.scriptDict[newName] = self.scriptDict.pop(self.tabName)
+        try:
+            data = self.scriptDict.pop(self.tabName)
+            self.scriptDict[newName] = data
+            if not newName in self.scriptDict.keys():
+                raise
+        except:
+            wx.MessageBox(_('Key Error: Please report this issue on Doom9 in the AvsPmod thread.'), 'Key Error')
+            self.scriptDict[self.tabName] = data
+            newName = self.tabName
         self.tabName = newName
         self.listCtrl.Clear()
         self.Notebook.SetPageText(idx, newName)
@@ -5778,6 +5886,10 @@ class ScriptSelector(wx.Dialog):
         idx = self.listCtrl.GetFirstSelected()
         if idx < 0: return
         x = event.GetX()
+        if x < intPPI(20):
+            self.ShowMediaInfo()
+            event.Skip()
+            return
         cw = self.listCtrl.GetColumnWidth(0)
         if x > cw and x < cw + self.listCtrl.GetColumnWidth(1):
             self.FindBookmarksBkFile() # run AvsPThumb
@@ -5894,7 +6006,8 @@ class ScriptSelector(wx.Dialog):
         AddItem(popup, 'Add or Update all scripts', lambda f: self.AddOrUpdateAllScripts(update=True))
         AddItem(popup, 'Clear and Add all scripts', lambda f: self.AddOrUpdateAllScripts(update=False))
         AddItem(popup, 'Add or update script', self.AddOrUpdateScript)
-        AddItem(popup, 'Find current script', lambda f: self.FindScriptInTabs())
+        AddItem(popup, 'Find current script  (middl mouse)', lambda f: self.FindScriptInTabs())
+        AddItem(popup, 'Search...', lambda f: self.SearchForScripts())
         popup.AppendSeparator()
         AddItem(popup, 'Blue', lambda f: self.ToggleMarker('blue'), sel)
         AddItem(popup, 'Green', lambda f: self.ToggleMarker('green'), sel)
@@ -5950,9 +6063,9 @@ class ScriptSelector(wx.Dialog):
         AddItem(popup, 'Update selection from avs', lambda f: self.UpdateScriptsFromFile(), sel)
         AddItem(popup, "Check existing 'Ctrl removes'", lambda f: self.CheckExist(remove=wx.GetKeyState(wx.WXK_CONTROL)), not empty)
         popup.AppendSeparator()
+        AddItem(popup, 'MediaInfo  (dblclick < 20 pix)', lambda f: self.ShowMediaInfo(), sel and txt)
         AddItem(popup, 'AvsPmod new tab', lambda f: self.NewAvsPmodTab(), sel and txt)
         AddItem(popup, 'AvsPmod open', lambda f: self.AvsPmodOpenSelected(), sel)
-
         self.listCtrl.PopupMenu(popup)
         popup.Destroy()
 
@@ -6052,6 +6165,12 @@ class ScriptSelector(wx.Dialog):
         ok = not 'write' in self.scriptDict[tabName]['locked']
         if not ok and msg:
             wx.MessageBox(_('Marker tabs and locked tabs are write protected.'), 'Script selector', parent=self)
+        return ok
+
+    def CanTabWriteAndRead(self, tabName, msg=True):
+        ok = not 'write' in self.scriptDict[tabName]['locked'] and not 'read' in self.scriptDict[tabName]['locked']
+        if not ok and msg:
+            wx.MessageBox(_('The tab is protected, write or rename not allowed.'), 'Script selector', parent=self)
         return ok
 
     def GetValues(self, idx=None):
@@ -6163,6 +6282,85 @@ class ScriptSelector(wx.Dialog):
             count = 0
         return str(count)
 
+    # SearchForScripts
+    def SearchForScripts(self):
+        from copy import deepcopy
+        if self._checkRunning():
+            return
+        s = ''
+        nb = self.Notebook
+        dlg = wx.TextEntryDialog(self, _('Wildcards * ?'), _('Find script'), '')
+        if dlg.ShowModal() == wx.ID_OK:
+            s = dlg.GetValue().lower().strip()
+        dlg.Destroy()
+        if s == '*' or not s: return
+        # make the tabname max 15 chars
+        tabName = re.sub('[*?]', '', s[:15])
+        if not tabName.startswith('@ '): tabName = '@ ' + tabName # mark the tab @
+        if not s.startswith('*'): s = '*' + s # search always for all
+        if not s.endswith('*'): s += '*'
+        self.listCtrl.SetCursor(wx.StockCursor(wx.CURSOR_WAIT))
+        """ foundList = [] """
+        foundList = {}
+        target = None
+        try:
+            count = nb.GetPageCount()
+            for x in range(count):
+                key = nb.GetPageText(x)
+                if 'read' in self.scriptDict[key]['locked']: # skip read protected e.g. Found tabs/keys, Marker tabs
+                    continue
+                for y, item in enumerate(self.scriptDict[key]['scripts']):
+                    if utils.FindPattern(s, item[1].lower()): # wildcards * and ?
+                        """
+                        found = False
+                        for _item in foundList:
+                            if item[0] + item[1] == _item[0]:
+                                found = True
+                                break
+                        if not found:
+                        """
+                        if not item[0]+item[1] in foundList:
+                            data = self.scriptDict[key]['scripts'][y] # make a memory reference
+                            #foundList.append((item[0]+item[1], data))
+                            foundList[item[0]+item[1]] = data
+            if foundList:
+                tabName = self.AddTab(label=tabName)
+                self.scriptDict[tabName]['locked'] = {'read', 'write', 'del'} # make read, write and del protect
+                target = self.scriptDict[tabName]['scripts']
+                """
+                for item in foundList:
+                    data = deepcopy(item[1])
+                    target.append(data)
+                """
+                for key, item in foundList.iteritems():
+                    data = deepcopy(item)
+                    target.append(data)
+                foundList = None
+            else:
+                wx.Bell()
+        finally:
+            self.listCtrl.SetCursor(wx.StockCursor(wx.CURSOR_DEFAULT))
+            if target is not None:
+                self.listCtrl.SetItemCount(len(target))
+                self.SortList(self.sortName, self.sortReverse, force=False)
+                self.SetMyTitle(tabName=tabName)
+
+    def ShowMediaInfo(self):
+        path, name, bmc, flags, txt = self.GetValues()
+        if not txt:
+            wx.Bell()
+            return
+        script = AvsStyledTextCtrl(self.Notebook, self.parent, pos=(-50,-50), size=(10,10), style=wx.NO_BORDER)
+        script.SetText(txt)
+        try:
+            s = self.parent.GetSourcePath(script)
+        finally:
+            script = None
+        if s:
+            self.parent.ShowMediaInfo(s)
+        else:
+            wx.Bell()
+
     def AddOrUpdateScript(self, event):
         if not self.CanTabWrite(self.tabName):
             return
@@ -6261,7 +6459,7 @@ class ScriptSelector(wx.Dialog):
                         newitem = deepcopy(bitem)
                         temp['a']['scripts'].append(newitem)
         if len(temp['a']['scripts']) > 0:
-            tabName = self.AddTab(label='Markers')
+            tabName = self.AddTab(label='@ Markers')
             self.scriptDict[tabName] = temp.pop('a')
             self.scriptDict[tabName]['locked'] = {'read', 'write'}
             self.listCtrl.SetItemCount(len(self.scriptDict[tabName]['scripts']))
@@ -6310,7 +6508,7 @@ class ScriptSelector(wx.Dialog):
         del_list = []
         notfound = 0
         first = -1
-        canDelete = not 'del' in self.scriptDict[tabName]['locked']
+        canDelete = self.CanTabDelete(tabName, False)
         len_list = len(sList)
         self._stop = False
         self._running = True
@@ -6450,6 +6648,8 @@ class ScriptSelector(wx.Dialog):
         idx = lcl.GetFirstSelected()
         if idx < 0: return
         tabName = self.tabName
+        if not self.CanTabWrite(self.tabName):
+            return 0
         sDict = self.scriptDict
         upd = nofile = _note = 0
         self._stop = False
@@ -6567,11 +6767,14 @@ class ScriptSelector(wx.Dialog):
             return added
 
     def CopyPasteScripts(self, sourceTab, targetTab):
-        self.CopyScripts()
-        self.PasteScripts(targetTab, refreshList=False)
-        self.scriptDict[targetTab]['sortname'] = None
+        if not self.CopyScripts():
+            return
+        if self.PasteScripts(targetTab, refreshList=False) > 0:
+            self.scriptDict[targetTab]['sortname'] = None
 
     def RemoveScripts(self, msg=False):
+        if not self.CanTabWriteAndRead(self.tabName):
+            return
         lcl = self.listCtrl
         idx = lcl.GetFirstSelected()
         if idx < 0: return
@@ -6847,6 +7050,9 @@ class ScriptSelector(wx.Dialog):
         self.listCtrl.Refresh()
         self.listCtrl.SetCursor(wx.StockCursor(wx.CURSOR_DEFAULT))
 
+    def DisasterReopen(self):
+        self.LoadData()
+
     def SaveOptions(self, saveData=True):
         if self._checkRunning(): return
         self.options['dimensions'] = self.GetRect()
@@ -6928,10 +7134,13 @@ class ScriptSelector(wx.Dialog):
             self.scriptDict.update(tmpData['scriptdict'])
             tmpData = None
 
+        if self.Notebook.GetPageCount() > 0:
+            self.Notebook.SetSelection(0) # important else C++ error OnPageChanged
+
         self._blockPageChange = True
         try:
-            while self.Notebook.GetPageCount():
-                self.Notebook.RemovePage(0)
+            while self.Notebook.GetPageCount() > 0:
+                self.Notebook.RemovePage(self.Notebook.GetPageCount()-1) # important del reverse
 
             err = False
             for i, k in enumerate(self.scriptDict.keys()):
@@ -10096,6 +10305,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.scriptDropTarget = ScriptDropTarget
 
         # Internal class variables
+        self.oldGroup = None # tab groups
         self.currentframenum = None
         self.zoomfactor = 1
         self.zoomwindow = False
@@ -10226,6 +10436,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.titleEntry = None
         self.colour_data.FromString(self.options['colourdata'])
         self.OnMenuTabChangeLoadBookmarks(None) # enable/disable 'Clear tab bookmarks' menu
+
         # set last used zoom before loading session
         vidmenu = self.videoWindow.contextMenu
         menu = vidmenu.FindItemById(vidmenu.FindItem(_('&Zoom'))).GetSubMenu()
@@ -10365,6 +10576,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 if not self.blockEventSize and not self.ClipRefreshPainter:
                     if self.previewWindowVisible:
                         script = self.currentScript
+                        if self.mintextlines > 0:
+                            self.SaveLastSplitVideoPos()
                         self.mainSplitter_SetSashPos = None if self.mintextlines > 0 else 1
                         if self.IsResizeFilterFitFill(script):
                             func = (self.ShowVideoFrame_checkResizeFilter, tuple(), {'script': script})
@@ -11237,6 +11450,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'tbl_showbookmarks': True,
             'tbl_autoclose': True,
             'tbl_avspthumb': '',
+            'tbl_executemenu': '',
             'mediainfo_rect': (100,100,intPPI(400),intPPI(600)),  # MediaInfo Dlg dimensions
             'mediainfo_singlewnd': True,             # show multible dialogs or not
             #'mediainfo_autoclose': True,
@@ -12309,7 +12523,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 ((_('Show shortcuts in context menus*'), wxp.OPT_ELEM_CHECK, 'contextshowshortcuts', _('Show or hide the context menus shortcuts (video, script)'), dict() ), ),
                 ((_('Show video control buttons tooltips'), wxp.OPT_ELEM_CHECK, 'showbuttontooltip', _('Show or hide the video control buttons tooltips'), dict() ), ),
                 ((_('Display filter enabled on startup'), wxp.OPT_ELEM_CHECK, 'displayfilter_enabled', _('Enable the Display filter on startup'), dict() ), ),
-
+                ((_('Tablist execute menu:'), wxp.OPT_ELEM_STRING, 'tbl_executemenu', _("Arguments for the Tablist context menu 'Execute menu', read Help > 'readme Tablist'"), dict() ), ),
             ),
         )
 
@@ -13544,6 +13758,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 (_('Locate frame readme'), '', self.OnMenuHelpLocateFrame, _('Open the Locate frame readme')),
                 (_('Number wheel readme'), '', self.OnMenuHelpNumberWheel, _('Open the Number wheel readme')),
                 (_('Script selector readme'), '', self.OnMenuHelpScriptSelector, _('Open the Script selector readme')),
+                (_('Tablist readme'), '', self.OnMenuHelpTablist, _('Open the Tablist readme')),
                 (_('Audio playback readme'), '', self.OnMenuHelpAudio, _('Open the Audio readme')),
                 (''),
                 (_('DPI info'), '', self.OnMenuDPIInfo, _('DPI information')),
@@ -15015,7 +15230,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     def OnMenuFileCloseAllTabs(self, event):
         self.CloseAllTabs()
 
-    def OnMenuFileSaveScript(self, event):
+    def OnMenuFileSaveScript(self, event=None):
         index = self.scriptNotebook.GetSelection()
         script = self.scriptNotebook.GetPage(index)
         self.SaveScript(script.filename, index)
@@ -17142,6 +17357,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         cs = self.videoWindow.GetSize()
         need_update = (cs[0] < 36 or cs[1] < 36) and not force_Size  # video window size not initialized
         script = self.currentScript
+        self.SaveLastSplitVideoPos()
 
         rf = script.resizeFilter
         self.OnMenuVideoZoom(zoomfactor=1, show=False, resizeFilterOff=False, setSplitterPos=False) # set 100% zoom
@@ -17532,8 +17748,61 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             MI.Close()
             del MI
 
+    def playSoundWin(self, sound, block=True, msg=True):
+        """ Stolen from playsound.py and adapted for AvsPmod """
+
+        def _canonicalizePath(path):
+            """
+            Support passing in a pathlib.Path-like object by converting to str.
+            """
+            if sys.version_info[0] >= 3:
+                return str(path)
+            else:
+                # On earlier Python versions, str is a byte string, so attempting to
+                # convert a unicode string to str will fail. Leave it alone in this case.
+                return path
+
+        sound = '"' + _canonicalizePath(sound) + '"'
+        error = ''
+
+        from ctypes import create_unicode_buffer, windll, wintypes
+        windll.winmm.mciSendStringW.argtypes = [wintypes.LPCWSTR, wintypes.LPWSTR, wintypes.UINT, wintypes.HANDLE]
+        windll.winmm.mciGetErrorStringW.argtypes = [wintypes.DWORD, wintypes.LPWSTR, wintypes.UINT]
+
+        def winCommand(*command):
+            bufLen = 600
+            buf = create_unicode_buffer(bufLen)
+            command = ' '.join(command)
+            errorCode = int(windll.winmm.mciSendStringW(command, buf, bufLen - 1, 0))  # use widestring version of the function
+            if errorCode:
+                errorBuffer = create_unicode_buffer(bufLen)
+                windll.winmm.mciGetErrorStringW(errorCode, errorBuffer, bufLen - 1)  # use widestring version of the function
+                exceptionMessage = ('\n    Error ' + str(errorCode) + ' for command:'
+                                    '\n        ' + command +
+                                    '\n    ' + errorBuffer.value)
+                return exceptionMessage
+            return ''
+
+        try:
+            error = winCommand(u'open {}'.format(sound))
+            if not error:
+                error = winCommand(u'play {}{}'.format(sound, ' wait' if block else ''))
+        finally:
+            er = winCommand(u'close {}'.format(sound))
+            if er and not error:
+                error = u'Failed to close the file: {}'.format(sound)
+            if msg and error:
+                wx.MessageBox(error, 'Play Sound Error')
+            return error
+
     def OnMenuTest(self, event):
         return
+        """
+        err = self.playSoundWin('E:\\Temp\\test.mp3', block=True)
+        if err:
+            wx.MessageBox(err, 'Play Sound Error')
+        """
+
         """ multiprocessing test bad. Loading avisynth.dll two times and double CPU usage but only 1 fps faster
         script = self.currentScript
         for i in range(self.scriptNotebook.GetPageCount()):
@@ -18103,7 +18372,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.KeyUpVideoWindow = False
             wx.CallLater(200, self.OnKeyUpVideoWindow, None) # reset after 200ms and unblock this function
 
-        script = self.currentScript
         if zoomfactor is None:
             vidmenus = [self.videoWindow.contextMenu, self.GetMenuBar().GetMenu(2)]
             if menuItem is None:
@@ -18173,9 +18441,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     return
                 if show and not _IsFullSize() and setSplitterPos and self.VideoWindowResizeNeeded(checkzoom=True):
                     self.zoomfactor = zoomfactor
-                    script.lastSplitVideoPos = self.GetMainSplitterNegativePosition(forcefit=True, displayclip=False)
-                    if self.previewOK(script):
-                        script.oldLastSplitVideoPos = script.lastSplitVideoPos
+                    _script = self.currentScript
+                    _script.lastSplitVideoPos = self.GetMainSplitterNegativePosition(forcefit=True, displayclip=False)
+                    if self.previewOK(_script):
+                        _script.oldLastSplitVideoPos = _script.lastSplitVideoPos
         elif isinstance(zoomfactor, basestring): #zoomWindow:
             if zoomfactor == 'fill':
                 self.zoomwindow = True
@@ -18214,21 +18483,22 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     self.UpdateMenuItem(_('&Zoom'), True, 'video', [_('Custom')])
             if show and not _IsFullSize() and setSplitterPos and self.VideoWindowResizeNeeded(checkzoom=True):
                 self.zoomfactor = zoomfactor
-                script.lastSplitVideoPos = self.GetMainSplitterNegativePosition(forcefit=True, displayclip=False)
-                if self.previewOK(script):
-                    script.oldLastSplitVideoPos = script.lastSplitVideoPos
+                _script = self.currentScript
+                _script.lastSplitVideoPos = self.GetMainSplitterNegativePosition(forcefit=True, displayclip=False)
+                if self.previewOK(_script):
+                    _script.oldLastSplitVideoPos = _script.lastSplitVideoPos
 
         self.zoomfactor = zoomfactor
 
         if resizeFilterOff:
-            # disable all scripts resizeFilter if not single or not saveViewPos
+            # disable all scripts resizeFilter if not single or not saveViewPos, do not set script as global var see above _script
             if script is None:
                 if single or self.saveViewPos > 0:
                     script = self.currentScript
 
             idx = self.currentScript.previewFilterIdx
             isResize = self.currentScript.resizeFilter[0]
-            self.DisableResizeFilter(script)
+            self.DisableResizeFilter(script) # if script is None all scripts disable the resize filter
             if idx > 0 and isResize and show:
                 self.zoom_antialias = False
                 self.OnMenuPreviewFilter(index=idx, updateUserSliders=False)
@@ -20127,6 +20397,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.OnHelpMenuExample('readme_D3D_Window.txt')
     def OnMenuHelpScriptSelector(self, event):
         self.OnHelpMenuExample('readme_ScriptSelector.txt')
+    def OnMenuHelpTablist(self, event=None):
+        self.OnHelpMenuExample('readme_Tablist.txt')
 
     def OnMenuHelpAbout(self, event):
         int5 = intPPI(5)
@@ -23906,12 +24178,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.sdlWindow.Close()
         if self.ScriptSelector and self.ScriptSelector.IsShown():
             self.ScriptSelector.Close() # saves also the options and opened tabs
-        if isinstance(self.tabDlg, TabList):
-            self.tabDlg.Destroy()
         if wx.FindWindowByName('mediainfo'):
             for wnd in wx.GetTopLevelWindows():
                 if isinstance(wnd, MediaInfoDlg):
-                    wnd.Destroy()
+                    wnd.Close()
+        if isinstance(self.tabDlg, TabList):
+            self.tabDlg.Close()
 
         # Check if macros are still running
         macroShown = clipShown = False
@@ -24022,7 +24294,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.Maximize(False)
         else:
             self.options['maximized'] = False
-        #self.Thaw()
         self.Refresh()
         self.Update()
 
@@ -25415,6 +25686,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.TabList_BlockUpdate(True)
 
             mapping = session['scripts'] and isinstance(session['scripts'][0], collections.Mapping)
+            set_splitter = self.zoomwindow and mapping
             for item in session['scripts']:
                 if not 'bookmarks' in item:
                     item['bookmarks'] = None # old sessions
@@ -25436,14 +25708,21 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     if item['bookmarks'] is not None:
                         script.bookmarks = None
                         script.bookmarks = dict(item['bookmarks'])
-                    if not script.bookmarks and self.options['bookmarksfromscript']: # GPo, new
+                    if not script.bookmarks and self.options['bookmarksfromscript']:
                         script.bookmarks = self.BookmarkDictFromScript(script=script)
                     if item['selections'] is not None: # only on session or reopen closed tab
                         script.selections.clear()
                         script.selections.update(item['selections'])
                     script.audioVolume = item.get('audiovolume', 1)
-
-                    if not self.zoomwindow and not self.IsResizeFilterFitFill(None): # reset it if not zoom fit fill
+                    # set only the last splitter position for the selected index if zoomwindow
+                    if set_splitter:
+                        if item['selected']:
+                            set_splitter = False
+                            self.oldLastSplitVideoPos = script.lastSplitVideoPos
+                            #self.mainSplitter_SetSashPos = script.lastSplitVideoPos
+                        else:
+                            script.lastSplitVideoPos = None
+                    else:
                         script.lastSplitVideoPos = None
 
                 # script bookmarks, selections end
@@ -28182,11 +28461,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             return
         script = self.currentScript
         error = script.AVI.IsErrorClip()
+        savepos = False
         if not self.mainSplitter_SetSashPos:
             if (self.IsFullScreen() or self.mintextlines == 0) and not error:
                 sash_pos = 1
             else:
-                sash_pos = savepos = None
+                sash_pos = None
                 if error:
                     pass
                 elif (self.options['resizevideowindow'] == 0) or forcesize:
@@ -28214,6 +28494,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         else:
             sash_pos = self.mainSplitter_SetSashPos
             self.mainSplitter_SetSashPos = None
+
         if not isinstance(sash_pos, int):
             return
 
@@ -33178,7 +33459,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
                             def getaudio(start, count):
                                 fr = start
-                                count = min(count, script.AVI.Framecount - 1 - start)
+                                count = int(min(count, script.AVI.Framecount - 1 - start))
                                 for i in range(count):
                                     clip.get_audio(avsAudio.audio_cptr, avsAudio.samples_count*fr, avsAudio.samples_count)
                                     if clip.get_error():
