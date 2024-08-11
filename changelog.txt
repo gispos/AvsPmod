@@ -38,6 +38,22 @@ If, for example, there is a '-' in the file name of the dll, AvsPmod will report
 please rename this dll and replace the '-' with a '_'
 
 --------------------------
+Version 2.7.7.9 [2024-08-11]
+--------------------------
+* Another update for the 'Script Selector': Added to context menu Options & Aditional > 'Find dups', 'Find dups (dif) and 'Find dups (same tab)'. 
+- 'Find dups' shows all duplicate entries and 'Find dups (dif)' only duplicate entries with different script text. 'Find dups (same tab)' shows duplicates if the entries in the same tab.
+- '@ dups' tabs are read-only, but the entries referred to the other tabs can be updated with 'Update selection from avs'.
+- and a double click on an entry in the '@ dups' tab opens the linked tab.
+* Removed del protection from the 'Script Selector' search tabs (this was not the intention, only the entries should be protected against deletion) ,)
+* Who uses AvsPThumb: In the 'Script Selector' several list entries can now be opened at once (multi selection) with AvsPThumb.
+* Bugfix: On closing the 'Script Selector' the application loses the focus.
+* Bugfix Tablist: Error avsp.pyo line 4931 in OnGetItemTextColour: invalid item index in GetItemState.
+* Bugfix 'Separate Video Window': Trim Editor error and zoom fit/fill fixed.
+* Added some voices in the sound directory (They can be exchanged, only the name must be the same).
+- if you do not like it, remove the sound directory or the voice file. But I find it more pleasant than a Bell without a hint or a MessageBox when it is not needed.
+- there won't be come many.
+
+--------------------------
 Version 2.7.7.8 [2024-08-03]
 --------------------------
 * Added directory 'sound' in the program folder. Please unzip it into the AvsPmod folder if you do not unzip everything.

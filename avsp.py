@@ -4928,6 +4928,8 @@ class TabList(wx.Dialog):
             def OnGetItemToolTip(self, line, col): # only if style flag with tooltip
                 return ''
             def OnGetItemTextColour(self, line, col): # else somtimes wrong textcolor
+                if line < 0 or line >= self.GetItemCount():
+                    return self.fontcolor
                 state = self.GetItemState(line, ULCtrl.ULC_STATE_SELECTED)
                 selected = state & ULCtrl.ULC_STATE_SELECTED == ULCtrl.ULC_STATE_SELECTED
                 return wx.YELLOW if selected else wx.Colour(50, 150, 255) if line == self.parent.init_tab else \
@@ -5247,15 +5249,14 @@ class TabList(wx.Dialog):
         def onexecutemenu(event):
             commant = event.GetEventObject().GetHelpString(event.GetId()).strip()
             if not commant:
-                sound = os.path.join(self.app.programdir, 'sound', 'tbl_execute_menu.mp3')
-                err = self.app.playSoundWin(sound, msg=False)
+                err = self.app.playSound('tbl_execute_menu.mp3')
                 if err:
                     wx.MessageBox('You must first configure this menu. Program Options > Misc 2 > Tablist execute menu\nRead Help > readme Tablist', 'Information')
                 wx.CallLater(300, self.app.OnMenuHelpTablist)
                 self.app.ShowOptions(7)
                 return
             if not self.app.MacroExecuteMenuCommand(commant):
-                wx.MessageBox('Commant not found:\n' + commant, 'Error')
+                wx.MessageBox('Commant not found:\n' + commant, _('Error'), parent=self)
         def onshowbookmarks(event):
             self.bookmarks = not self.bookmarks
             self.listCtrl.DeleteAllColumns()
@@ -5399,7 +5400,8 @@ class ScriptSelector(wx.Dialog):
         'nofileflag': False,
         'avspthumb': '',
         'advanceduser': False,
-        'tooltips': False # auto tooltips by listCtrl = off then we show tooltips by left down (column start + 25 and columnWith - 25)
+        'tooltips': False, # auto tooltips by listCtrl = off then we show tooltips by left down (column start + 25 and columnWith - 25)
+        'removedups': True
         }
         self.data = {
         'version': 1,
@@ -5438,7 +5440,7 @@ class ScriptSelector(wx.Dialog):
                     return wx.Colour(220,220,220)
                 return wx.YELLOW
             def OnGetItemText(self, line, col):
-                if line is None:
+                if line < 0 or line >= self.GetItemCount():
                     return ''
                 try:
                     path, name, bmc, flags = self.app.scriptDict[self.app.tabName]['scripts'][line][:-1]
@@ -5458,20 +5460,29 @@ class ScriptSelector(wx.Dialog):
                 elif col == 2:
                     return path
             def OnGetItemToolTip(self, line, col): # only if style flag with tooltip, but its very bugy so I remove it
-                if col == 0:
+                if col == 0 and line > -1 and line < self.GetItemCount():
                     if self._mainWin.ScreenToClient(wx.GetMousePosition())[0] < 20:
                         note = self.app.GetScriptNote(self.app.tabName, line)
                         return note
                 return ''
             def OnGetItemTextColour(self, line, col): # else somtimes wrong textcolor
+                if line < 0 or line >= self.GetItemCount():
+                    return wx.Colour(220,220,220)
                 state = self.GetItemState(line, ULCtrl.ULC_STATE_SELECTED)
                 selected = state & ULCtrl.ULC_STATE_SELECTED == ULCtrl.ULC_STATE_SELECTED
                 return self._getTextColor(line, selected)
             def OnGetItemAttr(self, item):
-                state = self.GetItemState(item, ULCtrl.ULC_STATE_SELECTED)
-                selected = state & ULCtrl.ULC_STATE_SELECTED == ULCtrl.ULC_STATE_SELECTED
-                self.ItemAttr.SetBackgroundColour(wx.Colour(0,0,0) if selected else self.app.backColor)
-                self.ItemAttr.SetTextColour(self._getTextColor(item, selected))
+                if item < 0 or item >= self.GetItemCount():
+                    self.ItemAttr.SetBackgroundColour(self.app.backColor)
+                    self.ItemAttr.SetTextColour(wx.Colour(220,220,220))
+                    return self.ItemAttr
+                try:
+                    state = self.GetItemState(item, ULCtrl.ULC_STATE_SELECTED)
+                    selected = state & ULCtrl.ULC_STATE_SELECTED == ULCtrl.ULC_STATE_SELECTED
+                    self.ItemAttr.SetBackgroundColour(wx.Colour(0,0,0) if selected else self.app.backColor)
+                    self.ItemAttr.SetTextColour(self._getTextColor(item, selected))
+                except:
+                    pass
                 return self.ItemAttr
             def GetScrollPos(self, orientation): # Idiot
                 if self._mainWin:
@@ -5563,8 +5574,10 @@ class ScriptSelector(wx.Dialog):
             finally:
                 self.listCtrl.SetFocus()
                 self.listCtrl.Refresh()
-                self.listCtrl.Update
+                self.listCtrl.Update()
                 self.listCtrl.Thaw()
+                if event:
+                    event.Skip()
         self.Notebook.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGED, OnPageChanged)
 
         def OnPageChanging(event):
@@ -5579,7 +5592,7 @@ class ScriptSelector(wx.Dialog):
             event.Skip()
         self.Notebook.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGING, OnPageChanging)
 
-        def OnRightClickNotebook(event):
+        def OnRightClickNotebook(event=None):
             def AddItem(menu, label, handler, enabled=True, check=False, checked=False):
                 id = wx.NewId()
                 menu.Append(id, _(label), kind=wx.ITEM_CHECK if check else wx.ITEM_NORMAL)
@@ -5587,6 +5600,11 @@ class ScriptSelector(wx.Dialog):
                 if not enabled: menu.Enable(id, bool(False))
                 if handler is not None:
                     self.Notebook.Bind(wx.EVT_MENU, handler, id=id)
+
+            if self._checkRunning() or self._blockPageChange:
+                if event:
+                    event.Skip()
+                return
             if event:
                 pos = event.GetPosition()
                 ipage = self.Notebook.HitTest(pos)[0]
@@ -5596,7 +5614,7 @@ class ScriptSelector(wx.Dialog):
             AddItem(popup, 'New  (middl down)', lambda f: self.AddTab())
             if ipage != wx.NOT_FOUND:
                 self.Notebook.SetSelection(ipage)
-                AddItem(popup, 'Rename  (dblclick)', lambda f: self.RenameTab())
+                AddItem(popup, 'Rename  (dblclick)', lambda f: self.RenameTab(), self.CanTabWrite(self.tabName, False))
                 popup.AppendSeparator()
                 AddItem(popup, 'Clear', lambda f: self.OnClearTab())
                 AddItem(popup, 'Close', lambda f: self.OnRemoveTab())
@@ -5611,7 +5629,7 @@ class ScriptSelector(wx.Dialog):
 
         def OnRightClickSelf(event):
             if event.GetPosition()[1] <= intPPI(23):
-                OnRightClickNotebook(None)
+                OnRightClickNotebook()
         self.Bind(wx.EVT_RIGHT_DOWN, OnRightClickSelf)
 
         def OnClose(event):
@@ -5628,14 +5646,17 @@ class ScriptSelector(wx.Dialog):
             event.Skip()
         self.Bind(wx.EVT_CLOSE, OnClose)
 
-        def OnShow(event):
+        def OnShow(event): # Bug wxPython, OnShow is also called OnClose(), OnHide()
             event.Skip()
             if self.firstRun:
                 self.LoadData()
                 self.firstRun = False
-            else:
+            elif self.IsShown():
                 self.listCtrl.Clear()
-                wx.CallLater(100, OnPageChanged) # else flicker on show
+                self.listCtrl.Refresh()
+                self.listCtrl.Update()
+                # else flicker on show
+                wx.CallLater(100, OnPageChanged)
         self.Bind(wx.EVT_SHOW, OnShow)
 
         def OnKeyDown(event):
@@ -5768,6 +5789,9 @@ class ScriptSelector(wx.Dialog):
         if ID != wx.ID_OK or not s or s == self.tabName:
             return
         newName = s[:15]
+        if newName.startswith('@'):
+            wx.MessageBox('@ Not allowed as first sign', _('Error'), parent=self)
+            return
         idx = self.Notebook.GetSelection()
         if self.scriptDict.get(newName) is not None:
             wx.MessageBox(_('Tab name already exists'), _('Error'), parent=self)
@@ -5778,7 +5802,7 @@ class ScriptSelector(wx.Dialog):
             if not newName in self.scriptDict.keys():
                 raise
         except:
-            wx.MessageBox(_('Key Error: Please report this issue on Doom9 in the AvsPmod thread.'), 'Key Error')
+            wx.MessageBox(_('Key Error: Please report this issue on Doom9 in the AvsPmod thread.'), 'Key Error', parent=self)
             self.scriptDict[self.tabName] = data
             newName = self.tabName
         self.tabName = newName
@@ -5797,46 +5821,48 @@ class ScriptSelector(wx.Dialog):
         self.listCtrl.Refresh()
 
     def OnMiddleDownNotebook(self, event):
-        if self._checkRunning(): return
         event.Skip()
-        self.AddTab()
+        if not self._checkRunning():
+            self.AddTab()
 
     def OnLeftDClickNotebook(self, event):
         self.Notebook.dragging = None
-        if self._checkRunning(): return
-        self.RenameTab()
+        if not self._checkRunning():
+            self.RenameTab()
+        event.Skip()
 
     def OnLeftDownNotebook(self, event):
         self.Notebook.dragging = False
-        self.drop_obj = self.Notebook
-        self.Notebook.oldpage = self.Notebook.HitTest(event.GetPosition())[0]
+        if not self._checkRunning():
+            self.drop_obj = self.Notebook
+            self.Notebook.oldpage = self.Notebook.HitTest(event.GetPosition())[0]
         event.Skip()
 
     def OnLeftUpNotebook(self, event):
-        if self._checkRunning(): return
-        if self.drop_obj is self.listCtrl:
-            self.Notebook.SetCursor(wx.StockCursor(wx.CURSOR_DEFAULT))
-            self.listCtrl.SetCursor(wx.StockCursor(wx.CURSOR_DEFAULT))
-            ipage = self.Notebook.HitTest(event.GetPosition())[0]
-            if ipage == self.Notebook.GetSelection():
+        if not self._checkRunning():
+            if self.drop_obj is self.listCtrl:
+                self.Notebook.SetCursor(wx.StockCursor(wx.CURSOR_DEFAULT))
+                self.listCtrl.SetCursor(wx.StockCursor(wx.CURSOR_DEFAULT))
+                ipage = self.Notebook.HitTest(event.GetPosition())[0]
+                if ipage == self.Notebook.GetSelection():
+                    return
+                try:
+                    tabName = self.Notebook.GetPageText(ipage)
+                except:
+                    wx.Bell()
+                    return
+                self.CopyPasteScripts(self.tabName, tabName)
                 return
-            try:
-                tabName = self.Notebook.GetPageText(ipage)
-            except:
-                wx.Bell()
-                return
-            self.CopyPasteScripts(self.tabName, tabName)
-            return
 
-        if self.Notebook.dragging or self.Notebook.dragging is None:
-            self.Notebook.SetCursor(wx.StockCursor(wx.CURSOR_DEFAULT))
-            if self.Notebook.dragging is None:
-                return
-            index = self.Notebook.GetSelection()
-            ipage = self.Notebook.HitTest(event.GetPosition())[0]
-            if ipage != wx.NOT_FOUND and ipage != index and index == self.Notebook.oldpage:
-                self.RepositionTab(ipage)
-        self.Notebook.oldpage = None
+            if self.Notebook.dragging or self.Notebook.dragging is None:
+                self.Notebook.SetCursor(wx.StockCursor(wx.CURSOR_DEFAULT))
+                if self.Notebook.dragging is None:
+                    return
+                index = self.Notebook.GetSelection()
+                ipage = self.Notebook.HitTest(event.GetPosition())[0]
+                if ipage != wx.NOT_FOUND and ipage != index and index == self.Notebook.oldpage:
+                    self.RepositionTab(ipage)
+            self.Notebook.oldpage = None
         event.Skip()
 
     def OnMouseMotionNotebook(self, event):
@@ -5864,11 +5890,12 @@ class ScriptSelector(wx.Dialog):
         self.listCtrl.Refresh()
 
     def OnListCtrlSelectItem(self, event):
-        idx = event.GetIndex()
-        if idx is not None and self.tabName:
-            self.scriptDict[self.tabName]['idx'] = idx
-            self._selItemId = id(self.scriptDict[self.tabName]['scripts'][idx])
-        else: self._selItemId = None
+        if not self._checkRunning:
+            idx = event.GetIndex()
+            if idx is not None and self.tabName:
+                self.scriptDict[self.tabName]['idx'] = idx
+                self._selItemId = id(self.scriptDict[self.tabName]['scripts'][idx])
+            else: self._selItemId = None
         event.Skip()
 
     def OnListCtrlDeselectItem(self, event):
@@ -5882,7 +5909,9 @@ class ScriptSelector(wx.Dialog):
         self.SetWindowStyle(style)
 
     def OnListCtrlDClick(self, event):
-        if self._checkRunning(): return
+        if self._checkRunning():
+            event.Skip()
+            return
         idx = self.listCtrl.GetFirstSelected()
         if idx < 0: return
         x = event.GetX()
@@ -5897,6 +5926,29 @@ class ScriptSelector(wx.Dialog):
             nb = self.Notebook
             tabName = nb.GetPageText(nb.GetSelection())
             path, name, bmc, flags = self.scriptDict[tabName]['scripts'][idx][:-1]
+            # for dups tabs select the source tab and item
+            if tabName.startswith('@ dups') and name.find('<'):
+                tab = name.split('<@')[1].lstrip().rstrip(' - dif')
+                if tab in self.scriptDict:
+                    name = self.GetCleanName(name)
+                    # must be sort befor finding the index, we would select an display the item in the found tab
+                    self.SortList(self.sortName, self.sortReverse, force=False, tabname=tab)
+                    idx = self.GetIndex(tab, path, name)
+                    if idx > -1:
+                        for i in range(nb.GetPageCount()):
+                            if nb.GetPageText(i) == tab:
+                                nb.SetSelection(i)
+                                self.ClearSelections()
+                                self.listCtrl.Select(idx)
+                                self.listCtrl.Focus(idx)
+                                self.listCtrl.Refresh()
+                                self.listCtrl.Update()
+                                return
+                else:
+                    if self.parent.playSound('there_was_an_error.mp3'):
+                        wx.Bell()
+
+            name = self.GetCleanName(name) # for dup
             avsfile = os.path.join(path, name)
             if os.path.isfile(avsfile):
                 self.SetStyle(False)
@@ -5913,33 +5965,35 @@ class ScriptSelector(wx.Dialog):
                         self.SetStyle(True)
                         break
                     flags['nofile'] = True
+        event.Skip()
 
     def OnListCtrlLeftDown(self, event):
         self.drop_obj = None
         self._start_drag = 0
-        col0_w = self.listCtrl.GetColumnWidth(0)
-        if not self.options['tooltips']: # else auto tooltips by listCtrl
-            x = event.GetX()
-            try: # keine Ahnung ob immer eine tuble zurueck gegeben wird, laut Doku sollte es ein int sein
-                if x < intPPI(25):
-                    idx = self.listCtrl.HitTest(event.GetPosition())
-                    if idx[0] > -1:
-                        note = self.GetScriptNote(self.tabName, idx[0])
-                        if note:
-                            wx.TipWindow(self.listCtrl, note, max(intPPI(col0_w), intPPI(200)))
-                elif x > (col0_w - intPPI(25)) and (x < col0_w):
-                    idx = self.listCtrl.HitTest(event.GetPosition())
-                    if idx[0] > -1:
-                        name = self.scriptDict[self.tabName]['scripts'][idx[0]][1]
-                        wx.TipWindow(self.listCtrl, name, max(intPPI(col0_w), intPPI(200)))
-                elif x > col0_w + self.listCtrl.GetColumnWidth(1):
-                    idx = self.listCtrl.HitTest(event.GetPosition())
-                    if idx[0] > -1:
-                        path = self.scriptDict[self.tabName]['scripts'][idx[0]][0]
-                        wx.TipWindow(self.listCtrl, path, max(intPPI(col0_w), intPPI(200)))
-            except:
-                pass
-        self.listCtrl.Refresh()
+        if not self._checkRunning():
+            col0_w = self.listCtrl.GetColumnWidth(0)
+            if not self.options['tooltips']: # else auto tooltips by listCtrl
+                x = event.GetX()
+                try: # keine Ahnung ob immer eine tuble zurueck gegeben wird, laut Doku sollte es ein int sein
+                    if x < intPPI(25):
+                        idx = self.listCtrl.HitTest(event.GetPosition())
+                        if idx[0] > -1:
+                            note = self.GetScriptNote(self.tabName, idx[0])
+                            if note:
+                                wx.TipWindow(self.listCtrl, note, max(intPPI(col0_w), intPPI(200)))
+                    elif x > (col0_w - intPPI(25)) and (x < col0_w):
+                        idx = self.listCtrl.HitTest(event.GetPosition())
+                        if idx[0] > -1:
+                            name = self.GetCleanName(self.scriptDict[self.tabName]['scripts'][idx[0]][1])
+                            wx.TipWindow(self.listCtrl, name, max(intPPI(col0_w), intPPI(200)))
+                    elif x > col0_w + self.listCtrl.GetColumnWidth(1):
+                        idx = self.listCtrl.HitTest(event.GetPosition())
+                        if idx[0] > -1:
+                            path = self.scriptDict[self.tabName]['scripts'][idx[0]][0]
+                            wx.TipWindow(self.listCtrl, path, max(intPPI(col0_w), intPPI(200)))
+                except:
+                    pass
+            self.listCtrl.Refresh()
         event.Skip()
 
     def OnListCtrlMouseMotion(self, event):
@@ -5987,12 +6041,19 @@ class ScriptSelector(wx.Dialog):
             else: self.listCtrl._agwStyle -= ULCtrl.ULC_SHOW_TOOLTIPS
             self.listCtrl.Refresh()
             self.listCtrl.Update()
+        def OnRemoveDups(event):
+            self.options['removedups'] = not self.options['removedups']
 
-        if self._checkRunning(): return
+        if self._checkRunning():
+            event.Skip()
+            return
         path, name, bmc, flags, txt = self.GetValues()
         firstsel = self.listCtrl.GetFirstSelected()
         sel = firstsel > -1
         empty = self.listCtrl.GetItemCount() < 1
+        canRead = self.CanTabRead(self.tabName, False)
+        canWrite = self.CanTabWrite(self.tabName, False)
+        dup = self.tabName.startswith('@ dup')
 
         def AddItem(menu, label, handler, enabled=True, check=False, checked=False):
             id = wx.NewId()
@@ -6003,51 +6064,56 @@ class ScriptSelector(wx.Dialog):
                 self.listCtrl.Bind(wx.EVT_MENU, handler, id=id)
 
         popup = wx.Menu()
-        AddItem(popup, 'Add or Update all scripts', lambda f: self.AddOrUpdateAllScripts(update=True))
-        AddItem(popup, 'Clear and Add all scripts', lambda f: self.AddOrUpdateAllScripts(update=False))
-        AddItem(popup, 'Add or update script', self.AddOrUpdateScript)
+        AddItem(popup, 'Add or Update all scripts', lambda f: self.AddOrUpdateAllScripts(update=True), canWrite)
+        AddItem(popup, 'Clear and Add all scripts', lambda f: self.AddOrUpdateAllScripts(update=False), canWrite)
+        AddItem(popup, 'Add or update script', self.AddOrUpdateScript, canWrite)
         AddItem(popup, 'Find current script  (middl mouse)', lambda f: self.FindScriptInTabs())
         AddItem(popup, 'Search...', lambda f: self.SearchForScripts())
         popup.AppendSeparator()
-        AddItem(popup, 'Blue', lambda f: self.ToggleMarker('blue'), sel)
-        AddItem(popup, 'Green', lambda f: self.ToggleMarker('green'), sel)
-        AddItem(popup, 'Purple', lambda f: self.ToggleMarker('purple'), sel)
-        AddItem(popup, 'Flag **', lambda f: self.ToggleMarker('flag', '**'), sel)
+        AddItem(popup, 'Blue', lambda f: self.ToggleMarker('blue'), sel and canWrite)
+        AddItem(popup, 'Green', lambda f: self.ToggleMarker('green'), sel and canWrite)
+        AddItem(popup, 'Purple', lambda f: self.ToggleMarker('purple'), sel and canWrite)
+        AddItem(popup, 'Flag **', lambda f: self.ToggleMarker('flag', '**'), sel and canWrite)
         popup.AppendSeparator()
         # edit menu
         editMenu = wx.Menu()
         AddItem(editMenu, 'Copy', lambda f: self.CopyScripts(), sel)
-        AddItem(editMenu, 'Paste', lambda f: self.PasteScripts())
-        AddItem(editMenu, 'Remove', lambda f: self.RemoveScripts(), sel)
+        AddItem(editMenu, 'Paste', lambda f: self.PasteScripts(), canWrite)
+        AddItem(editMenu, 'Remove', lambda f: self.RemoveScripts(), sel and canWrite)
         editMenu.AppendSeparator()
-        AddItem(editMenu, 'Select marked', lambda f: self.SelectMarkedScripts(['blue', 'green', 'puple']), not empty)
-        AddItem(editMenu, 'Select blue', lambda f: self.SelectMarkedScripts(['blue']), not empty)
-        AddItem(editMenu, 'Select green', lambda f: self.SelectMarkedScripts(['green']), not empty)
-        AddItem(editMenu, 'Select purple', lambda f: self.SelectMarkedScripts(['puple']), not empty)
-        AddItem(editMenu, 'Select blue && green', lambda f: self.SelectMarkedScripts(['blue', 'green']), not empty)
-        AddItem(editMenu, 'Select green && purple', lambda f: self.SelectMarkedScripts(['green', 'purple']), not empty)
+        AddItem(editMenu, 'Select marked', lambda f: self.SelectMarkedScripts(['blue', 'green', 'purple']), not empty and canRead)
+        AddItem(editMenu, 'Select blue', lambda f: self.SelectMarkedScripts(['blue']), not empty and canRead)
+        AddItem(editMenu, 'Select green', lambda f: self.SelectMarkedScripts(['green']), not empty and canRead)
+        AddItem(editMenu, 'Select purple', lambda f: self.SelectMarkedScripts(['puple']), not empty and canRead)
+        AddItem(editMenu, 'Select blue && green', lambda f: self.SelectMarkedScripts(['blue', 'green']), not empty and canRead)
+        AddItem(editMenu, 'Select green && purple', lambda f: self.SelectMarkedScripts(['green', 'purple']), not empty and canRead)
         if self.options['advanceduser']:
             editMenu.AppendSeparator()
             # Hm... a bit ?? new tab must write and read protect else new tab is also copied
             # So new function for the normal user: tab CopyScripts with marker selections
-            AddItem(editMenu, 'All marked to tab', lambda f: self.AddMarkedSripts(), not empty)
-            AddItem(editMenu, 'All Blue to tab', lambda f: self.AddMarkedSripts(['blue']), not empty)
-            AddItem(editMenu, 'All Green to tab', lambda f: self.AddMarkedSripts(['green']), not empty)
-            AddItem(editMenu, 'All Purple to tab', lambda f: self.AddMarkedSripts(['purple']), not empty)
-            AddItem(editMenu, 'All Blue && Green to tab', lambda f: self.AddMarkedSripts(['blue', 'green']), not empty)
-            AddItem(editMenu, 'All Green && Purple to tab', lambda f: self.AddMarkedSripts(['green', 'purple']), not empty)
+            AddItem(editMenu, 'All marked to tab', lambda f: self.AddMarkedSripts(), not empty and canRead)
+            AddItem(editMenu, 'All Blue to tab', lambda f: self.AddMarkedSripts(['blue']), not empty and canRead)
+            AddItem(editMenu, 'All Green to tab', lambda f: self.AddMarkedSripts(['green']), not empty and canRead)
+            AddItem(editMenu, 'All Purple to tab', lambda f: self.AddMarkedSripts(['purple']), not empty and canRead)
+            AddItem(editMenu, 'All Blue && Green to tab', lambda f: self.AddMarkedSripts(['blue', 'green']), not empty and canRead)
+            AddItem(editMenu, 'All Green && Purple to tab', lambda f: self.AddMarkedSripts(['green', 'purple']), not empty and canRead)
         editMenu.AppendSeparator()
-        AddItem(editMenu, 'Change Note...', lambda f: self.AddScriptNote(self.tabName, firstsel), sel)
+        AddItem(editMenu, 'Change Note...', lambda f: self.AddScriptNote(self.tabName, firstsel), sel and canWrite)
         popup.AppendSubMenu(editMenu, _('Edit'))
         # opt menu
         optMenu = wx.Menu()
         AddItem(optMenu, 'Disable flag colors', OnChangeColorFlag, True, True, self.options['noflag'])
         AddItem(optMenu, 'Disable no file flag', OnChangeNoFileFlag, True, True, self.options['nofileflag'])
         AddItem(optMenu, 'Enable auto Tooltips', OnChangeToolTips, True, True, self.options['tooltips'])
-        AddItem(optMenu, "Show 'Advanced User' menus", OnChangeAdvancedUser, True, True,  self.options['advanceduser'])
+        AddItem(optMenu, "Remove 'dups' tab on closing", OnRemoveDups, True, True, self.options['removedups'])
+        AddItem(optMenu, "Show in 'Edit' extends user menu", OnChangeAdvancedUser, True, True,  self.options['advanceduser'])
         optMenu.AppendSeparator()
         AddItem(optMenu, 'Open Directory', self.OpenDirectory, sel)
         AddItem(optMenu, 'Open with AvsPThumb', lambda f: self.FindBookmarksBkFile(), sel)
+        optMenu.AppendSeparator()
+        AddItem(optMenu, 'Find dubs', lambda f: self.FindDubs())
+        AddItem(optMenu, 'Find dubs (dif)', lambda f: self.FindDubs(onlyDif=True))
+        AddItem(optMenu, 'Find dubs (same tab)', lambda f: self.FindDubs(onlySameTab=True))
         optMenu.AppendSeparator()
         AddItem(optMenu, 'Backup markers && notes', lambda f: self.BackupMarkers())
         AddItem(optMenu, 'Restore markers && notes', lambda f: self.RestoreMarkers())
@@ -6059,9 +6125,9 @@ class ScriptSelector(wx.Dialog):
         AddItem(popup, 'Remove all tabs', self.OnRemoveAllTabs)
         popup.AppendSeparator()
         # popup
-        AddItem(popup, 'Find or Update from avs...', lambda f: self.FindOrUpdateScriptsFromFile())
-        AddItem(popup, 'Update selection from avs', lambda f: self.UpdateScriptsFromFile(), sel)
-        AddItem(popup, "Check existing 'Ctrl removes'", lambda f: self.CheckExist(remove=wx.GetKeyState(wx.WXK_CONTROL)), not empty)
+        AddItem(popup, 'Find or Update from avs...', lambda f: self.FindOrUpdateScriptsFromFile(), canWrite)
+        AddItem(popup, 'Update selection from avs', lambda f: self.UpdateSelectionsFromFile(), sel and (canWrite or dup))
+        AddItem(popup, "Check existing 'Ctrl removes'", lambda f: self.CheckExist(remove=wx.GetKeyState(wx.WXK_CONTROL)), not empty and canWrite)
         popup.AppendSeparator()
         AddItem(popup, 'MediaInfo  (dblclick < 20 pix)', lambda f: self.ShowMediaInfo(), sel and txt)
         AddItem(popup, 'AvsPmod new tab', lambda f: self.NewAvsPmodTab(), sel and txt)
@@ -6126,24 +6192,14 @@ class ScriptSelector(wx.Dialog):
         return ctypes.cast(id(ID), ctypes.py_object).value
 
     def ClearSelections(self):
-        """
-        idx = self.listCtrl.GetFirstSelected()
-        while idx > -1:
-            self.listCtrl.Select(idx, False)
-            idx = self.listCtrl.GetNextSelected(idx)
-        """
-        """
-        count = self.listCtrl.GetItemCount()
-        self.listCtrl.SetItemCount(0)
-        self.listCtrl.SetItemCount(count)
-        """
         self.listCtrl._mainWin._selStore.Clear()
 
     def GetIndex(self, tabName, path, name):
-        sList = self.scriptDict[tabName]['scripts']
-        for i, item in enumerate(sList):
-            if item[0] == path and item[1] == name:
-                return i
+        if tabName in self.scriptDict:
+            sList = self.scriptDict[tabName]['scripts']
+            for i, item in enumerate(sList):
+                if item[0] == path and item[1] == name:
+                    return i
         return -1
 
     def CanTabRead(self, tabName, msg=False):
@@ -6183,6 +6239,11 @@ class ScriptSelector(wx.Dialog):
             return None, None, None, None, None
         return sList[idx]
 
+    def GetCleanName(self, s): # for dub
+        if s.find('<'):
+            return s.split('<')[0].rstrip()
+        return s
+
     def ToggleMarker(self, marker=None, textflag=''):
         """
         if not self.CanTabRead(self.tabName, True): # then marker tab
@@ -6207,43 +6268,21 @@ class ScriptSelector(wx.Dialog):
                 else: flags['marker'] = marker
             idx = lcl.GetNextSelected(idx)
         self.listCtrl.Refresh()
-    """
-    def SortTabs(self):
-        self.listCtrl.Clear()
-        nb = self.Notebook
-        temp = {}
-        x = 0
-        # rename only the default tabs and leave the sort order
-        for i in xrange(nb.GetPageCount()):
-            name = nb.GetPageText(i)
-            if name.startswith('Tab '):
-                x += 1
-                tab = 'Tab ' + str(x)
-                nb.SetPageText(i, tab)
-                temp[tab] = self.scriptDict.pop(name)
-            else:
-                temp[name] = self.scriptDict.pop(name)
-                nb.SetPageText(i, name)
 
-        self.scriptDict = temp
-        self.tabName = nb.GetPageText(nb.GetSelection())
-        self.listCtrl.SetItemCount(len(self.scriptDict[self.tabName]['scripts']))
-        self.listCtrl.Refresh()
-        self.listCtrl.Update()
-        temp = None
-    """
-    def SortList(self, name, reverse, force=True, refresh=True):
-        if not name or not self.tabName:
+    def SortList(self, sortname, reverse, force=True, refresh=True, tabname=None):
+        if not tabname:
+            tabname = self.tabName
+        if not sortname or not tabname:
             return
-        if not force and self.scriptDict[self.tabName]['sortname'] == name + str(reverse):
+        if not force and self.scriptDict[tabname]['sortname'] == sortname + str(reverse):
             return
-        if name == 'bookmarks':
-            self.scriptDict[self.tabName]['scripts'].sort(key=lambda k: int(k[2]), reverse=reverse)
+        if sortname == 'bookmarks':
+            self.scriptDict[tabname]['scripts'].sort(key=lambda k: int(k[2]), reverse=reverse)
         else:
-            idx = 0 if name == 'path' else 1
-            self.scriptDict[self.tabName]['scripts'].sort(key=lambda k: k[idx], reverse=reverse)
+            idx = 0 if sortname == 'path' else 1
+            self.scriptDict[tabname]['scripts'].sort(key=lambda k: k[idx], reverse=reverse)
 
-        self.scriptDict[self.tabName]['sortname'] = name + str(reverse)
+        self.scriptDict[tabname]['sortname'] = sortname + str(reverse)
         if refresh:
             self.listCtrl.Refresh()
             self.listCtrl.Update()
@@ -6282,13 +6321,11 @@ class ScriptSelector(wx.Dialog):
             count = 0
         return str(count)
 
-    # SearchForScripts
     def SearchForScripts(self):
         from copy import deepcopy
         if self._checkRunning():
             return
         s = ''
-        nb = self.Notebook
         dlg = wx.TextEntryDialog(self, _('Wildcards * ?'), _('Find script'), '')
         if dlg.ShowModal() == wx.ID_OK:
             s = dlg.GetValue().lower().strip()
@@ -6300,38 +6337,20 @@ class ScriptSelector(wx.Dialog):
         if not s.startswith('*'): s = '*' + s # search always for all
         if not s.endswith('*'): s += '*'
         self.listCtrl.SetCursor(wx.StockCursor(wx.CURSOR_WAIT))
-        """ foundList = [] """
         foundList = {}
         target = None
         try:
-            count = nb.GetPageCount()
-            for x in range(count):
-                key = nb.GetPageText(x)
-                if 'read' in self.scriptDict[key]['locked']: # skip read protected e.g. Found tabs/keys, Marker tabs
+            for key, data in self.scriptDict.iteritems():
+                if 'read' in data['locked']: # skip read protected e.g. Found tabs/keys, Marker tabs
                     continue
-                for y, item in enumerate(self.scriptDict[key]['scripts']):
+                for y, item in enumerate(data['scripts']):
                     if utils.FindPattern(s, item[1].lower()): # wildcards * and ?
-                        """
-                        found = False
-                        for _item in foundList:
-                            if item[0] + item[1] == _item[0]:
-                                found = True
-                                break
-                        if not found:
-                        """
                         if not item[0]+item[1] in foundList:
-                            data = self.scriptDict[key]['scripts'][y] # make a memory reference
-                            #foundList.append((item[0]+item[1], data))
-                            foundList[item[0]+item[1]] = data
+                            foundList[item[0]+item[1]] = data['scripts'][y] # make a memory reference
             if foundList:
                 tabName = self.AddTab(label=tabName)
-                self.scriptDict[tabName]['locked'] = {'read', 'write', 'del'} # make read, write and del protect
+                self.scriptDict[tabName]['locked'] = {'read', 'write'} # make read and write protect
                 target = self.scriptDict[tabName]['scripts']
-                """
-                for item in foundList:
-                    data = deepcopy(item[1])
-                    target.append(data)
-                """
                 for key, item in foundList.iteritems():
                     data = deepcopy(item)
                     target.append(data)
@@ -6342,7 +6361,7 @@ class ScriptSelector(wx.Dialog):
             self.listCtrl.SetCursor(wx.StockCursor(wx.CURSOR_DEFAULT))
             if target is not None:
                 self.listCtrl.SetItemCount(len(target))
-                self.SortList(self.sortName, self.sortReverse, force=False)
+                self.SortList(self.sortName, self.sortReverse, force=True)
                 self.SetMyTitle(tabName=tabName)
 
     def ShowMediaInfo(self):
@@ -6357,7 +6376,7 @@ class ScriptSelector(wx.Dialog):
         finally:
             script = None
         if s:
-            self.parent.ShowMediaInfo(s)
+            self.parent.ShowMediaInfo(s, self)
         else:
             wx.Bell()
 
@@ -6508,7 +6527,7 @@ class ScriptSelector(wx.Dialog):
         del_list = []
         notfound = 0
         first = -1
-        canDelete = self.CanTabDelete(tabName, False)
+        canDelete = self.CanTabDelete(tabName, False) and self.CanTabWrite(tabName, False)
         len_list = len(sList)
         self._stop = False
         self._running = True
@@ -6539,7 +6558,7 @@ class ScriptSelector(wx.Dialog):
                 for i in xrange(len(del_list)-1,-1,-1):
                     del sList[del_list[i]]
             elif notfound > 0:
-                #self.listCtrl.Select(first)
+                self.listCtrl.Select(first)
                 self.listCtrl.Focus(first)
                 self.listCtrl.Refresh()
                 self.listCtrl.Update()
@@ -6549,6 +6568,11 @@ class ScriptSelector(wx.Dialog):
             self.listCtrl.SetItemCount(len(sList))
             self.listCtrl.Refresh()
             self.SetMyTitle(tabName=tabName)
+            if del_list:
+                wx.MessageBox(_('%i Entries removed') % len(del_list), _('Information'), parent=self)
+                del_list = None
+            elif notfound < 1:
+                self.parent.playSound('nothing_changed.mp3')
             self._running = False
 
     def FindOrUpdateScriptsFromFile(self, _paths=[]):
@@ -6580,7 +6604,6 @@ class ScriptSelector(wx.Dialog):
             paths.append(path)
         if len(paths) < 1:
             return
-
         self.scriptDict[tabName]['lastdir'] = paths[0]
         self.SetMyTitle(txt='*** PRESS ESC TO CANCEL ***')
         self._stop = False
@@ -6588,8 +6611,8 @@ class ScriptSelector(wx.Dialog):
         try:
             self.listCtrl.SetCursor(wx.StockCursor(wx.CURSOR_WAIT))
             wx.GetApp().SafeYieldFor(self, wx.wxEVT_PAINT)
-            update = len(self.scriptDict[tabName]['scripts']) > 0
             x = _upd = _new = 0
+            update = len(self.scriptDict[tabName]['scripts']) > 0
 
             for i, path in enumerate(paths):
                 for root, dirnames, filenames in os.walk(path):
@@ -6633,12 +6656,14 @@ class ScriptSelector(wx.Dialog):
                 dlg = wx.MessageDialog(self, 'New found: %i\nUpdated: %i' % (_new, _upd), 'Script selector', wx.OK)
                 dlg.ShowModal()
                 dlg.Destroy()
+            elif update:
+                self.parent.playSound('nothing_changed.mp3')
         finally:
             self.listCtrl.SetCursor(wx.StockCursor(wx.CURSOR_DEFAULT))
             self.SetMyTitle(tabName=tabName)
             self._running = False
 
-    def UpdateScriptsFromFile(self):
+    def UpdateSelectionsFromFile(self):
         from copy import deepcopy
         def checkStop():
             wx.GetApp().SafeYieldFor(self, wx.wxEVT_ANY)
@@ -6647,8 +6672,8 @@ class ScriptSelector(wx.Dialog):
         lcl = self.listCtrl
         idx = lcl.GetFirstSelected()
         if idx < 0: return
-        tabName = self.tabName
-        if not self.CanTabWrite(self.tabName):
+        dubs = self.tabName.startswith('@ dups')
+        if not dubs and not self.CanTabWrite(self.tabName):
             return 0
         sDict = self.scriptDict
         upd = nofile = _note = 0
@@ -6663,7 +6688,19 @@ class ScriptSelector(wx.Dialog):
         t = time.time()
         try:
             for i, idx in enumerate(items):
+                tabName = self.tabName
                 path, name = sDict[tabName]['scripts'][idx][0], sDict[tabName]['scripts'][idx][1]
+                if dubs and name.find('<@'):
+                    val = name.split('<@')[1].lstrip().rstrip(' - dif')
+                    name = self.GetCleanName(name)
+                    _idx = self.GetIndex(val, path, name)
+                    if _idx > -1:
+                        tabName = val
+                        idx = _idx
+                    else:
+                        wx.MessageBox("Entry not found, you must refresh the 'dups tab'. Abort", _('Error'), parent=self)
+                        return
+
                 sfile = os.path.join(path, name)
                 flags = sDict[tabName]['scripts'][idx][3]
                 if os.path.isfile(sfile):
@@ -6687,6 +6724,8 @@ class ScriptSelector(wx.Dialog):
 
             if upd + nofile + _note > 0:
                 wx.MessageBox('Not found: %i\nUpdated: %i\nNote added: %i' % (nofile, upd, _note), 'Script selector', parent=self)
+            else:
+                self.parent.playSound('nothing_changed.mp3')
         finally:
             self.listCtrl.SetCursor(wx.StockCursor(wx.CURSOR_DEFAULT))
             self.SetMyTitle(tabName=tabName)
@@ -6697,7 +6736,7 @@ class ScriptSelector(wx.Dialog):
     def CopyScripts(self, markers=[]):
         self.stored_items = []
         if markers:
-                for i, item in enumerate(self.scriptDict[self.tabName]['scripts']):
+                for item in self.scriptDict[self.tabName]['scripts']:
                     if item[3]['marker'] in markers:
                         self.stored_items.append((self.tabName, item))
                 if not self.stored_items:
@@ -6710,7 +6749,7 @@ class ScriptSelector(wx.Dialog):
             while idx > -1:
                 items.append(idx)
                 idx = lcl.GetNextSelected(idx)
-            for i, item in enumerate(items):
+            for item in items:
                 data = self.scriptDict[self.tabName]['scripts'][item] # make a memory reference
                 self.stored_items.append((self.tabName, data))
         return len(self.stored_items)
@@ -6742,6 +6781,10 @@ class ScriptSelector(wx.Dialog):
         self.listCtrl.SetCursor(wx.StockCursor(wx.CURSOR_WAIT))
         try:
             for i, item in enumerate(self.stored_items):
+                if item[1][1].find('<'): # for dup
+                    path, name, bmc, flags, txt = item[1]
+                    name = self.GetCleanName(name)
+                    item = (item[0], (path, name, bmc, flags, txt))
                 if warn_item is None:
                      idx = self.GetIndex(tabName, item[1][0], item[1][1])
                      if idx > -1:
@@ -6764,6 +6807,7 @@ class ScriptSelector(wx.Dialog):
             if refreshList:
                 self.listCtrl.SetItemCount(len(target))
                 self.SortList(self.sortName, self.sortReverse)
+            self.SetMyTitle(tabName=tabName)
             return added
 
     def CopyPasteScripts(self, sourceTab, targetTab):
@@ -6794,6 +6838,7 @@ class ScriptSelector(wx.Dialog):
             del source[item]
         lcl.SetItemCount(len(source))
         self.SortList(self.sortName, self.sortReverse)
+        self.SetMyTitle(tabName=self.tabName)
 
     def FindScriptInTabs(self):
         nb = self.Notebook
@@ -6810,9 +6855,23 @@ class ScriptSelector(wx.Dialog):
                     if (disk and os.path.join(item[0], item[1]) == fname) or (not disk and item[1] == fname):
                             found = (tabName, i)
                             break
+                # find in next tabs
+                if found is None:
+                    idx = nb.GetSelection() + 1
+                    count = nb.GetPageCount()
+                    if count - idx > -1:
+                        for x in xrange(idx, count):
+                            key = nb.GetPageText(x)
+                            for y, item in enumerate(self.scriptDict[key]['scripts']):
+                                if (disk and os.path.join(item[0], item[1]) == fname) or (not disk and item[1] == fname):
+                                    found = (key, y)
+                                    break
+                            if found is not None:
+                                break
+                # find at the beginning
                 if found is None:
                     # if not found search in tab order and find the first entry
-                    count = nb.GetPageCount()
+                    count = idx-1 # nb.GetPageCount()
                     for x in xrange(count):
                         key = nb.GetPageText(x)
                         if key == tabName:
@@ -6839,14 +6898,87 @@ class ScriptSelector(wx.Dialog):
             self.listCtrl.SetCursor(wx.StockCursor(wx.CURSOR_DEFAULT))
         wx.Bell()
 
+    def FindDubs(self, onlyDif=False, onlySameTab=False):
+        #~from copy import deepcopy
+        nameDict = {}
+        dub = 0
+        target = None
+        oldIndex = self.Notebook.GetSelection()
+        if not onlySameTab:
+            for key, data in self.scriptDict.iteritems():
+                if not 'read' in data['locked']:
+                    for i, item in enumerate(data['scripts']):
+                        if item[0]+item[1] in nameDict:
+                            nameDict[item[0]+item[1]].append((key, item))
+                            dub +=1
+                        else:
+                            nameDict[item[0]+item[1]] = [(key, item)]
+        else:
+            for key, data in self.scriptDict.iteritems():
+                if not 'read' in data['locked']:
+                    for i, item in enumerate(data['scripts']):
+                        if item[0]+item[1] in nameDict and (nameDict[item[0]+item[1]][0][0] == key):
+                            nameDict[item[0]+item[1]].append((key, item))
+                            dub +=1
+                        else:
+                            nameDict[item[0]+item[1]] = [(key, item)]
+
+        if dub > 0:
+            tabName = self.AddTab(label='@ dups')
+            self.scriptDict[tabName]['locked'] = {'read', 'write'} # make read and write protect
+            target = self.scriptDict[tabName]['scripts']
+            for key, items in nameDict.iteritems():
+                if len(items) > 1:
+                    ### if difference script
+                    ctxt = items[0][1][4]
+                    dif = ''
+                    for item in items:
+                        if item[1][4] != ctxt:
+                            dif = ' - dif'
+                            break
+                    if onlyDif and not dif:
+                        continue
+                    for item in items:
+                        #~data = deepcopy(item[1])
+                        path, name, bmc, flags, txt = item[1] #~data
+                        name = '%s      <@ %s%s' % (name, item[0], dif) # for dups tab
+                        data = (path, name, bmc, flags, txt)
+                        target.append(data)
+
+            if len(target) < 2:
+                target = None
+                dub = 0
+                self.OnRemoveTab(tabName)
+                self.Notebook.SetSelection(oldIndex)
+                self.listCtrl.Refresh()
+                self.listCtrl.Update()
+
+        del nameDict
+        self.listCtrl.SetCursor(wx.StockCursor(wx.CURSOR_DEFAULT))
+        if target is not None:
+            self.listCtrl.SetItemCount(len(target))
+            self.SortList(self.sortName, self.sortReverse, force=True)
+            self.SetMyTitle(tabName=tabName)
+        if dub < 1:
+            if self.parent.playSound('nothing_found.mp3'):
+                wx.Bell()
+
     # private
     def FindBookmarksBkFile(self):
         idx = self.listCtrl.GetFirstSelected()
         if idx < 0: return
-        if sys.maxsize > 2**32:
-            suffix = '.bk6'
-        else:
-            suffix = '.bk3'
+        sList = []
+        while idx > -1:
+            sList.append(self.scriptDict[self.tabName]['scripts'][idx])
+            idx = self.listCtrl.GetNextSelected(idx)
+        if len(sList) > 20:
+            dlg = wx.MessageDialog(self,_('%i files selected! Keep going?') % len(sList),'Script selector')
+            ID = dlg.ShowModal()
+            dlg.Destroy()
+            if ID != wx.ID_OK:
+                return
+
+        suffix = '.bk6' if sys.maxsize > 2**32 else '.bk3'
         runfile = self.options['avspthumb']
         if not os.path.isfile(runfile):
             dlg = wx.FileDialog(None, defaultDir=self.parent.programdir,defaultFile='AvsPThumb.exe')
@@ -6857,20 +6989,23 @@ class ScriptSelector(wx.Dialog):
                 return
         if os.path.split(runfile)[1].lower() == 'avspthumb.exe':
             self.options['avspthumb'] = runfile
-
-        item = self.scriptDict[self.tabName]['scripts'][idx]
-        path, name = item[:2]
-        scriptFile = os.path.join(path, name)
-
-        bkf =  os.path.splitext(scriptFile)[0]
-        if not bkf:
-            wx.Bell()
+        else:
+            self.parent.playSound('invalid_values.mp3')
             return
-        bkf += suffix
-        if not os.path.isfile(bkf):
-            bkf = scriptFile
 
-        param = '"%s" "%s"' % (runfile, bkf)
+        param = '"%s" ' % runfile
+        for i, item in enumerate(sList):
+            path, name = item[:2]
+            name = self.GetCleanName(name) # for dub
+            scriptFile = os.path.join(path, name)
+            bkf =  os.path.splitext(scriptFile)[0]
+            if not bkf:
+                continue
+            bkf += suffix
+            if not os.path.isfile(bkf):
+                bkf = scriptFile
+            param += '"%s" ' % bkf
+
         param = param.encode(sys.getfilesystemencoding())
         subprocess.Popen(param, shell=True)
 
@@ -6929,6 +7064,7 @@ class ScriptSelector(wx.Dialog):
             t = time.time()
             for i, item in enumerate(sList):
                 path, name, bmc, flags, txt = item
+                self.GetCleanName(name) # for dup
                 avsfile = os.path.join(path, name)
                 if os.path.isfile(avsfile):
                     flags['nofile'] = None
@@ -6966,6 +7102,7 @@ class ScriptSelector(wx.Dialog):
         idx = self.listCtrl.GetFirstSelected()
         if idx < 0: return
         path, name = self.scriptDict[self.tabName]['scripts'][idx][:2]
+        self.GetCleanName(name) # for dup
         sfile = os.path.join(path, name)
         if os.path.isfile(sfile):
             self.scriptDict[self.tabName]['scripts'][idx][3]['nofile'] = False
@@ -7067,9 +7204,21 @@ class ScriptSelector(wx.Dialog):
         if saveData:
             self.data['scriptdict'] = self.scriptDict
             self.data['tabnames'] = []
-            # save sort order for load options
-            for i in xrange(self.Notebook.GetPageCount()):
-                self.data['tabnames'].append(self.Notebook.GetPageText(i))
+
+            # Delete dubs tabs and dict and save amount of data (must be reverse)
+            if self.options['removedups']:
+                for i in range(self.Notebook.GetPageCount()-1, -1, -1): # python why -1 for index 0
+                    tabName = self.Notebook.GetPageText(i)
+                    if tabName.startswith('@ dups') and tabName in self.scriptDict:
+                        self.OnRemoveTab(idx=i, checkCanDelete=False)
+                    else:
+                        self.data['tabnames'].append(self.Notebook.GetPageText(i))
+                self.data['tabnames'].reverse() # must now be reversed
+            else:
+                # save sort order for load options
+                for i in xrange(self.Notebook.GetPageCount()):
+                    self.data['tabnames'].append(self.Notebook.GetPageText(i))
+
             try:
                 with open(self.dataFilename, mode='wb') as f:
                     cPickle.dump(self.data, f, protocol=0)
@@ -9164,6 +9313,7 @@ class SliderPlus(wx.Panel):
             colorTBookmarks = (0,0,255)
             #self.colorSelections = wx.BLUE
             self.app.frameTextCtrl.SetBackgroundColour(wx.WHITE)
+
         self.parent.SetBackgroundColour(self.colorBackground)
         self.parent.Refresh()
         if refreshButtons: # only for primary (self.app.videoControls)
@@ -9206,7 +9356,6 @@ class SliderPlus(wx.Panel):
         self.brushOffset = wx.Brush(colorOffset)
         self.penOffset = wx.Pen(colorOffset)
         self.brushSplitClip =  wx.Brush(self.app.options['timelinesplitclipcolor'])  # default wx.Brush((100,160,120))
-
 
     def _StopPlaying(self):  # GPo 2020
         if self.app.playing_video:
@@ -10543,17 +10692,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         """
 
         """
-        def OnShow(event):
-            if self.readFrameProps and self.propWindowParent == 0:
-                self.propWindow.Show()
-            if self.mainSplitter.IsSplit():
-                self.mainSplitter.UpdateSize()
-                self.videoSplitter.UpdateSize()
-            event.Skip()
-        self.Bind(wx.EVT_SHOW, OnShow)
-        """
-
-        """
         def OnModalDialogClosed(event):
             print('Modal Close')
             event.Skip()
@@ -10628,7 +10766,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                             if not func in self.IdleCall:
                                 self.IdleCall.append(func)
                         elif self.zoomwindow or self.zoomfactor != 1:
-                            func = (self.ShowVideoFrame, tuple(), {'focus': False})
+                            func = (self.ShowVideoFrame, tuple(), {'focus': False, 'forceLayout': True})
                             if not func in self.IdleCall:
                                 if self.options['zoom_antialias']:
                                     self.zoom_antialias = False
@@ -14680,8 +14818,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.videoSlider2.Bind(wx.EVT_MOUSE_CAPTURE_LOST, self.OnMouseCaptureLost)  # GPo 2020
             sizer.Add(self.videoSlider2, 1, wx.EXPAND)
             videoControlWidgets.append(self.videoSlider2)
-            self.videoSlider2.bookmarksHilightColor = wx.Brush(self.options['bookmarkshilightcolor'])  # GPo
-            self.videoSlider2.selectionsHilightColor = wx.Brush(self.options['selectionshilightcolor'])  # GPo
+            self.videoSlider2.bookmarksHilightColor = self.options['bookmarkshilightcolor']  # GPo
+            self.videoSlider2.selectionsHilightColor = self.options['selectionshilightcolor']  # GPo
 
         if self.options['disablepreview'] and primary:
             for ctrl in self.videoControlWidgets:
@@ -17709,7 +17847,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
              self.ScriptSelector = ScriptSelector(self)
         self.ScriptSelector.Toggle()
 
-    def ShowMediaInfo(self, filename):
+    def ShowMediaInfo(self, filename, wnd=None):
         try:
             import MediaInfoDLL
             MI = MediaInfoDLL.MediaInfo()
@@ -17721,12 +17859,14 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             if Version == "":
                 wx.MessageBox("MediaInfo.DLL: version of the DLL is not compatible\nTested with Version 24.5.0.0")
                 return -2
-            self.SetCursor(wx.StockCursor(wx.CURSOR_WAIT))
+            if not wnd:
+                wnd = self
+            wnd.SetCursor(wx.StockCursor(wx.CURSOR_WAIT))
             re = None
             try:
                 re = MI.Open(filename)
             finally:
-                self.SetCursor(wx.StockCursor(wx.CURSOR_DEFAULT))
+                wnd.SetCursor(wx.StockCursor(wx.CURSOR_DEFAULT))
             if not re:
                 if os.path.isfile(filename):
                     wx.MessageBox('Cannot open the file:\n' + filename, 'MediaInfo.DLL')
@@ -17748,7 +17888,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             MI.Close()
             del MI
 
-    def playSoundWin(self, sound, block=True, msg=True):
+    def playSound(self, sound, block=True, msg=False):
         """ Stolen from playsound.py and adapted for AvsPmod """
 
         def _canonicalizePath(path):
@@ -17762,6 +17902,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 # convert a unicode string to str will fail. Leave it alone in this case.
                 return path
 
+        sound = os.path.join(self.programdir, 'sound', sound)
         sound = '"' + _canonicalizePath(sound) + '"'
         error = ''
 
@@ -17798,7 +17939,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
     def OnMenuTest(self, event):
         return
         """
-        err = self.playSoundWin('E:\\Temp\\test.mp3', block=True)
+        err = self.playSound('E:\\Temp\\test.mp3', block=True)
         if err:
             wx.MessageBox(err, 'Play Sound Error')
         """
