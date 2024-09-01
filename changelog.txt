@@ -38,17 +38,14 @@ If, for example, there is a '-' in the file name of the dll, AvsPmod will report
 please rename this dll and replace the '-' with a '_'
 
 --------------------------
-Version 2.7.8.1 [2024-09-01]
+Version 2.7.8.0 - 2.7.8.1 [2024-09-01]
 --------------------------
-* The reason for this version is that due to the new bookmark handling some macros no longer work properly, 
+* The reason for this version 2.7.8.1 is that due to the new bookmark handling some macros no longer work properly, 
 - instead of changing all macros the problem was fixed in this version. Sorry.
 * Added automatic loading of the function 'LocateFrames'. 
 - if the function 'LocateFrames' is not found when executing 'Locate frame', it is imported from the specified file. 
 - Program options > Path > 'Function LocateFrames import'.
-
---------------------------
-Version 2.7.8.0 [2024-08-30]
---------------------------
+* 2.7.8.0
 * Bookmarks handling reworked. There should be no more incorrect assignments.
 * Loading sessions and files has been reworked and should now be faster (Dogway?, for me 200 scripts 10sec).
 * Improved Tablist update: If the tab list is visible, the entries should now always be up-to-date (bookmark count is only on show and tab change updated).
