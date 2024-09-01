@@ -38,6 +38,34 @@ If, for example, there is a '-' in the file name of the dll, AvsPmod will report
 please rename this dll and replace the '-' with a '_'
 
 --------------------------
+Version 2.7.8.0 [2024-08-30]
+--------------------------
+* Bookmarks handling reworked. There should be no more incorrect assignments.
+* Loading sessions and files has been reworked and should now be faster (Dogway?, for me 200 scripts 10sec).
+* Improved Tablist update: If the tab list is visible, the entries should now always be up-to-date (bookmark count is only on show and tab change updated).
+* Tablist Execute menu: added Separator and Submenu. Use '-' for an separator and '>Name of menu' for indicate to put the next entrie in this submenu, indication of end is <
+- example: Save script|File -> Save script, >My Submenu, Bookmarks to script|Video -> Bookmarks -> Bookmarks to script, <, next entrie in main context menu 
+* Added to 'Script Selector' context menu:
+- 'Search in scripts...', searches in all scripts for the given text (good for finding functions that you have used before).
+- 'Find only new from avs...' searches for new scripts (names) that are not present in the data and does not update other scripts.
+- Edit > 'Search in Notes...', searches in all Notes for the given text.
+- Edit > 'Change note...', now with multiselection and @ linked tabs.
+- Options & Additional > 'Selections distribute all', distributes all values (script, markers, note) from this entrie to all entries with the same file (path,name).
+* 'Script Selector' can now show the saved scripts (double click Path or -20 pixel Name). You can copy the text but the script cannot be saved.
+- for this function there is also an option Option & Additional > 'Same size on showing scripts'
+- note: linked @tabs processes the linked entries. If you delete the link, the linked entry will also be deleted.
+* The Trim Editor got a context menu and can now save/restore it's position and can be made transparent (Hold down the left mouse button and move to the left or right).
+- known bug: if the AvsPmod option 'Always on top' is set, the trim editor is overlaid by the program window. (no fix at the moment).
+* Added to MediaInfo context menu 'Auto close' 
+* Function 'Locate Frame' revised:
+- no more variables or selections required (optional but possible) always the next script (the right one) is used for finding the frame.
+- there is now an dialog for start, stop, threshold and 'Split View freeze frame' settings. 
+- more in the 'Locate Frame' readme.
+* Fixed: The tab's reactions became slower when many files were open (>100) and no multiline tab style and tab images were enabled.
+* Bugfix Macro 'PreviewEncode.py': The encoded clips were entered twice in the script. 
+* Some other changes.
+
+--------------------------
 Version 2.7.7.9 [2024-08-11]
 --------------------------
 * Another update for the 'Script Selector': Added to context menu Options & Aditional > 'Find dups', 'Find dups (dif) and 'Find dups (same tab)'. 

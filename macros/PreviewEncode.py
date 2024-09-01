@@ -18,7 +18,7 @@
 #
 # Author:      GPo
 #
-# Created:     24.05.2021, last change 25.05.2024
+# Created:     24.05.2021, last change 18.08.2024
 #              update 09.06.2021
 #                   showDialog, save and read options, encode selected trims (see encodeSelectedTrims)
 #                       and notice video slider context menu 'Create trim' (the trims are sorted before encoding)
@@ -39,6 +39,8 @@
 #              update 25.05.2024:
 #                   Encoded file names contains the trim numbers. A check for __end__ in the script. Dialog appears if ffmpeg not found.
 #                   Added AV1 templates. Added option 'Skip same trims'
+#              bugfix 18.08.2024:
+#                   The encoded clips were entered twice in the script. bad.
 #
 # Copyright:   (c) GPo 2021
 # Licence:     <free>
@@ -411,10 +413,10 @@ for start, stop in selections:
     i += 1
     if (max_files > 0) and (i > max_files):
         break
-
+        
 if stop < frameCount-1:
     encodings.append((0, 'Trim(%d, %d)' % (stop+1, 0)))
-
+    
 # start the encoding loop
 found = 0
 trimList = []
@@ -454,7 +456,6 @@ try:
         except IOError as err:
             raise
         time.sleep(0.1) # let the drive finished
-        trimList.append(('', clip, 'video = %s\naudio = %s\n%s = audioDub(video, audio)\n' % (vSourceFilter % videoFile, aSourceFilter % videoFile, clip)))
         if os.path.isfile(videoFile) and skipSameTrim:
             needEncode = False
         else: 

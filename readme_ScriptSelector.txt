@@ -9,30 +9,43 @@ I have created a tab for each partition where avs files are located with the cor
 Still tabs for favorites and a temp tab (Favor, Favor2, Temp) 
 Of course you can also use it just as a kind of session file and insert the currently opened AvsPmod tabs.
 
-Functions:
-'Add or Update all scripts' Insert or updates all opened AvsPmod scripts (tabs)
-'Clear and Add all scripts' Clears the tab and insert all opened AvsPmod scripts (tabs)
-'Add or update script' Insert or updated the current AvsPmod script (tab)
+Find, Search and Update Functions:
+'Add or Update all scripts' Insert or updates all opened AvsPmod scripts (tabs).
+'Clear and Add all scripts' Clears the tab and insert all opened AvsPmod scripts (tabs).
+'Add or update script' Insert or updated the current AvsPmod script (tab).
+'Find current script' finds the current AvsPmod script (tab).
+'Find script...' searches for scripts in all tabs and displays found scripts in a separate tab. These tabs should be deleted when they are no longer needed.
+'Search in scripts' searches inside all scripts for the given text. These tabs should also be deleted when they are no longer needed.
+'Search in Notes...' searches in all Nodes for the given text. These tabs should also be deleted when they are no longer needed.
 
-'Find or Update from avs...' Searches with sub folders, the last opened dir is saved for the current tab for next use
-'Update selection from avs' The selected scripts are updated from avs files on the hard disk (no new files are added)
-'Check existing 'Ctrl removes' All scripts in the current tab are checked for being present on the hard disk, if not exists and Ctrl was pressed the script is removed from the tab 
+Probably the most important functions at the beginning:
+'Find or Update from avs...' Searches with sub folders, the last opened dir is saved for the current tab for next use.
+'Update selection from avs' The selected scripts are updated from avs files on the hard disk (no new files are added).
+'Check existing 'Ctrl removes' All scripts in the current tab are checked for being present on the hard disk, if not exists and Ctrl was pressed the script is removed from the tab. 
 
-Mouse events:
-middle down = find the current AvsPmod script (tab)
+Find duplicate functions:
+'Find dup' find all duplicate names.
+'Find dub (same tab)' find all duplicte names in the same tab.
+'Find dup (dif)' find all duplicate names with different script text.
 
-List lines mouse events
+Mouse events global:
+middle down finds the current AvsPmod script (tab)
+double click > 20 pixel selects or opens the script in AvsPmod
+Selections can be copied to/into another tab using drag and drop or use Edit > Copy and Paste
+
+Mouse events on the script list items:
 Name: 
-left (22 pixel) if Note then show Note as tooltip
-rigth - (22 pixel) show name if auto tooltip disabled
-double Click = open script with AvsPmod
+left down < 22 pixels shows the saved Note as tip window (an asterisk indicates an existing note).
+left down (rigth - 22 pixel) shows the name as tip window if auto tooltip disabled
+double click < 22 pixels shows MediaInfo if the dll found in the systems or AvsPmod directory.
+double click (right - 22 pixels) shows the script in an separate window
 
 Bookmarks:
-double Click = open AvsPThumb with bk6/bk3 file or with this script is no bk* file exists
+double click = open AvsPThumb with bk6/bk3 file or with this script is no bk* file exists
 
 Path:
-left (22 pixel) show Path as tooltip if auto tooltip disabled
-double Click = open script with AvsPmod
+left < 22 pixel displays the path as a tooltip if Auto-Tooltip is deactivated
+double click shows the script in an separate window
 
 Keyboard events:
 ESC = close
@@ -42,5 +55,15 @@ Hot key AvsPmod for open/close Script selector = close
 
 Note for Notes:
 Note can be saved Edit > 'Change note'
-Or the note is read from the script if #note: is found in the script in the first 10 lines (the line must start with #note:) 
+Or the Note is read from the script if #note: is found in the script in the first 10 lines (the line must start with #note:) 
+If a 'Note' is found in the script, the existing 'Note' is overwritten.
+
+Color Markers and Flag: 
+Who wants to use it... it is available .)
+
+Disaster!:
+Tab Context Menu 'Disaster! reopen last data'
+If you accidentally delete all tabs or make another mistake, DO NOT CLOSE THE WINDOW! but use this menu, 
+then the data will be loaded as it was before you started the Script Selector.
+
 

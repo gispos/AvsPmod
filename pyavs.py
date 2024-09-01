@@ -313,6 +313,7 @@ class AvsClipBase:
         self.current_frame = -1
         self.pBits = None
         self.display_clip = None
+        self.src_frame = None
         self.preview_filter = previewFilter
         self.ptrY = self.ptrU = self.ptrV = self.ptrA = None
         # Avisynth script properties
@@ -400,6 +401,7 @@ class AvsClipBase:
         self.evAudioStop = threading.Event()
         self.evAudioFinished = threading.Event()
         self.numpy_type = None
+        self.cacheFrames = {}
 
         # Create the Avisynth script clip
         if env is not None:
@@ -1208,8 +1210,8 @@ class AvsClipBase:
     def KillFilterClip(self, createDisplayClip=True):
         cfunc.KillFilterClip(self, createDisplayClip=createDisplayClip)
 
-    def LocateFrame(self, start=-500, stop=500, framenr=None, find_src=''):
-        return cfunc.LocateFrame(self, start, stop, framenr, find_src)
+    def LocateFrame(self, start=-500, stop=500, framenr=None, thresh=None, find_src=''):
+        return cfunc.LocateFrame(self, start, stop, framenr, thresh, find_src)
 
     # for avisynth from H8 but lower then 3.71 (bug C Interface)
     def GetMatrix_2(self):
@@ -1289,7 +1291,7 @@ class AvsClipBase:
             self.readFrameProps = False
             self.properties = ''
             return
-        if self.clip and not self.IsErrorClip():
+        if self.clip and not self.IsErrorClip() and isinstance(self.src_frame, avisynth.AVS_VideoFrame):
             if enabled and readNow:
                 self.properties = 'Frame: ' + str(self.current_frame) + '\n' + self.env.props_get_all(self.src_frame)
         else:
@@ -1345,6 +1347,7 @@ class AvsClipBase:
                 frame = self.Framecount - 1
                 if self.current_frame == frame:
                     return True
+
             # Original clip
             self.src_frame = self.clip.get_frame(frame)
             if self.clip.get_error():
