@@ -12006,6 +12006,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'trimeditlastpos': (None, None),         # GPo 2024, trim editor last position
             'trimedittransparent': [False, 255],     # GPo 2024, trim editor transparency (Disabled, 255)
             'locateframeoptions': (None,None,-500, 500, 3.0),   # GPo 2024, LocateFrame, macro locateDlg
+            'loacateframe_import': '',               # GPo 2024, import 'LocateFrames' from this file if it not found
             # TabList options
             'tbl_dimensions': (-1,-1,intPPI(640),intPPI(560)),
             'tbl_col0w': intPPI(560),
@@ -12954,6 +12955,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 ((_('External tool:'), wxp.OPT_ELEM_FILE, 'externaltool', _('Location of external program, e.g. AvsMeter'), dict(fileMask=(_('Executable files') + ' (*.exe)|*.exe|' if os.name == 'nt' else '') + _('All files') + ' (*.*)|*.*', buttonText='...', buttonWidth=30) ), ),
                 ((_('External tool arg1:'), wxp.OPT_ELEM_STRING, 'externaltoolarg1', _('Arguments for external tool menu 1, e.g. Menu label|arguments\nUse %fn to pass the script file name with the arguments.' ), dict() ),
                  (_('External tool arg2:'), wxp.OPT_ELEM_STRING, 'externaltoolarg2', _('Arguments for external tool menu 2, e.g. Menu label|arguments\nUse %fn to pass the script file name with the arguments.' ), dict() ), ),
+                ((_("Function 'LocateFrames' import:"), wxp.OPT_ELEM_FILE, 'loacateframe_import', _("Import the 'LocateFrames' function from this file if the function is not found"), dict(fileMask=(_('Avisynth scripts') + ' (*.avs)|*.avs|') + _('All files') + ' (*.*)|*.*', buttonText='...', buttonWidth=30)), ),
                 ((_('Avisynth help file/url:'), wxp.OPT_ELEM_FILE_URL, 'avisynthhelpfile', _('Location of the avisynth help file or url'), dict(buttonText='...', buttonWidth=30) ), ),
                 ((_('Documentation search paths:'), wxp.OPT_ELEM_STRING, 'docsearchpaths', _('Specify which directories to search for docs when you click on a filter calltip'), dict() ), ),
                 ((_('Documentation search url:'), wxp.OPT_ELEM_STRING, 'docsearchurl', _("The web address to search if docs aren't found (the filter's name replaces %filtername%)"), dict() ), ),
@@ -18194,6 +18196,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         class LocateDlg(wx.Dialog):
             def __init__(self, app, func):
                 wx.Dialog.__init__ (self, app, wx.ID_ANY, '', size=wx.Size(333,64), style=wx.DEFAULT_DIALOG_STYLE|wx.STAY_ON_TOP)
+                #wx.Dialog.__init__ (self, app, wx.ID_ANY, '', size=wx.Size(333,64), style=wx.BORDER_NONE|wx.STAY_ON_TOP)
                 self.SetBackgroundColour(wx.Colour(50, 50, 50))
                 self.SetForegroundColour(wx.Colour(245, 245, 245))
                 dpi.SetFontPPI(self)
@@ -18241,6 +18244,15 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         self.Close()
                     else: event.Skip()
                 self.Bind(wx.EVT_CHAR_HOOK, OnKeyDown)
+                """
+                def OnKillFocus(event):
+                    event.Skip()
+                self.Bind(wx.EVT_KILL_FOCUS, OnKillFocus)
+                def OnActivate(event):
+                    #self.SetWindowStyle(wx.DEFAULT_DIALOG_STYLE|wx.STAY_ON_TOP)
+                    event.Skip()
+                self.Bind(wx.EVT_ACTIVATE, OnActivate)
+                """
                 def OnClose(event):
                     try:
                         start = int(self.txtStart.GetValue().strip())
@@ -18309,8 +18321,20 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 if mode > 0:
                     findframe = nextScript.AVI.current_frame
                 if not script.AVI.env.function_exists('LocateFrames'):
-                    self.MessageDialogTop(self, "Avisynth function 'LocateFrames' not found.\nHelp > readme LocateFrame", style=wx.OK|wx.ICON_ERROR)
-                    return
+                    funcImport = self.options['loacateframe_import']
+                    if os.path.isfile(funcImport):
+                        try:
+                            script.AVI.env.invoke("Import", funcImport)
+                        except avisynth.AvisynthError as err:
+                            self.MessageDialogTop(self,'Function import error\n'+ err, style=wx.OK|wx.ICON_ERROR)
+                            self.ShowOptions(0)
+                            return
+                    else:
+                        ID = self.MessageDialogTop(self, _("Avisynth function 'LocateFrames' not found.\n" +
+                                'You can enter the file from which the function should be imported.'))
+                        if ID == wx.ID_OK:
+                            self.ShowOptions(0)
+                        return
 
                 if self.propWindow.IsShown():
                     self.propWindow.Show(False)
@@ -18363,7 +18387,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         wx.Bell()
                         if err:
                             self.MessageDialogTop(self, err, 'Locate Frame Error', style=wx.OK|wx.ICON_ERROR)
-        if not wx.IsBusy():
+        if not wx.IsBusy() and self.currentScript.AVI:
             if showDlg:
                 if not self.locateFrameDlg:
                     self.locateFrameDlg = LocateDlg(self, runLocate)
@@ -18373,6 +18397,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         self.locateFrameDlg.Close()
             else:
                 runLocate(start, stop, thresh)
+    ### End LocateFrame
 
     def ShowScriptSelector(self, event):
         if self.ScriptSelector is None:
@@ -27419,7 +27444,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             bDict[item[0]] = self.titleDict.get(item[0], '')
         return bDict
 
-    def SetTabBookmarks(self, inputDict): # for script.bookmarks
+    def SetTabBookmarks(self, inputDict, script=None): # for script.bookmarks
         self.titleDict.clear()
         if inputDict:
             for i, item in enumerate(inputDict.items()):
@@ -27432,7 +27457,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     title = t.strip()
                     if title:
                         self.titleDict[value] = title
-
+        if script is None:
+            script = self.currentScript
+        script.bookmarks = inputDict
         for slider in self.GetVideoSliderList():
             slider.bookmarks = inputDict
             slider._Refresh(True)

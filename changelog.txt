@@ -38,6 +38,15 @@ If, for example, there is a '-' in the file name of the dll, AvsPmod will report
 please rename this dll and replace the '-' with a '_'
 
 --------------------------
+Version 2.7.8.1 [2024-09-01]
+--------------------------
+* The reason for this version is that due to the new bookmark handling some macros no longer work properly, 
+- instead of changing all macros the problem was fixed in this version. Sorry.
+* Added automatic loading of the function 'LocateFrames'. 
+- if the function 'LocateFrames' is not found when executing 'Locate frame', it is imported from the specified file. 
+- Program options > Path > 'Function LocateFrames import'.
+
+--------------------------
 Version 2.7.8.0 [2024-08-30]
 --------------------------
 * Bookmarks handling reworked. There should be no more incorrect assignments.
