@@ -652,17 +652,6 @@ class AvsClipBase:
         self.IsAudioInt = not self.IsAudioFloat
         self.HasAudio = vi.has_audio()
 
-        """
-        ## Test audio, last settings are stored  (do not kill and create the audio always)
-        if not self.downMix_d: # if not display clip downmix create the audio here else on create display clip
-            if not self.PlayAudio or not self.HasAudio:
-                self.KillAudio()
-            elif self.PlayAudio and self.HasAudio:
-                if (self.lastAudiochannels != vi.nchannels) or (self.lastSampletype != vi.sample_type) or \
-                    (self.lastAudiorate != vi.audio_samples_per_second):
-                        self._createAudio(vi)
-        """
-
     # self.KillAudio is here to late... error (some vars deleted)
     # found no event in python that is called before freeing with None
     # so you must first call KillAudio before AVI = None
@@ -1137,14 +1126,6 @@ class AvsClipBase:
                     return
                # audio_frames_buffered must be always mod 3 or only 1 for one frame
                 loops = int(self.audio_frames_buffered/3) if not frame_count else int(frame_count/3)
-                """
-                if self.downMix_d:
-                    clip = self.display_clip
-                    vi = self.vi_d
-                else:
-                    clip = self.clip
-                    vi = self.vi
-                """
                 clip = self.display_clip
                 vi = self.vi_d
                 self.evAudioStop.clear()

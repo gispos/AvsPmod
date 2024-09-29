@@ -116,6 +116,8 @@ def GetGOPClosedName(idx):
         return namedict[idx]
     return '?'
 
+
+
 """ test for system or utf8 encoding and return encoded string
 def EncodeString(s):
     try:

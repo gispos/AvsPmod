@@ -16,7 +16,7 @@
 
 # Übersetzt von Henrik . AvsP 2.0.1  Danke für die Hilfe, besonders LigH ,doxville,Brother John, Selur und Rippraff !
 
-version = "2.7.5.6"
+version = "2.7.8.2"
 
 messages = {
     "Note: When clicking on the calltip press Ctrl for file search or Shift for web search only." : u"", # New in v2.7.1.6
@@ -50,26 +50,40 @@ messages = {
     "SplitClip" : u"", # New in v2.7.1.9
     "Some variables are not set correctly\nYou should restart the program!" : u"", # New in v2.7.3.1
     "Split Clip Error" : u"", # New in v2.7.3.1
+    "Copy" : u"Kopieren",
+    "Open path" : u"", # New in v2.7.8.2
+    "Auto close" : u"", # New in v2.7.8.2
+    "Single instance" : u"", # New in v2.7.8.2
+    "Error" : u"Fehler",
+    "Release video memory" : u"Video Speicher freigeben",
+    "Release all other video memory" : u"Video Speicher aller anderen Tabs freigeben",
+    "Close tab" : u"Tab schließen",
     "Script selector" : u"", # New in v2.7.5.6
     "Name" : u"",
     "Bookmarks" : u"", # New in v2.4.0
     "Path" : u"", # New in v2.7.5.6
-    "Remove all tabs?" : u"", # New in v2.7.5.6
+    "Key Error: Please report this issue on Doom9 in the AvsPmod thread." : u"", # New in v2.7.8.2
+    "This will remove all tabs!\nContinue and remove all tabs?" : u"", # New in v2.7.8.2
     "Tab name already exists" : u"", # New in v2.7.5.6
-    "Error" : u"Fehler",
     "Edit" : u"", # New in v2.7.5.6
-    "Options && Aditional" : u"", # New in v2.7.5.6
+    "Options && Additional" : u"", # New in v2.7.8.2
     "The tab is a Marker tab and protected." : u"", # New in v2.7.5.6
     "The tab is delete-protected, but still delete?" : u"", # New in v2.7.5.6
     "Marker tabs and locked tabs are write protected." : u"", # New in v2.7.5.6
+    "The tab is protected, write or rename not allowed." : u"", # New in v2.7.8.2
+    "Find script" : u"", # New in v2.7.8.2
+    "Search in note" : u"", # New in v2.7.8.2
+    "Search in script" : u"", # New in v2.7.8.2
+    "Wildcards * ? |  (* = any, ? = one, | = a or b)" : u"", # New in v2.7.8.2
+    "%i Entries removed" : u"", # New in v2.7.8.2
+    "Information" : u"",
     "Script path and name already exist. Allow for All ?" : u"", # New in v2.7.5.6
     "Remove selection?" : u"", # New in v2.7.5.6
-    "Items without text: %i" : u"", # New in v2.7.5.6
-    "Information" : u"",
     "%i files selected! Keep going?" : u"", # New in v2.7.5.6
+    "Items without text: %i" : u"", # New in v2.7.5.6
     "Files not exists: %i" : u"", # New in v2.7.5.6
-    "Error while loading the backup file." : u"", # New in v2.7.5.6
     "Error while saving the backup file." : u"", # New in v2.7.5.6
+    "Error while loading the backup file." : u"", # New in v2.7.5.6
     "Error while saving the options file." : u"", # New in v2.7.5.6
     "Error while saving the data file." : u"", # New in v2.7.5.6
     "Error while loading the options file." : u"", # New in v2.7.5.6
@@ -84,7 +98,6 @@ messages = {
     "Undo" : u"Rückgängig",
     "Redo" : u"Wiederherstellen",
     "Cut" : u"Ausschneiden",
-    "Copy" : u"Kopieren",
     "Paste" : u"Einfügen",
     "Select all" : u"Alles auswählen",
     "Refresh" : u"Erneuern",
@@ -203,8 +216,8 @@ messages = {
     "Windows Icon" : u"", # New in v2.3.0
     "Windows Cursor" : u"", # New in v2.4.0
     "Frame" : u"Einzelbild",
-    "A crash detected at the last running!" : u"", # New in v2.2.1
     "&Zoom" : u"", # New in v2.2.1
+    "A crash detected at the last running!" : u"", # New in v2.2.1
     "Damaged {0}. Using default settings." : u"", # New in v2.4.0
     "%s translation file updated with new messages to translate" : u"", # New in v2.3.0
     "Translation updated" : u"", # New in v2.3.0
@@ -254,6 +267,9 @@ messages = {
     "External tool arg1:" : u"", # New in v2.6.3.5
     "Arguments for external tool menu 2, e.g. Menu label|arguments\nUse %fn to pass the script file name with the arguments." : u"", # New in v2.6.6.0
     "External tool arg2:" : u"", # New in v2.6.3.5
+    "Avisynth scripts" : u"", # New in v2.7.8.2
+    "Function 'LocateFrames' import:" : u"", # New in v2.7.8.2
+    "Import the 'LocateFrames' function from this file if the function is not found" : u"", # New in v2.7.8.2
     "Avisynth help file/url:" : u"Avisynth-Hilfedatei/url",
     "Location of the avisynth help file or url" : u"Avisynthverzeichnis der Hilfedatei oder url",
     "Documentation search paths:" : u"Suchpfad für Dokumentation",
@@ -325,8 +341,6 @@ messages = {
     "Switch focus to the video preview window when using the refresh command" : u"Schaltet den Fokus auf das Video-Vorschaufunktionsfenster um, wenn der Neuanzeigenbefehl verwenden wird",
     "Refresh preview automatically" : u"", # New in v2.2.1
     "Refresh preview when switch focus on video window" : u"", # New in v2.7.1.6
-    "Move video slider to timeline start" : u"", # New in v2.6.8.7
-    "On Timeline moving with Ctrl + Alt + (limited range Left/Right or unlimited range PageUp/PageDown)" : u"", # New in v2.7.3.1
     "Seeking to a certain frame will seek to that frame on all tabs" : u"", # New in v2.2.1
     "Shared timeline" : u"", # New in v2.2.1
     "Only on tabs of the same characteristics" : u"", # New in v2.5.0
@@ -361,6 +375,16 @@ messages = {
     "(3) Hide if fullsize else (1)" : u"", # New in v2.7.3.7
     "(4) Hide if fullsize else (2)" : u"", # New in v2.7.3.7
     "(5) Hide tabs always" : u"", # New in v2.7.1.6
+    "No for both" : u"", # New in v2.7.8.2
+    "Select the resize option for resize mode normal" : u"", # New in v2.7.8.2
+    "Size change" : u"", # New in v2.7.8.2
+    "Size or Zoom change" : u"", # New in v2.7.8.2
+    "Video window resize option (only mode Normal)" : u"", # New in v2.7.8.2
+    "Zoom change" : u"", # New in v2.7.8.2
+    "If not 'No for both' selected and zoom or resample fit/fill used, then keep the video window size on tab change" : u"", # New in v2.7.8.2
+    "Keep window size if zoom fit/fill (only mode Normal)" : u"", # New in v2.7.8.2
+    "Double click on MaxView resets to minimum text lines" : u"", # New in v2.7.8.2
+    "If not resize video window 'Static' is set and zoom fit or fill is used, then a double click resets to minimum text lines else to last window size" : u"", # New in v2.7.8.2
     "Customize the video information shown in the program status bar" : u"Anpassen der Videoinformationen die in der Programm-Status-Bar gezeigt werden",
     "Customize video status bar..." : u"Anpassen der Video Status-Bar",
     "Error message font..." : u"", # New in v2.5.1.18
@@ -388,8 +412,6 @@ messages = {
     "Do not reinitialize the clip every time a slider is changed. Can be changed in the slider window" : u"", # New in v2.6.7.4
     "Button show/hide applies to all tabs" : u"Schaltfläche Ein-/Ausblenden betrifft alle Tabs",
     "Or press Ctrl when you click the button." : u"", # New in v2.6.6.3
-    "Hide slider window toggle tag menus*" : u"Schiebereglerfenster Schalter Menüs nicht anzeigen*",
-    "Hide the toggle tag menus in the context menu of the sliders" : u"", # New in v2.6.7.2
     "Custom colors can be set under 'Options->Font and colors->Advanced 2'\nNot visible slider windows needed refresh." : u"", # New in v2.6.6.6
     "Enable slider window custom color theme" : u"Benutzerdefiniertes Farbschema des Schiebereglerfenster einschalten",
     "Determines which filters will initially have hidden arguments in the slider window" : u"Bestimmt ob die Filter beim initialisieren im Schiebereglerfenster aufgeklappt werden",
@@ -432,6 +454,10 @@ messages = {
     "Save or read avs scripts with AvsPmod markings" : u"", # New in v2.6.7.2
     "Do not remove toggle tags and disabled filters.\nCan make the saved script unreadable for other programs if You not use #> in front of the toggle tag: #>[sharp=0]" : u"", # New in v2.6.7.2
     "Save toggle tags within the script ( read the hint! )" : u"", # New in v2.6.7.2
+    "Always save the script UTF-8 encoded else system locale or UTF-8" : u"", # New in v2.7.8.2
+    "Force UTF-8 encoding on saving the script" : u"", # New in v2.7.8.2
+    "Always pass the script to Avisynth encoded in UTF-8, otherwise with the system locale or UTF-8" : u"", # New in v2.7.8.2
+    "Force Avisynth UTF-8 encoding" : u"", # New in v2.7.8.2
     "Start dialogs on the last used directory" : u"", # New in v2.4.0
     "If unchecked, the script's directory is used" : u"", # New in v2.4.0
     "Start save image dialogs on the last used directory" : u"", # New in v2.4.0
@@ -452,21 +478,17 @@ messages = {
     "Scroll the mouse wheel up for changing tabs to the right" : u"", # New in v2.4.1
     "Invert scroll wheel direction (Frame)" : u"Mausrad Direktion vertauschen (Frame) ",
     "Invert wheel direction for frames step" : u"", # New in v2.5.1.18
-    "Automatically load bookmarks from script" : u"", # New in v2.6.6.0
-    "Load bookmarks from script" : u"", # New in v2.6.6.0
-    "Automatically load bookmarks from script or tab if tab changed" : u"", # New in v2.6.6.0
-    "Tab change loads bookmarks from script or tab *" : u"", # New in v2.6.6.0
-    "Warn if tab bookmarks and from script reading bookmarks different." : u"", # New in v2.6.6.0
-    "Warning tab bookmarks different" : u"", # New in v2.6.6.0
+    "Automatically load bookmarks from script on open script or load session" : u"Beim laden einer session oder öffnen eines script bookmarks vom script laden", # New in v2.7.8.2
+    "Load bookmarks from script" : u"Lade bookmarks vom script", # New in v2.6.6.0
+    "Automatically load bookmarks from the script when switching tabs" : u"", # New in v2.7.8.2
+    "Tab switching loads bookmarks from script" : u"Tab Wechsel läd bookmarks vom script", # New in v2.7.8.2
+    "Warn when tab bookmarks and script bookmarks are different" : u"Warnen wenn tab/script bookmarks unterschiedlich", # New in v2.7.8.2
+    "Warning tab/script bookmarks different" : u"", # New in v2.7.8.2
     "Only allow a single instance of AvsPmod" : u"Nur eine Programminstanz erlauben",
     "Show warning at startup if there are dlls with bad naming in default plugin folder" : u"", # New in v2.2.1
     "Show warning for bad plugin naming at startup" : u"", # New in v2.2.1
     "Show warning at startup if there are plugin functions parse errors in default plugin folder" : u"", # New in v2.7.1.6
     "Show warning for plugin functions parse errors" : u"", # New in v2.7.1.6
-    "Show or hide the context menus shortcuts (video, script)" : u"", # New in v2.7.3.1
-    "Show shortcuts in context menus*" : u"", # New in v2.7.3.1
-    "Show or hide the video control buttons tooltips" : u"", # New in v2.7.1.6
-    "Show video control buttons tooltips" : u"", # New in v2.7.1.6
     "Mouse browse buttons" : u"", # New in v2.6.3.5
     "Mouse browse buttons (forward/backward) on video and script window\nIf 'Tab change' and tab count less than 2, 'Bookmark jump' is used\nIf 'Tab change' press CTRL or left mouse and 'Bookmark jump' is used\nIf 'Bookmark jump', vice versa" : u"", # New in v2.6.3.5
     "Bookmark jump" : u"", # New in v2.6.3.5
@@ -475,6 +497,9 @@ messages = {
     "Middle mouse on script" : u"", # New in v2.6.3.5
     "Open source" : u"", # New in v2.6.3.5
     "Show video frame" : u"", # New in v2.6.3.5
+    "Action for tabs on mouse button middle down" : u"", # New in v2.7.8.2
+    "Middle mouse on tabs" : u"", # New in v2.7.8.2
+    "Show tab list" : u"", # New in v2.7.8.2
     "Max number of recent filenames" : u"Max.Anzahl neuer Dateinamen",
     "This number determines how many filenames to store in the recent files menu" : u"Diese Zahl stellt fest wieviele Dateinamen im FileMenue gespeichert werden", 
     "Custom jump size:" : u"Eigene Sprungweite ",
@@ -505,21 +530,20 @@ messages = {
     "Hide progress (Ctrl do show, Shift hide program)" : u"", # New in v2.7.3.1
     "Show progress (Shift hide program)" : u"", # New in v2.7.3.1
     "Show progress, (program no response)" : u"", # New in v2.7.3.1
-    "Place you want show the frame properties" : u"", # New in v2.7.1.6
     "Separate window" : u"", # New in v2.7.1.6
     "Show frame properties*" : u"", # New in v2.7.1.6
     "Slider window bottom" : u"", # New in v2.7.1.6
     "Slider window top" : u"", # New in v2.7.1.6
+    "The place where the frame properties should be displayed" : u"", # New in v2.7.8.2
     "Dock bottom-left on main frame" : u"", # New in v2.7.5.6
     "Separate window docking" : u"", # New in v2.7.5.6
     "As Submenu" : u"", # New in v2.7.1.6
-    "Hide (disabled)" : u"", # New in v2.7.1.6
+    "Show resample menu in zoom menu.\n!! Read Help > 'Resample filter readme'" : u"", # New in v2.7.8.2
     "Show resample zoom menu*" : u"", # New in v2.7.1.6
-    "Show/hide resample menu in zoom menu.\n!! Read Help > 'Resample filter readme'" : u"", # New in v2.7.1.6
     "Normal" : u"", # New in v2.7.1.6
     "Fullscreen zoom" : u"", # New in v2.7.3.7
     "Resample" : u"", # New in v2.7.3.7
-    "Zoom on Fullscreen. Note: Resample only if Resample enabled" : u"", # New in v2.7.3.7
+    "Zoom setting for Fullscreen or (Fullsize on double click in zoom area)" : u"", # New in v2.7.8.2
     "Fullscreen/Fullsize  progress dialog" : u"", # New in v2.7.4.1
     "Position for the static progress information on loading a frame" : u"", # New in v2.7.4.1
     "bottom\\left" : u"", # New in v2.7.4.1
@@ -527,8 +551,21 @@ messages = {
     "top\\center" : u"", # New in v2.7.4.1
     "top\\left" : u"", # New in v2.7.4.1
     "top\\right" : u"", # New in v2.7.4.1
+    "Draw a hint when the mouse is in a zoom action area (Fullsize, Fullscreen, Resample" : u"", # New in v2.7.8.2
+    "Off" : u"", # New in v2.7.8.2
+    "On - auto hide" : u"", # New in v2.7.8.2
+    "On - statical" : u"", # New in v2.7.8.2
+    "Show hint for the zoom action area" : u"", # New in v2.7.8.2
+    "Change cursor in zoom action area" : u"", # New in v2.7.8.2
+    "Change the cursor if mouse in zoom action area" : u"", # New in v2.7.8.2
+    "Show or hide the context menus shortcuts (video, script)" : u"", # New in v2.7.3.1
+    "Show shortcuts in context menus*" : u"", # New in v2.7.3.1
+    "Show or hide the video control buttons tooltips" : u"", # New in v2.7.1.6
+    "Show video control buttons tooltips" : u"", # New in v2.7.1.6
     "Display filter enabled on startup" : u"", # New in v2.7.3.7
     "Enable the Display filter on startup" : u"", # New in v2.7.3.7
+    "Arguments for the Tablist context menu 'Execute menu', read Help > 'readme Tablist'" : u"", # New in v2.7.8.2
+    "Tablist execute menu:" : u"", # New in v2.7.8.2
     "Add tab to group" : u"", # New in v2.5.0
     "Resolution-based" : u"", # New in v2.3.0
     "Display" : u"", # New in v2.6.7.0
@@ -604,6 +641,7 @@ messages = {
     "400%" : u"",
     "Fill window" : u"Fenster ausfüllen",
     "Fit inside window" : u"Im Fenster anpassen", 
+    "Custom" : u"", # New in v2.5.1 r452
     "Vertically" : u"", # New in v2.2.1
     "Horizontally" : u"", # New in v2.2.1
     "Black" : u"", # New in v2.5.1 r452
@@ -619,10 +657,13 @@ messages = {
     "Zoom video preview to 400%" : u"Zoom Video-Vorschaufunktion auf 400%",
     "Zoom video preview to fill the entire window" : u"Zoomen der Videovorschau-Funktion, um das ganze Fenster zu füllen",
     "Zoom video preview to fit inside the window" : u"Zoomen der Videovorschau-Funktion, für Anpassung innerhalb des Fensters.",
+    "Custom zoom value" : u"", # New in v2.7.8.2
     "Enlarge preview image to next zoom level. Not work under 'Fill window' or 'Fit inside window'" : u"", # New in v2.2.1
     "Shrink preview image to previous zoom level. Not work under 'Fill window' or 'Fit inside window'" : u"", # New in v2.2.1
     "Antialiasing" : u"", # New in v2.6.6.0
-    "If zoom not 100 %, the preview is drawing antialiased" : u"", # New in v2.6.6.0
+    "If zoom not 100 %, the preview is drawing antialiased (slower)" : u"", # New in v2.7.8.2
+    "Disable Fullscreen zoom" : u"", # New in v2.7.8.2
+    "Do not change the current zoom for Fullsize or Fullscreen" : u"", # New in v2.7.8.2
     "Use resample filter" : u"", # New in v2.7.1.6
     "Resample filter" : u"", # New in v2.7.1.6
     "&File" : u"&Datei",
@@ -634,7 +675,6 @@ messages = {
     "Open..." : u"Öffnen...",
     "Reopen the last closed tab" : u"Zuletzt geschlossenen Tab öffnen",
     "Undo close tab" : u"Geschlossenen Tab wiederherstellen",
-    "Close tab" : u"Tab schließen",
     "Close the current tab" : u"Aktuellen Tab schließen",
     "Close all tabs" : u"Schließe alle Tabs",
     "Close every tab" : u"Schließe jeden Tab",
@@ -760,14 +800,20 @@ messages = {
     "Copy the avisynth error message shown on the preview window to the clipboard" : u"", # New in v2.2.1
     "Set selection as display filter..." : u"", # New in v2.6.9.4
     "Shows the display filter dialog with the selected text" : u"", # New in v2.6.9.4
+    "Set min text lines (Ctrl + splitter move)" : u"", # New in v2.7.8.2
+    "Sets the current visible text lines as minimum visible text lines" : u"", # New in v2.7.8.2
     "&Video" : u"",
     "Bookmarks to script" : u"", # New in v2.5.1.18
     "Bookmarks from script" : u"", # New in v2.5.1.18
     "Add/Remove bookmark" : u"", # New in v2.2.1
     "Mark the current frame on the frame slider" : u"Markiere das aktuelle Einzelbild am Eizeldbild-Schieberegler",
+    "Copy bookmarks" : u"", # New in v2.7.8.2
+    "Copy timeline bookmarks" : u"", # New in v2.7.8.2
+    "Paste bookmarks into timeline" : u"", # New in v2.7.8.2
+    "Paste bookmarks" : u"", # New in v2.7.8.2
     "Clear tab bookmarks" : u"", # New in v2.6.6.0
     "Clears the current tab bookmarks" : u"", # New in v2.6.6.0
-    "Clear all bookmarks Globally" : u"", # New in v2.6.6.0
+    "Clear all bookmarks Globally!" : u"", # New in v2.7.8.2
     "Clears all bookmarks, clears also all tab bookmarks" : u"", # New in v2.6.6.0
     "Titled &bookmarks" : u"", # New in v2.2.1
     "Move the nearest titled bookmark to the current position. A historic title will be restored if it matches the condition." : u"", # New in v2.2.1
@@ -784,8 +830,8 @@ messages = {
     "Remove all title from the bookmarks" : u"", # New in v2.6.6.0
     "Not include this tab on any group" : u"", # New in v2.5.0
     "Add tab to this group" : u"", # New in v2.5.0
-    "Change current group..." : u"", # New in v2.7.5.6
     "Change current tab group" : u"", # New in v2.7.5.6
+    "Change current group..." : u"", # New in v2.7.5.6
     "Change current and left tab group" : u"", # New in v2.7.5.6
     "Change current/left tabs group..." : u"", # New in v2.7.5.6
     "Change current and right tab group" : u"", # New in v2.7.5.6
@@ -803,6 +849,10 @@ messages = {
     "Next bookmark" : u"Nächstes Lesezeichen",
     "Go to previous bookmarked frame" : u"Gehe zum vorherigen, als Lesezeichen markierten, Einzelbild ",
     "Previous bookmark" : u"Vorheriges Lesezeichen",
+    "Go to next selection (Press Shift on other bookmark jump controls)" : u"", # New in v2.7.8.2
+    "Next selection" : u"", # New in v2.7.8.2
+    "Go to previous selection (Press Shift on other bookmark jump controls)" : u"", # New in v2.7.8.2
+    "Previous selection" : u"", # New in v2.7.8.2
     "Forward 1 frame" : u"Vorwärts 1 Einzelbild",
     "Show next video frame (keyboard shortcut active when video window focused)" : u"Zeige nächstes Videobild (Tastaturkurzbefehle aktiv, sobald Videofenster fokussiert)",
     "Backward 1 frame" : u"Zürück 1 Einzelbild",
@@ -849,12 +899,10 @@ messages = {
     "Audio scrubbing" : u"", # New in v2.7.5.6
     "Play scrub" : u"", # New in v2.7.5.6
     "Play the current frame audio (duration 36 frames). Use Split View for sync check." : u"", # New in v2.7.5.6
-    "Downmix the audio to 2 channels (Stereo). Avisynth Mixer is used." : u"", # New in v2.7.5.6
-    "Downmix audio" : u"", # New in v2.7.5.6
-    "Use threads for playback. If assign avisynth in threads is enabled, playback uses also threads" : u"", # New in v2.7.5.6
-    "Playback in threads" : u"", # New in v2.7.5.6
+    "Play audio at playback on all speed settings (slower, faster), else only at normal speed." : u"", # New in v2.7.8.2
+    "Audio settings..." : u"", # New in v2.7.8.2
+    "D3D Window safe render" : u"", # New in v2.7.8.2
     "Direct3D window safe rendering. Safer but slower." : u"", # New in v2.7.5.6
-    "Direct3D safe" : u"", # New in v2.7.5.6
     "Crop editor..." : u"Crop Editor...",
     "Show the crop editor dialog" : u"Zeige den Crop Editor Dialog",
     "&Trim selection editor" : u"&Trim Auswahl Editor",
@@ -931,7 +979,6 @@ messages = {
     "Follow current theme" : u"", # New in v2.5.1 r452
     "Use RGB {hex_value}" : u"", # New in v2.5.1 r452
     "Use a custom color" : u"", # New in v2.5.1 r452
-    "Custom" : u"", # New in v2.5.1 r452
     "Choose the color used if 'custom' is selected" : u"", # New in v2.5.1 r452
     "Select custom color" : u"", # New in v2.5.1 r452
     "Save image as..." : u"Speichere Bild als...",
@@ -996,8 +1043,12 @@ messages = {
     "Save pos && zoom on tab change" : u"", # New in v2.7.1.6
     "Additional" : u"", # New in v2.6.6.3
     "Enable/disable Fullscreen mode. Shift + double click (Esc chancel)" : u"", # New in v2.7.3.7
-    "Adjusts the video window height to the output height (zooming with Keyboard)" : u"", # New in v2.7.1.6
     "Resize video window" : u"", # New in v2.7.1.6
+    "Sizing on initilisation, tab change, zoom or size change, etc." : u"", # New in v2.7.8.2
+    "Force" : u"", # New in v2.7.8.2
+    "Sizing on initilisation and optional on zoom or size change (Program Options > Video)" : u"", # New in v2.7.8.2
+    "No sizing, only on first initilisation or manual splitter moving" : u"", # New in v2.7.8.2
+    "Static" : u"", # New in v2.7.8.2
     "On refresh video: Use previous frame time if frame count and frame rate different" : u"", # New in v2.7.1.6
     "Use previous frame time" : u"", # New in v2.7.1.6
     "On refresh video: Restore the 'Split Clip' if it enabled" : u"", # New in v2.7.3.1
@@ -1011,20 +1062,22 @@ messages = {
     "Toggle preview placement" : u"", # New in v2.5.1
     "When not using a separate window for the video preview, toggle between showing it at the bottom (default) or to the right" : u"", # New in v2.5.1
     "Tools" : u"", # New in v2.6.3.5
-    "Request every video frame once (analysis pass for two-pass filters)" : u"", # New in v2.3.0
+    "Request every video frame once (analysis pass for two-pass or Scene change filters)" : u"", # New in v2.7.8.2
     "Run analysis pass" : u"", # New in v2.3.0
     "Analysis pass for frame per second measurement (Average)" : u"", # New in v2.7.3.7
     "Run FPS analysis" : u"", # New in v2.7.1.6
-    "Locate frame" : u"", # New in v2.7.3.7
-    "Reade the LocateFrame readme" : u"", # New in v2.7.3.7
     "Play the current script in an external program" : u"Wiedergabe des aktuellen Skripts in einem externen Programm",
     "External player" : u"Externer Player",
     "External tool arg1" : u"", # New in v2.6.3.5
     "Run the current script with an external program and arg1" : u"", # New in v2.6.3.5
     "External tool arg2" : u"", # New in v2.6.3.5
     "Run the current script with an external program and arg2" : u"", # New in v2.6.3.5
+    "Locate frame" : u"", # New in v2.7.3.7
+    "Reade the LocateFrame readme" : u"", # New in v2.7.3.7
+    "MediaInfo" : u"", # New in v2.7.8.2
+    "Show information about the source file in a dialog box" : u"", # New in v2.7.8.2
     "Show/Hide the properties window" : u"", # New in v2.6.9.8
-    "Show information about the video in a dialog box" : u"Zeige Informationen über das Video in der Dialogbox.",
+    "Show information about the avisynth video in a dialog box" : u"", # New in v2.7.8.2
     "Video information" : u"Videoinformation",
     "&Options" : u"&Optionen",
     "Always on top" : u"Immer im Vordergrund",
@@ -1108,6 +1161,8 @@ messages = {
     "Open the Number wheel readme" : u"", # New in v2.7.3.1
     "Open the Script selector readme" : u"", # New in v2.7.5.6
     "Script selector readme" : u"", # New in v2.7.5.6
+    "Open the Tablist readme" : u"", # New in v2.7.8.2
+    "Tablist readme" : u"", # New in v2.7.8.2
     "Audio playback readme" : u"", # New in v2.7.5.6
     "Open the Audio readme" : u"", # New in v2.7.5.6
     "DPI info" : u"", # New in v2.6.9.4
@@ -1135,10 +1190,10 @@ messages = {
     "&Macros" : u"", # New in v2.2.1
     "Close" : u"Schließen",
     "Close..." : u"Schließen...",
-    "All others" : u"Alle anderen", # New in v2.7.5.6
-    "All on left" : u"Alle links", # New in v2.7.5.6
-    "All on right" : u"Alle rechts", # New in v2.7.5.6
-    "All unopened" : u"Alle ungeöffnete", # New in v2.7.5.6
+    "All others" : u"Alle anderen",
+    "All on left" : u"Alle links",
+    "All on right" : u"Alle rechts",
+    "All unopened" : u"Alle ungeöffnete",
     "Rename" : u"Umbenennen",
     "Group" : u"", # New in v2.5.0
     "Change current and left tabs group" : u"Ändere aktuellen und linke Tab's Gruppe",
@@ -1148,10 +1203,10 @@ messages = {
     "Reload" : u"Neu laden",
     "Reload all" : u"Neu laden alle",
     "Open directory" : u"Öffne Verzeichnis",
-    "Release video memory" : u"Video Speicher freigeben",
-    "Release all other video memory" : u"Video Speicher aller anderen Tabs freigeben",
-    "Tab change loads bookmarks" : u"Tab Wechsel läd Bookmarks",
-    "Save/Restore last zoom settings on tab change" : u"", # New in v2.7.1.6
+    "Tab switching loads script bookmarks" : u"Tab Wechsel läd script bookmarks", # New in v2.7.8.2
+    "Save/Restore last viewing position and normal zoom settings on tab change" : u"", # New in v2.7.8.2
+    "Sizing on initilisation, tab change, zoom change, etc." : u"", # New in v2.7.8.2
+    "Sizing on initilisation and zoom or size change (see progam options > Video)" : u"", # New in v2.7.8.2
     "Copy to new tab" : u"Zu einem neuen Tab kopieren",
     "Split View insert tab" : u"Split View Tab einfügen",
     "Auto preview" : u"", # New in v2.6.6.0
@@ -1192,9 +1247,13 @@ messages = {
     "Hide timeline numbers" : u"", # New in v2.6.8.7
     "Bookmark range -1" : u"", # New in v2.7.5.6
     "Clear" : u"Löschen",
+    "Save last position" : u"", # New in v2.7.8.2
+    "Transparent (left down && move)" : u"", # New in v2.7.8.2
+    "Don't close on 'Apply'" : u"", # New in v2.7.8.2
     "Split View alternate" : u"", # New in v2.7.3.7
     "&Optionen" : u"", # New in v2.7.1.6
     "Cannot close tabs in groups if rows count greater 1\nYou must disable Options -> Multiline tab style" : u"", # New in v2.7.5.6
+    "Reload all changed scripts?" : u"", # New in v2.7.8.2
     "The script's directory doesn't exist anymore!" : u"Das Skript Verzeichnis exestiert nicht mehr",
     "'Groups offset bookmarks' has been switched off, otherwise undefined assignments will occur" : u"", # New in v2.7.1.6
     "Print Preview" : u"", # New in v2.3.1
@@ -1217,15 +1276,20 @@ messages = {
     "Frame No." : u"Frame Nr.",
     "Time **" : u"Zeit **",
     "Left-click on a selected item or double-click to edit.\n\n*  RED - a historic title, not a real bookmark.\n** Time may be unavailable or incorrect before preview refreshed." : u"", # New in v2.3.0
-    "Current group is None\nThis will also assign the group to all tabs without a group" : u"", # New in v2.7.5.6
+    "New group only for opened tabs if current group is None" : u"", # New in v2.7.8.2
+    "Current group is None\nThis will also assign the group to all 'opened' tabs without a group" : u"", # New in v2.7.8.2
     "Enter new group" : u"", # New in v2.7.5.6
     "Image saved to \"{0}\"" : u"", # New in v2.5.0
     "No image to save" : u"Kein Bild zum speichern",
     "Error requesting frame {number}" : u"", # New in v2.5.0
     "Couldn't open clipboard" : u"Kann Clipboard nicht öffnen",
-    "Cannot use crop editor\nDisplay clip and source clip have different dimensions" : u"", # New in v2.7.1.6
+    "Cannot use crop editor\nDisplay clip and source clip have different dimensions." : u"", # New in v2.7.8.2
     "No filters found, clear the current saved filters?" : u"", # New in v2.6.6.0
     "Preview filters" : u"", # New in v2.6.6.0
+    "Thershold" : u"", # New in v2.7.8.2
+    "Start" : u"", # New in v2.7.8.2
+    "Stop" : u"Stop",
+    "Freeze Frame" : u"", # New in v2.7.8.2
     "Available Memory: {} MB" : u"", # New in v2.6.8.7
     "Snapshot %d" : u"", # New in v2.6.8.7
     "Error snapshot %d" : u"", # New in v2.6.8.7
@@ -1244,6 +1308,8 @@ messages = {
     "Error loading the script" : u"Fehlerhaft geladenes Skript",
     "Starting FPS analysis..." : u"", # New in v2.7.1.6
     "Play video" : u"", # New in v2.6.6.0
+    "Audio playback settings" : u"", # New in v2.7.8.2
+    "Direct3D safe" : u"", # New in v2.7.5.6
     "Frame size:" : u"Einzelbildgröße",
     "Length:" : u"Länge:",
     "Frame rate:" : u"Wiederholungsrate der Einzelbilder:",
@@ -1261,8 +1327,10 @@ messages = {
     "samples" : u"Samples", 
     "Bookmarks:" : u"", # New in v2.6.8.7
     "Timeline selections:" : u"", # New in v2.6.8.7
+    "Script Avisynth encoding:" : u"", # New in v2.7.8.2
     "Could not find the macros folder!" : u"", # New in v2.2.1
     "Failed to import the selected tool" : u"Werkzeug importieren ist Fehlgeschlagen",
+    "Some source filters do not work with UTF-8 encoding." : u"", # New in v2.7.8.2
     "D3DWindow is visible. Changes not possible" : u"", # New in v2.7.5.6
     "Basic (1)" : u"", # New in v2.5.1 r452
     "Override all fonts to use a specified monospace font (no effect on scrap window)" : u"", # New in v2.2.1
@@ -1305,8 +1373,9 @@ messages = {
     "Highlight the line that the caret is currently in" : u"Zeile mit Einschaltungszeichen hervorheben",
     "Fold margin:" : u"", # New in v2.2.1
     "Advanced 2" : u"Erweitert 2",
-    "Scrap window:" : u"", # New in v2.6.7.7
-    "Properties window:" : u"", # New in v2.6.9.8
+    "Tab list window:" : u"", # New in v2.7.8.2
+    "Frame properties window:" : u"", # New in v2.7.8.2
+    "Scrap window && MediaInfo:" : u"", # New in v2.7.8.2
     "Slider window:" : u"", # New in v2.6.7.7
     "Slider window text field:" : u"", # New in v2.6.7.7
     "Slider window default value:" : u"", # New in v2.6.7.7
@@ -1337,7 +1406,8 @@ messages = {
     "Edit insertable timeline selection filters" : u"", # New in v2.6.9.4
     "Avisynth filter ( %start %stop is replaced by selection start stop )" : u"", # New in v2.6.9.4
     "%* insert the selected text, %join joins the filters from each selected line" : u"", # New in v2.6.9.4
-    "%copy copies the selected text, %> copy this line to all timeline selections" : u"", # New in v2.6.9.4
+    "%copy copies the selected text, %> copy this line for all timeline selections" : u"", # New in v2.7.8.2
+    "%insert insert line %>" : u"", # New in v2.7.8.2
     "Edit display filter templates" : u"", # New in v2.6.9.4
     "Avisynth filter (you can run short macro by adding #> at line start" : u"", # New in v2.6.9.4
     "Display filters only affects the display drawing." : u"", # New in v2.6.9.4
@@ -1354,9 +1424,9 @@ messages = {
     "Could not find %(changelog)s!" : u"", # New in v2.4.1
     "Could not find %(example)s!" : u"", # New in v2.6.6.0
     "{prog_name} v{version} ({arch})" : u"", # New in v2.5.1 r452
-    "AvsP Website" : u"AvsP Webseite",
-    "AvsPmod Website" : u"", # New in v2.5.1 r452
+    "AvsPmod latest releases" : u"", # New in v2.7.8.2
     "Active thread on Doom9's forum" : u"", # New in v2.2.1
+    "AvsPmod Website (old)" : u"", # New in v2.7.8.2
     "This program is freeware under the GPL license." : u"Dieses Programm ist Freeware unter der GPL Lizenz.",
     "Input a frame number or time (hr:min:sec) and hit Enter. Right-click to retrieve from history. Or input a text and set the bookmark title." : u"", # New in v2.6.8.7
     "Audio scrub count" : u"", # New in v2.7.5.6
@@ -1380,7 +1450,7 @@ messages = {
     "copy" : u"", # New in v2.2.1
     "paste" : u"", # New in v2.2.1
     "clear history" : u"", # New in v2.2.1
-    "On join filters, the first line must not begin with" : u"", # New in v2.6.9.4
+    "On joined filters, the first line must not begin with" : u"", # New in v2.7.8.2
     "Frames: %i" : u"", # New in v2.6.8.7
     "Apply filter" : u"", # New in v2.6.9.4
     "All as trim" : u"", # New in v2.6.9.4
@@ -1390,12 +1460,10 @@ messages = {
     "Remove" : u"", # New in v2.6.7.2
     "Remove all" : u"", # New in v2.6.8.7
     "Remove all other" : u"", # New in v2.6.8.7
+    "Timeline range..." : u"", # New in v2.7.8.2
     "Trim editor..." : u"", # New in v2.6.8.7
     "Audio Error" : u"", # New in v2.7.5.6
     "Cannot close the audio play, disable audio scrubbing or try again." : u"", # New in v2.7.5.6
-    "Cannot switch tabs: Audio play cannot be closed.\nDisable audio scrubbing or try again." : u"", # New in v2.7.5.6
-    "Cannot switch tabs while crop editor is open!" : u"Kann keine Tabs schalten,weil der Cropeditor noch geöffnet ist",
-    "Cannot switch tabs while trim editor is open!" : u"Tabs können nicht geschaltet werden,solange der Trim editor geöffnet ist.",
     "'Tab change load bookmarks' has been switched off, otherwise undefined assignments will occur" : u"", # New in v2.7.1.6
     "Fullscreen/Fullsize only with 'Accessing AviSynth in threads' enabled" : u"", # New in v2.7.4.1
     "Invalid crop values detected.  Continue?" : u"Unzulässige Crop-Werte ermittelt. Weitermachen?",
@@ -1440,12 +1508,16 @@ messages = {
     "Save changes before closing?  Press Ctrl to apply to all" : u"", # New in v2.7.1.9
     "Cannot create a new tab while crop editor is open!" : u"Kein neuer Tab kann erstellt werden, solange der Crop-Editor geöfnnet ist!",
     "Cannot create a new tab while trim editor is open!" : u"Kein neuer Tab kann erstellt werden, solange der Trim-Editor geöfnnet ist!",
+    "Cannot create a new tab: Audio play cannot be closed.\nDisable audio scrubbing or try again." : u"", # New in v2.7.8.2
     "Source files" : u"", # New in v2.3.0
     "Open a script or source" : u"Öffne ein Skript oder Source",
     "Reload the file and lose the current changes?" : u"Die Datei neu laden und die gegenwärtigen Änderungen verlieren?",
     "%d Bookmarks imported" : u"", # New in v2.5.1.18
     "Open this file" : u"Öffne die Datei",
     "Save changes before closing?" : u"Änderungen vor dem Beenden speichern?",
+    "Cannot switch tabs while crop editor is open!" : u"Kann keine Tabs schalten,weil der Cropeditor noch geöffnet ist",
+    "Cannot switch tabs while trim editor is open!" : u"Tabs können nicht geschaltet werden,solange der Trim editor geöffnet ist.",
+    "Cannot switch tabs: Audio play cannot be closed.\nDisable audio scrubbing or try again." : u"", # New in v2.7.5.6
     "Save session before closing all tabs?" : u"Session speichern bevor alle Tags geschlossen werden?",
     "Save current script" : u"Speichere aktuelles Skript",
     "Directory %(dirname)s does not exist!" : u"Verzeichnis %(dirname)s existiert nicht!",
@@ -1485,6 +1557,7 @@ messages = {
     "Clip not released. Memory still allocated" : u"", # New in v2.6.7.7
     "Clip successful released" : u"", # New in v2.6.7.0
     "Abandoned clip assigned. Select the tab?" : u"", # New in v2.6.7.7
+    "Info" : u"", # New in v2.7.8.2
     "Abandoned clip assigned: \"{0}\"" : u"", # New in v2.6.7.7
     "Process display clip... " : u"", # New in v2.7.4.1
     " If you close this dialog you should restart the program " : u"", # New in v2.7.4.1
@@ -1725,7 +1798,6 @@ messages = {
     "Output path does not exist!" : u"Ausgangspfad existiert nicht!",
     "# of passes must be an integer!" : u"# of passes (Durchläufe) muß eine Ganzzahl (integer) sein !",
     "Priority must be an integer!" : u"Priorität muss eine Ganzzahl sein!",
-    "Stop" : u"Stop",
     "Process stopped." : u"Vorgang gestoppt.",
     "Processing..." : u"Bearbeitung...",
     "Finished in %(hr)i hour(s) and %(min)i minute(s)." : u"Beendet in %(hr)i Stunde(n) and %(min)i Minute(n).",
@@ -1773,7 +1845,7 @@ messages = {
     "Encoding example 2" : u"", # New in v2.3.0
     "Optimize Sliders" : u"", # New in v2.3.0
     "DeleteEncodings" : u"", # New in v2.6.8.7
-    "Save as Tiff_rgb48" : u"", # New in v2.6.8.7
+    "Save Image_rgb48" : u"", # New in v2.7.8.2
 
     #--- Macro: Bookmarks at Intervals ---#
     "Choose a frame step or a number of intervals" : u"", # New in v2.3.0
@@ -1847,14 +1919,15 @@ messages = {
     "Convert to script color space" : u"", # New in v2.6.8.7
     "Encode threads:" : u"", # New in v2.6.8.7
     "Insert trims into script" : u"", # New in v2.6.8.7
-    "Select save path:" : u"", # New in v2.6.8.7
+    "Selected save path:" : u"", # New in v2.7.8.2
+    "Skip same trim's" : u"", # New in v2.7.8.2
     "Template:" : u"", # New in v2.6.8.7
     "Use script dir" : u"", # New in v2.6.8.7
     "Encode options" : u"", # New in v2.6.8.7
-    "You must first create selections" : u"", # New in v2.6.8.7
+    "You must first create selections or must select trims in the script" : u"", # New in v2.7.8.2
     "Last encoding returns error. Process is canceled\n" : u"", # New in v2.6.8.7
     "Error, cannot insert the encode preview text\nTrying to create new tab" : u"", # New in v2.6.8.7
-    "Encoding finished\n\nElapsed time: %s\n%s%s" : u"", # New in v2.6.8.7
+    "Encoding finished\n\nElapsed time: %s\n%s%s%s" : u"", # New in v2.7.8.2
 
     #--- Macro: Save Image Sequence ---#
     "Save image sequence" : u"", # New in v2.4.0

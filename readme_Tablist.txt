@@ -12,6 +12,10 @@ Instead of writing the menu to be executed, the shortcut to the menu can also be
 Macros can also be started from the Macros menu. An example for 3 menu entries (You can copy and paste it): 
 Save script (GPo)|Macros -> Save script (GPo), Add tab to group 1|Video -> Add tab to group -> 1, Clear all tab groups|Video -> Add tab to group -> Clear all tab groups
 
+Separators and submenu:
+Use '-' for an separator and '>Name of menu' for indicate to put the next entrie in this submenu, indication of end is < 
+Example: Save script|File -> Save script, >My Submenu, Bookmarks to script|Video -> Bookmarks -> Bookmarks to script, <, next entrie in main context menu
+
 -----------
 
 MediaInfo:

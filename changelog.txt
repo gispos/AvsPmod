@@ -38,6 +38,38 @@ If, for example, there is a '-' in the file name of the dll, AvsPmod will report
 please rename this dll and replace the '-' with a '_'
 
 --------------------------
+Version 2.7.8.2 [2024-09-29]
+--------------------------
+* Added Trim Dialog context menu 'Don't close on 'Apply', does not close the Trim Dialog after pressing 'Apply' (User wish).
+* Added Video > Bookmarks > Copy/Paste bookmarks. Copies or paste bookmarks direct from/into the timeline.
+* Added Video > Navigate > Goto selection next/previous. For same functionality you can also press Shift on other bookmark jump controls 
+- eg. video control button or mouse browse buttons forward/backward (Aux1, Aux2).
+- Note: if more then one tab opened and tab switching with the mouse browse buttons enabled (Program options > Misc > 'Mouse browse buttons'), 
+- you can then jump bookmarks if the mouse in the video slider or status bar area or inside the slider window or Ctrl or Shift is held down. 
+* Added direct setting a selection mark start\end without showing the trim editor. 
+- when right clicking the video slider press Ctrl for selection start and Shift for selection end (else default bookmark).
+* Added 'Locate frame' text label 'Start' and 'Stop' sets on clicking selection start or stop without showing the trim editor. 
+* Added to templates Options > 'Apply filter...' function 'ClipClop', ClipClop.dll @StainlessS is required.
+-- for copy and paste if needed (for current options), open Options > 'Apply filter...' and make new entries:
+Entry name: 'CLipClop copy'  (for process single selection, name can be changed and preview filter flags can be removed)
+/**avsp_filter
+%*%join%copy
+ClipClop(last, r1, sCMD="r1(%start,%stop)")
+**/
+Entry name: 'ClipClop copy *'  (for process all selections, name can be changed and preview filter flags can be removed)
+/**avsp_filter
+%*%join%copy
+%> r1(%start,%stop);
+ClipClop(last, r1, sCMD="%insert")
+**/
+--
+* Bugfix: Trim Editor save/restore the position only works when closing the dialog, but not on 'Apply'
+- if you press Ctrl on mouse down, the transparent value doesn't change (for nicer setting the transparent value).
+* Bugfix: Bookmark difference warning didn't work.
+* Bugfix: If "Tab change loads script bookmarks" was disabled, the tab bookmarks were not displayed in the timeline when switching tab.
+* Some other changes.
+
+--------------------------
 Version 2.7.8.0 - 2.7.8.1 [2024-09-01]
 --------------------------
 * The reason for this version 2.7.8.1 is that due to the new bookmark handling some macros no longer work properly, 
