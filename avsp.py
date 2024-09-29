@@ -9589,7 +9589,7 @@ class AvsFunctionExportImportDialog(wx.Dialog):
 
 # Custom slider
 class SliderPlus(wx.Panel):
-    def __init__(self, parent, app, id, value=0, minValue=0, maxValue=100, size=(-1, 28), dpiScale=1.0, titleDict={}):
+    def __init__(self, parent, app, id, isSlider2, value=0, minValue=0, maxValue=100, size=(-1, 28), dpiScale=1.0, titleDict={}):
         self.dpiScale = dpiScale
         _size = size[0], int(size[1]*dpiScale)
         wx.Panel.__init__(self, parent, id, size=_size, style=wx.WANTS_CHARS)
@@ -9599,6 +9599,7 @@ class SliderPlus(wx.Panel):
         self.childSelectionsDict = None  # Update this dict on create selections
         self.parent = parent
         self.app = app
+        self.isSlider2 = isSlider2
         self.minValue = minValue
         self.maxValue = maxValue
         self.startOffset = 0
@@ -10253,6 +10254,11 @@ class SliderPlus(wx.Panel):
     def SetBookmark(self, value, bmtype=0, title='', refresh=True):
         # Type=0: bookmark
         self.bookmarks = self.app.currentScript.bookmarks
+        if self.isSlider2 and bmtype == 0:
+            if refresh:
+                self.SetBookmarkHilighting(self.hilightBookmarks)
+                self._Refresh(False)
+            return True
         if bmtype == 0:
             if value in self.bookmarks:
                 return False
@@ -10272,6 +10278,11 @@ class SliderPlus(wx.Panel):
 
     def RemoveBookmark(self, value, bmtype=0, refresh=True):
         self.bookmarks = self.app.currentScript.bookmarks
+        if self.isSlider2 and bmtype == 0:
+            if refresh:
+                self.SetBookmarkHilighting(self.hilightBookmarks)
+                self._Refresh(False)
+            return True
         try:
             if bmtype == 0:
                 if value in self.bookmarks:
@@ -15193,7 +15204,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if primary:
             self.frameTextCtrl = frameTextCtrl
             self.videoControlWidgets = videoControlWidgets
-            self.videoSlider = SliderPlus(panel, self, wx.ID_ANY, 0, 0, 240-1, dpiScale=factor,
+            self.videoSlider = SliderPlus(panel, self, wx.ID_ANY, False, 0, 0, 240-1, dpiScale=factor,
                                             titleDict=self.titleDict)
             self.videoSlider.Bind(wx.EVT_SCROLL_THUMBTRACK, self.OnSliderChanged)
             self.videoSlider.Bind(wx.EVT_SCROLL_ENDSCROLL, self.OnSliderReleased)
@@ -15208,7 +15219,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         else:
             self.frameTextCtrl2 = frameTextCtrl
             self.videoControlWidgets2 = videoControlWidgets
-            self.videoSlider2 = SliderPlus(panel, self, wx.ID_ANY, 0, 0, 240-1, dpiScale=factor,
+            self.videoSlider2 = SliderPlus(panel, self, wx.ID_ANY, True, 0, 0, 240-1, dpiScale=factor,
                                             titleDict=self.titleDict)
             self.videoSlider2.Bind(wx.EVT_SCROLL_THUMBTRACK, self.OnSliderChanged)
             self.videoSlider2.Bind(wx.EVT_SCROLL_ENDSCROLL, self.OnSliderReleased)
@@ -27642,8 +27653,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 if self.separatevideowindow:
                     self.frameTextCtrl2.SetForegroundColour(wx.BLACK)
                     self.frameTextCtrl2.Refresh()
-            #self.UpdateBookmarkMenu()
-
+    """
     def AddFrameBookmark(self, value, bmtype=0, toggle=True, refreshVideo=True, refreshProgram=True):
         sliderList = self.GetVideoSliderList()
         if not toggle:
@@ -27662,7 +27672,6 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 else:
                     slider.SetBookmark(value, 0, refresh=refreshProgram)
                     color = wx.RED
-
             value = str(value)
             if value == self.frameTextCtrl.GetLineText(0):
                 self.frameTextCtrl.SetForegroundColour(color)
@@ -27673,6 +27682,45 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if refreshProgram:
             #~if not bmtype in (1,2):
                 #self.UpdateBookmarkMenu()
+            if refreshVideo and self.trimDialog.IsShown():
+                self.ShowVideoFrame()
+
+    """
+    def AddFrameBookmark(self, value, bmtype=0, toggle=True, refreshVideo=True, refreshProgram=True):
+        ''' Since slider bookmarks has direct access to script bookmarks only der first slider bookmarks
+            must be change if bmtype 0 (bookmark).
+        '''
+        sliderList = self.GetVideoSliderList()
+        if not toggle:
+            if bmtype == 0:
+                self.videoSlider.SetBookmark(value, 0)
+                if self.videoSlider2:
+                    self.videoSlider2._Refresh(False)
+            else:
+                for slider in sliderList:
+                    slider.SetBookmark(value, bmtype)
+        elif bmtype in (1,2):
+            for slider in sliderList:
+                slider.SetBookmark(value, bmtype, refresh=refreshProgram)
+        else:
+            slider = self.videoSlider
+            if value in slider.bookmarks:
+                self.DeleteFrameBookmark(value, 0, refreshProgram=refreshProgram)
+                color = wx.BLACK
+            else:
+                slider.SetBookmark(value, 0, refresh=refreshProgram)
+                color = wx.RED
+            if self.videoSlider2:
+                self.videoSlider2._Refresh(False)
+
+            value = str(value)
+            if value == self.frameTextCtrl.GetLineText(0):
+                self.frameTextCtrl.SetForegroundColour(color)
+                self.frameTextCtrl.Refresh()
+            if self.separatevideowindow and value == self.frameTextCtrl2.GetLineText(0):
+                self.frameTextCtrl2.SetForegroundColour(color)
+                self.frameTextCtrl2.Refresh()
+        if refreshProgram:
             if refreshVideo and self.trimDialog.IsShown():
                 self.ShowVideoFrame()
 
