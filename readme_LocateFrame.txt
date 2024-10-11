@@ -1,5 +1,5 @@
 GPo 2023, AvsPmod function 'Locate frame' https://vimeo.com/797835669
-Last update 30.08.2024, the old example video is not up to date, no variables or selections more needed.
+Last update 01.10.2024, the old example video is not up to date, no variables or selections more needed.
 
 The wonderful 'LocateFrames' function from Doom9 member StainlessS is needed.
 https://www.mediafire.com/folder/hb26mthbjz7z6/StainlessS or http://www.sendspace.com/folder/2mwrco
@@ -31,7 +31,14 @@ If Split View is switched on:
   This means that a common group and the frame offset are set.
   'Freeze frame' should then be turned off or when scrolling to another frame, the frame of the non-active tab remains frozen. 
 
-The optional Variables:
+The optional Variables (for the left script):
+  target_clip: 
+  if the right script has many frames or the initialization takes too long, the variable 'target_clip' in the current (left) script 
+  can be initialized with the source in the right script e.g. target_clip = AviSource("right clip file name"), but the target_clip must
+  return the same output as the right script (dimension, length etc.). 
+  if the target_clipt is not set in the current script, the target_clip will then be automatically created at the first search,
+  this is then displayed in the status bar on the left.
+
   find_start, find_stop: the names should be self-explanatory.
 
   find_tresh = 3.0
@@ -44,6 +51,8 @@ The optional Variables:
   find_mode = 1 (default)
 	the start and stop are calculated from the partner script current frame position.
   In both cases it will stop when a match is 100%.
+
+   
 
 
 ! Do not use any other filters, that slows down the compare process.

@@ -38,6 +38,31 @@ If, for example, there is a '-' in the file name of the dll, AvsPmod will report
 please rename this dll and replace the '-' with a '_'
 
 --------------------------
+Version 2.7.8.4 [2024-10-11]
+--------------------------
+* The editor and the tabs have been given a new context menu entry. 'Preload script':
+- it loads the script clip and displays a progress dialog, under program settings > Misc 2 > 'Preload script progress' you can set the position bottom left\right.
+- only the clip is initialized, depending on the filters it may take some time until the frame is displayed after selecting the tab.
+- until the clip is loaded, another script (tab) can be used. a refresh or new loading or playback should also be possible. 
+- it should be well suited for indexing by a source filter, for example.
+* Flickering on showing the separate video window reduced and if it minimazed it will now restore the size and shown.
+* Separate video window resets now the zoom and position after maximazed and restored with a dbl. click if 'Save view pos on tab change' checked.
+* Video > Tools > 'Locate frame' reworked: read the Locate frame readme.
+* Split View shows an Indicator (marker) in the timeline. If the parent tab selected (the left tab) then green else blue color. 
+- the indicator distance to the video slider indicates the frame distanze in the not selectet Split View tab (if you not see it, the distance is to small). 
+- if you click on the indicator the tab will change if not 'Freeze frame' enabled. Use Video > Tools > 'Locate frame' to turn on/off 'Freeze frame'.
+- Note: in the status bar right side is the accurate frame distance displayed.
+* 'Run analysis pass' can now run a single pass wihout a frame loop (only initialize the clip). Do use it: Press Ctrl before clicking the menu.
+- background: there are functions, e.g. the SceneLog DBSC from StainlessS that runs through its own frame loop and then returns the result or writes it to a file.
+* Changed: If the script was on a USB drive, for example, and the device was not connected when loading a session, 
+- the path was removed from the file name and reloading the script was no longer possible, even after connecting the device.
+* The 'SceneLogToBookmarks' and 'Run analysis paas' macro has been updated (see Run analysis pass) and other macros (Help > 'Video tutorials & more') have been added.
+* Fix: When AvsPmod was used with Wine, it could be that the script text was not displayed.
+* Bugfix: Copied bookmarks could be 0 after paste it into the timeline and then you delete the bookmarks in the timeline.
+* Bugfix: Drag & Drop files causes an 'UpdateTabImages' error.
+* Some other fixes and changes
+
+--------------------------
 Version 2.7.8.2 - 2.7.8.3 [2024-09-29]
 --------------------------
 * Added Trim Dialog context menu 'Don't close on 'Apply', does not close the Trim Dialog after pressing 'Apply' (User wish).

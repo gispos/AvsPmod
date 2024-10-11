@@ -274,6 +274,12 @@ def FileSizeToString(filename, precision=0, maxsuffix='TB'):
     if suffixIndex > 2 and precision == 0:
         precision = 2
     return '%.*f %s' % (precision, fsize, suffixes[suffixIndex])
+
+# Id generation for menus or...
+import itertools
+NewIdGen = itertools.count()
+def NewId():
+    return NewIdGen.next()
 """
 # Python program for A modified Naive Pattern Searching
 # algorithm that is optimized for the cases when all

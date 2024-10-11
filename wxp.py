@@ -631,12 +631,14 @@ class Frame(wx.Frame):
         def OnMouseMove(event):
             if statusTxt and self.options['showbuttontooltip']:
                 self.SetStatusText(statusTxt)
+            event.Skip()
         def OnMouseOver(event):
             if statusTxt and self.options['showbuttontooltip']:
                 self.SetStatusText(statusTxt)
             b = event.GetEventObject()
             b.SetBezelWidth(b.GetBezelWidth()+1)
             b.Refresh()
+            event.Skip()
         def OnMouseLeave(event):
             if statusTxt and self.options['showbuttontooltip']:
                 try:
@@ -646,11 +648,11 @@ class Frame(wx.Frame):
             b = event.GetEventObject()
             b.SetBezelWidth(b.GetBezelWidth()-1)
             b.Refresh()
+            event.Skip()
         button.Bind(wx.EVT_ENTER_WINDOW, OnMouseOver)
         button.Bind(wx.EVT_MOTION, OnMouseMove)
         button.Bind(wx.EVT_LEAVE_WINDOW, OnMouseLeave)
         return button
-
 
 class Notebook(wx.Notebook):
     """wx.Notebook, changing selected tab on mouse scroll"""
@@ -1181,9 +1183,9 @@ class OptionsDialog(wx.Dialog):
         if title is None:
             title = _('Program Settings')
         if canResize:
-            wx.Dialog.__init__(self, parent, wx.ID_ANY, title, style=wx.DEFAULT_DIALOG_STYLE|wx.RESIZE_BORDER|wx.NO_FULL_REPAINT_ON_RESIZE)
+            wx.Dialog.__init__(self, parent, wx.ID_ANY, title, style=wx.DEFAULT_DIALOG_STYLE|wx.RESIZE_BORDER|wx.NO_FULL_REPAINT_ON_RESIZE|wx.STAY_ON_TOP)
         else:
-            wx.Dialog.__init__(self, parent, wx.ID_ANY, title, style=wx.DEFAULT_DIALOG_STYLE|wx.NO_FULL_REPAINT_ON_RESIZE)
+            wx.Dialog.__init__(self, parent, wx.ID_ANY, title, style=wx.DEFAULT_DIALOG_STYLE|wx.NO_FULL_REPAINT_ON_RESIZE|wx.STAY_ON_TOP)
 
         dpi.SetFontPPI(self)
         self.options = options.copy()
@@ -2391,14 +2393,248 @@ class Slider(wx.Slider):
     def SetTick(self, upos):
         super(Slider, self).SetTick(self._upos2wxpos(upos))
 
+class BorderLessDialog(wx.Dialog):
+    def __init__(self, parent, title='', pos=(-1,-1), barColor=None, backColor=None, foreColor=None, style=wx.STAY_ON_TOP):
+        wx.Dialog.__init__(self, parent, wx.ID_ANY, title, pos=pos, style=style)
+        dpi.SetFontPPI(self)
+        if backColor: self.SetBackgroundColour(backColor)
+        if foreColor: self.SetForegroundColour(foreColor)
+        self.mainSizer = wx.BoxSizer(wx.VERTICAL)
+        self.titleBar = wx.Panel(self, wx.ID_ANY, style=wx.NO_BORDER)
+        if barColor is None: barColor = wx.Colour(50, 50, 50)
+        self.titleBar.SetBackgroundColour(barColor)
+        sizerTitle = wx.BoxSizer(wx.VERTICAL)
+        self.btnClose = wx.StaticText(self.titleBar, wx.ID_ANY, "   X   ")
+        self.btnClose.Wrap(-1)
+        self.btnClose.SetForegroundColour(wx.Colour(235, 235, 235))
+        self.btnClose.SetBackgroundColour(wx.Colour(190, 0, 10))
+        sizerTitle.Add(self.btnClose, 0, wx.ALIGN_RIGHT|wx.RIGHT)
+        self.titleBar.SetSizer(sizerTitle)
+        self.titleBar.Layout()
+        sizerTitle.Fit(self.titleBar)
+        self.mainSizer.Add(self.titleBar, 0, wx.ALIGN_RIGHT|wx.EXPAND|wx.RIGHT)
+        self.x = self.y = None
+        def OnActivate(event):
+            if event.GetActive():
+                self.btnClose.SetBackgroundColour(wx.Colour(190, 0, 10))
+                self.btnClose.Refresh()
+            else:
+                self.btnClose.SetBackgroundColour(wx.Colour(100, 0, 0))
+                self.btnClose.Refresh()
+            event.Skip()
+        self.Bind(wx.EVT_ACTIVATE, OnActivate)
+        self.btnClose.Bind(wx.EVT_LEFT_UP, lambda e: self.Close())
+        def OnCloseDown(event):
+            self.x = None
+            event.Skip()
+        self.btnClose.Bind(wx.EVT_LEFT_DOWN, OnCloseDown)
+        def OnLeftDown(event):
+            self.x, self.y = wx.GetMousePosition()
+            if not self.titleBar.HasCapture():
+                self.titleBar.CaptureMouse()
+            event.Skip()
+        self.titleBar.Bind(wx.EVT_LEFT_DOWN, OnLeftDown)
+        def OnLeftUp(event):
+            self.x = None
+            if self.titleBar.HasCapture():
+                self.titleBar.ReleaseMouse()
+            event.Skip()
+        self.titleBar.Bind(wx.EVT_LEFT_UP, OnLeftUp)
+        def OnMouseMove(event):
+            if event.LeftIsDown() and self.titleBar.HasCapture() and self.x is not None:
+                x, y = wx.GetMousePosition()
+                xx, yy = self.GetPosition()
+                self.Move((xx + x - self.x, yy + y - self.y))
+                self.x, self.y = x, y
+            event.Skip()
+        self.titleBar.Bind(wx.EVT_MOTION, OnMouseMove)
+    def GetSizer(self):
+        return self.mainSizer
+    def AddLastSizer(self, sizer):
+        self.mainSizer.Add(sizer, 1, wx.EXPAND|wx.TOP, 5)
+        self.SetSizerAndFit(self.mainSizer)
+        self.Layout()
+
 class StaticText(wx.StaticText):
     ''' StaticText without flicker '''
     def __init__(self, parent, id=wx.ID_ANY, label=wx.EmptyString,
             pos=wx.DefaultPosition, size=wx.DefaultSize,
             style=0, name=wx.StaticTextNameStr):
         wx.StaticText.__init__(self, parent, id, label=label, pos=pos, size=size, style=style, name=name)
-        self.Bind(wx.EVT_ERASE_BACKGROUND, self._OnEraseBackground)
+        def _OnEraseBackground(event): # Do nothing, eleminates the flicker
+            pass
+        self.Bind(wx.EVT_ERASE_BACKGROUND, _OnEraseBackground)
 
-    def _OnEraseBackground(self, event): # Do nothing, eleminates the flicker
-        pass
+def MessageDlgTop(parent, msg='', title='AvsPmod', style=wx.OK|wx.CANCEL):
+    ''' As stay on top MessageDialog '''
+    win = pwin = None
+    if parent:
+        r = parent.GetRect()
+        x, y = r[0] + (r[2] // 2), r[1] + (r[3] // 2)
+        pwin = wx.FindWindowAtPoint((x,y))
+        win = wx.Dialog(pwin, wx.ID_ANY, pos=(x-5,y-5), size=(10,10), style=wx.STAY_ON_TOP|wx.NO_BORDER)
+        win.SetTransparent(2)
+    disabler = wx.WindowDisabler()
+    dlg = wx.MessageDialog(win, msg, title, style|wx.STAY_ON_TOP) # not app modal, we need a help win... PYTHON !!!
+    if win: win.Show()
+    ID = dlg.ShowModal()
+    dlg.Destroy()
+    if win: win.Destroy()
+    del disabler
+    if parent: parent.SetFocus()
+    return ID
+
+def MessageBox(msg='', title='AvsPmod', style=wx.OK, parent=None):
+    ''' A stay on top MessageBox '''
+    win = pwin = None
+    disabler = wx.WindowDisabler()
+    if parent:
+        r = parent.GetRect()
+        x, y = r[0] + (r[2] // 2), r[1] + (r[3] // 2)
+        pwin = wx.FindWindowAtPoint((x,y))
+        win = wx.Dialog(pwin, wx.ID_ANY, pos=(x-5,y-5), size=(10,10), style=wx.STAY_ON_TOP|wx.NO_BORDER)
+        win.SetTransparent(2)
+        win.Show()
+    ID = wx.MessageBox(msg, title, style|wx.STAY_ON_TOP, win) # not app modal, we need a help win... PYTHON !!!
+    if win: win.Destroy()
+    del disabler
+    if parent: parent.SetFocus()
+    return ID
+
+class ProgressDlg(wx.Dialog):
+    def __init__(self, parent, title=wx.EmptyString, msg1='', msg2='', pos=wx.DefaultPosition, show=True):
+        wx.Dialog.__init__ (self, parent, id=wx.ID_ANY, title=title, pos=pos, size=wx.Size(370,160), style=wx.DEFAULT_DIALOG_STYLE|wx.STAY_ON_TOP)
+        dpi.SetFontPPI(self)
+        self.SetDoubleBuffered(True)
+        self.Cancel = False
+        self.OnCloseDestroy = False
+        self.interval = 150
+        self.last_time = 0
+        self.remaining_time = None
+        self.timer = wx.Timer(self, 1)
+        self.startTime = time.time()
+        self.SetBackgroundColour(wx.SystemSettings.GetColour(wx.SYS_COLOUR_WINDOW))
+        bSizer = wx.BoxSizer(wx.VERTICAL)
+        self.label1 = wx.StaticText(self, wx.ID_ANY, _(msg1))
+        dpi.SetFontPPI(self.label1, 4, True)
+        self.label1.SetForegroundColour(wx.SystemSettings.GetColour(wx.SYS_COLOUR_HOTLIGHT))
+        bSizer.Add(self.label1, 0, wx.ALL, 5)
+        self.label2 = wx.StaticText(self, wx.ID_ANY, _(msg2))
+        self.label2.SetForegroundColour(wx.SystemSettings.GetColour(wx.SYS_COLOUR_WINDOWTEXT))
+        bSizer.Add(self.label2, 0, wx.ALL, 5)
+        self.gauge = wx.Gauge(self, wx.ID_ANY, 10, style=wx.GA_HORIZONTAL)
+        self.gauge.SetMinSize((dpi.intPPI(332),-1))
+        self.gauge.SetValue(0)
+        bSizer.Add(self.gauge, 0, wx.ALL|wx.EXPAND, 5)
+        bSizer2 = wx.BoxSizer( wx.HORIZONTAL )
+        self.labelTimeE = wx.StaticText(self, wx.ID_ANY, "Elapsed 00:00:00")
+        self.labelTimeE.SetForegroundColour(wx.SystemSettings.GetColour(wx.SYS_COLOUR_WINDOWTEXT))
+        bSizer2.Add(self.labelTimeE, 1, wx.ALL, 5)
+        self.labelTimeR = wx.StaticText(self, wx.ID_ANY, "Remaining 00:00:00") # set for sizer clculation
+        self.labelTimeR.SetForegroundColour(wx.SystemSettings.GetColour(wx.SYS_COLOUR_WINDOWTEXT))
+        bSizer2.Add(self.labelTimeR, 1, wx.ALL, 5)
+        bSizer2.AddSpacer((20,-1))
+        self.btnCancel = wx.Button(self, wx.ID_ANY, _(u"Cancel"))
+        bSizer2.Add(self.btnCancel, 0, wx.ALL|wx.ALIGN_RIGHT, 5)
+        bSizer.Add(bSizer2, 1, wx.EXPAND, 5)
+        bSizer.Layout()
+        self.sizer = bSizer
+        self.SetSizerAndFit(bSizer)
+        self.labelTimeR.SetLabel('')
+        def OnTimer(event):
+            val = self.gauge.GetValue()
+            val = val + 1 if val < 15 else 0
+            self.gauge.SetValue(val)
+            if val == 0:
+                st = time.strftime("%H:%M:%S", time.gmtime(time.time()-self.startTime))
+                self.labelTimeE.SetLabel('Elapsed ' + st)
+        self.Bind(wx.EVT_TIMER, OnTimer, self.timer)
+        def OnCancel(event):
+            #self.timer.Stop()
+            self.Cancel = True
+            if self.OnCloseDestroy:
+                self.timer.Stop()
+                self.Destroy()
+            else:
+                self.SetLabel(None, _('The running process cannot be canceled.\nWhen the process is finished, it is canceled.'))
+                wx.Bell()
+        self.btnCancel.Bind(wx.EVT_BUTTON, OnCancel)
+        def OnClose(event):
+            event.Veto()
+            #self.timer.Stop()
+            if self.OnCloseDestroy:
+                self.timer.Stop()
+                self.Destroy()
+            else: OnCancel(None)
+        self.Bind(wx.EVT_CLOSE, OnClose)
+        if pos == wx.DefaultPosition: self.Centre(wx.BOTH)
+        else:
+            w, h = self.GetSize()
+            x, y = pos
+            if parent:
+                r = parent.GetRect()
+                x = max(min(pos[0], r[2]-w-dpi.intPPI(20)), 0)
+                y = max(min(pos[1], r[3]-h-dpi.intPPI(80)), 0)
+            else:
+                s = wx.GetDisplaySize()
+                x = max(min(pos[0], s[0]-w-dpi.intPPI(15)), 0)
+                y = max(min(pos[1], s[1]-h-dpi.intPPI(70)), 0)
+            self.Move((x,y))
+        if show: # else you can calculate the pos from GetSize()
+            self.Show()
+    def Start(self, interval=150):
+        self.interval = interval
+        self.remaining_time = None
+        self.startTime = time.time()
+        self.last_time = 0
+        self.gauge.SetValue(0)
+        if interval > 0:
+            self.timer.Start(interval)
+    def SetRange(self, value):
+        self.last_time = 0
+        self.remaining_time = None
+        if value > 0:
+            self.timer.Stop()
+            self.gauge.SetRange(value)
+            self.labelTimeE.SetLabel('')
+            self.labelTimeR.SetLabel('')
+        else:
+            self.gauge.SetRange(10)
+            if not self.timer.IsRunning():
+                self.timer.Start(self.interval)
+        self.gauge.SetValue(0)
+        self.startTime = time.time()
+    def Update(self, value, msg1='', msg2='', update_time=False):
+        self.gauge.SetValue(value)
+        if msg1: self.label1.SetLabel(msg1)
+        if msg2: self.label2.SetLabel(msg2)
+        if update_time:
+            now = time.time()
+            if now >= self.last_time + 1.0: # reduce usage
+                self.last_time = now
+                st = time.strftime("%H:%M:%S", time.gmtime(now-self.startTime))
+                self.labelTimeE.SetLabel('Elapsed ' + st)
+                if self.remaining_time:
+                    st = time.strftime("%H:%M:%S", time.gmtime(self.remaining_time))
+                    self.labelTimeR.SetLabel('Remaining ' + st)
+    def Stop(self):
+        self.timer.Stop()
+        self.gauge.SetValue(self.gauge.GetRange())
+        self.btnCancel.SetLabel(_(u'Close'))
+        if self.remaining_time:
+            self.remaining_time = None
+            self.labelTimeR.SetLabel("Remaining 00:00:00")
+        self.OnCloseDestroy = True
+    def SetLabel(self, msg1='', msg2=''):
+        if msg1 is not None: self.label1.SetLabel(msg1)
+        if msg2 is not None: self.label2.SetLabel(msg2)
+        self.sizer.Layout()
+        self.Fit()
+    def Close(self):
+        self.timer.Stop()
+        self.Destroy()
+    def __del__(self):
+        self.timer.Stop()
+
+
 

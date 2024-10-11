@@ -1,4 +1,4 @@
-# Version 2.7.8.3 GPo   
+# Version 2.7.8.4 GPo   
 - With pinterf (pfmod) modifications   
 - Avisynth header version 6 + needed part's from H8,H9   
 - For more see changelog   
