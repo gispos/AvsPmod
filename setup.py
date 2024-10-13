@@ -153,7 +153,7 @@ manifest = """
 # WinSxS is the technology that lets you have multiple copies of different versions of files
 # with the same name on your system at the same time.
 # E.g. c:\Windows\WinSxS\wow64_microsoft.windows.gdiplus.systemcopy_31bf3856ad364e35_10.0.17134.1_none_d6afcd2e9398abe3\GdiPlus.dll
-lib_extra = ['preload.py']
+lib_extra = []
 # classic wx has its own gdiplus.dll
 # e.g. in c:\Python27\lib\site-packages\wx-3.0-msw\wx\gdiplus.dll
 if use_classic_wx:
@@ -199,7 +199,6 @@ data_files = [
             'utils.py',
             'func.py',
             'cfunc.pyd',
-            'preload.py',
             'avisynth.py',
             'avisynth_cffi.py',
             'pyavs.py',

@@ -284,7 +284,8 @@ class AvsClipBase:
                  fitWidth=None, oldFramecount=240, display_clip=True, reorder_rgb=False,
                  matrix=['auto', 'tv'], interlaced=False, swapuv=False, bit_depth=None,
                  callBack=None, readmatrix=None, displayFilter=None, readFrameProps=False,
-                 resizeFilter=None, previewFilter=None, useSplitClip=False, audioVolume=1.0):
+                 resizeFilter=None, previewFilter=None, useSplitClip=False, audioVolume=1.0,
+                 subfunc=None):
 
         def CheckVersion(env):
             try:
@@ -381,6 +382,7 @@ class AvsClipBase:
         self.last_display_clip = None
         self.last_display_args = ''
         self.last_clip = None
+        self.locate_clip = None
         oldFramecount = max(1, oldFramecount)
         self.prefetchRGB32 = app.options['prefetchrgb32']  # Prefetch(1,1) RGB32 conversion
         self.fastYUV420toRGB32 = app.options['yuv420torgb32fast'] and not app.options['fastyuvautoreset']
@@ -401,7 +403,6 @@ class AvsClipBase:
         self.evAudioStop = threading.Event()
         self.evAudioFinished = threading.Event()
         self.numpy_type = None
-        self.cacheFrames = {}
 
         # Create the Avisynth script clip
         if env is not None:
@@ -448,6 +449,8 @@ class AvsClipBase:
                     script = ur'VSImport("{0}", stacked=true)'.format(filename)
                 else:
                     script = ur'AviSource("{0}")'.format(filename)
+            elif subfunc and os.name == 'nt' and filename.endswith('.avs'):
+                script = ur'DirectShowSource("{0}")'.format(filename)
             scriptdirname, scriptbasename = os.path.split(filename)
             curdir = os.getcwdu()
             workdir = os.path.isdir(workdir) and workdir or scriptdirname
@@ -664,6 +667,7 @@ class AvsClipBase:
             self.last_display_clip = None
             self.yv12_clip_parent = None
             self.yv12_clip = None
+            self.locate_clip = None
             self.split_clip = None
             self.arg1_split_clip = None
             self.last_clip = None # clip pointer for fast preview filter (if last_clip is clip then display_clip = last_display_clip)
@@ -1191,8 +1195,8 @@ class AvsClipBase:
     def KillFilterClip(self, createDisplayClip=True):
         cfunc.KillFilterClip(self, createDisplayClip=createDisplayClip)
 
-    def LocateFrame(self, start=-500, stop=500, framenr=None, thresh=None, find_src=''):
-        return cfunc.LocateFrame(self, start, stop, framenr, thresh, find_src)
+    def LocateFrame(self, start=-500, stop=500, framenr=None, thresh=None, target_src='', target_clip=None):
+        return cfunc.LocateFrame(self, start, stop, framenr, thresh, target_src, target_clip)
 
     # for avisynth from H8 but lower then 3.71 (bug C Interface)
     def GetMatrix_2(self):

@@ -38,6 +38,12 @@ If, for example, there is a '-' in the file name of the dll, AvsPmod will report
 please rename this dll and replace the '-' with a '_'
 
 --------------------------
+Version 2.7.8.5 [2024-10-13]
+--------------------------
+* Bugfix: Media Info Dialog can cause an 'KillFocus' error if auto close enabled.
+* Bugfix: 'Preload script' doesn't work correctly. I've removed it for now. It still needs further testing.
+
+--------------------------
 Version 2.7.8.4 [2024-10-11]
 --------------------------
 * The editor and the tabs have been given a new context menu entry. 'Preload script':
