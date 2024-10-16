@@ -19986,17 +19986,10 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             wxp.MessageBox(_("Only available if 'Accesing avisynth in threads' enabled"), wx.OK|wx.ICON_INFORMATION)
             return
         script = self.currentScript
-        """
-        if script.AVI is None and not self.AviThread_Running(script):
-            tool = os.path.join(self.programdir, 'lib', 'preload.py')
-            if os.path.isfile(tool):
-                self.ExecuteMacro(tool)
-            else:
-                wxp.MessageBox(tool + '\n\nNot found', _(u'Error'), wx.OK|wx.ICON_ERROR)
-        """
+        if not script.AVI is None or self.AviThread_Running(script):
+            wx.Bell()
+            return
         self.Preload(script)
-        #else:
-            #wx.Bell()
 
     def OnMenuVideoReleaseMemory(self, event):
         self.HidePreviewWindow()
