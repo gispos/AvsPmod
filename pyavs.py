@@ -309,7 +309,10 @@ class AvsClipBase:
         self.error_message = None
         self.env = None
         self.app = app
+        if callBack is None:
+            callBack = self._callBack
         self.callBack = callBack
+        self.subfunc = subfunc
         self.name = filename
         self.current_frame = -1
         self.pBits = None
@@ -449,8 +452,9 @@ class AvsClipBase:
                     script = ur'VSImport("{0}", stacked=true)'.format(filename)
                 else:
                     script = ur'AviSource("{0}")'.format(filename)
-            elif subfunc and os.name == 'nt' and filename.endswith('.avs'):
-                script = ur'DirectShowSource("{0}")'.format(filename)
+            elif self.subfunc and filename.endswith('.avs'):
+                script = ur'AviSource("{0}")'.format(filename)
+                self.prefetchRGB32 = False
             scriptdirname, scriptbasename = os.path.split(filename)
             curdir = os.getcwdu()
             workdir = os.path.isdir(workdir) and workdir or scriptdirname
@@ -680,6 +684,9 @@ class AvsClipBase:
             if bool(__debug__):
                 print(u"Deleting allocated video memory for '{0}'".format(self.name))
         gc.collect()
+
+    def _callBack(self, ident, value, framenr=-1):
+        pass
 
     def CreateErrorClip(self, err='', display_clip_error=False):
         if display_clip_error:
@@ -1970,6 +1977,8 @@ if os.name == 'nt':
             return AvsClipBase.GetMatrix(self)
 
         def _ConvertToRGB(self, vi, prefetch=''):
+            if self.subfunc:
+                prefetch = ''# self.prefetchRGB32 is disabled on creating the clip
             if not vi.is_rgb32():
                 if self.fastYUV420toRGB32 and vi.is_420() and self.IsDecoderYUV420:
                     args = ''

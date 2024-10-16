@@ -10946,6 +10946,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.savedFsStartZoom = None
         self.wasFullscreen = None
         self.progressShown = None
+        self.preloadLoopTh = None       # GPo 2024, class thread for 'Preload script
         self.KeyUpVideoWindow = True
         self.optionsLastPageIndex = 0 # GPo, store/restore the last OptionsDlg page
         self.lastcrop = ""
@@ -12111,7 +12112,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             'threaddlgshowmem': True,                # GPo, thread dlg show free and script memory
             'usesplitclip': False,                   # GPo, on UpdateScriptAvi restore script.AVI.split_clip if AVI.IsSplitClip enabled on refresh
             'usefastclip': True,                     # GPo, /**avsp_split**/ must be written in the script do use the fastClip.
-            'aviadvancedmode': False,                # open the script with DirectShowSoure
+            'useavisubfunc': False,                  # for now: save the script first and open it with DirectShowSoure
             'cliprefreshpainter': True,              # GPo, paint the last frame during clip refresh if load Avisynth in threads enabled (disavantage
             'splitviewex': False,                    # GPo, use Split View alternate (self.splitViewEx)
             'fullscreenzoom': 2,                     # GPo, set zoom on fullscreen 0=None, 1=Normal, 2=Resample
@@ -12209,7 +12210,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.options['filterremoved'].add(name.lower())
         if oldOptions and 'parseavsi' in oldOptions:
             self.options['autoloadedavsi'] = oldOptions['parseavsi']
-        self.options['aviadvancedmode'] = False
+        self.options['useavisubfunc'] = False
 
 
     def SetPaths(self):
@@ -13998,7 +13999,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     (_('Preview filter'), 'Ctrl+P', self.OnMenuInsertPreviewFilter, _('Add Preview filter surrounding the selected lines. Help-> Preview filter readme')),
                     ),
                 ),
-                #(_('Preload script'), '', self.OnMenuScriptPreload),
+                (_('Preload script'), '', self.OnMenuScriptPreload),
                 (''),
                 (_('Indent selection'), 'Tab', self.OnMenuEditIndentSelection, _('Indent the selected lines')),
                 (_('Unindent selection'), 'Shift+Tab', self.OnMenuEditUnIndentSelection, _('Unindent the selected lines')),
@@ -14346,7 +14347,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 (_('Restore fullscreen'), '', self.OnMenuOptionsRestoreFullscreen, _('Restore Fullscreen when toggle with middle mouse button'), wx.ITEM_CHECK, self.options['restorefullscreen']),
                 (''),
                 (_("Use 'Ultra Fast Clip'"), '',self.OnMenuOptionsFastClip, _('/**avsp_split**/ must be written in to the script. Read the Fast Clip readme'), wx.ITEM_CHECK, self.options['usefastclip']),
-                #(_("Advanced script mode"), '',self.OnMenuOptionsAVIAdvanced, _('Saves the script and loads the script with DirectShowSource'), wx.ITEM_CHECK, self.options['aviadvancedmode']),
+                (_("AvsPmod && Avisynth test"), '',self.OnMenuOptionsAVIAdvanced, _('Saves the script temporal and loads the avs file with AviSource'), wx.ITEM_CHECK, self.options['useavisubfunc']),
                 (''),
                 (_('Accessing AviSynth in threads'), '', self.OnMenuOptionsAviThread, _('Use threads when accessing avisynth (load/release clip and get frame)'), wx.ITEM_CHECK, self.options['avithread']),
                 (_('Use advanced frame thread'), '', self.OnMenuOptionsUseNewFrameThread, _('For info read the readme_threads.txt'), wx.ITEM_CHECK, self.options['usenewframethread']),
@@ -14680,7 +14681,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             (_('Bookmarks to script'), '', self.OnMenuBookmarksToScript),     # GPo, 2018
             (_('Bookmarks from script'), '', self.OnMenuBookmarksFromScript), # GPo, 2018
             (''),
-            #(_('Preload script'), '', self.OnMenuScriptPreload), # GPo 2024
+            (_('Preload script'), '', self.OnMenuScriptPreload), # GPo 2024
             (_('Release video memory'), '', self.OnMenuScriptReleaseMemory), # GPo 2020
             (_('Release all other video memory'), '', self.OnMenuOtherScriptReleaseMemory), # GPo 2020
             (''),
@@ -15866,11 +15867,23 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if not wx.IsBusy():
             wx.BeginBusyCursor()
         count = self.scriptNotebook.GetPageCount()-1
+        if self.options['multilinetab']:
+            rows = self.scriptNotebook.GetRowCount()
         self.TabList_BlockUpdate(True)
+
         for index in xrange(count,-1,-1):
             if index != idx:
                 self.CloseTab(index, prompt=True, isSession=True)
         self.UpdateTabImages() # isSession disables update images also call it now
+        if self.options['multilinetab']:
+            if rows != self.scriptNotebook.GetRowCount():
+                w, h = self.scriptNotebook.GetSize()
+                pos = self.mainSplitter.GetSashPosition()
+                self.scriptNotebook.SetSize((w, h-1))
+                self.scriptNotebook.SetSize((w, h))
+                self.SetMinimumScriptPaneSize()
+                if self.previewWindowVisible and self.previewOK() and pos != self.mainSplitter.GetSashPosition():
+                    self.OnMainSplitterPosChanged()
         self.TabList_BlockUpdate(False, True)
         if wx.IsBusy():
             wx.EndBusyCursor()
@@ -15921,6 +15934,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if not multi:
             self.scriptNotebook.SetWindowStyleFlag(wx.NO_BORDER|wx.NB_MULTILINE)
             self.options['multilinetab'] = True
+        rows = self.scriptNotebook.GetRowCount()
         curr_script = self.scriptNotebook.GetPage(self.scriptNotebook.GetSelection())
         visible = self.previewWindowVisible
         count = self.scriptNotebook.GetPageCount()-1
@@ -15931,16 +15945,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         for index in xrange(count,-1,-1):
             script = self.scriptNotebook.GetPage(index)
             if script.AVI is None:
-                #self.scriptNotebook.SetSelection(index)
                 self.CloseTab(index, prompt=True, isSession=True)
         for i in range(self.scriptNotebook.GetPageCount()):
             if self.scriptNotebook.GetPage(i) is curr_script:
                 self.scriptNotebook.SetSelection(i)
-        self.UpdateTabImages() # isSession disables update images also call it now
         wx.GetApp().SafeYieldFor(self.scriptNotebook, wx.wxEVT_ANY) # important, delete the message query
-        self.TabList_BlockUpdate(False, True)
-        if wx.IsBusy():
-            wx.EndBusyCursor()
         self.options['multilinetab'] = multi
         style = wx.NO_BORDER
         if self.options['multilinetab']:
@@ -15948,6 +15957,19 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if self.options['fixedwidthtab']:
             style |= wx.NB_FIXEDWIDTH
         self.scriptNotebook.SetWindowStyleFlag(style)
+        if self.options['multilinetab']:
+            if rows != self.scriptNotebook.GetRowCount():
+                w, h = self.scriptNotebook.GetSize()
+                pos = self.mainSplitter.GetSashPosition()
+                self.scriptNotebook.SetSize((w, h-1))
+                self.scriptNotebook.SetSize((w, h))
+                self.SetMinimumScriptPaneSize()
+                if self.previewWindowVisible and self.previewOK() and pos != self.mainSplitter.GetSashPosition():
+                    self.OnMainSplitterPosChanged()
+        self.UpdateTabImages() # isSession disables update images also call it now
+        if wx.IsBusy():
+            wx.EndBusyCursor()
+        self.TabList_BlockUpdate(False, True)
         if visible and self.previewOK():
             self.ShowVideoFrame()
 
@@ -16463,7 +16485,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     else:
                         self.videoWindow.SetFocus()
                 title = self.titleEntry.GetLineText(0)
-                if not self.RenameScript(title):
+                # futher test on RenameScript
+                if not title.strip('.avs').strip() or not self.RenameScript(title):
                     wx.Bell()
                 self.IdleCall.append((self.titleEntry.Destroy, tuple(), {}))
 
@@ -18642,48 +18665,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     def OnMenuTest(self, event):
         return
+
+
         """
-        p = ProgressDlg(self, 'Analisys pass', 'Progress in prozess', 'Waiting for clip', pos=(-1,-1))
-        p.SetLabel('', 'Waiting for clip\nThis dialog is closed when avisnth returns')
-        p.Start()
-        while not p.Cancel:
-            time.sleep(0.01)
-            wx.YieldIfNeeded()
-        if p.Cancel:
-            wx.Bell()
-        p.Close()
-        return
-
-        start = 0
-        stop = 50
-
-        res = ''
-        idx = self.scriptNotebook.GetSelection()
-        script = self.currentScript
-        nextScript = self.scriptNotebook.GetPage(idx+1)
-        nextClip = nextScript.AVI.clip
-
-
-        val = avisynth.AVS_Value(nextClip, nextScript.AVI.env)
-        eClip = val.as_clip(script.AVI.env)
-
-        #eClip = script.AVI.env.invoke("Eval", [nextClip, "\nsharpen(0)"])
-        if not isinstance(eClip, avisynth.AVS_Clip):
-            print('err1')
-            return
-        print('OK 1')
-        newAVI = pyavs.AvsSimpleClipBase(script=nextClip, env=script.AVI.env)
-        script.AVI.env.set_var("avsp_var_clip", newAVI.clip)
-
-        clip = script.AVI.env.get_var("avsp_var_clip", None)
-        if not isinstance(clip, avisynth.AVS_Clip):
-            print('err2')
-            return
-        clip.get_frame(5)
-        print('OK 2')
-        return
-
-
         #script.AVI.env.set_var("avsp_var_clip", eClip)
         nextScript.AVI.env.set_var("avsp_var_clip", nextClip)
         script.AVI.env.set_var("avsp_var_clip", nextClip)
@@ -21087,6 +21071,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         self.CheckPlayback()
 
     def OnMenuDisplayPrefetchRGB32(self, event):
+        if self.options['useavisubfunc']:
+            wx.Bell()
+            return
         self.CheckPlayback()
         self.options['prefetchrgb32'] = event.IsChecked()
         self.UpdateMenuItem(_('&Display'), event.IsChecked(), 'video', [_('Prefetch RGB display conversion')])
@@ -21129,8 +21116,25 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     def OnMenuOptionsFastClip(self, event):
         self.options['usefastclip'] = event.IsChecked()
+
     def OnMenuOptionsAVIAdvanced(self, event):
-        self.options['aviadvancedmode'] = event.IsChecked()
+        menu = event.GetEventObject()
+        _id = event.GetId()
+        if not self.options['useavisubfunc']:
+            ID = wxp.MessageDlgTop(self,_("This option is for test purpose if you have some problems with the program.\n" +
+                                     "The script is first temporal as preview_test.avs saved and then opened with AviSource.\n" +
+                                     "All display prefetch options are disabled. But you can enable 'Fast YUV420 conversion'\n\n" +
+                                     "Problems now gone?\n" +
+                                     "  This may indicate problems with the Avisnth C interface or the 'Prefetch' option.\n" +
+                                     "  Disable Display -> 'Prefetch display conversion' and remove Prefetch from the 'Resize filter'\n" +
+                                     "  Disable this option. If it not better then the C interface can be the problem.\n\n"
+                                     "The option is used until it is switched off, at program start it is allways off.\n"
+                                     'You must refresh the script. Do you want do enable it?'), 'AvsPmod & Avisynth test', wx.YES_NO|wx.ICON_INFORMATION)
+            if ID != wx.ID_YES:
+                menu.Check(_id, False)
+                return
+        self.options['useavisubfunc'] = not self.options['useavisubfunc']
+        menu.Check(_id, self.options['useavisubfunc'])
 
     def OnMenuVideoToogleSDLWindow(self, event=None, fullscreen=None):
         self.CheckPlayback()
@@ -25382,7 +25386,19 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             f = open(self.macrosfilename, mode='wb')
             cPickle.dump(self.optionsMacros, f, protocol=0)
             f.close()
-
+        # remove the test previews test2 is from preload
+        try:
+            f = os.path.join(self.programdir, 'preview_test.avs')
+            if os.path.isfile(f):
+                os.remove(f)
+        except:
+            pass
+        try:
+            f = os.path.join(self.programdir, 'preview_test2.avs')
+            if os.path.isfile(f):
+                os.remove(f)
+        except:
+            pass
         # Clean up
         wx.TheClipboard.Flush()
         pyavs.ExitRoutines()
@@ -26146,6 +26162,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         # It's tricky, the close order must be that the selection index is not changed
         # otherwise on each tab closing PageChanging and PageChange is called.
         # and finally we must delete the message query bevore we delete the last tab (Bug?)
+        if self.options['multilinetab']:
+            rows = self.scriptNotebook.GetRowCount()
         self.HidePreviewWindow()
         if not wx.IsBusy():
             wx.BeginBusyCursor()
@@ -26160,6 +26178,15 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         cl += int(self.CloseTab(0, discard=discard, isSession=True))
         self.scriptNotebook.SendPageChangedEvent(self.scriptNotebook.GetSelection())
         self.UpdateTabImages() # isSession disables update images also call it now
+        if self.options['multilinetab']:
+            if rows != self.scriptNotebook.GetRowCount():
+                w, h = self.scriptNotebook.GetSize()
+                pos = self.mainSplitter.GetSashPosition()
+                self.scriptNotebook.SetSize((w, h-1))
+                self.scriptNotebook.SetSize((w, h))
+                self.SetMinimumScriptPaneSize()
+                if self.previewWindowVisible and self.previewOK() and pos != self.mainSplitter.GetSashPosition():
+                    self.OnMainSplitterPosChanged()
         if wx.IsBusy():
             wx.EndBusyCursor()
         return count == cl
@@ -26534,6 +26561,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if script.filename:
             if os.path.splitext(new_title)[1] not in ('.avs', '.avsi', '.vpy'):
                 new_title += '.avs'
+            if not os.path.splitext(new_title)[0]:
+                return False
             src = script.filename
             dirname = os.path.dirname(src)
             dst = os.path.join(dirname, new_title)
@@ -28922,7 +28951,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             return False
         try:
             error = script.AVI.error_message is not None\
-                    or script.AVI.display_clip.get_error() is not None
+                    or (script.AVI.display_clip and script.AVI.display_clip.get_error() is not None)
         except:
             return False
         return not error
@@ -30606,10 +30635,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                         self.SaveScript(filename)
 
                     script.subfunc = None
-                    if os.name == 'nt' and self.options['aviadvancedmode'] and filename.endswith('.avs'):
-                        filename = self.SaveScript(filename)
-                        if filename:
-                            script.subfunc = 'DirectShowSource("%s")' % filename
+                    if self.options['useavisubfunc']:
+                        f = self.MakePreviewScriptFile(script, self.programdir, 'preview_test')
+                        if f:
+                            filename = f
+                            script.subfunc = ur'AviSource("{0}")'.format(f)
+                        else:
+                            wxp.MessageBox('Cannot create the preview_test.avs for AvsPmod test.', _('Error'), wx.OK|wx.ICON_ERROR)
 
                     if not wasErrorClip:
                         self.ClipRefreshPainter = self.GetVideoWindowBitmap()
@@ -32723,22 +32755,49 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             newTxt += line + '\n'
         return newTxt.rstrip()
 
-    def MakePreviewScriptFile(self, script):
+    def MakePreviewScriptFile(self, script, avs_dir=None, avs_name=None):
+        '''You can use a dir and/or name, if name the file will be always overriden'''
         txt = self.getCleanText(script.GetText())
         txt = self.stripComment_2(txt)
         txt, encoding = self.GetEncodedText(script, txt, forceUtf8=self.options['save_utf8'])
         # Construct the filename of the temporary avisynth script
-        dirname = self.GetProposedPath(only='dir')
-        if os.path.isdir(dirname):
-            altdir_tried = False
+        if avs_name:
+            if avs_name.endswith('.avs'):
+                avs_name = avs_name[:-4]
+
+        if not avs_dir:
+            dirname = self.GetProposedPath(only='dir')
+            if os.path.isdir(dirname):
+                altdir_tried = False
+            else:
+                dirname = self.programdir
+                altdir_tried = True
+                # GPo new: remove the old preview, we don't need to collect all previews in the program dir
+                f = os.path.join(dirname, 'preview.avs')
+                if os.path.isfile(f):
+                    try:
+                        os.remove(f)
+                    except:
+                        pass
         else:
-            dirname = self.programdir
-            altdir_tried = True
+            dirname = avs_dir
+            altdir_tried = dirname == self.programdir
+
+        if avs_name:
+            f = os.path.join(dirname, avs_name + '.avs')
+            if os.path.isfile(f):
+                try:
+                    os.remove(f)
+                except:
+                    return
+        else:
+            avs_name = 'preview'
+
         while True: # os.access doesn't work properly on Windows, let's just try
-            previewname = os.path.join(dirname, 'preview.avs')
+            previewname = os.path.join(dirname, avs_name + '.avs')
             i = 1
             while os.path.exists(previewname):
-                previewname = os.path.join(dirname, 'preview%i.avs' % i)
+                previewname = os.path.join(dirname, avs_name + '%i.avs' % i)
                 i = i+1
             try:
                 with open(previewname, 'wb') as f:
@@ -35669,7 +35728,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if isinstance(self.tabDlg, TabList):
             self.tabDlg.noFocus = True
             self.tabDlg.UpdateTab(idx, script)
-    #@AsyncCallWrapper
+    @AsyncCallWrapper # if you remove it do must add it to updatePreloadedScript: AsyncCall(self.Tablist_Close).Wait()
     def TabList_Close(self):
         if isinstance(self.tabDlg, TabList):
             self.tabDlg.Destroy()
@@ -37637,17 +37696,62 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             return
         self.tabDlg.ShowDlg()
 
-    #@AsyncCallWrapper
+    # Prelod script threaded loop class (see function Preload above)
+    class PreloadLoopTh(threading.Thread):
+        def __init__(self, q, func):
+            threading.Thread.__init__(self)
+            self.q = q
+            self.func = func
+            self.ev = threading.Event()
+            self.ev.clear()
+            self.daemon = True
+            self.canceled = False
+            self.start()
+        def Add(self, q):
+            self.q.put(q.get())
+        def Cancel(self):
+            self.canceled = True
+            self.ev.set()
+        def run(self):
+            while not self.canceled:
+                self.ev.wait()
+                self.ev.clear()
+                if self.canceled:
+                    return
+                # prepare the needed stuff and start the clip thread and progress dlg in the main thread
+                AsyncCall(self.func, self.q, self.ev).Wait()
+                self.ev.wait()
+                if self.canceled:
+                    return
+                if self.q.empty():
+                    return
+                try: # if empty fails see python (not reliable!)
+                    q = queue.Queue()
+                    q.put_nowait(self.q.get_nowait())
+                    self.q.put_nowait(q.get_nowait())
+                except:
+                    return
+
+
+    @AsyncCallWrapper
     def Preload(self, script):
-        return
-        def updateAbandonedScript(AVI, script, scripttxt, filename, progress):
+
+        # this runs in the main thread and is called from the above thread function createclip
+        # It's inform the user and assign the AVI to the script
+        def updatePreloadedScript(q, script, scripttxt, filename, progress):
             def _showDialog(idx):
                 if not wx.IsBusy() and (self.IsEnabled() and not self.ClipRefreshPainter) and self.fullScreenWnd.IsEnabled():
                     ID = wxp.MessageDlgTop(self, _('Pre-loaded clip assigned. Select the tab?'), _('Information'), wx.YES_NO|wx.ICON_INFORMATION)
                     if ID == wx.ID_YES:
-                        self.HidePreviewWindow()
-                        AsyncCall(self.TabList_Close).Wait()
+                        #~self.HidePreviewWindow() # must Async (has decorator)
+                        #~self.TabList_Close() # must Async (has decorator)
                         self.scriptNotebook.SetSelection(idx)
+            try:
+                AVI = q.get_nowait()
+            except:
+                return
+            if not isinstance(AVI, pyavs.AvsClipBase):
+                return
             try:
                 idx = -1
                 if isinstance(script, AvsStyledTextCtrl):
@@ -37662,11 +37766,13 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     if idx:
                         script = self.currentScript
                         script.SetText(scripttxt)
+                        script.SetSavePoint()
+                        script.SetModified(False)
                         script.filename = filename
-
                 if idx > -1:
                     if script.GetText() != scripttxt:
                         script.SetText(scripttxt) # set the text with which the clip was loaded
+                        script.SetSavePoint()
                     script.Colourise(0, script.GetTextLength())
                     script.previewtxt = self.ScriptChanged(script, return_styledtext=True)[1]
                     script.AVI = AVI
@@ -37676,71 +37782,133 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     script.display_clip_refresh_needed = True
                     self.StopPlayback()
                     if self.sdlWindow.running:
-                        self.sdlWindow.ResetWindowToNormalSize()
+                        AsyncCall(self.sdlWindow.ResetWindowToNormalSize).Wait()
                         #self.sdlWindow.Close()
-                    AsyncCall(self.TabList_Close).Wait()
+                    #~self.TabList_Close()
                     self.UpdateScriptTagProperties(script, scripttxt)
                     self.GetAutoSliderInfo(script, scripttxt)
-                    self.UpdateScriptTabname(script)
-                    self.StatusbarTimer_Start(3000, _(u'Pre-loaded clip assigned: "{0}"').format(filename), bellcount=1)
+                     # Async if not Tablist_Close() is called, Tablist performs an update on UpdateScriptTabname
+                    AsyncCall(self.UpdateScriptTabname, script).Wait()
                     if self.scriptNotebook.GetSelection() != idx:
                         progress.SetLabel(_('Preload finished'), '')
                         _showDialog(idx)
+                    else:
+                        self.StatusbarTimer_Start(3000, _(u'Pre-loaded clip assigned: "{0}"').format(filename), bellcount=1)
                     return True
             except:
                 pass
             return False
 
-        # this runs in a separate thread
-        def createclip(script, progress, workdir, filename, name):
-            readmatrix = self.options['readmatrix']
-            script.forceZoom = None
-            script.lastZoom = None
-            script.oldDisplayClipSize = (0, 0)
+        # this runs in a separate thread and creates the clip
+        def createclip(script, progress, txt, scripttext, workdir, filename, readmatrix, ev):
+            def callBack(ident, value, framenr=-1): # use not the MainThread default AVI callBack function! It's along the currentScript
+                pass
             displayFilter = None
             resizeFilter = None
             previewFilter = None
             useSplitClip = False
             oldFramecount = 240
-            scripttext = script.GetText()
+            readFrameProps = False #self.readFrameProps
+            display_clip = True
+            AVI = None
+            q = queue.Queue()
+            time.sleep(0.1)
 
-            AVI = pyavs.AvsClip(self, self.getCleanText(scripttext), filename, workdir=workdir, env=None, fitHeight=None, fitWidth=None,
-                oldFramecount=oldFramecount, matrix=script.matrix, interlaced=self.interlaced, swapuv=self.swapuv,
-                bit_depth=self.bit_depth,callBack=self.AVICallBack, readmatrix=readmatrix, displayFilter=displayFilter,
-                readFrameProps=self.readFrameProps, resizeFilter=resizeFilter, previewFilter=previewFilter, useSplitClip=useSplitClip,
-                audioVolume=script.audioVolume)
+            try:
+                AVI = pyavs.AvsClip(self, txt, filename, workdir=workdir, env=None, fitHeight=None, fitWidth=None, oldFramecount=oldFramecount,
+                    display_clip=display_clip, matrix=script.matrix, interlaced=self.interlaced, swapuv=self.swapuv,
+                    bit_depth=self.bit_depth,callBack=callBack, readmatrix=readmatrix, displayFilter=displayFilter,
+                    readFrameProps=readFrameProps, resizeFilter=resizeFilter, previewFilter=previewFilter, useSplitClip=useSplitClip,
+                    audioVolume=script.audioVolume, subfunc=script.subfunc)
+            except:
+                pass
+
+            if display_clip and isinstance(AVI, pyavs.AvsClipBase) and not AVI.IsErrorClip():
+                try:
+                    frame = max(min(script.lastFramenum, AVI.Framecount-1), 0)
+                    AVI._GetFrame(frame)
+                except:
+                    pass
 
             try:
                 if not progress.Cancel:
                     try:
                         if isinstance(AVI, pyavs.AvsClipBase):
-                            AsyncCall(progress.SetLabel, _('Waiting for main thread'), '').Wait()
+                            q.put_nowait(AVI)
+                            AsyncCall(progress.SetLabel, _(u'Waiting for main thread'), '').Wait()
                             while wx.IsBusy() or self.ClipRefreshPainter or not self.IsEnabled() or not self.fullScreenWnd.IsEnabled():
                                 wx.MilliSleep(1000)
-                            AsyncCall(self.TabList_Close).Wait()
-                            re = AsyncCall(updateAbandonedScript, AVI, script, scripttext, filename, progress).Wait()
+                            #~AsyncCall(self.TabList_Close).Wait()
+                            re = AsyncCall(updatePreloadedScript, q, script, scripttext, filename, progress).Wait()
                             if re:
                                 return
                             else:
-                                wx.CallAfter(wxp.MessageBox, _('Cannot assign the clip')+'\n' + filename, _('Preload Error'), wx.OK|wx.ICON_ERROR, self)
+                                wx.CallAfter(wxp.MessageBox, _(u'Cannot assign the clip')+'\n' + filename, _(u'Preload Error'), wx.OK|wx.ICON_ERROR, self)
                         else:
-                            wx.CallAfter(wxp.MessageBox, _('Creating clip failed')+'\n' + filename, _('Preload Error'), wx.OK|wx.ICON_ERROR, self)
+                            wx.CallAfter(wxp.MessageBox, _(u'Creating clip failed')+'\n' + filename, _(u'Preload Error'), wx.OK|wx.ICON_ERROR, self)
                     except:
-                        wx.CallAfter(wxp.MessageBox, _('Unknown Error')+'\n' + filename, _('Preload Error'), wx.OK|wx.ICON_ERROR, self)
+                        wx.CallAfter(wxp.MessageBox, _(u'Unknown Error')+'\n' + filename, _(u'Preload Error'), wx.OK|wx.ICON_ERROR, self)
                 AVI = None
+                if progress.Cancel:
+                    if self.preloadLoopTh:
+                        AsyncCall(self.preloadLoopTh.Cancel).Wait()
             finally:
                 if isinstance(script, AvsStyledTextCtrl):
                     script.AviThread = None
                 AsyncCall(progress.Close)
+                ev.set() # start the next loop
+                del q
+            ### clip thread end
 
-        try:
-            mem = max(int(wx.GetFreeMemory()/1024/1024), 0)
-        except:
-            mem = 0
-        if mem < 1001:
-            ID = wxp.MessageDlgTop(self, _('Free memory is low %i MB, Continue?') % mem, 'Preload', wx.YES_NO|wx.ICON_WARNING)
-            if ID != wx.ID_YES:
-                return
+        # prepare the needed stuff in the main thread. Its calling from class PreloadLoopTh with AsyncCall
+        # creates the progress and thread and starts the below threaded function createclip
+        # if createclip finished it sets 'ev' und starts the next loop in PreloadLoopTh,
+        # if the progress cancel button is pressed the loop will break
+        def _prepare(q, ev):
+            try: # check the memory before run
+                mem = max(int(wx.GetFreeMemory()/1024/1024), 0)
+            except:
+                mem = 0
+            if mem < 2001:
+                ID = wxp.MessageDlgTop(self, _(u'Free memory is low %i MB, Continue?') % mem, 'Preload', wx.YES_NO|wx.ICON_WARNING)
+                if ID != wx.ID_YES:
+                    if self.preloadLoopTh:
+                        self.preloadLoopTh.Cancel()
+                    return
+            try:
+                script, txt, scripttext, workdir, filename, readmatrix, title = q.get_nowait() # q from PreLoadLoopTh
+            except:
+                if self.preloadLoopTh:
+                    self.preloadLoopTh.Cancel()
+                return False
+            script.subfunc = None
+            if self.options['useavisubfunc']:
+                f = self.MakePreviewScriptFile(script, self.programdir, 'preview_test2') # must use annother name (main thread can save at the same time)
+                if f:
+                    filename = f
+                    script.subfunc = ur'AviSource("{0}")'.format(f)
+                else:
+                    wxp.MessageBox('Cannot create the preview_test.avs for AvsPmod test.', _('Error'), wx.OK|wx.ICON_INFORMATION, self)
+
+            x, y = wx.GetDisplaySize() # progress dialog calcs the position from parent
+            if self.options['reloadscriptprogresspos'] == 0:
+                x = intPPI(15)
+            progress = wxp.ProgressDlg(self, 'Preload: '+ title, _(u'Process in progress'), _(u'Waiting for clip initialization'), pos=(x,y), show=True)
+            progress.Start()
+            ev.clear()
+            th = threading.Thread(target=createclip, name='clip', args=(script, progress, txt, scripttext, workdir, filename, readmatrix, ev,))
+            if isinstance(th, threading.Thread):
+                th.daemon = True
+                script.AviThread = th
+                th.start()
+                return True
+            else:
+                progress.Close()
+                if self.preloadLoopTh:
+                    self.preloadLoopTh.Cancel()
+                return False
+
+        ### func start
         workdir_exp = self.ExpandVars(self.options['workdir'])
         if (self.options['useworkdir'] and self.options['alwaysworkdir']
             and os.path.isdir(workdir_exp)):
@@ -37748,28 +37916,34 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         else:
             workdir = script.workdir
 
+        scripttext = script.GetText()
+        txt = self.getCleanText(scripttext)
+        script.forceZoom = None
+        script.lastZoom = None
+        script.oldDisplayClipSize = (0, 0)
+        readmatrix = self.options['readmatrix']
+
         filename = script.filename
         if not filename:
-            name = filename
             for i in xrange(self.scriptNotebook.GetPageCount()):
                 if script is self.scriptNotebook.GetPage(i):
                     filename = self.scriptNotebook.GetPageText(i)
                     break
+        path, name = os.path.split(filename)
+        title = name if name else path
+        title = title.rstrip('.avs')
+
+        # start the loop thread, the clip creating is running one after the other
+        q = queue.Queue()
+        q.put((script, txt, scripttext, workdir, filename, readmatrix, title))
+
+        if self.preloadLoopTh is None or not self.preloadLoopTh.isAlive():
+            self.preloadLoopTh = None
+            self.preloadLoopTh = self.PreloadLoopTh(q, _prepare)
+            self.preloadLoopTh.ev.set()
         else:
-            path, name = os.path.split(filename)
-        name = name.rstrip('.avs')
-
-        x, y = wx.GetDisplaySize() # progress dialog calcs the position from parent
-        if self.options['reloadscriptprogresspos'] == 0:
-            x = intPPI(15)
-        progress = wxp.ProgressDlg(self, 'Preload: '+ name, 'Process in progress', 'Waiting for clip initialization', pos=(x,y), show=True)
-        progress.Start()
-
-        th = threading.Thread(target=createclip, args=(script, progress, workdir, filename, name,))
-        th.daemon = True
-        th.name = 'clip'
-        script.AviThread = th
-        th.start()
+            self.preloadLoopTh.Add(q)
+        del q
 
 
 

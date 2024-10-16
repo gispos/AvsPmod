@@ -38,6 +38,30 @@ If, for example, there is a '-' in the file name of the dll, AvsPmod will report
 please rename this dll and replace the '-' with a '_'
 
 --------------------------
+Version 2.7.8.6 [2024-10-16] Pre-Release (public)
+--------------------------
+!! Attention for the option 'Preload script' !!
+The minimum Avisynth version is 3.7.3 r4071
+The official version 3.7.3 crashes. 
+The 3.7.3 post test 14 r4066 also crashes.
+No problems with r4071 and the r4073 version from here: https://gitlab.com/uvz/AviSynthPlus-Builds
+Forget the official build. It's a disgrace.
+--------------------------
+* 'Preload script' added again (see also 2.7.8.4), please test it and let me know (use r4073). Thanks.
+- the function creates the clips of a script (tab) in the background and shows a progress dialog. 
+- one clip after the other is created when scripts (tabs) are added with 'Preload script'.
+- before each run, the available memory is checked and if it is less than 2001 MB, a dialog appears asking whether to cancel.
+- if in the progress dialog the 'Cancel' button is clicked, all pending processes are deleted and the dialog closes after the current process has ended.
+- a running process cannot be aborted directly, you have to wait for Avisynth to return.
+- if the process does not end (Avisynth does not return), only a program restart can help.
+- It should also be clear that other processes such as playback will slow down while clips are loading in the background.
+- Since source filter indexers do not consume as much CPU power, they should be well suited for this purpose.
+* New option: Options > 'AvsPmod & Avisynth test'. Test AvsPmod and Avisynth. More in the dialog that appears.
+- info: 'Preload script' uses also this option. The Analysis passes not.
+* Bugfix: On renaming the tab and the new tab name was empty.
+* Bugfix: On closing tabs ('All' or 'All not opened'). When multiline tab style was enabled, the free space did not shrink.
+
+--------------------------
 Version 2.7.8.5 [2024-10-13]
 --------------------------
 * Bugfix: Media Info Dialog can cause an 'KillFocus' error if auto close enabled.
