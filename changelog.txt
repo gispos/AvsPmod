@@ -38,14 +38,13 @@ If, for example, there is a '-' in the file name of the dll, AvsPmod will report
 please rename this dll and replace the '-' with a '_'
 
 --------------------------
-Version 2.7.8.6 [2024-10-16] Pre-Release (public)
+Version 2.7.8.6 [2024-10-16] Pre-Release_2
 --------------------------
 !! Attention for the option 'Preload script' !!
 The minimum Avisynth version is 3.7.3 r4071
 The official version 3.7.3 crashes. 
 The 3.7.3 post test 14 r4066 also crashes.
 No problems with r4071 and the r4073 version from here: https://gitlab.com/uvz/AviSynthPlus-Builds
-Forget the official build. It's a disgrace.
 --------------------------
 * 'Preload script' added again (see also 2.7.8.4), please test it and let me know (use r4073). Thanks.
 - the function creates the clips of a script (tab) in the background and shows a progress dialog. 
