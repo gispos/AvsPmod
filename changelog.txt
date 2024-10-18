@@ -10,6 +10,7 @@ Modifications (Avisynth header v6) by pinterf (pfmod)
 pinterf source: https://github.com/pinterf/AvsPmod
 GPo source: https://github.com/gispos/AvsPmod
 GPo releases: https://github.com/gispos/AvsPmod/releases
+Latest bug fixed Avisynth release: https://gitlab.com/uvz/AviSynthPlus-Builds
 
 ##### 
 About sliders:
@@ -38,16 +39,12 @@ If, for example, there is a '-' in the file name of the dll, AvsPmod will report
 please rename this dll and replace the '-' with a '_'
 
 --------------------------
-Version 2.7.8.6 [2024-10-16] Pre-Release_2
+Version 2.7.8.7 [2024-10-18] GPo
 --------------------------
-!! Attention for the option 'Preload script' !!
-The minimum Avisynth version is 3.7.3 r4071
-The official version 3.7.3 crashes. 
-The 3.7.3 post test 14 r4066 also crashes.
-No problems with r4071 and the r4073 version from here: https://gitlab.com/uvz/AviSynthPlus-Builds
---------------------------
-* 'Preload script' added again (see also 2.7.8.4), please test it and let me know (use r4073). Thanks.
-- the function creates the clips of a script (tab) in the background and shows a progress dialog. 
+* The editor and the tabs have been given a new context menu entry. 'Preload script':
+- 'Preload script' menu is only visible if Avisynth version greater then 3.7.3 or Version is 3.7.3 and release is greater r4070 
+- you can get working versions from here: https://gitlab.com/uvz/AviSynthPlus-Builds
+- the function creates the clip of a script (tab) in the background and shows a progress dialog. 
 - one clip after the other is created when scripts (tabs) are added with 'Preload script'.
 - before each run, the available memory is checked and if it is less than 2001 MB, a dialog appears asking whether to cancel.
 - if in the progress dialog the 'Cancel' button is clicked, all pending processes are deleted and the dialog closes after the current process has ended.
@@ -55,25 +52,9 @@ No problems with r4071 and the r4073 version from here: https://gitlab.com/uvz/A
 - if the process does not end (Avisynth does not return), only a program restart can help.
 - It should also be clear that other processes such as playback will slow down while clips are loading in the background.
 - Since source filter indexers do not consume as much CPU power, they should be well suited for this purpose.
+-
 * New option: Options > 'AvsPmod & Avisynth test'. Test AvsPmod and Avisynth. More in the dialog that appears.
 - info: 'Preload script' uses also this option. The Analysis passes not.
-* Bugfix: On renaming the tab and the new tab name was empty.
-* Bugfix: On closing tabs ('All' or 'All not opened'). When multiline tab style was enabled, the free space did not shrink.
-
---------------------------
-Version 2.7.8.5 [2024-10-13]
---------------------------
-* Bugfix: Media Info Dialog can cause an 'KillFocus' error if auto close enabled.
-* Bugfix: 'Preload script' doesn't work correctly. I've removed it for now. It still needs further testing.
-
---------------------------
-Version 2.7.8.4 [2024-10-11]
---------------------------
-* The editor and the tabs have been given a new context menu entry. 'Preload script':
-- it loads the script clip and displays a progress dialog, under program settings > Misc 2 > 'Preload script progress' you can set the position bottom left\right.
-- only the clip is initialized, depending on the filters it may take some time until the frame is displayed after selecting the tab.
-- until the clip is loaded, another script (tab) can be used. a refresh or new loading or playback should also be possible. 
-- it should be well suited for indexing by a source filter, for example.
 * Flickering on showing the separate video window reduced and if it minimazed it will now restore the size and shown.
 * Separate video window resets now the zoom and position after maximazed and restored with a dbl. click if 'Save view pos on tab change' checked.
 * Video > Tools > 'Locate frame' reworked: read the Locate frame readme.
@@ -86,13 +67,19 @@ Version 2.7.8.4 [2024-10-11]
 * Changed: If the script was on a USB drive, for example, and the device was not connected when loading a session, 
 - the path was removed from the file name and reloading the script was no longer possible, even after connecting the device.
 * The 'SceneLogToBookmarks' and 'Run analysis paas' macro has been updated (see Run analysis pass) and other macros (Help > 'Video tutorials & more') have been added.
+* Update AvsPmod 'About' dialog
 * Fix: When AvsPmod was used with Wine, it could be that the script text was not displayed.
 * Bugfix: Copied bookmarks could be 0 after paste it into the timeline and then you delete the bookmarks in the timeline.
 * Bugfix: Drag & Drop files causes an 'UpdateTabImages' error.
-* Some other fixes and changes
+* Bugfix: Media Info Dialog can cause an 'KillFocus' error if auto close enabled.
 
 --------------------------
-Version 2.7.8.2 - 2.7.8.3 [2024-09-29]
+Version 2.7.8.4 - 2.7.8.6  
+--------------------------
+Deleted
+
+--------------------------
+Version 2.7.8.2 - 2.7.8.3 [2024-09-29] GPo
 --------------------------
 * Added Trim Dialog context menu 'Don't close on 'Apply', does not close the Trim Dialog after pressing 'Apply' (User wish).
 * Added Video > Bookmarks > Copy/Paste bookmarks. Copies or paste bookmarks direct from/into the timeline.
@@ -127,7 +114,7 @@ Version 2.7.8.3
 * Apparently a double release is becoming a habit ,)
 
 --------------------------
-Version 2.7.8.0 - 2.7.8.1 [2024-09-01]
+Version 2.7.8.0 - 2.7.8.1 [2024-09-01] GPo
 --------------------------
 * The reason for this version 2.7.8.1 is that due to the new bookmark handling some macros no longer work properly, 
 - instead of changing all macros the problem was fixed in this version. Sorry.
@@ -161,7 +148,7 @@ Version 2.7.8.0 - 2.7.8.1 [2024-09-01]
 * Some other changes.
 
 --------------------------
-Version 2.7.7.9 [2024-08-11]
+Version 2.7.7.9 [2024-08-11] GPo
 --------------------------
 * Another update for the 'Script Selector': Added to context menu Options & Aditional > 'Find dups', 'Find dups (dif) and 'Find dups (same tab)'. 
 - 'Find dups' shows all duplicate entries and 'Find dups (dif)' only duplicate entries with different script text. 'Find dups (same tab)' shows duplicates if the entries in the same tab.
@@ -177,7 +164,7 @@ Version 2.7.7.9 [2024-08-11]
 - there won't be come many.
 
 --------------------------
-Version 2.7.7.8 [2024-08-03]
+Version 2.7.7.8 [2024-08-03] GPo
 --------------------------
 * Added directory 'sound' in the program folder. Please unzip it into the AvsPmod folder if you do not unzip everything.
 * In the Tablist context menu there is an entry 'Execute menu'. You have to configure this entry yourself, read Help > 'Tablist readme'.
@@ -193,14 +180,14 @@ Version 2.7.7.8 [2024-08-03]
 * Some other small corrections.
 
 --------------------------
-Version 2.7.7.7 [2024-07-20]
+Version 2.7.7.7 [2024-07-20] GPo
 --------------------------
 * Bugfix: 
 Resample Filter could under certain circumstances, depending on the video source and filters used, get into a resize loop and block everything.
 For me, this was only the case with a corrupted 4K video and with MCTemporalDenoise with settings 'High' and 'Very High'. 
 
 --------------------------
-Version 2.7.7.4, 2.7.7.5, 2.7.7.6 [2024-06-19]
+Version 2.7.7.4, 2.7.7.5, 2.7.7.6 [2024-06-19] GPo
 --------------------------
 * 'Resample filter' is restored after an error clip.
 * Closing a tab using the 'Tab list' will no longer force an adjacent uninitialized tab to open.
@@ -232,7 +219,7 @@ Version 2.7.7.4, 2.7.7.5, 2.7.7.6 [2024-06-19]
 * Version 2.7.7.6: Forgot to delete entries from the tests in the code. When saving the script a message 'found' could be displayed. Sorry.
 
 --------------------------
-Version 2.7.7.3 [2024-04-20]
+Version 2.7.7.3 [2024-04-20] GPo
 --------------------------
 * Audio mixer values for mix of left/right and center lowered (clipping minimized).
 * Switching the 'Preview Filter' on/off is now faster if no change was made.
@@ -241,7 +228,7 @@ Version 2.7.7.3 [2024-04-20]
 * Fix: RGBPS/RGBPSA values -1, -1, -1, -1 were treated as errors.
 
 --------------------------
-Version 2.7.7.2 [2024-04-07]
+Version 2.7.7.2 [2024-04-07] GPo
 --------------------------
 * The script/video window splitter functionality has been revised.
 * There are 3 video window resize modes ( Force, Normal, Static )
@@ -269,7 +256,7 @@ Version 2.7.7.2 [2024-04-07]
 -- the names were wrong from the beginning and did not match the normal zoom Fit/Fill. Sorry. 
 
 --------------------------
-Version 2.7.7.1 [2024-03-16]
+Version 2.7.7.1 [2024-03-16] GPo
 --------------------------
 * After an error message (error clip), the previously used zoom is restored (factor, fit, fill, position).
 - however, the 'Resize filter' is not restored.

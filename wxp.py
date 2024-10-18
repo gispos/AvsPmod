@@ -483,11 +483,13 @@ class Frame(wx.Frame):
         for eachMenuInfo in menuInfo:
             # Get the info, fill in missing info with defaults
             nItems = len(eachMenuInfo)
-            # Special case: separator
+            # Special case: separator or nothing '-'
             if eachMenuInfo == '' or nItems == 1:
-                menu.AppendSeparator()
-                menu.Remove(menu.Append(wx.ID_ANY, '0',).GetId()) # wxGTK fix
+                if eachMenuInfo == '':
+                    menu.AppendSeparator()
+                    menu.Remove(menu.Append(wx.ID_ANY, '0',).GetId()) # wxGTK fix
                 continue
+
             if nItems > 7:
                 raise
             defaults = ('', '', None, '', wx.ITEM_NORMAL, None, self)

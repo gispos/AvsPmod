@@ -12677,6 +12677,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
 
     def getFilterInfoFromAvisynth(self):
         self.avisynthVersion = (None,) * 3
+        self.avsVersionNumber = 0
+        self.avsReleaseNumber = 0
         self.installed_plugins = set()
         self.installed_plugins_filternames = set()
         self.installed_avsi_filternames = set()
@@ -12697,14 +12699,15 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             wx.SafeShowMessage(' '.join((self.name, self.version)),
                               '\n\n'.join((_('Error loading AviSynth!'), error)))
             sys.exit(0)
-        self.avisynthVersion = (env.invoke('VersionString'),
-                                env.invoke('VersionNumber'),
-                                env.invoke('Version').get_version())
+        self.avisynthVersion = (env.invoke('VersionString'), # the complete version
+                                env.invoke('VersionNumber'), # it's not the version number (2.59xxxxxxxxx) why?
+                                env.invoke('Version').get_version()) # it is the header version
 
         # GPo, for frame properties minimum version 3.71 is required
-        avs371up = utils.CheckAvisynthVersion371(env, self.avisynthVersion[0])
-        self.options['can_read_avisynth_props'] = avs371up
-        if not avs371up:
+        self.avsVersionNumber = utils.GetAvisynthVersion(env, self.avisynthVersion[0])
+        self.avsReleaseNumber = utils.GetAvisynthRelease(self.avisynthVersion[0])
+        self.options['can_read_avisynth_props'] = self.avsVersionNumber >= 371
+        if self.avsVersionNumber < 371:
             try:
                 if not env.check_version(6):
                     raise
@@ -13918,7 +13921,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         elif idx == 2:
             _zoomMenu += ((''),) +  _resampleMenu
         IsAVX2 = utils.IsAVX2()
-
+        if (self.avsVersionNumber > 373) or (self.avsVersionNumber >= 373 and self.avsReleaseNumber >= 4071):
+            _preloadMenu = (_('Preload script'), '', self.OnMenuScriptPreload)
+            _preloadMenu2 = ('')
+        else:
+            _preloadMenu = ('')
+            _preloadMenu2 = ('-')
         return (
             (_('&File'),
                 (_('New tab'), 'Ctrl+N', self.OnMenuFileNew, _('Create a new tab')),
@@ -13999,8 +14007,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                     (_('Preview filter'), 'Ctrl+P', self.OnMenuInsertPreviewFilter, _('Add Preview filter surrounding the selected lines. Help-> Preview filter readme')),
                     ),
                 ),
-                (_('Preload script'), '', self.OnMenuScriptPreload),
-                (''),
+                _preloadMenu, # only avisynth > 373 r4070
+                _preloadMenu2,
                 (_('Indent selection'), 'Tab', self.OnMenuEditIndentSelection, _('Indent the selected lines')),
                 (_('Unindent selection'), 'Shift+Tab', self.OnMenuEditUnIndentSelection, _('Unindent the selected lines')),
                 (_('Block comment'), 'Ctrl+Q', self.OnMenuEditBlockComment, _('Comment or uncomment selected lines')),
@@ -14632,6 +14640,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 nb.SetFont(font)
                 nb.PPIScale = f
         nb.app = self
+        if (self.avsVersionNumber > 373) or (self.avsVersionNumber == 373 and self.avsReleaseNumber >= 4071):
+            _preloadMenu = ('')
+            _preloadMenu2 = (_('Preload script'), '', self.OnMenuScriptPreload) # GPo 2024
+        else:
+            _preloadMenu = ('')
+            _preloadMenu2 = ('-')
         # Create the right-click menu
         menuInfo = (
             (_('Close'), '', self.OnMenuFileClose),
@@ -14680,8 +14694,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             (''),
             (_('Bookmarks to script'), '', self.OnMenuBookmarksToScript),     # GPo, 2018
             (_('Bookmarks from script'), '', self.OnMenuBookmarksFromScript), # GPo, 2018
-            (''),
-            (_('Preload script'), '', self.OnMenuScriptPreload), # GPo 2024
+            _preloadMenu,
+            _preloadMenu2,
             (_('Release video memory'), '', self.OnMenuScriptReleaseMemory), # GPo 2020
             (_('Release all other video memory'), '', self.OnMenuOtherScriptReleaseMemory), # GPo 2020
             (''),
@@ -17668,8 +17682,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             self.CheckPlayback()
             return True
 
-    def SetPreviewFilterMenus(self, setIdx=0):
-        script = self.currentScript
+    def SetPreviewFilterMenus(self, setIdx=0, script=None):
+        if script is None:
+            script = self.currentScript
         setIdx = min(setIdx, 5) # max menu filter item count
         if setIdx < 1:
             self.UpdateMenuItem(_('Preview filter'), True, 'video', [_('None')])
@@ -19985,8 +20000,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         if not self.options['avithread']:
             wxp.MessageBox(_("Only available if 'Accesing avisynth in threads' enabled"), wx.OK|wx.ICON_INFORMATION)
             return
+        if (self.avsVersionNumber < 373) or (self.avsVersionNumber == 373 and self.avsReleaseNumber < 4071):
+            wxp.MessageBox(_("Only available Avisynth greater 3.73 or r4071"), wx.OK|wx.ICON_INFORMATION)
+            return
         script = self.currentScript
-        if not script.AVI is None or self.AviThread_Running(script):
+        #if not script.AVI is None or self.AviThread_Running(script):
+        if self.AviThread_Running(script):
             wx.Bell()
             return
         self.Preload(script)
@@ -21432,16 +21451,17 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         title.SetFont(font)
         description = wx.StaticText(dlg, wx.ID_ANY, _(global_vars.description))
         dpi.SetFontSize(factor=self.ppi_factor, font=description.GetFont(), size_adj=2)
+        def OnClick(event):
+            link = event.GetEventObject()
+            startfile(link.url)
         link = wx.StaticText(dlg, wx.ID_ANY, _("AvsPmod latest releases"))
         font = link.GetFont()
         font.SetUnderlined(True)
         link.SetFont(font)
         link.SetForegroundColour(wx.Colour(0,0,255))
         link.SetCursor(wx.StockCursor(wx.CURSOR_HAND))
-        url = 'https://github.com/gispos/AvsPmod'
-        def OnClick(event):
-            startfile(url)
-        link.SetToolTip(wx.ToolTip(url))
+        link.url = 'https://github.com/gispos/AvsPmod'
+        link.SetToolTip(wx.ToolTip(link.url))
         link.Bind(wx.EVT_LEFT_DOWN, OnClick)
 
         link1 = wx.StaticText(dlg, wx.ID_ANY, _("Active thread on Doom9's forum"))
@@ -21450,11 +21470,9 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         link1.SetFont(font)
         link1.SetForegroundColour(wx.Colour(0,0,255))
         link1.SetCursor(wx.StockCursor(wx.CURSOR_HAND))
-        url1 = 'https://forum.doom9.org/showthread.php?t=175823'
-        def OnClick1(event):
-            startfile(url1)
-        link1.SetToolTip(wx.ToolTip(url1))
-        link1.Bind(wx.EVT_LEFT_DOWN, OnClick1)
+        link1.url = 'https://forum.doom9.org/showthread.php?t=175823'
+        link1.SetToolTip(wx.ToolTip(link1.url))
+        link1.Bind(wx.EVT_LEFT_DOWN, OnClick)
 
         link_old = wx.StaticText(dlg, wx.ID_ANY, _("AvsPmod Website (old)"))
         font = link_old.GetFont()
@@ -21462,24 +21480,31 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         link_old.SetFont(font)
         link_old.SetForegroundColour(wx.Colour(0,0,255))
         link_old.SetCursor(wx.StockCursor(wx.CURSOR_HAND))
-        url0 = global_vars.url
-        def OnClick0(event):
-            startfile(url0)
-        link_old.SetToolTip(wx.ToolTip(url0))
-        link_old.Bind(wx.EVT_LEFT_DOWN, OnClick0)
+        link_old.url = global_vars.url
+        link_old.SetToolTip(wx.ToolTip(link_old.url))
+        link_old.Bind(wx.EVT_LEFT_DOWN, OnClick)
 
-        staticText = wx.StaticText(dlg, wx.ID_ANY, _('This program is freeware under the GPL license.'))
-        url2 = 'http://www.gnu.org/copyleft/gpl.html'
-        link2 = wx.StaticText(dlg, wx.ID_ANY, url2)
+        link2 = wx.StaticText(dlg, wx.ID_ANY, _("Avisynth latest bug fixed releases"))
         font = link2.GetFont()
         font.SetUnderlined(True)
         link2.SetFont(font)
         link2.SetForegroundColour(wx.Colour(0,0,255))
         link2.SetCursor(wx.StockCursor(wx.CURSOR_HAND))
-        def OnClick2(event):
-            startfile(url2)
-        link2.SetToolTip(wx.ToolTip(url2))
-        link2.Bind(wx.EVT_LEFT_DOWN, OnClick2)
+        link2.url = 'https://gitlab.com/uvz/AviSynthPlus-Builds'
+        link2.SetToolTip(wx.ToolTip(link2.url))
+        link2.Bind(wx.EVT_LEFT_DOWN, OnClick)
+
+        staticText = wx.StaticText(dlg, wx.ID_ANY, _('This program is freeware under the GPL license.'))
+        url = 'https://www.gnu.org/licenses/gpl-3.0.html'
+        link3 = wx.StaticText(dlg, wx.ID_ANY, url)
+        link3.url = url
+        font = link3.GetFont()
+        font.SetUnderlined(True)
+        link3.SetFont(font)
+        link3.SetForegroundColour(wx.Colour(0,0,255))
+        link3.SetCursor(wx.StockCursor(wx.CURSOR_HAND))
+        link3.SetToolTip(wx.ToolTip(link3.url))
+        link3.Bind(wx.EVT_LEFT_DOWN, OnClick)
 
         button = wx.Button(dlg, wx.ID_OK, _('OK'))
         inner = wx.BoxSizer(wx.HORIZONTAL)
@@ -21491,10 +21516,12 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         sizer.Add(link_old, 0, wx.ALIGN_CENTER|wx.ALL, int5)
         sizer.Add(link1, 0, wx.ALIGN_CENTER|wx.ALL, int5)
         sizer.Add(link, 0, wx.ALIGN_CENTER|wx.ALL, int5)
+        sizer.Add(link2, 0, wx.ALIGN_CENTER|wx.ALL, int5)
         sizer.Add((0,int5), 0, wx.EXPAND)
         sizer.Add(wx.StaticLine(dlg), 0, wx.EXPAND|wx.TOP, int10)
         sizer.Add(staticText, 0, wx.ALIGN_CENTER|wx.ALL, int5)
-        sizer.Add(link2, 0, wx.ALIGN_CENTER|wx.ALL, int5)
+        sizer.Add(link3, 0, wx.ALIGN_CENTER|wx.ALL, int5)
+
         sizer.Add(button, 0, wx.ALIGN_CENTER|wx.ALL, int5)
         dlg.SetSizer(sizer)
         dlg.Layout()
@@ -37805,7 +37832,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             display_clip = True
             AVI = None
             q = queue.Queue()
-            time.sleep(0.1)
+            time.sleep(0.1) # get avisynth a pause
 
             try:
                 AVI = pyavs.AvsClip(self, txt, filename, workdir=workdir, env=None, fitHeight=None, fitWidth=None, oldFramecount=oldFramecount,
@@ -37902,6 +37929,23 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 return False
 
         ### func start
+        # GPo new, test you must change OnMenuScriptPreload
+        if script.AVI:
+            if self.ScriptChanged(script):
+                if script is self.currentScript:
+                    if self.previewWindowVisible:
+                        self.HidePreviewWindow()
+                        #if self.sdlWindow.running:
+                            #self.sdlWindow.Close()
+                    self.SetPreviewFilterMenus(0, script)
+                if not self.AviFree(script, True):
+                    return
+                script.previewFilterIdx = 0
+                script.lastpreviewFilterIdx = 0
+            else:
+                wx.Bell()
+                return
+
         workdir_exp = self.ExpandVars(self.options['workdir'])
         if (self.options['useworkdir'] and self.options['alwaysworkdir']
             and os.path.isdir(workdir_exp)):
