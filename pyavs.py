@@ -1139,11 +1139,10 @@ class AvsClipBase:
                     return
                # audio_frames_buffered must be always mod 3 or only 1 for one frame
                 loops = int(self.audio_frames_buffered/3) if not frame_count else int(frame_count/3)
-                clip = self.display_clip
                 vi = self.vi_d
                 self.evAudioStop.clear()
                 self.evAudioFinished.clear()
-                self.AudioThread = threading.Thread(target=_playaudio, args=(clip, vi, frame, loops, self.evAudioFinished,))
+                self.AudioThread = threading.Thread(target=_playaudio, args=(self.display_clip, vi, frame, loops, self.evAudioFinished,))
                 self.AudioThread.daemon = True
                 self.AudioThread.start()
 

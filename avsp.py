@@ -30540,7 +30540,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 displayFilter = ''
                 for line in self.options['displayfilter'].split('\n'):
                     if line and not line.lstrip().startswith('#'):
-                        displayFilter += line
+                        displayFilter += line + '\n'
                 return displayFilter.strip()
             return None
 

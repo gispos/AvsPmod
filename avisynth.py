@@ -1143,8 +1143,9 @@ class AVS_Value(object):
     def release(self):
         if self.is_array():
             for index in range(self.array_size()):
-                AVS_Value(self.cdata.d.a[index], self.env)
-        avs_release_value(self)
+                AVS_Value(self.cdata.d.a[index], self.env) # create new avs_value that released itself
+        else:
+            avs_release_value(self)
         if self.is_defined():
             self.set_void()
 

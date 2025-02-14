@@ -39,6 +39,17 @@ If, for example, there is a '-' in the file name of the dll, AvsPmod will report
 please rename this dll and replace the '-' with a '_'
 
 --------------------------
+Version 2.7.9.3 [2025-02-13] GPo
+--------------------------
+* Further adjustments for Avisynth API 11
+
+--------------------------
+Version 2.7.9.2 [2025-02-12] GPo
+--------------------------
+* Fixed Version that is now working with newer Aviynth API 11 Versions. RIFE should also no longer cause any problems.
+The thanks go to pinterf.
+
+--------------------------
 Version 2.7.8.9 [2024-12-23] GPo
 --------------------------
 * Transfer and matrix names added, thanks to FranceBB.
