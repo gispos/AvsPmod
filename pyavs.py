@@ -685,8 +685,9 @@ class AvsClipBase:
             del self.evAudioStop
             if bool(__debug__):
                 print(u"Deleting allocated video memory for '{0}'".format(self.name))
-        gc.collect()
+        #gc.collect() # not good for API 11
 
+    # dummy, if callBack not assigned
     def _callBack(self, ident, value, framenr=-1):
         pass
 
