@@ -38,6 +38,14 @@ AvsPmod can only provide a user-friendly editor if he has no problems with the n
 If, for example, there is a '-' in the file name of the dll, AvsPmod will report it at startup, 
 please rename this dll and replace the '-' with a '_'
 
+
+--------------------------
+Version 2.7.9.4 [2025-03-01] GPo
+--------------------------
+* Further changes for the avisynth API 11:
+- e.g. if AvsPmod was terminated and the memory was exceeded (to many scripts opened), it could happen that AvsPmod did not terminate. 
+- for API 10 and before a Destroy() call was sufficient which could lead to problems with API 11
+
 --------------------------
 Version 2.7.9.3 [2025-02-13] GPo
 --------------------------
