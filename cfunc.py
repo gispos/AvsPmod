@@ -1,4 +1,4 @@
-# cfunc public
+# cfunc
 
 import pyavs
 import sys
