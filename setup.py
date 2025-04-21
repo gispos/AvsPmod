@@ -26,6 +26,7 @@
 #               or 4.0.2: experimental not finished
 #     py2exe (tested on v0.6.9)
 #     Cython for cfunc.pyd, PySDL2 for d3d window
+#     cfunc.py must be compiled with Cython and the module must be in the source folder
 # Additional dependencies for x86-64:
 #     cffi (tested on v0.9.2)
 #     pycparser (tested on v2.10)
