@@ -84,6 +84,7 @@ Requirements
 - 7-Zip (optional)
 
 - Additional dependencies: numpy, pyaudio, Cython (when compiling, the corresponding cfunc.pyd must be in the source directory)
+- cfunc.py must be compiled with Cython
 - PySDL2 and SDL2.dll 
 
 Windows x86-64
