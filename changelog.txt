@@ -40,6 +40,31 @@ please rename this dll and replace the '-' with a '_'
 
 
 --------------------------
+Version 2.7.9.5 [2025-11-26] GPo
+--------------------------
+* Added a favorite list, you can enable it in the tablist context menu > 'Show favorite menus'
+- it is switched off by default. This feature allows you to load your favorite scripts (tabs) in one go.
+- in the favorite window simply select the scripts you want to open and press 'Return'. 
+- if the script is not in the tabs, it will be loaded from the hard disk and opened with the frame number with which it was added to the favorites.
+- if the script is not found, a dialog will be displayed.  
+- the function is complex, if there are any errors please let me know.
+- Note: Scripts can only be recognized by path and name; if you have only multiple 'New file' tabs, you won't enjoy this function.
+* if 'Show favorite menus' enabled two other menus become visible in the tablist: 'Select for preload' and 'Preload selections', what the name says.
+- if nothing is for preload selected, the current selection is used (in the tablist use Ctrl and left click for multible selections). 
+* Added to 'Script Selector' context menu 'AvsPmod preload'. Preloads the selections (only if the script are saved on the hard disk).
+* Added File > 'Save session (only opened)...', saves only the opened scripts in a session file.
+* Added to Tools > Session info tool contextmenu > 'Preload', preloads the selected scripts (only if the script are saved on the hard disk).
+* Added to menu 'Tools' and to the External player button context menu > 'Audio trim helper':
+- the function plays the audio in a loop from or to the current frame for better trimming the start or end frame (audio).
+- while the audio is playing you can change the current frame with mouse wheel or the keyboard (the video window must be focused).
+- if you do not update all AvsPmod files, you must update the "tools" folder: 
+-  "ToolsMenu.py" must be overwritten and "audio_trim_helper.py" must be located in the "tools" folder.
+* Added to the frame history in the timeline edit field: Individual entries can be deleted by holding down the CTRL key while clicking the menu.
+* Added to (popup timeline) selections context menu  > 'All to clips'
+* Added to (popup timeline) selections context menu: copy to clipboard for the frame range menu, eg. 12-128 (click on the menu copys '12, 128' to clipboard)
+* Some fixes
+
+--------------------------
 Version 2.7.9.4 [2025-03-01] GPo
 --------------------------
 * Further changes for the avisynth API 11:
