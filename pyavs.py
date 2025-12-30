@@ -1267,14 +1267,14 @@ class AvsClipBase:
 
     def GetPictureType(self, nr=None):
         if self.initialized and self.can_read_avisynth_props:
-            if nr and not self._GetFrame(nr): # it's not threaded !
+            if (nr != None) and not self._GetFrame(nr): # it's not threaded !
                 return ''
             return self.env.props_get_picture_type(self.src_frame)
         return ''
 
     def GetFramePropValue(self, key, nr=None):
         if self.initialized and self.can_read_avisynth_props:
-            if nr and not self._GetFrame(nr): # it's not threaded !
+            if (nr != None) and not self._GetFrame(nr): # it's not threaded !
                 return ''
             return self.env.props_get_value(self.src_frame, key)
         return ''
@@ -1316,11 +1316,13 @@ class AvsClipBase:
                     return
                 self.IsSplitClip = True
                 self.clip = self.split_clip
+                self.GetMatrix()
                 self.SetClipInfo(self.split_clip_vi)
                 return self.CreateDisplayClip(self.matrix, self.interlaced, self.swapuv, self.bit_depth, killFilterClip=killFilterClip, killSplitClip=False)
             else:
                 self.IsSplitClip = False
                 self.clip = self.main_clip
+                self.GetMatrix()
                 self.SetClipInfo(self.main_clip_vi)
                 if not self.IsErrorClip():
                     return self.CreateDisplayClip(self.matrix, self.interlaced, self.swapuv, self.bit_depth, readmatrix=True, killFilterClip=killFilterClip, killSplitClip=True)

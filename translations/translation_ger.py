@@ -16,7 +16,7 @@
 
 # Übersetzt von Henrik . AvsP 2.0.1  Danke für die Hilfe, besonders LigH ,doxville,Brother John, Selur und Rippraff !
 
-version = "2.7.8.2"
+version = "2.7.9.5"
 
 messages = {
     "Note: When clicking on the calltip press Ctrl for file search or Shift for web search only." : u"", # New in v2.7.1.6
@@ -32,6 +32,7 @@ messages = {
     "Cancel" : u"Abbrechen",
     "Page:" : u"", # New in v2.3.1
     "Page: %d" : u"", # New in v2.3.1
+    "Error" : u"Fehler",
     "Fullscreen only with 'Accessing AviSynth in threads' enabled" : u"", # New in v2.7.5.6
     "Fullsize" : u"", # New in v2.7.3.7
     "Fullscreen" : u"", # New in v2.7.1.6
@@ -54,10 +55,23 @@ messages = {
     "Open path" : u"", # New in v2.7.8.2
     "Auto close" : u"", # New in v2.7.8.2
     "Single instance" : u"", # New in v2.7.8.2
-    "Error" : u"Fehler",
+    "Only available if 'Accesing avisynth in threads' enabled" : u"", # New in v2.7.9.5
+    "Only available Avisynth greater 3.73 or r4071" : u"", # New in v2.7.9.5
+    "Add current tab" : u"", # New in v2.7.9.5
+    "Add all initialized tabs" : u"", # New in v2.7.9.5
+    "Remove selections\tDel" : u"", # New in v2.7.9.5
+    "Remove all" : u"", # New in v2.6.8.7
+    "Preload selections\tReturn" : u"", # New in v2.7.9.5
+    "Show select tab dialog" : u"", # New in v2.7.9.5
+    "Refresh\tF5" : u"", # New in v2.7.9.5
+    "Information" : u"",
     "Release video memory" : u"Video Speicher freigeben",
     "Release all other video memory" : u"Video Speicher aller anderen Tabs freigeben",
     "Close tab" : u"Tab schließen",
+    "Add to favorites" : u"", # New in v2.7.9.5
+    "Show favorites" : u"", # New in v2.7.9.5
+    "Select for preload (Ctrl+Left)" : u"", # New in v2.7.9.5
+    "Preload selections (Return)" : u"", # New in v2.7.9.5
     "Script selector" : u"", # New in v2.7.5.6
     "Name" : u"",
     "Bookmarks" : u"", # New in v2.4.0
@@ -76,7 +90,6 @@ messages = {
     "Search in script" : u"", # New in v2.7.8.2
     "Wildcards * ? |  (* = any, ? = one, | = a or b)" : u"", # New in v2.7.8.2
     "%i Entries removed" : u"", # New in v2.7.8.2
-    "Information" : u"",
     "Script path and name already exist. Allow for All ?" : u"", # New in v2.7.5.6
     "Remove selection?" : u"", # New in v2.7.5.6
     "%i files selected! Keep going?" : u"", # New in v2.7.5.6
@@ -466,10 +479,12 @@ messages = {
     "Ask for JPEG quality" : u"Frage nach JPEG Qualität",
     "When saving a JPEG image, prompt for the quality level. Use the value from the last time if not checked" : u"", # New in v2.5.0
     "Misc" : u"Sonstiges",
-    "Choose the language used for the interface" : u"", # New in v2.3.0
-    "Language" : u"", # New in v2.3.0
+    "Choose the language used for the interface\nWarning! Changes will be delete keyboard shortcuts" : u"", # New in v2.7.9.5
+    "Language (read the tooltip!)" : u"", # New in v2.7.9.5
     "Show keyboard images in the script tabs when video has focus" : u"Zeigen der Tastaturabbildungen (keyboard images)in den Skript-Tabs, wenn Video fokusiert",
     "Use keyboard images in tabs" : u"Verwenden von Tastaturabbildungen (keyboard images) bei Tabulatoren",
+    "Highlight the current tab #" : u"", # New in v2.7.9.5
+    "Highlight the current tab with blue number sign #" : u"", # New in v2.7.9.5
     "Show tabs in multiline style" : u"Tabs im Multiline Style anzeigen",
     "There can be several rows of tabs" : u"", # New in v2.2.1
     "All tabs will have same width" : u"Alle Tabs haben die gleiche Breite",
@@ -478,11 +493,11 @@ messages = {
     "Scroll the mouse wheel up for changing tabs to the right" : u"", # New in v2.4.1
     "Invert scroll wheel direction (Frame)" : u"Mausrad Direktion vertauschen (Frame) ",
     "Invert wheel direction for frames step" : u"", # New in v2.5.1.18
-    "Automatically load bookmarks from script on open script or load session" : u"Beim laden einer session oder öffnen eines script bookmarks vom script laden", # New in v2.7.8.2
-    "Load bookmarks from script" : u"Lade bookmarks vom script", # New in v2.6.6.0
+    "Automatically load bookmarks from script on open script or load session" : u"Beim laden einer session oder öffnen eines script bookmarks vom script laden",
+    "Load bookmarks from script" : u"Lade bookmarks vom script",
     "Automatically load bookmarks from the script when switching tabs" : u"", # New in v2.7.8.2
-    "Tab switching loads bookmarks from script" : u"Tab Wechsel läd bookmarks vom script", # New in v2.7.8.2
-    "Warn when tab bookmarks and script bookmarks are different" : u"Warnen wenn tab/script bookmarks unterschiedlich", # New in v2.7.8.2
+    "Tab switching loads bookmarks from script" : u"Tab Wechsel läd bookmarks vom script",
+    "Warn when tab bookmarks and script bookmarks are different" : u"Warnen wenn tab/script bookmarks unterschiedlich",
     "Warning tab/script bookmarks different" : u"", # New in v2.7.8.2
     "Only allow a single instance of AvsPmod" : u"Nur eine Programminstanz erlauben",
     "Show warning at startup if there are dlls with bad naming in default plugin folder" : u"", # New in v2.2.1
@@ -512,6 +527,8 @@ messages = {
     "frames" : u"Einzelbilder",
     "Misc 2" : u"Sonstiges 2",
     "DPI settings*" : u"", # New in v2.7.3.1
+    "Disable DPI awareness (Linux Wine)*" : u"", # New in v2.7.9.5
+    "Workaround for Linux Wine incompatible Windows DPI awareness" : u"", # New in v2.7.9.5
     "Sets the sensitivity of the mouse movement in the status bar, for timeline range move (with or without Ctrl\\Shift), lower value more movement" : u"", # New in v2.7.4.1
     "Timeline move sensitivity on the statusbar" : u"", # New in v2.7.3.1
     "1 number" : u"", # New in v2.6.8.7
@@ -551,6 +568,10 @@ messages = {
     "top\\center" : u"", # New in v2.7.4.1
     "top\\left" : u"", # New in v2.7.4.1
     "top\\right" : u"", # New in v2.7.4.1
+    "Position for the 'Preload script' progress" : u"", # New in v2.7.9.5
+    "Preload script progress" : u"", # New in v2.7.9.5
+    "bottom left" : u"", # New in v2.7.9.5
+    "bottom right" : u"", # New in v2.7.9.5
     "Draw a hint when the mouse is in a zoom action area (Fullsize, Fullscreen, Resample" : u"", # New in v2.7.8.2
     "Off" : u"", # New in v2.7.8.2
     "On - auto hide" : u"", # New in v2.7.8.2
@@ -666,6 +687,7 @@ messages = {
     "Do not change the current zoom for Fullsize or Fullscreen" : u"", # New in v2.7.8.2
     "Use resample filter" : u"", # New in v2.7.1.6
     "Resample filter" : u"", # New in v2.7.1.6
+    "Preload script" : u"", # New in v2.7.9.5
     "&File" : u"&Datei",
     "Create a new tab" : u"Neuen Tab erstellen",
     "New tab" : u"Neuer Tab",
@@ -707,6 +729,8 @@ messages = {
     "Load session..." : u"Lade Session...",
     "Save all the scripts as a session, including slider info" : u"Speichern aller Skripte einer Session, inklusive Info des Schiebereglers",
     "Save session..." : u"Speichere Session...",
+    "Save all opened scripts as a session, including slider info" : u"Speichern aller geöffneten scripts in einer Session, inklusive Info des Schiebereglers", # New in v2.7.9.5
+    "Save session (only opened)..." : u"Speichere Session (nur geöffnete)...", # New in v2.7.9.5
     "Backup current session" : u"Aktuelle Session speichern",
     "Backup the current session for next program run" : u"Aktuelle Session für nächsten Programmlauf speichern", 
     "Load last session startup backup" : u"", # New in v2.7.1.6
@@ -1094,6 +1118,8 @@ messages = {
     "Restore fullscreen" : u"", # New in v2.7.5.6
     "/**avsp_split**/ must be written in to the script. Read the Fast Clip readme" : u"", # New in v2.7.3.7
     "Use 'Ultra Fast Clip'" : u"", # New in v2.7.3.7
+    "AvsPmod && Avisynth test" : u"", # New in v2.7.9.5
+    "Saves the script temporal and loads the avs file with AviSource" : u"", # New in v2.7.9.5
     "Accessing AviSynth in threads" : u"Zugriff auf AviSynth in Threads",
     "Use threads when accessing avisynth (load/release clip and get frame)" : u"", # New in v2.6.7.0
     "For info read the readme_threads.txt" : u"", # New in v2.6.9.4
@@ -1203,7 +1229,7 @@ messages = {
     "Reload" : u"Neu laden",
     "Reload all" : u"Neu laden alle",
     "Open directory" : u"Öffne Verzeichnis",
-    "Tab switching loads script bookmarks" : u"Tab Wechsel läd script bookmarks", # New in v2.7.8.2
+    "Tab switching loads script bookmarks" : u"Tab Wechsel läd script bookmarks",
     "Save/Restore last viewing position and normal zoom settings on tab change" : u"", # New in v2.7.8.2
     "Sizing on initilisation, tab change, zoom change, etc." : u"", # New in v2.7.8.2
     "Sizing on initilisation and zoom or size change (see progam options > Video)" : u"", # New in v2.7.8.2
@@ -1284,12 +1310,14 @@ messages = {
     "Error requesting frame {number}" : u"", # New in v2.5.0
     "Couldn't open clipboard" : u"Kann Clipboard nicht öffnen",
     "Cannot use crop editor\nDisplay clip and source clip have different dimensions." : u"", # New in v2.7.8.2
+    "Both videos must have the same width and height.\nCopy current tab to next?" : u"", # New in v2.7.9.5
     "No filters found, clear the current saved filters?" : u"", # New in v2.6.6.0
     "Preview filters" : u"", # New in v2.6.6.0
     "Thershold" : u"", # New in v2.7.8.2
     "Start" : u"", # New in v2.7.8.2
     "Stop" : u"Stop",
     "Freeze Frame" : u"", # New in v2.7.8.2
+    "Next tab is empty" : u"", # New in v2.7.9.5
     "Available Memory: {} MB" : u"", # New in v2.6.8.7
     "Snapshot %d" : u"", # New in v2.6.8.7
     "Error snapshot %d" : u"", # New in v2.6.8.7
@@ -1299,10 +1327,15 @@ messages = {
     "Cannot read the matrix. Clip not initialized" : u"", # New in v2.6.7.0
     "Cannot change bit depth while crop editor is open!" : u"", # New in v2.5.1 r452
     "Interleaved RGB48" : u"", # New in v2.5.1 r452
+    "Script is in preload progress\n{0}" : u"", # New in v2.7.9.5
     "Avisynth not returned thread still running.\n{0}" : u"", # New in v2.6.7.0
     "Avisynth not returned frame thread still running.\n{0}" : u"", # New in v2.6.7.7
     "Avisynth not returned play thread still running.\n{0}" : u"", # New in v2.6.9.4
-    "Starting analysis pass..." : u"", # New in v2.3.0
+    "Analysis pass clip memory has been released" : u"", # New in v2.7.9.5
+    "Cannot close the current script" : u"", # New in v2.7.9.5
+    "Waiting for clip initialization.\nIf you abort this process the thread is still running\nand the clip memory will be freeing when avisynth returns." : u"", # New in v2.7.9.5
+    "Analysis pass" : u"", # New in v2.7.9.5
+    "Run analysis pass..." : u"", # New in v2.7.9.5
     "Average %#.4g fps\nFrame %s/%s (%#.4g fps)" : u"", # New in v2.6.3.5
     "Finished (%s fps average)\n*** live and let live ***" : u"", # New in v2.6.3.5
     "Error loading the script" : u"Fehlerhaft geladenes Skript",
@@ -1427,6 +1460,7 @@ messages = {
     "AvsPmod latest releases" : u"", # New in v2.7.8.2
     "Active thread on Doom9's forum" : u"", # New in v2.2.1
     "AvsPmod Website (old)" : u"", # New in v2.7.8.2
+    "Avisynth latest bug fixed releases" : u"", # New in v2.7.9.5
     "This program is freeware under the GPL license." : u"Dieses Programm ist Freeware unter der GPL Lizenz.",
     "Input a frame number or time (hr:min:sec) and hit Enter. Right-click to retrieve from history. Or input a text and set the bookmark title." : u"", # New in v2.6.8.7
     "Audio scrub count" : u"", # New in v2.7.5.6
@@ -1458,7 +1492,6 @@ messages = {
     "Timeline to trims" : u"", # New in v2.6.9.4
     "Timeline to clips" : u"", # New in v2.6.9.4
     "Remove" : u"", # New in v2.6.7.2
-    "Remove all" : u"", # New in v2.6.8.7
     "Remove all other" : u"", # New in v2.6.8.7
     "Timeline range..." : u"", # New in v2.7.8.2
     "Trim editor..." : u"", # New in v2.6.8.7
@@ -1523,14 +1556,16 @@ messages = {
     "Directory %(dirname)s does not exist!" : u"Verzeichnis %(dirname)s existiert nicht!",
     "The saved script has changed because AvsP marked section added" : u"", # New in v2.6.7.3
     "Error saving the script: %s" : u"", # New in v2.6.7.2
+    "Error sorting tabs: Tabs my be unsorted" : u"", # New in v2.7.9.5
     "Script has no text!" : u"", # New in v2.5.0
     "HTML files" : u"", # New in v2.5.0
     "Load a session" : u"Lade eine Session",
-    "File has been modified since the session was saved. Reload?" : u"Datei wurde verändert, seit die letzte Sitzung gespeichert wurde. Neu laden?",
+    "File has been modified since the session was saved. Reload?\nPress Ctrl for Yes or No to all." : u"", # New in v2.7.9.5
     "Cannot create Sessions Backup directory\n" : u"", # New in v2.7.1.6
     "Cannot save the current session" : u"", # New in v2.7.1.6
     "Cannot backup the session\n" : u"", # New in v2.7.1.6
     "Save the session" : u"Speichere die Session",
+    "No script opened for saving" : u"", # New in v2.7.9.5
     "Save current frame" : u"Speichere aktuelles Einzelbild",
     "Introduce the JPEG Quality (0-100)" : u"", # New in v2.5.0
     "JPEG Quality" : u"", # New in v2.5.0
@@ -1557,7 +1592,6 @@ messages = {
     "Clip not released. Memory still allocated" : u"", # New in v2.6.7.7
     "Clip successful released" : u"", # New in v2.6.7.0
     "Abandoned clip assigned. Select the tab?" : u"", # New in v2.6.7.7
-    "Info" : u"", # New in v2.7.8.2
     "Abandoned clip assigned: \"{0}\"" : u"", # New in v2.6.7.7
     "Process display clip... " : u"", # New in v2.7.4.1
     " If you close this dialog you should restart the program " : u"", # New in v2.7.4.1
@@ -1629,6 +1663,17 @@ messages = {
     "Display clip and source clip dimensions different" : u"", # New in v2.7.1.6
     "Error in the macro:" : u"Fehler im Macro",
     "Couldn't find %(macrofilename)s" : u"Konnte nicht finden %(macrofilename)s",
+    "Pre-loaded clip assigned. Select the tab?" : u"", # New in v2.7.9.5
+    "Preload finished" : u"", # New in v2.7.9.5
+    "Waiting for main thread" : u"", # New in v2.7.9.5
+    "Cannot assign the clip" : u"", # New in v2.7.9.5
+    "Preload Error" : u"", # New in v2.7.9.5
+    "Creating clip failed" : u"", # New in v2.7.9.5
+    "Unknown Error: Preload canceled" : u"", # New in v2.7.9.5
+    "Free memory is low %i MB, Continue?" : u"", # New in v2.7.9.5
+    "Process in progress %i left" : u"", # New in v2.7.9.5
+    "Process in progress" : u"", # New in v2.7.9.5
+    "Waiting for clip initialization" : u"", # New in v2.7.9.5
     "An AviSynth script editor" : u"Ein AviSynth Skript-Editor",
     "Error trying to display the clip" : u"", # New in v2.5.1 r452
     "Is bit-depth set correctly?" : u"", # New in v2.5.1 r452
@@ -1688,6 +1733,7 @@ messages = {
     "Select an item to delete first" : u"Erst ein Element auswählen um zu löschen",
     "Are you sure you want to delete item %(key)s?" : u"Das Element wirklich löschen %(key)s?",
     "Error: minValue must be less than maxValue" : u"Fehler: Min Wert muss weniger sein als Max Wert",
+    "The running process cannot be canceled.\nWhen the process is finished, it is canceled." : u"", # New in v2.7.9.5
 
     #--- Tool: resize_calc.py ---#
     "Resize calculator..." : u"Resize-Calculator...",
@@ -1928,6 +1974,10 @@ messages = {
     "Last encoding returns error. Process is canceled\n" : u"", # New in v2.6.8.7
     "Error, cannot insert the encode preview text\nTrying to create new tab" : u"", # New in v2.6.8.7
     "Encoding finished\n\nElapsed time: %s\n%s%s%s" : u"", # New in v2.7.8.2
+
+    #--- Macro: Run analysis pass ---#
+    "Average %#.4g fps" : u"", # New in v2.7.9.5
+    "Frame %s/%s (%#.4g fps)" : u"", # New in v2.7.9.5
 
     #--- Macro: Save Image Sequence ---#
     "Save image sequence" : u"", # New in v2.4.0
