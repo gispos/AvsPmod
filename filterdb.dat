@@ -2785,7 +2785,8 @@ int "stream_index"=-1 (-1 to 10),
 bool "cache"=true,
 bool "av_sync"=false,
 string "layout"="",
-int "rate"=0
+int "rate"=0,
+int "fill_agaps"=0
 )
 
 LSMASHSource_LWLibavVideoSource(
@@ -5162,3 +5163,4 @@ int "temperature"=6504 (4004 to 12004),
 string "matrix"="Rec709" ("470M"/ "470BG"/ "Rec601"/ "Rec709"/ "Rec2020CL"/ "Rec2020NCL"/ "Display-P3"/ "ACEScg"),
 bool "tv_range"=true
 )
+
