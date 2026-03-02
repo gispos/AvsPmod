@@ -2791,6 +2791,7 @@ bool "cache"=true,
 bool "av_sync"=false,
 [string "layout"],
 int "rate"=0,
+bool "indexingpr"=true,
 int "ff_loglevel"=0 (0/1/2/3/4/5/6/7/8),
 float "drc_scale"=1.0,
 int "fill_agaps"=0,
@@ -2817,7 +2818,8 @@ int "prefer_hw"=0 (0/1/2),
 int "ff_loglevel"=0 (0/1/2/3/4/5/6/7/8),
 [string "decoder"],
 [string "cachedir"],
-[string "ff_options"]
+[string "ff_options"],
+[bool "rap_verification=true"]
 )
 
 MedianBlur2_MedianBlur(
