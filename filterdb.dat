@@ -2761,7 +2761,11 @@ string "source"= ("*.*"),
 int "track"=0 (0 to 10),
 bool "skip_priming"=true,
 string "layout"="",
-int "rate"=0
+int "rate"=0,
+[string "decoder"=""],
+float "drc_scale"=1.0,
+int "ff_loglevel"=0 (0/1/2/3/4/5/6/7/8),
+[string "ff_options"=""]
 )
 
 LSMASHSource_LSMASHVideoSource(
@@ -2774,9 +2778,10 @@ bool "dr"=false,
 int "fpsnum"=0,
 int "fpsden"=1,
 string "format"="" (""/"YUV420P8"/"YUV422P8"/"YUV444P8"/"YUV410P8"/"YUV411P8"/"YUV420P9"/"YUV422P9"/"YUV444P9"/"YUV420P10"/"YUV422P10"/"YUV444P10"/"YUV420P12"/"YUV422P12"/"YUV444P12"/"YUV420P14"/"YUV422P14"/"YUV444P14"/"YUV420P16"/"YUV422P16"/"YUV444P16"/"YUVA420P8"/"YUVA422P8"/"YUVA444P8"/"YUVA420P10"/"YUVA422P10"/"YUVA444P10/"YUVA420P12"/"YUVA422P12"/"YUVA444P12"/"YUVA420P16"/"YUVA422P16"/"YUVA420P16"/"Y8"/"Y10"/"Y12"/"Y16"/"YUY2"/"RGB24"/"RGB32"/"RGB48"/"RGB64"/"GBRP8"/"GBRP10"/"GBRP12"/"GBRP14"/"GBRP16"/"GBRAP8"/"GBRAP10"/"GBRAP12"/"GBRAP14"/"GBRAP16"), 
-string "decoder"="",
+[string "decoder"=""],
 int "prefer_hw"=0 (0/1/2),
-int "ff_loglevel"=0 (0/1/2/3/4/5/6/7/8)
+int "ff_loglevel"=0 (0/1/2/3/4/5/6/7/8),
+[string "ff_options"=""]
 )
 
 LSMASHSource_LWLibavAudioSource(
@@ -2786,8 +2791,12 @@ bool "cache"=true,
 bool "av_sync"=false,
 string "layout"="",
 int "rate"=0,
+[string "decoder"=""],
+int "ff_loglevel"=0 (0/1/2/3/4/5/6/7/8),
 float "drc_scale"=1.0,
-int "fill_agaps"=0
+[string "ff_options"=""],
+int "fill_agaps"=0,
+[string "cachedir"=""]
 )
 
 LSMASHSource_LWLibavVideoSource(
@@ -2797,15 +2806,19 @@ int "threads"=0,
 bool "cache"=true,
 int "seek_mode"=0 (0 / 1 / 2),
 int "seek_threshold"=10 (0 to 60),
-bool "indexingpr"=false,
+bool "indexingpr"=true,
 bool "dr"=false,
 bool "repeat"=false,
 int "fpsnum"=0,
 int "fpsden"=1,
 int "dominance"=0 (0 / 1 / 2),
 string "format"="" (""/"YUV420P8"/"YUV422P8"/"YUV444P8"/"YUV410P8"/"YUV411P8"/"YUV420P9"/"YUV422P9"/"YUV444P9"/"YUV420P10"/"YUV422P10"/"YUV444P10"/"YUV420P12"/"YUV422P12"/"YUV444P12"/"YUV420P14"/"YUV422P14"/"YUV444P14"/"YUV420P16"/"YUV422P16"/"YUV444P16"/"YUVA420P8"/"YUVA422P8"/"YUVA444P8"/"YUVA420P10"/"YUVA422P10"/"YUVA444P10/"YUVA420P12"/"YUVA422P12"/"YUVA444P12"/"YUVA420P16"/"YUVA422P16"/"YUVA420P16"/"Y8"/"Y10"/"Y12"/"Y16"/"YUY2"/"RGB24"/"RGB32"/"RGB48"/"RGB64"/"GBRP8"/"GBRP10"/"GBRP12"/"GBRP14"/"GBRP16"/"GBRAP8"/"GBRAP10"/"GBRAP12"/"GBRAP14"/"GBRAP16"), 
-string "decoder"="",
-int "ff_loglevel"=0 (0/1/2/3/4/5/6/7/8) 
+[string "decoder"=""],
+int "prefer_hw"=0 (0/1/2),
+int "ff_loglevel"=0 (0/1/2/3/4/5/6/7/8),
+[string "cachedir"=""],
+[string "ff_options"=""],
+[bool "rap_verification"=true]
 )
 
 MedianBlur2_MedianBlur(
@@ -4552,6 +4565,33 @@ bool "invert"=false,
 int "UV"=2
 )
 
+LumaFilter(
+clip clp,
+clip filtered,
+int "min_y"=0 (0 to 255),
+int "fade_min_y"=0 (0 to 255), 
+int "max_y"=0 (0 to 255), 
+int "fade_max_y"=0 (0 to 255), 
+int "gblur"=100 (0 to 3000 by 10), 
+bool "gradient"=true, 
+bool "invert"=false, 
+int "debug"=0 (0 / 1 / 2),
+bool "On"=True
+)
+
+LumaMaskFilter(
+clip clp,
+clip filtered,
+int "min_y"=0 (0 to 255),
+int "fade_min_y"=0 (0 to 255),
+int "max_y"=0 (0 to 255),
+int "fade_max_y"=0 (0 to 255),
+bool "invert"=false,
+int "rad"=100 (0 to 500 by 10),
+int "debug"=0 (0 / 1 / 2),
+bool "On"=True
+)
+
 MvBob(
 clip Input,
 int "BlkSize"=8,
@@ -5165,4 +5205,11 @@ string "matrix"="Rec709" ("470M"/ "470BG"/ "Rec601"/ "Rec709"/ "Rec2020CL"/ "Rec
 bool "tv_range"=true
 )
 
-
+mt_yrangemask2(
+clip,
+int "min_y"=0 (0 to 255),
+int "fade_min_y"=0 (0 to 255),
+int "max_y"=0 (0 to 255),
+int "fade_max_y"=0 (0 to 255),
+bool "invert"=false
+)
