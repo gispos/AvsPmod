@@ -1989,9 +1989,15 @@ if os.name == 'nt':
                     if self.resizeFilter and (self.prefetchRGB32 or prefetch):
                         args = '\n' + prefetch if prefetch else '\nPrefetch(1,1)'
                     if self.matrix[:3] == 'Rec':
-                        args += '\nDecodeYUVtoRGB(threads=1,matrix=1,gain=74,offset=0)'     # tv levels
+                        if self.matrix[3:] == '601':
+                            args += '\nDecodeYUVtoRGB(threads=1,matrix=0,gain=74,offset=0)'     # tv levels 601
+                        else:
+                            args += '\nDecodeYUVtoRGB(threads=1,matrix=1,gain=74,offset=0)'     # tv levels 709
                     elif self.matrix[:2] == 'PC':
-                        args += '\nDecodeYUVtoRGB(threads=1,matrix=1,gain=64,offset=16)'    # full
+                        if self.matrix[3:] == '601':
+                            args += '\nDecodeYUVtoRGB(threads=1,matrix=0,gain=64,offset=16)'    # full 601
+                        else:
+                            args += '\nDecodeYUVtoRGB(threads=1,matrix=1,gain=64,offset=16)'    # full 709
                     else:
                         args += '\nDecodeYUVtoRGB(threads=1,matrix=1,gain=69, offset=0)'    # zero black and non-clipping superwhited
                 else:

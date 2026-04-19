@@ -18,26 +18,59 @@ About sliders:
  Use the filter exclusion list for the sliders. The creation of the sliders is time and resource consuming, minimize this effort to what is necessary. 
  source filters, trim, crop, addborders, prefetch, etc. can also be set wonderfully in the script.
  And there is still the possibility to switch the list on and off in the slider window if you want to see all of them.
+
+ Slider step values can only be changed within the valid decimales of the slider values. 
+ It is not possible to set a step value of 0.5 if the slider value range is an integer.
+
+ With float sliders, it is also not possible to use a step size that does not correspond to the decimal slider values. 
+ A slider range of 0.00 to 1.00 with a step value of 0.05 is not possible (0.01 or 1.00 are the only allowed steps). 
+ Possible is: range 0.00 to 10.00 with step values of 0.01, 1.00, 2.00, 5.00, 10.00 (multible of step size must fit min and max value).
+ If you change the step to 0.1, the slider decimale will also change: 0.0 to 10.0
 #####
 About accessing Avisnth in threads:
-Even with threads it is easy to crash AvsPmod, the avisynth.dll is coupled with the main thread, 
-if an error is triggered by a plugin and the plugin or avisynth crashes, AvsPmod is also torn into the abyss.
-The threads only helps if avisynth does not return.
-Use program options > Save/Load > 'Backup session when previewing' and the accesses in threads to minimize the risk of losing the script.
+ Even with threads it is easy to crash AvsPmod, the avisynth.dll is coupled with the main thread, 
+ if an error is triggered by a plugin and the plugin or avisynth crashes, AvsPmod is also torn into the abyss.
+ The threads only helps if avisynth does not return.
+ Use program options > Save/Load > 'Backup session when previewing' and the accesses in threads to minimize the risk of losing the script.
 #####
 How do I sync videos with groups:
-If a group was previously selected, delete that group first. Make sure 'Add tab to group' > 'Apply offsets' is checked
-Go to the desired position with each video (tab), then select the same group for each video ('Add tab to group'). 
-Now all videos should be frame accurately synchronized.
+ If a group was previously selected, delete that group first. Make sure 'Add tab to group' > 'Apply offsets' is checked
+ Go to the desired position with each video (tab), then select the same group for each video ('Add tab to group'). 
+ Now all videos should be frame accurately synchronized.
+ In addition read: Version 2.7.9.6 > 'Break group offset'
 #####
 About Avisynth filter plugins *.dll naming:
-Please do not use strange characters in the names of the plugins. It is best not to rename the *.dll files. 
-Avisynth and AvsPmod can have problems with it. Function names have to be assigned to the associated dll, 
-the name has to be split and this can lead to errors. 
-AvsPmod can only provide a user-friendly editor if he has no problems with the name of the dll and its function. 
-If, for example, there is a '-' in the file name of the dll, AvsPmod will report it at startup, 
-please rename this dll and replace the '-' with a '_'
+ Please do not use strange characters in the names of the plugins. It is best not to rename the *.dll files. 
+ Avisynth and AvsPmod can have problems with it. Function names have to be assigned to the associated dll, 
+ the name has to be split and this can lead to errors. 
+ AvsPmod can only provide a user-friendly editor if he has no problems with the name of the dll and its function. 
+ If, for example, there is a '-' in the file name of the dll, AvsPmod will report it at startup, 
+ please rename this dll and replace the '-' with a '_'
 
+--------------------------
+Version 2.7.9.6 [2026-04-17] GPo
+--------------------------
+* The slider window gets a 'Reset' button for each function.
+- by default only sliders are reset to default values, if you press Ctrl while clicking 'Reset', all items will be reset.
+- only works for known functions (filterdb.dat or self-created function declarations with default values). 
+* Added playback for left mouse click. Program options > Video > 'Playback on left mouse click' 
+- 0 = disabled by default. Read the option notes before making any changes.
+- the function is not executed on the first click under various conditions: after a popup menu, when the mouse is moved, after the script has had focus. 
+- my recommendation is to set only a narrow range (bottom): 40 to 80. The mouse double click is on this area then deaktivated.
+- you can enable/disable the function under the Playback button context menu > 'Left click playback'
+* Changed frame text field: Frame history is now script (tab) related.
+- as a reminder: individual entries can be deleted by holding down the CTRL key while clicking the menu.
+* Added 'Sort history' to frame text field context menus. 
+* If all left or right tabs are changed to a group, the new selected group will now be deleted first.
+* Added Video > Tab add group > 'Break group offset': Allows setting of new offset for the tab's with the same group.
+- setting a new offset: Check it > change the frames on the tab's with the same group > uncheck it 
+- it's the same as set tab group to None > change frame > set tab group again. But we can do that now with one shortcut for all tabs with the same group.
+* Added to video slider timeline context menu "Clear all selections"
+- this menu is only visible if there are no selections under the mouse cursor, but selections are present.
+* Fixed: The checked state for menu items 'Split view alternate' was not set correctly in all menus.
+* Fixed: Fast YUVToRGB display conversion did not take matrix 601 into account and always used 709.
+* A few glitches in the filter database functions have been fixed.
+* Some updates in the filterdb.dat file, so update it!
 
 --------------------------
 Version 2.7.9.5 [2025-11-26] GPo

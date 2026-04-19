@@ -1823,6 +1823,7 @@ class ShortcutsDialog(wx.Dialog):
         width, height = self.GetSize()
         self.SetSize((width, height*2))
         self.sizer = dlgSizer
+        self.CenterOnParent()
         # Misc
         #okay.SetDefault()
 
@@ -2097,6 +2098,7 @@ class EditStringDictDialog(wx.Dialog):
         if self.listCtrl.GetItemCount():
             self.listCtrl.SelectItem(0)
         okay.SetDefault()
+        self.CenterOnParent()
 
     def GetDict(self):
         return self.infoDict
@@ -2267,9 +2269,8 @@ class Slider(wx.Slider):
         self.nDecimal = nDecimal
         # Determine the internal slider range (0 to wxMaxValue)
         self.wxMaxValue = self._get_wxMaxValue(minValue, maxValue, nDecimal, mod)
-        # Create the slider control
         aValue = self._upos2wxpos(value)
-        aMaxValue = self._upos2wxpos(maxValue)
+        # Create the slider control
         wx.Slider.__init__(self, parent, id,
             aValue, 0, self.wxMaxValue,
             point=point, size=size, style=style,

@@ -16,7 +16,7 @@
 
 # Übersetzt von Henrik . AvsP 2.0.1  Danke für die Hilfe, besonders LigH ,doxville,Brother John, Selur und Rippraff !
 
-version = "2.7.9.5"
+version = "2.7.9.6"
 
 messages = {
     "Note: When clicking on the calltip press Ctrl for file search or Shift for web search only." : u"", # New in v2.7.1.6
@@ -147,7 +147,7 @@ messages = {
     "New function" : u"Neue Funktion",
     "Edit selected" : u"Auswahl bearbeiten",
     "Delete selected" : u"Auswahl löschen",
-    "Select installed" : u"Auswahl installiert",
+    "Select installed" : u"Installierte auswählen",
     "Import" : u"", # New in v2.4.2
     "Import from files" : u"", # New in v2.2.1
     "Import from wiki" : u"", # New in v2.4.2
@@ -363,6 +363,8 @@ messages = {
     "Tab change or scroll" : u"", # New in v2.6.3.5
     "Frame step" : u"", # New in v2.3.0
     "Tab change" : u"", # New in v2.6.3.5
+    "Perform playback on left mouse click in the video window. The value determines the height of the area from the bottom edge.\nDouble-click is in this area deactivated.\nCan be enabled/disabled in the play button context menu.\nRecommended 40 to 100" : u"", # New in v2.7.9.6
+    "Playback on left mouse click (0 disabled)" : u"", # New in v2.7.9.6
     "Enable scroll wheel through similar tabs" : u"", # New in v2.2.1
     "Mouse scroll wheel cycles through tabs with similar videos" : u"", # New in v2.0.1
     "Enable scroll wheel through tabs on the same group" : u"", # New in v2.5.0
@@ -729,8 +731,8 @@ messages = {
     "Load session..." : u"Lade Session...",
     "Save all the scripts as a session, including slider info" : u"Speichern aller Skripte einer Session, inklusive Info des Schiebereglers",
     "Save session..." : u"Speichere Session...",
-    "Save all opened scripts as a session, including slider info" : u"Speichern aller geöffneten scripts in einer Session, inklusive Info des Schiebereglers", # New in v2.7.9.5
-    "Save session (only opened)..." : u"Speichere Session (nur geöffnete)...", # New in v2.7.9.5
+    "Save all opened scripts as a session, including slider info" : u"Speichern aller geöffneten scripts in einer Session, inklusive Info des Schiebereglers",
+    "Save session (only opened)..." : u"Speichere Session (nur geöffnete)...",
     "Backup current session" : u"Aktuelle Session speichern",
     "Backup the current session for next program run" : u"Aktuelle Session für nächsten Programmlauf speichern", 
     "Load last session startup backup" : u"", # New in v2.7.1.6
@@ -864,9 +866,9 @@ messages = {
     "Clear all tab groups" : u"", # New in v2.5.0
     "Use the difference between showed frames when the tabs were added to the group as offsets" : u"", # New in v2.5.0
     "Apply offsets" : u"", # New in v2.5.0
-    "Apply the offset also to the currently set bookmarks" : u"", # New in v2.5.1 r452
-    "Offset also bookmarks" : u"", # New in v2.5.1 r452
-    "If Split View then freeze the frame number" : u"", # New in v2.7.3.7
+    "Disable/Enable groups offset; so a re-offset of the group" : u"", # New in v2.7.9.6
+    "Break group offset" : u"", # New in v2.7.9.6
+    "If Split View then freeze the frame number of the unselected tab" : u"", # New in v2.7.9.6
     "Freeze Split View frame" : u"", # New in v2.7.3.7
     "&Navigate" : u"", # New in v2.2.1
     "Go to next bookmarked frame" : u"Gehe zum nächsten, als Lesezeichen markierten, Einzelbild",
@@ -907,6 +909,8 @@ messages = {
     "Go to frame..." : u"Gehe zum Einzelbild...",
     "&Play video" : u"", # New in v2.4.0
     "Play/pause video" : u"", # New in v2.4.0
+    "Playback on left mouse click. Under program options the mouse click area must be greater than 0" : u"", # New in v2.7.9.6
+    "Left click playback" : u"", # New in v2.7.9.6
     "Double the current playback speed" : u"", # New in v2.4.0
     "Increment speed" : u"", # New in v2.4.0
     "Decrement speed" : u"", # New in v2.4.0
@@ -925,7 +929,7 @@ messages = {
     "Play the current frame audio (duration 36 frames). Use Split View for sync check." : u"", # New in v2.7.5.6
     "Play audio at playback on all speed settings (slower, faster), else only at normal speed." : u"", # New in v2.7.8.2
     "Audio settings..." : u"", # New in v2.7.8.2
-    "D3D Window safe render" : u"", # New in v2.7.8.2
+    "D3D Window safe render (slower)" : u"", # New in v2.7.9.6
     "Direct3D window safe rendering. Safer but slower." : u"", # New in v2.7.5.6
     "Crop editor..." : u"Crop Editor...",
     "Show the crop editor dialog" : u"Zeige den Crop Editor Dialog",
@@ -1224,11 +1228,13 @@ messages = {
     "Group" : u"", # New in v2.5.0
     "Change current and left tabs group" : u"Ändere aktuellen und linke Tab's Gruppe",
     "Change current and right tabs group" : u"Ändere aktuellen und rechte Tab's Gruppe",
+    "If Split View then freeze the frame number" : u"", # New in v2.7.3.7
     "Save" : u"Speichern",
     "Save as..." : u"Speichere als...",
     "Reload" : u"Neu laden",
     "Reload all" : u"Neu laden alle",
     "Open directory" : u"Öffne Verzeichnis",
+    "Release all tabs video memory" : u"Video Speicher aller Tabs freigeben", # New in v2.7.9.6
     "Tab switching loads script bookmarks" : u"Tab Wechsel läd script bookmarks",
     "Save/Restore last viewing position and normal zoom settings on tab change" : u"", # New in v2.7.8.2
     "Sizing on initilisation, tab change, zoom change, etc." : u"", # New in v2.7.8.2
@@ -1276,12 +1282,10 @@ messages = {
     "Save last position" : u"", # New in v2.7.8.2
     "Transparent (left down && move)" : u"", # New in v2.7.8.2
     "Don't close on 'Apply'" : u"", # New in v2.7.8.2
-    "Split View alternate" : u"", # New in v2.7.3.7
     "&Optionen" : u"", # New in v2.7.1.6
     "Cannot close tabs in groups if rows count greater 1\nYou must disable Options -> Multiline tab style" : u"", # New in v2.7.5.6
     "Reload all changed scripts?" : u"", # New in v2.7.8.2
     "The script's directory doesn't exist anymore!" : u"Das Skript Verzeichnis exestiert nicht mehr",
-    "'Groups offset bookmarks' has been switched off, otherwise undefined assignments will occur" : u"", # New in v2.7.1.6
     "Print Preview" : u"", # New in v2.3.1
     "Failed to create print preview" : u"", # New in v2.3.1
     "Print Error" : u"", # New in v2.3.1
@@ -1341,6 +1345,7 @@ messages = {
     "Error loading the script" : u"Fehlerhaft geladenes Skript",
     "Starting FPS analysis..." : u"", # New in v2.7.1.6
     "Play video" : u"", # New in v2.6.6.0
+    "Mouse click area for playback is disabled!\nYou must set the area hight under Program options -> Video" : u"", # New in v2.7.9.6
     "Audio playback settings" : u"", # New in v2.7.8.2
     "Direct3D safe" : u"", # New in v2.7.5.6
     "Frame size:" : u"Einzelbildgröße",
@@ -1472,6 +1477,8 @@ messages = {
     "1 Minute" : u"", # New in v2.6.6.3
     "1 Second" : u"", # New in v2.6.6.3
     "1 Frame" : u"", # New in v2.6.8.7
+    "Audio trim helper" : u"", # New in v2.7.9.6
+    "The file \"Program dir\\Tools\007udio_trim_helper.py\" is missing." : u"", # New in v2.7.9.6
     "Audio scrub" : u"", # New in v2.7.5.6
     "bookmark highlight color..." : u"", # New in v2.6.3.5
     "selection highlight color..." : u"", # New in v2.6.3.5
@@ -1483,21 +1490,24 @@ messages = {
     "copy as time" : u"", # New in v2.2.1
     "copy" : u"", # New in v2.2.1
     "paste" : u"", # New in v2.2.1
-    "clear history" : u"", # New in v2.2.1
+    "Sort history (Ctrl global)" : u"", # New in v2.7.9.6
+    "Clear history (Ctrl global)" : u"", # New in v2.7.9.6
     "On joined filters, the first line must not begin with" : u"", # New in v2.7.8.2
     "Frames: %i" : u"", # New in v2.6.8.7
     "Apply filter" : u"", # New in v2.6.9.4
     "All as trim" : u"", # New in v2.6.9.4
     "Add as trim" : u"", # New in v2.6.9.4
+    "All to clips" : u"", # New in v2.7.9.6
     "Timeline to trims" : u"", # New in v2.6.9.4
     "Timeline to clips" : u"", # New in v2.6.9.4
     "Remove" : u"", # New in v2.6.7.2
     "Remove all other" : u"", # New in v2.6.8.7
+    "All selections as trim" : u"", # New in v2.7.9.6
+    "Remove all selections" : u"", # New in v2.7.9.6
     "Timeline range..." : u"", # New in v2.7.8.2
     "Trim editor..." : u"", # New in v2.6.8.7
     "Audio Error" : u"", # New in v2.7.5.6
     "Cannot close the audio play, disable audio scrubbing or try again." : u"", # New in v2.7.5.6
-    "'Tab change load bookmarks' has been switched off, otherwise undefined assignments will occur" : u"", # New in v2.7.1.6
     "Fullscreen/Fullsize only with 'Accessing AviSynth in threads' enabled" : u"", # New in v2.7.4.1
     "Invalid crop values detected.  Continue?" : u"Unzulässige Crop-Werte ermittelt. Weitermachen?",
     "Select autocomplete keywords" : u"", # New in v2.2.1
@@ -1671,8 +1681,8 @@ messages = {
     "Creating clip failed" : u"", # New in v2.7.9.5
     "Unknown Error: Preload canceled" : u"", # New in v2.7.9.5
     "Free memory is low %i MB, Continue?" : u"", # New in v2.7.9.5
-    "Process in progress %i left" : u"", # New in v2.7.9.5
-    "Process in progress" : u"", # New in v2.7.9.5
+    "Preload in progress %i left" : u"", # New in v2.7.9.6
+    "Preload in progress" : u"", # New in v2.7.9.6
     "Waiting for clip initialization" : u"", # New in v2.7.9.5
     "An AviSynth script editor" : u"Ein AviSynth Skript-Editor",
     "Error trying to display the clip" : u"", # New in v2.5.1 r452
@@ -1759,6 +1769,15 @@ messages = {
     #--- Tool: session_info.py ---#
     "Session info tool" : u"", # New in v2.7.3.1
     "Gives session information for the opened folder/files" : u"", # New in v2.7.3.1
+
+    #--- Tool: audio_trim_helper.py ---#
+    "Audio trim helper" : u"", # New in v2.7.9.6
+    "Loops the audio playback from or to current frame" : u"", # New in v2.7.9.6
+    "Cannot cancel the audio play thread\nPlease restart AvsPmod" : u"", # New in v2.7.9.6
+    "From current" : u"", # New in v2.7.9.6
+    "To current" : u"", # New in v2.7.9.6
+    "Play" : u"", # New in v2.7.9.6
+    "Cannot activate the audio playback" : u"", # New in v2.7.9.6
 
     #--- Tool: encoder_gui.py ---#
     "Script encoder (CLI)" : u"", # New in v2.4.0

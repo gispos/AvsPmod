@@ -26,7 +26,6 @@
 #               or 4.0.2: experimental not finished
 #     py2exe (tested on v0.6.9)
 #     Cython for cfunc.pyd, PySDL2 for d3d window
-#     cfunc.py must be compiled with Cython and the module must be in the source folder
 # Additional dependencies for x86-64:
 #     cffi (tested on v0.9.2)
 #     pycparser (tested on v2.10)
@@ -274,7 +273,7 @@ dirs = (
     ('translations', None, None),
     ('macros', ('.py', '.txt'), None),
     ('tools', ('.py', '.default'), ('session_info.pyo', 'avs2avi.exe', 'avs2avi_src.zip')),
-    ('sound', ('.mp3'), None)
+    ('sound', ('.mp3', '.wav'), None)
        )
 for dir, ext_filter, include in dirs:
     if not os.path.isdir(dir):
