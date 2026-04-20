@@ -48,8 +48,10 @@ About Avisynth filter plugins *.dll naming:
  please rename this dll and replace the '-' with a '_'
 
 --------------------------
-Version 2.7.9.7 [2026-04-21] GPo
+Version 2.7.9.6 - 2.7.9.7 [2026-04-21] GPo
 --------------------------
+* This is a bugfix version with new features.
+Version 2.7.9.7 [2026-04-21]
 * Text fields in the Slider Window now have a mouse wheel value change function.
 - if the value is an integer or float, it can be changed using the mouse wheel.
 - the left mouse button must be pressed to do this. For floats, the last decimal place is changed by 1 
@@ -58,12 +60,9 @@ Version 2.7.9.7 [2026-04-21] GPo
 - general for edit fields: to update the preview, you must press the Enter key or focus the video window.
 * Scrolling the slider window with the mouse is no longer interrupted by other controls (slider, choice box). 
 - to change a slider with the mouse wheel, the left mouse button must be pressed.
-* Fixed: If the filter database (sliders) was edited, an error could occur: 'defMod not referenced'
-* This is a bugfix update (version 2.7.9.6) with new features. See also the changes in version 2.7.9.6.
-
---------------------------
-Version 2.7.9.6 [2026-04-17] GPo
---------------------------
+* Fixed: If the filter database (sliders) was edited, an error could occur: 'defMod not referenced' (2.7.9.6)
+-
+Version 2.7.9.6 [2026-04-17]
 * The slider window gets a 'Reset' button for each function.
 - by default only sliders are reset to default values, if you press Ctrl while clicking 'Reset', all items will be reset.
 - only works for known functions (filterdb.dat or self-created function declarations with default values). 
