@@ -48,6 +48,20 @@ About Avisynth filter plugins *.dll naming:
  please rename this dll and replace the '-' with a '_'
 
 --------------------------
+Version 2.7.9.7 [2026-04-21] GPo
+--------------------------
+* Text fields in the Slider Window now have a mouse wheel value change function.
+- if the value is an integer or float, it can be changed using the mouse wheel.
+- the left mouse button must be pressed to do this. For floats, the last decimal place is changed by 1 
+- if CTRL is pressed the last decimal place is changed by 5.
+- the same applies to integer values, which can be changed in 1 or 5 steps.
+- general for edit fields: to update the preview, you must press the Enter key or focus the video window.
+* Scrolling the slider window with the mouse is no longer interrupted by other controls (slider, choice box). 
+- to change a slider with the mouse wheel, the left mouse button must be pressed.
+* Fixed: If the filter database (sliders) was edited, an error could occur: 'defMod not referenced'
+* This is a bugfix update (version 2.7.9.6) with new features. See also the changes in version 2.7.9.6.
+
+--------------------------
 Version 2.7.9.6 [2026-04-17] GPo
 --------------------------
 * The slider window gets a 'Reset' button for each function.

@@ -153,6 +153,11 @@ os.environ["PYSDL2_DLL_PATH"] = os.path.abspath(os.path.dirname(sys.argv[0]))
 import sdl2
 import sdl2.ext
 
+try:
+    import winsound
+except:
+    pass
+
 from icons import AvsP_icon, next_icon, play_icon, pause_icon, external_icon, \
                   skip_icon, spin_icon, ok_icon, smile_icon, question_icon, \
                   rectangle_icon, dragdrop_cursor
@@ -9525,12 +9530,12 @@ class AvsFilterAutoSliderInfo(wx.Dialog):
                 argLabel.controls = []
                 argSizer.Add(argLabel, (row,0), wx.DefaultSpan, wx.ALIGN_RIGHT|wx.ALIGN_BOTTOM|wx.BOTTOM|wx.RIGHT, int5)
                 if argtype in ('int', 'float') and guitype != 'intlist':
+                    defMod = ''
                     strDefaultValue = strMinValue = strMaxValue = strMod = ''
                     if other is not None:
                         minValue, maxValue, nDecimal, mod = other
                         if nDecimal is None:
                             nDecimal = 0
-                        defMod = ''
                         strTemplate = '%.'+str(nDecimal)+'f'
                         if defaultValue is not None:
                             try:
@@ -15155,18 +15160,17 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 self.app.GotoNextBookmark(reverse=True, forceCursor=True)
             def OnMouseAux2Down(event):
                 self.app.GotoNextBookmark(reverse=False, forceCursor=True)
-
             """
             def OnMouseWheel(event): # Win10
-                if app.options['mousewheelfunc'] == 'frame_step':
-                    self.app.OnMouseWheelVideoWindow(event)
+                event.Skip()
+                #if app.options['mousewheelfunc'] == 'frame_step':
+                    #self.app.OnMouseWheelVideoWindow(event)
             """
             """
             def OnMouseMove(event):
                 pass
             self.Bind(wx.EVT_MOTION, OnMouseMove)
             """
-
             self.Bind(wx.EVT_MOUSE_AUX1_DOWN, OnMouseAux1Down)
             self.Bind(wx.EVT_MOUSE_AUX2_DOWN, OnMouseAux2Down)
             """
@@ -18959,7 +18963,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             temp = temp2 = None
 
     def playSound(self, sound, bell=True, block=True, msg=False):
-        """ Stolen from playsound.py and adapted for AvsPmod """
+        """
+        Parts stolen from playsound.py and adapted for AvsPmod
+        block = False is idiotic, no sound is playing if main thread not blocked
+        on wav files we can use winsound wthout blocking
+        """
 
         def _canonicalizePath(path):
             """
@@ -18973,6 +18981,19 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 return path
 
         sound = os.path.join(self.programdir, 'sound', sound)
+        if not os.path.isfile(sound):
+            if bell:
+                wx.Bell()
+            return
+
+        if sound.lower().endswith('.wav'):
+            try:
+                winsound.PlaySound(sound, winsound.SND_ASYNC)
+            except:
+                pass
+            else:
+                return
+
         sound = '"' + _canonicalizePath(sound) + '"'
         error = ''
 
@@ -31636,6 +31657,11 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
             valTxtCtrl.SetLabel(strTemplate % value)
             if isRescaled:
                 valTxtCtrl2.SetLabel(strTemplate2 % Rescale(value))
+        def OnMouseWheel(event):
+            if event.LeftIsDown():
+                event.Skip()
+            else:
+                self.currentSliderWindow.GetEventHandler().ProcessEvent(event)
         # Create the slider
         slider = wxp.Slider(parent, wx.ID_ANY,
             value, minValue, maxValue,
@@ -31649,6 +31675,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         )
         # Slider event binding
         slider.Bind(wx.EVT_LEFT_UP, self.OnLeftUpUserSlider)
+        slider.Bind(wx.EVT_MOUSEWHEEL, OnMouseWheel)
+
         # Create the static text labels
         labelTxtCtrl = wxp.StaticText(parent, wx.ID_ANY, labelTxt)
         minTxtCtrl = wxp.StaticText(parent, wx.ID_ANY, strTemplate % minValue)
@@ -32233,6 +32261,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 if self.currentScript.previewFilterIdx == slider.prevFilterIdx: # disable mouse wheel on preview filters
                     return
                 event.Skip()
+            else:
+                self.currentSliderWindow.GetEventHandler().ProcessEvent(event) # block change with wheel and scroll slider window
         """
         def OnThumbTrack(event):
             event.Skip()
@@ -32539,6 +32569,8 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
                 newVal = choices[choiceBox.GetCurrentSelection()]
                 self.SetNewAvsValue(choiceBox, newVal)
                 event.Skip()
+        def OnMouseWheel(event): # block change with wheel and scroll slider window
+             self.currentSliderWindow.GetEventHandler().ProcessEvent(event)
         if defIndex > -1:
             def OnReset(ctrl):
                 if ctrl.guitype == 1:
@@ -32563,6 +32595,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         choiceBox.script = script
         choiceBox.argIndex = argIndex
         choiceBox.Bind(wx.EVT_CHOICE, OnChoice)
+        choiceBox.Bind(wx.EVT_MOUSEWHEEL, OnMouseWheel)
         if self.currentSliderWindow.customTheme:
             choiceBox.SetBackgroundColour(self.currentSliderWindow.backTextCtrl)
             choiceBox.SetForegroundColour(self.currentSliderWindow.foreTextCtrl)
@@ -32742,16 +32775,48 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         else:
             textCtrl = wx.TextCtrl(parent, wx.ID_ANY, strValue, style=wx.TE_PROCESS_ENTER)
         def OnTextChange(event):
-            self.SetNewAvsValue(textCtrl, textCtrl.GetValue(), refreshvideo=False)
+            self.SetNewAvsValue(textCtrl, textCtrl.GetValue(), refreshvideo=refreshVideo)
             event.Skip()
         def OnTextEnter(event):
             self.SetNewAvsValue(textCtrl, textCtrl.GetValue())
-            #~ event.Skip()
+        def OnMouseWheel(event):
+            if event.LeftIsDown(): # else on window scrolling ctrl changed if mouse over a ctrl
+                Ctrl = wx.GetKeyState(wx.WXK_CONTROL)
+                rotation = event.GetWheelRotation()
+                val = textCtrl.GetValue().strip()
+                if val.startswith('-'):
+                    isdigit = val[1:].isdigit()
+                else:
+                    isdigit = val.isdigit()
+                if isdigit:
+                    n = 5 if Ctrl else 1
+                    if rotation > 0:
+                        textCtrl.SetValue(str(int(val) + n))
+                    elif rotation < 0:
+                        textCtrl.SetValue(str(int(val) - n))
+                else:
+                    try:
+                      f = float(val)
+                    except:
+                        return
+                    n = val.split('.')
+                    if len(n) == 2:
+                        s = '.'
+                        for i in range(len(n[1])-1):
+                            s += '0'
+                        nf = float(s + '5') if Ctrl else float(s + '1')
+                        strTemplate = '%.'+str(len(n[1]))+'f'
+                        if rotation > 0:
+                            textCtrl.SetValue(strTemplate % (f + nf))
+                        elif rotation < 0:
+                            textCtrl.SetValue(strTemplate % (f - nf))
+            else:
+                event.Skip() # scroll slider window
         def OnReset(val):
             textCtrl.SetValue(val)
-            self.SetNewAvsValue(textCtrl, val, refreshvideo=False)
         textCtrl.Bind(wx.EVT_TEXT, OnTextChange)
         textCtrl.Bind(wx.EVT_TEXT_ENTER, OnTextEnter)
+        textCtrl.Bind(wx.EVT_MOUSEWHEEL, OnMouseWheel)
         textCtrl.filterName = filterName
         textCtrl.argName = argname
         textCtrl.script = script
