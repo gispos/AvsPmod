@@ -32775,7 +32775,7 @@ class MainFrame(wxp.Frame, WndProcHookMixin):
         else:
             textCtrl = wx.TextCtrl(parent, wx.ID_ANY, strValue, style=wx.TE_PROCESS_ENTER)
         def OnTextChange(event):
-            self.SetNewAvsValue(textCtrl, textCtrl.GetValue(), refreshvideo=refreshVideo)
+            self.SetNewAvsValue(textCtrl, textCtrl.GetValue(), refreshvideo=False)
             event.Skip()
         def OnTextEnter(event):
             self.SetNewAvsValue(textCtrl, textCtrl.GetValue())
